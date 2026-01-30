@@ -173,6 +173,21 @@
             border-radius: 8px;
             border: 1px solid var(--sage-100);
             transition: all 0.3s ease;
+            cursor: grab;
+        }
+
+        .item:active {
+            cursor: grabbing;
+        }
+
+        .item.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+
+        .category.drag-over {
+            background: var(--sage-100);
+            border: 2px dashed var(--sage-500);
         }
 
         .item:hover {
@@ -929,6 +944,99 @@
                 }
             });
 
+            // Drag and drop functionality
+            let draggedItem = null;
+
+            function handleDragStart(e) {
+                draggedItem = {
+                    id: this.getAttribute('data-item-id'),
+                    category: this.getAttribute('data-item-category')
+                };
+                this.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            }
+
+            function handleDragEnd(e) {
+                this.classList.remove('dragging');
+            }
+
+            function handleDragOver(e) {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            }
+
+            function handleDragEnter(e) {
+                this.classList.add('drag-over');
+            }
+
+            function handleDragLeave(e) {
+                this.classList.remove('drag-over');
+            }
+
+            async function handleDrop(e) {
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+                this.classList.remove('drag-over');
+
+                if (!draggedItem) return false;
+
+                // Get the target category from the items-list element
+                const targetList = this.querySelector('.items-list');
+                if (!targetList) return false;
+
+                const targetCategory = targetList.id.replace('-list', '');
+                const sourceCategory = draggedItem.category;
+                const itemId = draggedItem.id;
+
+                // Don't do anything if dropped in same category
+                if (targetCategory === sourceCategory) return false;
+
+                // Move item to new category in database
+                try {
+                    const { error } = await db
+                        .from('inventory')
+                        .update({ 
+                            category: targetCategory,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', itemId);
+
+                    if (error) throw error;
+
+                    // Update local inventory
+                    const item = inventory[sourceCategory].find(i => i.id === itemId);
+                    if (item) {
+                        inventory[sourceCategory] = inventory[sourceCategory].filter(i => i.id !== itemId);
+                        item.category = targetCategory;
+                        inventory[targetCategory].push(item);
+                        
+                        // Re-render both categories
+                        renderCategory(sourceCategory);
+                        renderCategory(targetCategory);
+                    }
+                } catch (error) {
+                    console.error('Error moving item:', error);
+                    alert('Failed to move item. Please try again.');
+                }
+
+                draggedItem = null;
+                return false;
+            }
+
+            // Set up drop zones for all categories
+            function setupDropZones() {
+                document.querySelectorAll('.category').forEach(category => {
+                    category.addEventListener('dragover', handleDragOver);
+                    category.addEventListener('dragenter', handleDragEnter);
+                    category.addEventListener('dragleave', handleDragLeave);
+                    category.addEventListener('drop', handleDrop);
+                });
+            }
+
             // Update quantity
             async function updateQuantity(category, id, change) {
                 const item = inventory[category].find(i => i.id === id);
@@ -1051,7 +1159,7 @@
                 updateCategoryTotal(category, totalPortions);
 
                 list.innerHTML = sortedItems.map(item => `
-                    <div class="item">
+                    <div class="item" draggable="true" data-item-id="${item.id}" data-item-category="${category}">
                         <span class="item-name" contenteditable="true" data-category="${category}" data-id="${item.id}" data-field="name">${item.name}</span>
                         <div class="item-controls">
                             <div class="counter">
@@ -1079,6 +1187,12 @@
                             deleteItem(cat, id);
                         }
                     });
+                });
+
+                // Add drag and drop event listeners
+                list.querySelectorAll('.item[draggable="true"]').forEach(item => {
+                    item.addEventListener('dragstart', handleDragStart);
+                    item.addEventListener('dragend', handleDragEnd);
                 });
 
                 // Add event listeners for inline editing
@@ -1198,6 +1312,7 @@
 
             // Initialize
             loadInventory();
+            setupDropZones();
         })();
     </script>
 </body>
