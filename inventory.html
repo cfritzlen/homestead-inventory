@@ -25,6 +25,8 @@
             --earth-warm: #d4a373;
             --earth-cream: #faf8f3;
             --earth-brown: #8b7355;
+            --warning-red: #c74440;
+            --warning-orange: #e8a87c;
         }
 
         body {
@@ -217,130 +219,161 @@
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(90deg, #7a9061, #98ab7e, #d4a373);
+            background: linear-gradient(90deg, var(--sage-500) 0%, var(--sage-400) 100%);
             border-radius: 12px 12px 0 0;
         }
-
-        .category:nth-child(2) { animation-delay: 0.1s; }
-        .category:nth-child(3) { animation-delay: 0.2s; }
-        .category:nth-child(4) { animation-delay: 0.3s; }
 
         .category-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid var(--sage-100);
+            padding-top: 4px;
         }
 
         .category-title-row {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            justify-content: space-between;
+            align-items: center;
+            flex: 1;
         }
 
         .category-title {
             font-family: 'Crimson Pro', serif;
             font-size: 1.3rem;
-            color: var(--sage-700);
             font-weight: 600;
+            color: var(--sage-700);
         }
 
         .category-total {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: var(--sage-600);
-            font-weight: 500;
+            font-weight: 600;
+            background: var(--sage-50);
+            padding: 4px 12px;
+            border-radius: 12px;
         }
 
         .add-btn {
             background: var(--sage-500);
             color: white;
             border: none;
-            padding: 8px 20px;
+            padding: 8px 16px;
             border-radius: 20px;
             cursor: pointer;
-            font-weight: 500;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
+            font-weight: 600;
             font-family: 'Karla', sans-serif;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
         }
 
         .add-btn:hover {
             background: var(--sage-600);
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.25);
-        }
-
-        .items-list {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.3);
         }
 
         .item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 10px;
+            padding: 12px;
             background: var(--sage-50);
-            border-radius: 8px;
-            border: 1px solid var(--sage-100);
+            border-radius: 10px;
+            margin-bottom: 8px;
             transition: all 0.3s ease;
-            cursor: grab;
+            border: 2px solid transparent;
+            cursor: move;
         }
 
-        .item:active {
-            cursor: grabbing;
+        .item:hover {
+            background: var(--sage-100);
+            transform: translateX(4px);
+            box-shadow: 0 2px 8px rgba(122, 144, 97, 0.15);
         }
 
         .item.dragging {
             opacity: 0.5;
-            transform: scale(0.95);
+            transform: rotate(2deg);
         }
 
-        .category.drag-over {
-            background: var(--sage-100);
-            border: 2px dashed var(--sage-500);
+        .item.low-stock {
+            border-color: var(--warning-orange);
+            background: #fff8f0;
         }
 
-        .item:hover {
-            background: var(--earth-cream);
-            border-color: var(--sage-200);
+        .item.low-stock .low-stock-indicator {
+            display: inline-block;
+        }
+
+        .low-stock-indicator {
+            display: none;
+            color: var(--warning-red);
+            font-weight: bold;
+            margin-left: 8px;
+            font-size: 1.1rem;
         }
 
         .item-name {
             font-weight: 500;
             color: var(--sage-800);
-            flex: 1;
-            cursor: text;
             padding: 4px 8px;
             border-radius: 6px;
             transition: all 0.2s ease;
+            flex: 1;
         }
 
         .item-name:hover {
-            background: rgba(122, 144, 97, 0.1);
+            background: white;
         }
 
         .item-name:focus {
-            outline: 2px solid var(--sage-500);
+            outline: 2px solid var(--sage-400);
             background: white;
         }
 
         .item-controls {
             display: flex;
+            gap: 8px;
             align-items: center;
-            gap: 12px;
+        }
+
+        .min-label {
+            font-size: 0.75rem;
+            color: var(--sage-600);
+            font-weight: 600;
+        }
+
+        .min-input {
+            width: 40px;
+            text-align: center;
+            padding: 4px;
+            border: 1px solid var(--sage-300);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--sage-700);
+            background: white;
+            transition: all 0.2s ease;
+        }
+
+        .min-input:hover {
+            border-color: var(--sage-500);
+        }
+
+        .min-input:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            box-shadow: 0 0 0 2px rgba(122, 144, 97, 0.2);
         }
 
         .counter {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             background: white;
-            padding: 6px 12px;
-            border-radius: 20px;
+            padding: 4px;
+            border-radius: 8px;
             border: 1px solid var(--sage-200);
         }
 
@@ -350,8 +383,9 @@
             border: none;
             background: var(--sage-500);
             color: white;
-            border-radius: 50%;
+            border-radius: 6px;
             cursor: pointer;
+            font-weight: bold;
             font-size: 1.1rem;
             transition: all 0.2s ease;
             display: flex;
@@ -365,52 +399,50 @@
         }
 
         .counter-value {
-            min-width: 30px;
+            min-width: 32px;
             text-align: center;
             font-weight: 600;
-            color: var(--sage-700);
-            cursor: text;
+            color: var(--sage-800);
             padding: 2px 4px;
             border-radius: 4px;
             transition: all 0.2s ease;
         }
 
         .counter-value:hover {
-            background: rgba(122, 144, 97, 0.1);
+            background: var(--sage-50);
         }
 
         .counter-value:focus {
-            outline: 2px solid var(--sage-500);
-            background: white;
+            outline: 2px solid var(--sage-400);
+            background: var(--sage-50);
         }
 
         .delete-btn {
-            background: none;
+            width: 28px;
+            height: 28px;
             border: none;
-            color: var(--earth-brown);
+            background: var(--warning-red);
+            color: white;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 1.2rem;
-            opacity: 0.6;
+            font-weight: bold;
+            font-size: 1.3rem;
             transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .delete-btn:hover {
-            opacity: 1;
-            transform: scale(1.2);
-            color: #c97a5c;
+            background: #a83632;
+            transform: scale(1.1);
         }
 
         .empty-state {
             text-align: center;
-            padding: 40px 20px;
             color: var(--sage-500);
+            padding: 30px 20px;
             font-style: italic;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--sage-500);
         }
 
         .modal {
@@ -420,7 +452,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(74, 90, 59, 0.4);
+            background: rgba(74, 77, 71, 0.7);
             backdrop-filter: blur(4px);
             z-index: 1000;
             animation: fadeIn 0.3s ease;
@@ -434,96 +466,86 @@
 
         .modal-content {
             background: white;
-            padding: 40px;
-            border-radius: 20px;
-            max-width: 400px;
+            padding: 32px;
+            border-radius: 16px;
+            max-width: 450px;
             width: 90%;
-            box-shadow: 0 10px 40px rgba(74, 90, 59, 0.3);
-            animation: scaleIn 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease;
         }
 
-        .modal-title {
+        .modal-header {
             font-family: 'Crimson Pro', serif;
             font-size: 1.8rem;
             color: var(--sage-700);
             margin-bottom: 24px;
-            text-align: center;
+            font-weight: 600;
         }
 
         .form-group {
             margin-bottom: 20px;
         }
 
-        label {
+        .form-group label {
             display: block;
             margin-bottom: 8px;
+            font-weight: 600;
             color: var(--sage-700);
-            font-weight: 500;
             font-size: 0.95rem;
         }
 
-        input {
+        .form-group input {
             width: 100%;
-            padding: 12px 16px;
+            padding: 12px;
             border: 2px solid var(--sage-200);
             border-radius: 10px;
             font-family: 'Karla', sans-serif;
             font-size: 1rem;
             transition: all 0.3s ease;
-            background: var(--sage-50);
         }
 
-        input:focus {
+        .form-group input:focus {
             outline: none;
             border-color: var(--sage-500);
-            background: white;
+            box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.1);
         }
 
-        .modal-buttons {
+        .modal-actions {
             display: flex;
             gap: 12px;
             margin-top: 24px;
         }
 
-        .btn {
+        .modal-btn {
             flex: 1;
-            padding: 12px 24px;
+            padding: 12px;
             border: none;
             border-radius: 10px;
-            cursor: pointer;
             font-weight: 600;
             font-family: 'Karla', sans-serif;
+            cursor: pointer;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
 
-        .btn-primary {
+        .modal-btn-primary {
             background: var(--sage-500);
             color: white;
         }
 
-        .btn-primary:hover {
+        .modal-btn-primary:hover {
             background: var(--sage-600);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.25);
+            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.3);
         }
 
-        .btn-secondary {
+        .modal-btn-secondary {
             background: var(--sage-100);
             color: var(--sage-700);
         }
 
-        .btn-secondary:hover {
+        .modal-btn-secondary:hover {
             background: var(--sage-200);
-        }
-
-        .error {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #991b1b;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 0.9rem;
         }
 
         @keyframes fadeIn {
@@ -532,11 +554,11 @@
         }
 
         @keyframes fadeInDown {
-            from { 
+            from {
                 opacity: 0;
                 transform: translateY(-20px);
             }
-            to { 
+            to {
                 opacity: 1;
                 transform: translateY(0);
             }
@@ -553,98 +575,18 @@
             }
         }
 
-        @keyframes scaleIn {
-            from {
-                opacity: 0;
-                transform: scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
         }
 
-        .shoprite-section {
-            margin-bottom: 16px;
-        }
-
-        .shoprite-category-label {
-            font-weight: 600;
-            color: var(--sage-700);
-            font-size: 0.9rem;
-            padding: 8px 12px;
-            background: var(--sage-100);
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
-
-        .shopping-items-list .item {
-            background: white;
-        }
-
-        .shopping-item-checked {
-            opacity: 0.5;
-            text-decoration: line-through;
-        }
-
-        .add-to-list-btn {
-            background: none;
-            border: none;
-            color: var(--sage-500);
-            cursor: pointer;
-            font-size: 1.2rem;
-            opacity: 0.6;
-            transition: all 0.2s ease;
-            padding: 4px 8px;
-        }
-
-        .add-to-list-btn:hover {
-            opacity: 1;
-            transform: scale(1.2);
-            color: var(--sage-600);
-        }
-
-        @media (max-width: 600px) {
-            .pond-banner {
-                height: 150px;
-            }
-
+        @media (max-width: 768px) {
             h1 {
                 font-size: 1.6rem;
             }
 
-            .category {
-                padding: 16px;
-                margin-bottom: 12px;
-            }
-
-            .category-title {
-                font-size: 1.1rem;
-            }
-
-            .category-total {
-                font-size: 0.8rem;
-            }
-
-            .item {
-                flex-direction: column;
-                align-items: flex-start;
+            .tabs {
                 gap: 8px;
-                padding: 8px;
-            }
-
-            .item-name {
-                font-size: 0.95rem;
-            }
-
-            .item-controls {
-                width: 100%;
-                justify-content: space-between;
             }
 
             .tab {
@@ -652,14 +594,27 @@
                 font-size: 0.85rem;
             }
 
-            .counter {
-                padding: 4px 10px;
+            .category {
+                padding: 16px;
             }
 
-            .counter-btn {
-                width: 26px;
-                height: 26px;
-                font-size: 1rem;
+            .category-title {
+                font-size: 1.1rem;
+            }
+
+            .item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .item-controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .modal-content {
+                padding: 24px;
             }
         }
     </style>
@@ -669,701 +624,326 @@
     
     <div class="main-content">
         <div class="container">
-        <header>
-            <div style="font-size: 1.5rem; margin-bottom: 6px;">🌱 🐔 🦆</div>
-            <h1>Homestead Inventory</h1>
-        </header>
+            <header>
+                <h1>🫙 Homestead Inventory</h1>
+            </header>
 
-        <div class="search-container">
-            <input type="text" id="search-box" class="search-box" placeholder="Search inventory... (e.g., 'paper towels')">
-            <div id="search-results" class="search-results"></div>
-        </div>
+            <div class="search-container">
+                <input type="text" id="search-box" class="search-box" placeholder="Search inventory...">
+                <div id="search-results" class="search-results"></div>
+            </div>
 
-        <div class="tabs">
-            <div class="tab active" data-tab="basement-freezer">Basement Freezer</div>
-            <div class="tab" data-tab="upstairs-freezer">Upstairs Freezer</div>
-            <div class="tab" data-tab="refrigerator">Refrigerator</div>
-            <div class="tab" data-tab="pantry">Pantry</div>
-            <div class="tab" data-tab="supplies">Supplies</div>
-            <div class="tab" data-tab="shopping-list">🛒 Shopping List</div>
-        </div>
+            <div class="tabs">
+                <div class="tab active" data-section="basement">🏠 Basement Freezers</div>
+                <div class="tab" data-section="upstairs">❄️ Upstairs Freezer</div>
+                <div class="tab" data-section="fridge">🧊 Fridge</div>
+                <div class="tab" data-section="pantry">🥫 Pantry</div>
+                <div class="tab" data-section="supplies">🧻 Supplies</div>
+            </div>
 
-        <div id="basement-freezer" class="section active">
-            <div class="category">
-                <div class="category-header">
-                    <div class="category-title-row">
+            <!-- Basement Section -->
+            <div class="section active" data-section="basement">
+                <div class="category" data-category="basement-venison">
+                    <div class="category-header">
                         <h2 class="category-title">🦌 Venison</h2>
+                        <button class="add-btn" onclick="openModal('basement-venison')">+ Add Item</button>
                     </div>
-                    <button class="add-btn" data-category="basement-venison">+ Add Item</button>
+                    <div id="basement-venison-list"></div>
                 </div>
-                <div id="basement-venison-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
 
-            <div class="category">
-                <div class="category-header">
-                    <div class="category-title-row">
+                <div class="category" data-category="basement-poultry">
+                    <div class="category-header">
                         <h2 class="category-title">🐔 Poultry</h2>
+                        <button class="add-btn" onclick="openModal('basement-poultry')">+ Add Item</button>
                     </div>
-                    <button class="add-btn" data-category="basement-poultry">+ Add Item</button>
+                    <div id="basement-poultry-list"></div>
                 </div>
-                <div id="basement-poultry-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
 
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🥩 Store Meat</h2>
-                    <button class="add-btn" data-category="basement-store-meat">+ Add Item</button>
-                </div>
-                <div id="basement-store-meat-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">❄️ Other</h2>
-                    <button class="add-btn" data-category="basement-other">+ Add Item</button>
-                </div>
-                <div id="basement-other-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-        </div>
-
-        <div id="upstairs-freezer" class="section">
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🍦 Upstairs Freezer Items</h2>
-                    <button class="add-btn" data-category="upstairs-freezer">+ Add Item</button>
-                </div>
-                <div id="upstairs-freezer-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-        </div>
-
-        <div id="refrigerator" class="section">
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🧀 Cheese & Tortillas</h2>
-                    <button class="add-btn" data-category="fridge-cheese-tortillas">+ Add Item</button>
-                </div>
-                <div id="fridge-cheese-tortillas-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">👧👦 Kids Drawer</h2>
-                    <button class="add-btn" data-category="fridge-kids-drawer">+ Add Item</button>
-                </div>
-                <div id="fridge-kids-drawer-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🥕 Vegetables</h2>
-                    <button class="add-btn" data-category="fridge-vegetables">+ Add Item</button>
-                </div>
-                <div id="fridge-vegetables-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🥛 Other</h2>
-                    <button class="add-btn" data-category="fridge-other">+ Add Item</button>
-                </div>
-                <div id="fridge-other-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-        </div>
-
-        <div id="pantry" class="section">
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🍅 Tomatoes & Pasta Sauces</h2>
-                    <button class="add-btn" data-category="pantry-tomatoes">+ Add Item</button>
-                </div>
-                <div id="pantry-tomatoes-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🫘 Beans & Legumes</h2>
-                    <button class="add-btn" data-category="pantry-beans">+ Add Item</button>
-                </div>
-                <div id="pantry-beans-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🥣 Cooking Liquids</h2>
-                    <button class="add-btn" data-category="pantry-liquids">+ Add Item</button>
-                </div>
-                <div id="pantry-liquids-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🍰 Baking</h2>
-                    <button class="add-btn" data-category="pantry-baking">+ Add Item</button>
-                </div>
-                <div id="pantry-baking-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🌾 Grains & Pasta</h2>
-                    <button class="add-btn" data-category="pantry-grains">+ Add Item</button>
-                </div>
-                <div id="pantry-grains-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🥫 Canned Goods</h2>
-                    <button class="add-btn" data-category="pantry-canned">+ Add Item</button>
-                </div>
-                <div id="pantry-canned-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🍯 Condiments & Sauces</h2>
-                    <button class="add-btn" data-category="pantry-condiments">+ Add Item</button>
-                </div>
-                <div id="pantry-condiments-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🍿 Snacks</h2>
-                    <button class="add-btn" data-category="pantry-snacks">+ Add Item</button>
-                </div>
-                <div id="pantry-snacks-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">👧👦 Kids Snacks</h2>
-                    <button class="add-btn" data-category="pantry-kids-snacks">+ Add Item</button>
-                </div>
-                <div id="pantry-kids-snacks-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">📦 Other</h2>
-                    <button class="add-btn" data-category="pantry-other">+ Add Item</button>
-                </div>
-                <div id="pantry-other-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-        </div>
-
-        <div id="supplies" class="section">
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🍳 Kitchen Supplies</h2>
-                    <button class="add-btn" data-category="supplies-kitchen">+ Add Item</button>
-                </div>
-                <div id="supplies-kitchen-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🧼 Bathroom Supplies</h2>
-                    <button class="add-btn" data-category="supplies-bathroom">+ Add Item</button>
-                </div>
-                <div id="supplies-bathroom-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🧽 Cleaning Supplies</h2>
-                    <button class="add-btn" data-category="supplies-cleaning">+ Add Item</button>
-                </div>
-                <div id="supplies-cleaning-list" class="items-list">
-                    <div class="loading">Loading...</div>
-                </div>
-            </div>
-        </div>
-
-        <div id="shopping-list" class="section">
-            <div class="shopping-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 10px;">
-                <h2 style="font-family: 'Crimson Pro', serif; font-size: 1.8rem; color: var(--sage-700); margin: 0;">🛒 Shopping List</h2>
-                <button class="btn btn-secondary" onclick="clearCompletedItems()" style="padding: 8px 16px; border-radius: 20px; background: var(--sage-100); border: none; cursor: pointer;">Clear Completed</button>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🏪 BJs</h2>
-                </div>
-                <div id="shopping-bjs-list" class="items-list shopping-items-list">
-                    <div class="empty-state">No items for BJs</div>
-                </div>
-            </div>
-
-            <div class="category">
-                <div class="category-header">
-                    <h2 class="category-title">🛍️ ShopRite - Walking Order</h2>
-                </div>
-                
-                <div class="shoprite-sections">
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🥕 Produce</div>
-                        <div id="shopping-produce-list" class="items-list shopping-items-list"></div>
+                <div class="category" data-category="basement-store-meat">
+                    <div class="category-header">
+                        <h2 class="category-title">🥩 Store Meat</h2>
+                        <button class="add-btn" onclick="openModal('basement-store-meat')">+ Add Item</button>
                     </div>
+                    <div id="basement-store-meat-list"></div>
+                </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🍞 Bakery</div>
-                        <div id="shopping-bakery-list" class="items-list shopping-items-list"></div>
+                <div class="category" data-category="basement-other">
+                    <div class="category-header">
+                        <h2 class="category-title">📦 Other</h2>
+                        <button class="add-btn" onclick="openModal('basement-other')">+ Add Item</button>
                     </div>
+                    <div id="basement-other-list"></div>
+                </div>
+            </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🍯 Condiments</div>
-                        <div id="shopping-condiments-list" class="items-list shopping-items-list"></div>
+            <!-- Upstairs Section -->
+            <div class="section" data-section="upstairs">
+                <div class="category" data-category="upstairs-venison">
+                    <div class="category-header">
+                        <h2 class="category-title">🦌 Venison</h2>
+                        <button class="add-btn" onclick="openModal('upstairs-venison')">+ Add Item</button>
                     </div>
+                    <div id="upstairs-venison-list"></div>
+                </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🌮 Tortillas</div>
-                        <div id="shopping-tortillas-list" class="items-list shopping-items-list"></div>
+                <div class="category" data-category="upstairs-poultry">
+                    <div class="category-header">
+                        <h2 class="category-title">🐔 Poultry</h2>
+                        <button class="add-btn" onclick="openModal('upstairs-poultry')">+ Add Item</button>
                     </div>
+                    <div id="upstairs-poultry-list"></div>
+                </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🍅🫘 Tomatoes/Pasta/Beans</div>
-                        <div id="shopping-pasta-beans-list" class="items-list shopping-items-list"></div>
+                <div class="category" data-category="upstairs-freezer">
+                    <div class="category-header">
+                        <h2 class="category-title">🧊 Frozen Foods</h2>
+                        <button class="add-btn" onclick="openModal('upstairs-freezer')">+ Add Item</button>
                     </div>
+                    <div id="upstairs-freezer-list"></div>
+                </div>
+            </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🥫 Canned Goods</div>
-                        <div id="shopping-canned-list" class="items-list shopping-items-list"></div>
+            <!-- Fridge Section -->
+            <div class="section" data-section="fridge">
+                <div class="category" data-category="fridge-cheese-tortillas">
+                    <div class="category-header">
+                        <h2 class="category-title">🧀 Cheese & Tortillas</h2>
+                        <button class="add-btn" onclick="openModal('fridge-cheese-tortillas')">+ Add Item</button>
                     </div>
+                    <div id="fridge-cheese-tortillas-list"></div>
+                </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🥣 Cooking Liquids</div>
-                        <div id="shopping-liquids-list" class="items-list shopping-items-list"></div>
+                <div class="category" data-category="fridge-vegetables">
+                    <div class="category-header">
+                        <h2 class="category-title">🥕 Vegetables</h2>
+                        <button class="add-btn" onclick="openModal('fridge-vegetables')">+ Add Item</button>
                     </div>
+                    <div id="fridge-vegetables-list"></div>
+                </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🧂 Baking</div>
-                        <div id="shopping-baking-list" class="items-list shopping-items-list"></div>
+                <div class="category" data-category="fridge-kids-drawer">
+                    <div class="category-header">
+                        <h2 class="category-title">👶 Kids Drawer</h2>
+                        <button class="add-btn" onclick="openModal('fridge-kids-drawer')">+ Add Item</button>
                     </div>
+                    <div id="fridge-kids-drawer-list"></div>
+                </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🥩 Store Meat</div>
-                        <div id="shopping-meat-list" class="items-list shopping-items-list"></div>
+                <div class="category" data-category="fridge-other">
+                    <div class="category-header">
+                        <h2 class="category-title">🥛 Other</h2>
+                        <button class="add-btn" onclick="openModal('fridge-other')">+ Add Item</button>
                     </div>
+                    <div id="fridge-other-list"></div>
+                </div>
+            </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🧀 Dairy</div>
-                        <div id="shopping-dairy-list" class="items-list shopping-items-list"></div>
+            <!-- Pantry Section -->
+            <div class="section" data-section="pantry">
+                <div class="category" data-category="pantry-grains">
+                    <div class="category-header">
+                        <h2 class="category-title">🌾 Grains & Pasta</h2>
+                        <button class="add-btn" onclick="openModal('pantry-grains')">+ Add Item</button>
                     </div>
+                    <div id="pantry-grains-list"></div>
+                </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">❄️ Frozen</div>
-                        <div id="shopping-frozen-list" class="items-list shopping-items-list"></div>
+                <div class="category" data-category="pantry-beans">
+                    <div class="category-header">
+                        <h2 class="category-title">🫘 Beans</h2>
+                        <button class="add-btn" onclick="openModal('pantry-beans')">+ Add Item</button>
                     </div>
+                    <div id="pantry-beans-list"></div>
+                </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🥛 Juice & Milk</div>
-                        <div id="shopping-juice-list" class="items-list shopping-items-list"></div>
+                <div class="category" data-category="pantry-tomatoes">
+                    <div class="category-header">
+                        <h2 class="category-title">🍅 Tomatoes & Sauces</h2>
+                        <button class="add-btn" onclick="openModal('pantry-tomatoes')">+ Add Item</button>
                     </div>
+                    <div id="pantry-tomatoes-list"></div>
+                </div>
 
-                    <div class="shoprite-section">
-                        <div class="shoprite-category-label">🍿 Chips/Snacks</div>
-                        <div id="shopping-chips-list" class="items-list shopping-items-list"></div>
+                <div class="category" data-category="pantry-canned">
+                    <div class="category-header">
+                        <h2 class="category-title">🥫 Canned Goods</h2>
+                        <button class="add-btn" onclick="openModal('pantry-canned')">+ Add Item</button>
                     </div>
+                    <div id="pantry-canned-list"></div>
+                </div>
+
+                <div class="category" data-category="pantry-liquids">
+                    <div class="category-header">
+                        <h2 class="category-title">🧴 Cooking Liquids</h2>
+                        <button class="add-btn" onclick="openModal('pantry-liquids')">+ Add Item</button>
+                    </div>
+                    <div id="pantry-liquids-list"></div>
+                </div>
+
+                <div class="category" data-category="pantry-baking">
+                    <div class="category-header">
+                        <h2 class="category-title">🍰 Baking</h2>
+                        <button class="add-btn" onclick="openModal('pantry-baking')">+ Add Item</button>
+                    </div>
+                    <div id="pantry-baking-list"></div>
+                </div>
+
+                <div class="category" data-category="pantry-condiments">
+                    <div class="category-header">
+                        <h2 class="category-title">🍯 Condiments</h2>
+                        <button class="add-btn" onclick="openModal('pantry-condiments')">+ Add Item</button>
+                    </div>
+                    <div id="pantry-condiments-list"></div>
+                </div>
+
+                <div class="category" data-category="pantry-snacks">
+                    <div class="category-header">
+                        <h2 class="category-title">🍿 Snacks</h2>
+                        <button class="add-btn" onclick="openModal('pantry-snacks')">+ Add Item</button>
+                    </div>
+                    <div id="pantry-snacks-list"></div>
+                </div>
+
+                <div class="category" data-category="pantry-kids-snacks">
+                    <div class="category-header">
+                        <h2 class="category-title">🧃 Kids Snacks</h2>
+                        <button class="add-btn" onclick="openModal('pantry-kids-snacks')">+ Add Item</button>
+                    </div>
+                    <div id="pantry-kids-snacks-list"></div>
+                </div>
+
+                <div class="category" data-category="pantry-other">
+                    <div class="category-header">
+                        <h2 class="category-title">📦 Other</h2>
+                        <button class="add-btn" onclick="openModal('pantry-other')">+ Add Item</button>
+                    </div>
+                    <div id="pantry-other-list"></div>
+                </div>
+            </div>
+
+            <!-- Supplies Section -->
+            <div class="section" data-section="supplies">
+                <div class="category" data-category="supplies-kitchen">
+                    <div class="category-header">
+                        <h2 class="category-title">🍴 Kitchen Supplies</h2>
+                        <button class="add-btn" onclick="openModal('supplies-kitchen')">+ Add Item</button>
+                    </div>
+                    <div id="supplies-kitchen-list"></div>
+                </div>
+
+                <div class="category" data-category="supplies-cleaning">
+                    <div class="category-header">
+                        <h2 class="category-title">🧹 Cleaning Supplies</h2>
+                        <button class="add-btn" onclick="openModal('supplies-cleaning')">+ Add Item</button>
+                    </div>
+                    <div id="supplies-cleaning-list"></div>
+                </div>
+
+                <div class="category" data-category="supplies-bathroom">
+                    <div class="category-header">
+                        <h2 class="category-title">🚿 Bathroom Supplies</h2>
+                        <button class="add-btn" onclick="openModal('supplies-bathroom')">+ Add Item</button>
+                    </div>
+                    <div id="supplies-bathroom-list"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="modal" class="modal">
+    <!-- Add Item Modal -->
+    <div id="add-modal" class="modal">
         <div class="modal-content">
-            <h3 class="modal-title">Add New Item</h3>
-            <div id="modal-error"></div>
+            <h2 class="modal-header">Add New Item</h2>
             <div class="form-group">
                 <label for="item-name">Item Name</label>
-                <input type="text" id="item-name" placeholder="e.g., Ground Venison, Black Beans">
+                <input type="text" id="item-name" placeholder="e.g., Ground Venison">
             </div>
             <div class="form-group">
                 <label for="item-quantity">Quantity</label>
-                <input type="number" id="item-quantity" placeholder="0" value="0" min="0">
+                <input type="number" id="item-quantity" min="0" value="1">
             </div>
-            <div class="modal-buttons">
-                <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
-                <button class="btn btn-primary" id="add-btn">Add Item</button>
+            <div class="form-group">
+                <label for="item-minimum">Minimum Quantity (optional)</label>
+                <input type="number" id="item-minimum" min="0" placeholder="Alert when below this number">
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn modal-btn-primary" id="add-btn" onclick="addItem()">Add Item</button>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        (function() {
-            // Initialize Supabase
-            const db = window.supabase.createClient(
-                'https://jzpipxvxrtdhmsdkveog.supabase.co',
-                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o'
-            );
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYyODQyMjksImV4cCI6MjA1MTg2MDIyOX0.R7yNNy4EqiEY7lG1RoScNlTv0CyY3OECqKXsQNPkjq4';
 
-            let currentCategory = '';
-            let inventory = {
-                'basement-venison': [],
-                'basement-poultry': [],
-                'basement-store-meat': [],
-                'basement-other': [],
-                'upstairs-freezer': [],
-                'fridge-cheese-tortillas': [],
-                'fridge-kids-drawer': [],
-                'fridge-vegetables': [],
-                'fridge-other': [],
-                'pantry-tomatoes': [],
-                'pantry-beans': [],
-                'pantry-liquids': [],
-                'pantry-baking': [],
-                'pantry-grains': [],
-                'pantry-canned': [],
-                'pantry-condiments': [],
-                'pantry-snacks': [],
-                'pantry-kids-snacks': [],
-                'pantry-other': [],
-                'supplies-kitchen': [],
-                'supplies-bathroom': [],
-                'supplies-cleaning': []
-            };
-            let shoppingList = [];
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-            // Initialize database table
-            async function initializeDatabase() {
-                const { data, error } = await db
-                    .from('inventory')
-                    .select('*')
-                    .limit(1);
+        // State
+        let inventory = {};
+        let currentCategory = null;
+        let draggedItem = null;
+        let masterItems = [];
 
-                if (error && error.message.includes('does not exist')) {
-                    alert('First-time setup needed!\n\nPlease follow these steps:\n\n1. Go to your Supabase dashboard\n2. Click "SQL Editor" in the left sidebar\n3. Click "New Query"\n4. Copy and paste the SQL from setup-database.sql\n5. Click "Run" button\n6. Refresh this page');
-                    return false;
-                }
-                return true;
-            }
-
-            // Load inventory from Supabase
-            async function loadInventory() {
-                const dbReady = await initializeDatabase();
-                if (!dbReady) return;
-
-                try {
-                    const { data, error } = await db
-                        .from('inventory')
-                        .select('*');
-
-                    if (error) throw error;
-
-                    // Reset inventory
-                    Object.keys(inventory).forEach(key => inventory[key] = []);
-
-                    // Organize data by category
-                    data.forEach(item => {
-                        if (inventory[item.category]) {
-                            inventory[item.category].push(item);
-                        }
-                    });
-
-                    renderAll();
-                } catch (error) {
-                    console.error('Error loading inventory:', error);
-                    showError('Failed to load inventory. Please refresh the page.');
-                }
-            }
-
-            // Switch tabs
+        // Initialize
+        (async function() {
+            // Tab switching
             document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const tabName = this.getAttribute('data-tab');
+                tab.addEventListener('click', () => {
+                    const section = tab.dataset.section;
                     
                     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
                     
-                    this.classList.add('active');
-                    document.getElementById(tabName).classList.add('active');
+                    tab.classList.add('active');
+                    document.querySelector(`.section[data-section="${section}"]`).classList.add('active');
                 });
-            });
-
-            // Open modal
-            document.querySelectorAll('.add-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    currentCategory = this.getAttribute('data-category');
-                    document.getElementById('modal').classList.add('active');
-                    document.getElementById('modal-error').innerHTML = '';
-                    document.getElementById('item-name').value = '';
-                    document.getElementById('item-quantity').value = '0';
-                    document.getElementById('item-name').focus();
-                });
-            });
-
-            // Close modal
-            function closeModal() {
-                document.getElementById('modal').classList.remove('active');
-            }
-
-            document.getElementById('cancel-btn').addEventListener('click', closeModal);
-
-            // Close modal on outside click
-            document.getElementById('modal').addEventListener('click', (e) => {
-                if (e.target.id === 'modal') {
-                    closeModal();
-                }
-            });
-
-            // Show error
-            function showError(message) {
-                const errorDiv = document.getElementById('modal-error');
-                errorDiv.innerHTML = `<div class="error">${message}</div>`;
-            }
-
-            // Add item
-            document.getElementById('add-btn').addEventListener('click', async function() {
-                const name = document.getElementById('item-name').value.trim();
-                const quantity = parseInt(document.getElementById('item-quantity').value) || 0;
-
-                if (!name) {
-                    showError('Please enter an item name');
-                    return;
-                }
-
-                try {
-                    // Check if item already exists in this category
-                    const existingItem = inventory[currentCategory].find(
-                        item => item.name.toLowerCase() === name.toLowerCase()
-                    );
-
-                    if (existingItem) {
-                        // Update existing item's quantity
-                        const newQuantity = existingItem.quantity + quantity;
-                        
-                        const { error } = await db
-                            .from('inventory')
-                            .update({ 
-                                quantity: newQuantity,
-                                updated_at: new Date().toISOString()
-                            })
-                            .eq('id', existingItem.id);
-
-                        if (error) throw error;
-
-                        existingItem.quantity = newQuantity;
-                        renderCategory(currentCategory);
-                    } else {
-                        // Create new item
-                        const { data, error } = await db
-                            .from('inventory')
-                            .insert([
-                                {
-                                    category: currentCategory,
-                                    name: name,
-                                    quantity: quantity
-                                }
-                            ])
-                            .select();
-
-                        if (error) throw error;
-
-                        if (data && data[0]) {
-                            inventory[currentCategory].push(data[0]);
-                            renderCategory(currentCategory);
-                        }
-                    }
-
-                    closeModal();
-                } catch (error) {
-                    console.error('Error adding item:', error);
-                    console.error('Error details:', error.message);
-                    console.error('Error code:', error.code);
-                    showError('Failed to add item: ' + error.message);
-                }
             });
 
             // Search functionality
             const searchBox = document.getElementById('search-box');
             const searchResults = document.getElementById('search-results');
-
-            // Category name mapping for display
-            const categoryNames = {
-                'basement-venison': 'Basement Freezer → Venison',
-                'basement-poultry': 'Basement Freezer → Poultry',
-                'basement-store-meat': 'Basement Freezer → Store Meat',
-                'basement-other': 'Basement Freezer → Other',
-                'upstairs-freezer': 'Upstairs Freezer',
-                'fridge-cheese-tortillas': 'Refrigerator → Cheese & Tortillas',
-                'fridge-kids-drawer': 'Refrigerator → Kids Drawer',
-                'fridge-vegetables': 'Refrigerator → Vegetables',
-                'fridge-other': 'Refrigerator → Other',
-                'pantry-tomatoes': 'Pantry → Tomatoes & Pasta Sauces',
-                'pantry-beans': 'Pantry → Beans & Legumes',
-                'pantry-liquids': 'Pantry → Cooking Liquids',
-                'pantry-baking': 'Pantry → Baking',
-                'pantry-grains': 'Pantry → Grains & Pasta',
-                'pantry-canned': 'Pantry → Canned Goods',
-                'pantry-condiments': 'Pantry → Condiments & Sauces',
-                'pantry-snacks': 'Pantry → Snacks',
-                'pantry-other': 'Pantry → Other',
-                'supplies-kitchen': 'Supplies → Kitchen',
-                'supplies-bathroom': 'Supplies → Bathroom',
-                'supplies-cleaning': 'Supplies → Cleaning'
-            };
-
-            function searchInventory(query) {
-                if (!query || query.trim().length < 2) {
+            
+            searchBox.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                
+                if (query === '') {
                     searchResults.classList.remove('active');
                     return;
                 }
 
-                const searchTerm = query.toLowerCase().trim();
-                const results = [];
-
-                // Search through all categories
+                const allItems = [];
                 Object.keys(inventory).forEach(category => {
                     inventory[category].forEach(item => {
-                        if (item.name.toLowerCase().includes(searchTerm)) {
-                            results.push({
+                        if (item.name.toLowerCase().includes(query)) {
+                            allItems.push({
                                 ...item,
                                 category: category,
-                                categoryName: categoryNames[category] || category
+                                categoryDisplay: getCategoryDisplayName(category)
                             });
                         }
                     });
                 });
 
-                // Display results
-                if (results.length === 0) {
+                if (allItems.length === 0) {
                     searchResults.innerHTML = '<div class="no-results">No items found</div>';
-                } else {
-                    searchResults.innerHTML = results.map(item => `
-                        <div class="search-result-item" onclick="goToItem('${item.category}', '${item.id}')">
-                            <div>
-                                <div class="search-result-name">${item.name}</div>
-                                <div class="search-result-location">${item.categoryName}</div>
-                            </div>
-                            <div class="search-result-quantity">${item.quantity}</div>
-                        </div>
-                    `).join('');
+                    searchResults.classList.add('active');
+                    return;
                 }
 
+                searchResults.innerHTML = allItems.map(item => `
+                    <div class="search-result-item" onclick="scrollToItem('${item.category}', '${item.id}')">
+                        <div>
+                            <div class="search-result-name">${item.name}</div>
+                            <div class="search-result-location">${item.categoryDisplay}</div>
+                        </div>
+                        <div class="search-result-quantity">${item.quantity}</div>
+                    </div>
+                `).join('');
+                
                 searchResults.classList.add('active');
-            }
-
-            // Navigate to item and highlight it
-            function goToItem(category, itemId) {
-                // Close search results
-                searchResults.classList.remove('active');
-                searchBox.value = '';
-
-                // Figure out which tab the category belongs to
-                const tabMap = {
-                    'basement-venison': 'basement-freezer',
-                    'basement-poultry': 'basement-freezer',
-                    'basement-store-meat': 'basement-freezer',
-                    'basement-other': 'basement-freezer',
-                    'upstairs-freezer': 'upstairs-freezer',
-                    'fridge-cheese-tortillas': 'refrigerator',
-                    'fridge-kids-drawer': 'refrigerator',
-                    'fridge-vegetables': 'refrigerator',
-                    'fridge-other': 'refrigerator',
-                    'pantry-tomatoes': 'pantry',
-                    'pantry-beans': 'pantry',
-                    'pantry-liquids': 'pantry',
-                    'pantry-baking': 'pantry',
-                    'pantry-grains': 'pantry',
-                    'pantry-canned': 'pantry',
-                    'pantry-condiments': 'pantry',
-                    'pantry-snacks': 'pantry',
-                    'pantry-other': 'pantry',
-                    'supplies-kitchen': 'supplies',
-                    'supplies-bathroom': 'supplies',
-                    'supplies-cleaning': 'supplies'
-                };
-
-                const targetTab = tabMap[category];
-
-                // Switch to the correct tab
-                document.querySelectorAll('.tab').forEach(tab => {
-                    tab.classList.remove('active');
-                    if (tab.getAttribute('data-tab') === targetTab) {
-                        tab.classList.add('active');
-                    }
-                });
-
-                document.querySelectorAll('.section').forEach(section => {
-                    section.classList.remove('active');
-                });
-                document.getElementById(targetTab).classList.add('active');
-
-                // Wait for render, then scroll to and highlight the item
-                setTimeout(() => {
-                    const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
-                    if (itemElement) {
-                        // Scroll to item
-                        itemElement.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'center' 
-                        });
-
-                        // Highlight the item temporarily
-                        itemElement.style.background = 'var(--earth-warm)';
-                        itemElement.style.transform = 'scale(1.02)';
-                        itemElement.style.boxShadow = '0 4px 20px rgba(212, 163, 115, 0.4)';
-
-                        setTimeout(() => {
-                            itemElement.style.background = '';
-                            itemElement.style.transform = '';
-                            itemElement.style.boxShadow = '';
-                        }, 2000);
-                    }
-                }, 100);
-            }
-            window.goToItem = goToItem;
-
-            // Debounce search input
-            let searchTimeout;
-            searchBox.addEventListener('input', (e) => {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    searchInventory(e.target.value);
-                }, 300);
             });
 
             // Close search results when clicking outside
@@ -1373,231 +953,413 @@
                 }
             });
 
-            // Reopen results when clicking search box if there's a query
-            searchBox.addEventListener('focus', () => {
-                if (searchBox.value.trim().length >= 2) {
-                    searchInventory(searchBox.value);
+            await loadMasterItems();
+            await loadInventory();
+            setupDropZones();
+        })();
+
+        // Get category display name
+        function getCategoryDisplayName(category) {
+            const names = {
+                'basement-venison': 'Basement - Venison',
+                'basement-poultry': 'Basement - Poultry',
+                'basement-store-meat': 'Basement - Store Meat',
+                'basement-other': 'Basement - Other',
+                'upstairs-venison': 'Upstairs - Venison',
+                'upstairs-poultry': 'Upstairs - Poultry',
+                'upstairs-freezer': 'Upstairs - Frozen Foods',
+                'fridge-cheese-tortillas': 'Fridge - Cheese & Tortillas',
+                'fridge-vegetables': 'Fridge - Vegetables',
+                'fridge-kids-drawer': 'Fridge - Kids Drawer',
+                'fridge-other': 'Fridge - Other',
+                'pantry-grains': 'Pantry - Grains & Pasta',
+                'pantry-beans': 'Pantry - Beans',
+                'pantry-tomatoes': 'Pantry - Tomatoes & Sauces',
+                'pantry-canned': 'Pantry - Canned Goods',
+                'pantry-liquids': 'Pantry - Cooking Liquids',
+                'pantry-baking': 'Pantry - Baking',
+                'pantry-condiments': 'Pantry - Condiments',
+                'pantry-snacks': 'Pantry - Snacks',
+                'pantry-kids-snacks': 'Pantry - Kids Snacks',
+                'pantry-other': 'Pantry - Other',
+                'supplies-kitchen': 'Supplies - Kitchen',
+                'supplies-cleaning': 'Supplies - Cleaning',
+                'supplies-bathroom': 'Supplies - Bathroom'
+            };
+            return names[category] || category;
+        }
+
+        // Scroll to item
+        function scrollToItem(category, itemId) {
+            const section = category.split('-')[0];
+            
+            // Switch to correct tab
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            
+            document.querySelector(`.tab[data-section="${section}"]`).classList.add('active');
+            document.querySelector(`.section[data-section="${section}"]`).classList.add('active');
+            
+            // Scroll to item
+            setTimeout(() => {
+                const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (itemElement) {
+                    itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    itemElement.style.animation = 'none';
+                    setTimeout(() => {
+                        itemElement.style.animation = 'pulse 0.5s ease 3';
+                    }, 10);
                 }
-            });
+            }, 100);
 
-            // Drag and drop functionality
-            let draggedItem = null;
+            // Close search results
+            document.getElementById('search-results').classList.remove('active');
+            document.getElementById('search-box').value = '';
+        }
 
-            function handleDragStart(e) {
-                draggedItem = {
-                    id: this.getAttribute('data-item-id'),
-                    category: this.getAttribute('data-item-category')
-                };
-                this.classList.add('dragging');
-                e.dataTransfer.effectAllowed = 'move';
+        // Load master items
+        async function loadMasterItems() {
+            try {
+                const { data, error } = await db
+                    .from('master_items')
+                    .select('*')
+                    .order('name');
+
+                if (error) throw error;
+                masterItems = data || [];
+            } catch (error) {
+                console.error('Error loading master items:', error);
             }
+        }
 
-            function handleDragEnd(e) {
-                this.classList.remove('dragging');
-            }
+        // Load inventory
+        async function loadInventory() {
+            try {
+                const { data, error } = await db
+                    .from('inventory')
+                    .select('*')
+                    .order('name');
 
-            function handleDragOver(e) {
-                if (e.preventDefault) {
-                    e.preventDefault();
-                }
-                e.dataTransfer.dropEffect = 'move';
-                return false;
-            }
+                if (error) throw error;
 
-            function handleDragEnter(e) {
-                this.classList.add('drag-over');
-            }
-
-            function handleDragLeave(e) {
-                this.classList.remove('drag-over');
-            }
-
-            async function handleDrop(e) {
-                if (e.stopPropagation) {
-                    e.stopPropagation();
-                }
-                this.classList.remove('drag-over');
-
-                if (!draggedItem) return false;
-
-                // Get the target category from the items-list element
-                const targetList = this.querySelector('.items-list');
-                if (!targetList) return false;
-
-                const targetCategory = targetList.id.replace('-list', '');
-                const sourceCategory = draggedItem.category;
-                const itemId = draggedItem.id;
-
-                // Don't do anything if dropped in same category
-                if (targetCategory === sourceCategory) return false;
-
-                // Move item to new category in database
-                try {
-                    const { error } = await db
-                        .from('inventory')
-                        .update({ 
-                            category: targetCategory,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', itemId);
-
-                    if (error) throw error;
-
-                    // Update local inventory
-                    const item = inventory[sourceCategory].find(i => i.id === itemId);
-                    if (item) {
-                        inventory[sourceCategory] = inventory[sourceCategory].filter(i => i.id !== itemId);
-                        item.category = targetCategory;
-                        inventory[targetCategory].push(item);
-                        
-                        // Re-render both categories
-                        renderCategory(sourceCategory);
-                        renderCategory(targetCategory);
+                // Group by category
+                inventory = {};
+                (data || []).forEach(item => {
+                    if (!inventory[item.category]) {
+                        inventory[item.category] = [];
                     }
-                } catch (error) {
-                    console.error('Error moving item:', error);
-                    alert('Failed to move item. Please try again.');
-                }
-
-                draggedItem = null;
-                return false;
-            }
-
-            // Set up drop zones for all categories
-            function setupDropZones() {
-                document.querySelectorAll('.category').forEach(category => {
-                    category.addEventListener('dragover', handleDragOver);
-                    category.addEventListener('dragenter', handleDragEnter);
-                    category.addEventListener('dragleave', handleDragLeave);
-                    category.addEventListener('drop', handleDrop);
+                    inventory[item.category].push(item);
                 });
+
+                renderAll();
+            } catch (error) {
+                console.error('Error loading inventory:', error);
+            }
+        }
+
+        // Map category to store section
+        function getStoreSection(category) {
+            const categoryMap = {
+                'basement-store-meat': 'meat',
+                'basement-other': 'bjs',
+                'upstairs-freezer': 'frozen',
+                'fridge-cheese-tortillas': 'dairy',
+                'fridge-vegetables': 'produce',
+                'fridge-kids-drawer': 'dairy',
+                'fridge-other': 'dairy',
+                'pantry-grains': 'pasta-beans',
+                'pantry-beans': 'pasta-beans',
+                'pantry-tomatoes': 'pasta-beans',
+                'pantry-canned': 'canned',
+                'pantry-liquids': 'liquids',
+                'pantry-baking': 'baking',
+                'pantry-condiments': 'condiments',
+                'pantry-snacks': 'snacks',
+                'pantry-kids-snacks': 'snacks',
+                'pantry-other': 'snacks',
+                'supplies-kitchen': 'bjs',
+                'supplies-cleaning': 'bjs',
+                'supplies-bathroom': 'bjs'
+            };
+            return categoryMap[category] || 'snacks';
+        }
+
+        // Check and handle low stock
+        async function checkLowStock(item) {
+            // Skip if no minimum set or quantity is above minimum
+            if (item.minimum_quantity === null || item.minimum_quantity === undefined) {
+                return;
             }
 
-            // Update quantity
-            async function updateQuantity(category, id, change) {
-                const item = inventory[category].find(i => i.id === id);
-                if (!item) return;
-
-                const newQuantity = Math.max(0, item.quantity + change);
-
-                try {
-                    const { error } = await db
-                        .from('inventory')
-                        .update({ 
-                            quantity: newQuantity,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', id);
-
-                    if (error) throw error;
-
-                    item.quantity = newQuantity;
-                    renderCategory(category);
-                } catch (error) {
-                    console.error('Error updating quantity:', error);
-                    alert('Failed to update quantity. Please try again.');
-                }
+            if (item.quantity >= item.minimum_quantity) {
+                return;
             }
 
-            // Update item name (for inline editing)
-            async function updateItemName(category, id, newName) {
-                const item = inventory[category].find(i => i.id === id);
-                if (!item) return;
+            // Item is low - check if already on shopping list
+            try {
+                const { data: existingItems, error: checkError } = await db
+                    .from('shopping_list')
+                    .select('*')
+                    .eq('name', item.name)
+                    .eq('checked', false);
 
-                try {
-                    const { error } = await db
-                        .from('inventory')
-                        .update({ 
-                            name: newName,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', id);
+                if (checkError) throw checkError;
 
-                    if (error) throw error;
-
-                    item.name = newName;
-                    renderCategory(category);
-                } catch (error) {
-                    console.error('Error updating name:', error);
-                    alert('Failed to update name. Please try again.');
-                }
-            }
-
-            // Update item quantity directly (for inline editing)
-            async function updateItemQuantity(category, id, newQuantity) {
-                const item = inventory[category].find(i => i.id === id);
-                if (!item) return;
-
-                try {
-                    const { error } = await db
-                        .from('inventory')
-                        .update({ 
-                            quantity: newQuantity,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', id);
-
-                    if (error) throw error;
-
-                    item.quantity = newQuantity;
-                    renderCategory(category);
-                } catch (error) {
-                    console.error('Error updating quantity:', error);
-                    alert('Failed to update quantity. Please try again.');
-                }
-            }
-
-            // Delete item
-            async function deleteItem(category, id) {
-                if (!confirm('Are you sure you want to delete this item?')) return;
-
-                try {
-                    const { error } = await db
-                        .from('inventory')
-                        .delete()
-                        .eq('id', id);
-
-                    if (error) throw error;
-
-                    inventory[category] = inventory[category].filter(i => i.id !== id);
-                    renderCategory(category);
-                } catch (error) {
-                    console.error('Error deleting item:', error);
-                    alert('Failed to delete item. Please try again.');
-                }
-            }
-
-            // Render category
-            function renderCategory(category) {
-                const list = document.getElementById(`${category}-list`);
-                const items = inventory[category] || [];
-
-                if (items.length === 0) {
-                    list.innerHTML = '<div class="empty-state">No items yet. Click "+ Add Item" to get started.</div>';
-                    // Clear total if exists
-                    updateCategoryTotal(category, 0);
+                // If already on shopping list (unchecked), don't add again
+                if (existingItems && existingItems.length > 0) {
                     return;
                 }
 
-                // Sort items alphabetically by name
-                const sortedItems = [...items].sort((a, b) => 
-                    a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-                );
+                // Find matching master item
+                const masterItem = masterItems.find(m => m.name === item.name);
+                const storeSection = masterItem ? masterItem.store_section : getStoreSection(item.category);
 
-                // Calculate total portions (whole birds count as 2)
-                let totalPortions = 0;
-                sortedItems.forEach(item => {
-                    const isWhole = item.name.toLowerCase().includes('whole');
-                    totalPortions += item.quantity * (isWhole ? 2 : 1);
-                });
+                // Add to shopping list
+                const { error: addError } = await db
+                    .from('shopping_list')
+                    .insert([{
+                        item_id: masterItem ? masterItem.id : null,
+                        name: item.name,
+                        store_section: storeSection,
+                        quantity: null,
+                        checked: false
+                    }]);
 
-                // Update the total display
-                updateCategoryTotal(category, totalPortions);
+                if (addError) throw addError;
 
-                list.innerHTML = sortedItems.map(item => `
-                    <div class="item" draggable="true" data-item-id="${item.id}" data-item-category="${category}">
+                console.log(`Low stock alert: Added "${item.name}" to shopping list`);
+
+            } catch (error) {
+                console.error('Error handling low stock:', error);
+            }
+        }
+
+        // Modal functions
+        function openModal(category) {
+            currentCategory = category;
+            document.getElementById('add-modal').classList.add('active');
+            document.getElementById('item-name').value = '';
+            document.getElementById('item-quantity').value = '1';
+            document.getElementById('item-minimum').value = '';
+            document.getElementById('item-name').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('add-modal').classList.remove('active');
+            currentCategory = null;
+        }
+
+        // Add item
+        async function addItem() {
+            const name = document.getElementById('item-name').value.trim();
+            const quantity = parseInt(document.getElementById('item-quantity').value) || 0;
+            const minimum = document.getElementById('item-minimum').value.trim();
+            const minimumQty = minimum === '' ? null : parseInt(minimum);
+
+            if (!name) {
+                alert('Please enter an item name');
+                return;
+            }
+
+            if (!currentCategory) {
+                alert('No category selected');
+                return;
+            }
+
+            try {
+                const { data, error } = await db
+                    .from('inventory')
+                    .insert([{
+                        name: name,
+                        category: currentCategory,
+                        quantity: quantity,
+                        minimum_quantity: minimumQty
+                    }])
+                    .select();
+
+                if (error) throw error;
+
+                if (data && data[0]) {
+                    if (!inventory[currentCategory]) {
+                        inventory[currentCategory] = [];
+                    }
+                    inventory[currentCategory].push(data[0]);
+                    renderCategory(currentCategory);
+
+                    // Check if newly added item is already low stock
+                    await checkLowStock(data[0]);
+                }
+
+                closeModal();
+            } catch (error) {
+                console.error('Error adding item:', error);
+                alert('Failed to add item. Please try again.');
+            }
+        }
+
+        // Update item name
+        async function updateItemName(category, id, newName) {
+            try {
+                const { error } = await db
+                    .from('inventory')
+                    .update({ name: newName })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                const item = inventory[category].find(i => i.id === id);
+                if (item) {
+                    item.name = newName;
+                    renderCategory(category);
+                }
+            } catch (error) {
+                console.error('Error updating name:', error);
+                alert('Failed to update name. Please try again.');
+            }
+        }
+
+        // Update item quantity
+        async function updateItemQuantity(category, id, newQuantity) {
+            try {
+                const { error } = await db
+                    .from('inventory')
+                    .update({ quantity: newQuantity })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                const item = inventory[category].find(i => i.id === id);
+                if (item) {
+                    item.quantity = newQuantity;
+                    renderCategory(category);
+
+                    // Check low stock after quantity update
+                    await checkLowStock(item);
+                }
+            } catch (error) {
+                console.error('Error updating quantity:', error);
+                alert('Failed to update quantity. Please try again.');
+            }
+        }
+
+        // Update minimum quantity
+        async function updateMinimum(category, id, newMinimum) {
+            const minimumQty = newMinimum === '' ? null : parseInt(newMinimum);
+
+            try {
+                const { error } = await db
+                    .from('inventory')
+                    .update({ minimum_quantity: minimumQty })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                const item = inventory[category].find(i => i.id === id);
+                if (item) {
+                    item.minimum_quantity = minimumQty;
+                    renderCategory(category);
+
+                    // Check low stock after minimum update
+                    await checkLowStock(item);
+                }
+            } catch (error) {
+                console.error('Error updating minimum:', error);
+                alert('Failed to update minimum. Please try again.');
+            }
+        }
+
+        // Update quantity
+        async function updateQuantity(category, id, delta) {
+            const item = inventory[category].find(i => i.id === id);
+            if (!item) return;
+
+            const newQuantity = Math.max(0, item.quantity + delta);
+
+            try {
+                const { error } = await db
+                    .from('inventory')
+                    .update({ quantity: newQuantity })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                item.quantity = newQuantity;
+                renderCategory(category);
+
+                // Check low stock after quantity change
+                await checkLowStock(item);
+            } catch (error) {
+                console.error('Error updating quantity:', error);
+                alert('Failed to update quantity. Please try again.');
+            }
+        }
+
+        // Delete item
+        async function deleteItem(category, id) {
+            if (!confirm('Are you sure you want to delete this item?')) return;
+
+            try {
+                const { error } = await db
+                    .from('inventory')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                inventory[category] = inventory[category].filter(i => i.id !== id);
+                renderCategory(category);
+            } catch (error) {
+                console.error('Error deleting item:', error);
+                alert('Failed to delete item. Please try again.');
+            }
+        }
+
+        // Render category
+        function renderCategory(category) {
+            const list = document.getElementById(`${category}-list`);
+            const items = inventory[category] || [];
+
+            if (items.length === 0) {
+                list.innerHTML = '<div class="empty-state">No items yet. Click "+ Add Item" to get started.</div>';
+                updateCategoryTotal(category, 0);
+                return;
+            }
+
+            // Sort items alphabetically by name
+            const sortedItems = [...items].sort((a, b) => 
+                a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+            );
+
+            // Calculate total portions (whole birds count as 2)
+            let totalPortions = 0;
+            sortedItems.forEach(item => {
+                const isWhole = item.name.toLowerCase().includes('whole');
+                totalPortions += item.quantity * (isWhole ? 2 : 1);
+            });
+
+            // Update the total display
+            updateCategoryTotal(category, totalPortions);
+
+            list.innerHTML = sortedItems.map(item => {
+                const isLowStock = item.minimum_quantity !== null && 
+                                   item.minimum_quantity !== undefined && 
+                                   item.quantity < item.minimum_quantity;
+                
+                return `
+                    <div class="item ${isLowStock ? 'low-stock' : ''}" draggable="true" data-item-id="${item.id}" data-item-category="${category}">
                         <span class="item-name" contenteditable="true" data-category="${category}" data-id="${item.id}" data-field="name">${item.name}</span>
+                        <span class="low-stock-indicator" title="Low stock - added to shopping list">⚠️</span>
                         <div class="item-controls">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span class="min-label">Min:</span>
+                                <input type="number" 
+                                       class="min-input" 
+                                       value="${item.minimum_quantity !== null && item.minimum_quantity !== undefined ? item.minimum_quantity : ''}" 
+                                       placeholder="-"
+                                       min="0"
+                                       data-category="${category}" 
+                                       data-id="${item.id}">
+                            </div>
                             <div class="counter">
                                 <button class="counter-btn" data-action="decrease" data-category="${category}" data-id="${item.id}">−</button>
                                 <span class="counter-value" contenteditable="true" data-category="${category}" data-id="${item.id}" data-field="quantity">${item.quantity}</span>
@@ -1606,150 +1368,245 @@
                             <button class="delete-btn" data-action="delete" data-category="${category}" data-id="${item.id}">×</button>
                         </div>
                     </div>
-                `).join('');
+                `;
+            }).join('');
 
-                // Add event listeners to buttons
-                list.querySelectorAll('[data-action]').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const action = this.getAttribute('data-action');
-                        const cat = this.getAttribute('data-category');
-                        const id = this.getAttribute('data-id');
+            // Add event listeners to buttons
+            list.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const action = this.getAttribute('data-action');
+                    const cat = this.getAttribute('data-category');
+                    const id = this.getAttribute('data-id');
 
-                        if (action === 'increase') {
-                            updateQuantity(cat, id, 1);
-                        } else if (action === 'decrease') {
-                            updateQuantity(cat, id, -1);
-                        } else if (action === 'delete') {
-                            deleteItem(cat, id);
-                        }
-                    });
-                });
-
-                // Add drag and drop event listeners
-                list.querySelectorAll('.item[draggable="true"]').forEach(item => {
-                    item.addEventListener('dragstart', handleDragStart);
-                    item.addEventListener('dragend', handleDragEnd);
-                });
-
-                // Add event listeners for inline editing
-                list.querySelectorAll('[contenteditable="true"]').forEach(element => {
-                    const originalValue = element.textContent;
-                    
-                    // Save on Enter key
-                    element.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            this.blur();
-                        }
-                        if (e.key === 'Escape') {
-                            this.textContent = originalValue;
-                            this.blur();
-                        }
-                    });
-
-                    // Save on blur (losing focus)
-                    element.addEventListener('blur', async function() {
-                        const cat = this.getAttribute('data-category');
-                        const id = this.getAttribute('data-id');
-                        const field = this.getAttribute('data-field');
-                        const newValue = this.textContent.trim();
-
-                        if (field === 'name' && newValue && newValue !== originalValue) {
-                            await updateItemName(cat, id, newValue);
-                        } else if (field === 'quantity') {
-                            const newQty = parseInt(newValue);
-                            if (!isNaN(newQty) && newQty >= 0 && newQty !== parseInt(originalValue)) {
-                                await updateItemQuantity(cat, id, newQty);
-                            } else {
-                                this.textContent = originalValue; // Reset if invalid
-                            }
-                        }
-                    });
-
-                    // Select all text when focused
-                    element.addEventListener('focus', function() {
-                        const range = document.createRange();
-                        range.selectNodeContents(this);
-                        const sel = window.getSelection();
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                    });
-                });
-            }
-
-            // Update category total display
-            function updateCategoryTotal(category, totalPortions) {
-                // Only show totals for venison and poultry categories
-                const showTotalCategories = [
-                    'basement-venison', 'basement-poultry',
-                    'upstairs-venison', 'upstairs-poultry'
-                ];
-                
-                if (!showTotalCategories.includes(category)) return;
-
-                // Find the category header
-                const listElement = document.getElementById(`${category}-list`);
-                if (!listElement) return;
-                
-                const categoryElement = listElement.closest('.category');
-                if (!categoryElement) return;
-                
-                const headerElement = categoryElement.querySelector('.category-header');
-                if (!headerElement) return;
-
-                // Check if we need to create the title row structure
-                let titleElement = headerElement.querySelector('.category-title');
-                let totalElement = headerElement.querySelector('.category-total');
-                
-                if (!totalElement) {
-                    // Wrap title and create total element
-                    const titleRow = document.createElement('div');
-                    titleRow.className = 'category-title-row';
-                    
-                    titleElement.parentNode.insertBefore(titleRow, titleElement);
-                    titleRow.appendChild(titleElement);
-                    
-                    totalElement = document.createElement('div');
-                    totalElement.className = 'category-total';
-                    titleRow.appendChild(totalElement);
-                }
-
-                // Update total text
-                totalElement.textContent = `Total: ${totalPortions} portion${totalPortions !== 1 ? 's' : ''}`;
-            }
-
-            // Render all categories
-            function renderAll() {
-                Object.keys(inventory).forEach(category => renderCategory(category));
-            }
-
-            // Handle Enter key in modal
-            document.getElementById('item-name').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    document.getElementById('item-quantity').focus();
-                }
-            });
-
-            document.getElementById('item-quantity').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    document.getElementById('add-btn').click();
-                }
-            });
-
-            // Subscribe to real-time changes
-            db.channel('inventory_changes')
-                .on('postgres_changes', 
-                    { event: '*', schema: 'public', table: 'inventory' },
-                    () => {
-                        loadInventory();
+                    if (action === 'increase') {
+                        updateQuantity(cat, id, 1);
+                    } else if (action === 'decrease') {
+                        updateQuantity(cat, id, -1);
+                    } else if (action === 'delete') {
+                        deleteItem(cat, id);
                     }
-                )
-                .subscribe();
+                });
+            });
 
-            // Initialize
-            loadInventory();
-            setupDropZones();
-        })();
+            // Add event listeners to minimum inputs
+            list.querySelectorAll('.min-input').forEach(input => {
+                input.addEventListener('change', async function() {
+                    const cat = this.getAttribute('data-category');
+                    const id = this.getAttribute('data-id');
+                    const newValue = this.value.trim();
+                    
+                    await updateMinimum(cat, id, newValue);
+                });
+
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        this.blur();
+                    }
+                });
+            });
+
+            // Add drag and drop event listeners
+            list.querySelectorAll('.item[draggable="true"]').forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+            });
+
+            // Add event listeners for inline editing
+            list.querySelectorAll('[contenteditable="true"]').forEach(element => {
+                const originalValue = element.textContent;
+                
+                // Save on Enter key
+                element.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
+                    if (e.key === 'Escape') {
+                        this.textContent = originalValue;
+                        this.blur();
+                    }
+                });
+
+                // Save on blur (losing focus)
+                element.addEventListener('blur', async function() {
+                    const cat = this.getAttribute('data-category');
+                    const id = this.getAttribute('data-id');
+                    const field = this.getAttribute('data-field');
+                    const newValue = this.textContent.trim();
+
+                    if (field === 'name' && newValue && newValue !== originalValue) {
+                        await updateItemName(cat, id, newValue);
+                    } else if (field === 'quantity') {
+                        const newQty = parseInt(newValue);
+                        if (!isNaN(newQty) && newQty >= 0 && newQty !== parseInt(originalValue)) {
+                            await updateItemQuantity(cat, id, newQty);
+                        } else {
+                            this.textContent = originalValue; // Reset if invalid
+                        }
+                    }
+                });
+
+                // Select all text when focused
+                element.addEventListener('focus', function() {
+                    const range = document.createRange();
+                    range.selectNodeContents(this);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                });
+            });
+        }
+
+        // Update category total display
+        function updateCategoryTotal(category, totalPortions) {
+            // Only show totals for venison and poultry categories
+            const showTotalCategories = [
+                'basement-venison', 'basement-poultry',
+                'upstairs-venison', 'upstairs-poultry'
+            ];
+            
+            if (!showTotalCategories.includes(category)) return;
+
+            // Find the category header
+            const listElement = document.getElementById(`${category}-list`);
+            if (!listElement) return;
+            
+            const categoryElement = listElement.closest('.category');
+            if (!categoryElement) return;
+            
+            const headerElement = categoryElement.querySelector('.category-header');
+            if (!headerElement) return;
+
+            // Check if we need to create the title row structure
+            let titleElement = headerElement.querySelector('.category-title');
+            let totalElement = headerElement.querySelector('.category-total');
+            
+            if (!totalElement) {
+                // Wrap title and create total element
+                const titleRow = document.createElement('div');
+                titleRow.className = 'category-title-row';
+                
+                titleElement.parentNode.insertBefore(titleRow, titleElement);
+                titleRow.appendChild(titleElement);
+                
+                totalElement = document.createElement('div');
+                totalElement.className = 'category-total';
+                titleRow.appendChild(totalElement);
+            }
+
+            // Update total text
+            totalElement.textContent = `Total: ${totalPortions} portion${totalPortions !== 1 ? 's' : ''}`;
+        }
+
+        // Render all categories
+        function renderAll() {
+            Object.keys(inventory).forEach(category => renderCategory(category));
+        }
+
+        // Drag and drop functions
+        function handleDragStart(e) {
+            draggedItem = {
+                id: this.dataset.itemId,
+                category: this.dataset.itemCategory
+            };
+            this.classList.add('dragging');
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        async function handleDrop(e, targetCategory) {
+            e.preventDefault();
+            
+            if (!draggedItem) return;
+            
+            const sourceCategory = draggedItem.category;
+            const itemId = draggedItem.id;
+            
+            if (sourceCategory === targetCategory) {
+                draggedItem = null;
+                return;
+            }
+
+            try {
+                const { error } = await db
+                    .from('inventory')
+                    .update({ category: targetCategory })
+                    .eq('id', itemId);
+
+                if (error) throw error;
+
+                // Move item in local state
+                const item = inventory[sourceCategory].find(i => i.id === itemId);
+                if (item) {
+                    inventory[sourceCategory] = inventory[sourceCategory].filter(i => i.id !== itemId);
+                    item.category = targetCategory;
+                    
+                    if (!inventory[targetCategory]) {
+                        inventory[targetCategory] = [];
+                    }
+                    inventory[targetCategory].push(item);
+                    
+                    renderCategory(sourceCategory);
+                    renderCategory(targetCategory);
+                }
+
+                draggedItem = null;
+            } catch (error) {
+                console.error('Error moving item:', error);
+                alert('Failed to move item. Please try again.');
+            }
+        }
+
+        function setupDropZones() {
+            document.querySelectorAll('.category').forEach(category => {
+                const targetCategory = category.dataset.category;
+                
+                category.addEventListener('dragover', handleDragOver);
+                category.addEventListener('drop', (e) => handleDrop(e, targetCategory));
+            });
+        }
+
+        // Handle Enter key in modal
+        document.getElementById('item-name').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('item-quantity').focus();
+            }
+        });
+
+        document.getElementById('item-quantity').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('item-minimum').focus();
+            }
+        });
+
+        document.getElementById('item-minimum').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('add-btn').click();
+            }
+        });
+
+        // Close modal on outside click
+        document.getElementById('add-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'add-modal') {
+                closeModal();
+            }
+        });
+
+        // Subscribe to real-time changes
+        db.channel('inventory_changes')
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'inventory' },
+                () => {
+                    loadInventory();
+                }
+            )
+            .subscribe();
     </script>
 </body>
 </html>
