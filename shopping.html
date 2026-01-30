@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping List - Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --sage-50: #f6f7f3;
+            --sage-100: #e8ebe0;
+            --sage-200: #d4dac5;
+            --sage-300: #b8c5a3;
+            --sage-400: #98ab7e;
+            --sage-500: #7a9061;
+            --sage-600: #5f734c;
+            --sage-700: #4a5a3b;
+            --sage-800: #3d4a32;
+            --cream: #ece8dd;
+            --taupe: #c4b5a4;
+            --dusty-sage: #a4ac95;
+            --mauve: #a88479;
+            --charcoal: #4a4d47;
+            --dusty-rose: #9b7269;
+        }
+
+        body {
+            font-family: 'Karla', sans-serif;
+            background: var(--charcoal);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            color: var(--cream);
+        }
+
+        .pond-banner {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            object-position: center 40%;
+            display: block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        nav {
+            background: rgba(74, 77, 71, 0.95);
+            padding: 12px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            background: rgba(236, 232, 221, 0.1);
+            border: 1px solid rgba(196, 181, 164, 0.3);
+            border-radius: 20px;
+            color: var(--cream);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: rgba(236, 232, 221, 0.2);
+            border-color: var(--taupe);
+        }
+
+        .nav-link.active {
+            background: var(--sage-500);
+            border-color: var(--sage-500);
+        }
+
+        .main-content {
+            padding: 20px 15px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 2.5rem;
+            font-weight: 300;
+            color: var(--cream);
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Karla', sans-serif;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: var(--sage-500);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--sage-600);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(236, 232, 221, 0.15);
+            color: var(--cream);
+            border: 1px solid var(--taupe);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(236, 232, 221, 0.25);
+        }
+
+        .store-section {
+            background: rgba(236, 232, 221, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(196, 181, 164, 0.2);
+            position: relative;
+        }
+
+        .store-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--sage-500);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .store-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-top: 8px;
+        }
+
+        .store-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.8rem;
+            color: var(--cream);
+            font-weight: 600;
+        }
+
+        .category-label {
+            font-weight: 600;
+            color: var(--taupe);
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            background: rgba(164, 172, 149, 0.2);
+            border-radius: 8px;
+            margin: 12px 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .shopping-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .shopping-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(236, 232, 221, 0.08);
+            border-radius: 10px;
+            border: 1px solid rgba(196, 181, 164, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .shopping-item:hover {
+            background: rgba(236, 232, 221, 0.12);
+            border-color: var(--taupe);
+        }
+
+        .shopping-item.checked {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+
+        .item-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--sage-500);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .checkbox:hover {
+            border-color: var(--sage-400);
+            transform: scale(1.1);
+        }
+
+        .checkbox.checked {
+            background: var(--sage-500);
+            position: relative;
+        }
+
+        .checkbox.checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+        }
+
+        .item-name {
+            color: var(--cream);
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .item-quantity {
+            color: var(--taupe);
+            font-size: 0.9rem;
+            margin-right: 12px;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: var(--dusty-rose);
+            cursor: pointer;
+            font-size: 1.2rem;
+            opacity: 0.6;
+            transition: all 0.2s ease;
+            padding: 4px 8px;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--taupe);
+            font-style: italic;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--charcoal);
+            border: 1px solid var(--taupe);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.8rem;
+            color: var(--cream);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--taupe);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid rgba(196, 181, 164, 0.3);
+            border-radius: 10px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: rgba(236, 232, 221, 0.05);
+            color: var(--cream);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            background: rgba(236, 232, 221, 0.1);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @media (max-width: 600px) {
+            .pond-banner {
+                height: 150px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .store-section {
+                padding: 16px;
+            }
+
+            .store-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <img src="pond.jpeg" alt="Banner" class="pond-banner">
+    
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-link">🏡 Home</a>
+            <a href="inventory.html" class="nav-link">🫙 Inventory</a>
+            <a href="shopping.html" class="nav-link active">🏪 Shopping</a>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <header>
+            <h1>🏪 Shopping List</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openAddModal()">+ Add Item</button>
+                <button class="btn btn-secondary" onclick="clearCompleted()">Clear Completed</button>
+            </div>
+        </header>
+
+        <div class="store-section">
+            <div class="store-header">
+                <h2 class="store-title">BJs</h2>
+            </div>
+            <div id="bjs-items" class="shopping-items">
+                <div class="empty-state">No items for BJs yet</div>
+            </div>
+        </div>
+
+        <div class="store-section">
+            <div class="store-header">
+                <h2 class="store-title">ShopRite - Walking Order</h2>
+            </div>
+            
+            <div class="category-label">🥕 Produce</div>
+            <div id="produce-items" class="shopping-items"></div>
+
+            <div class="category-label">🍞 Bakery</div>
+            <div id="bakery-items" class="shopping-items"></div>
+
+            <div class="category-label">🍯 Condiments</div>
+            <div id="condiments-items" class="shopping-items"></div>
+
+            <div class="category-label">🌮 Tortillas</div>
+            <div id="tortillas-items" class="shopping-items"></div>
+
+            <div class="category-label">🍅🫘 Tomatoes/Pasta/Beans</div>
+            <div id="pasta-beans-items" class="shopping-items"></div>
+
+            <div class="category-label">🥫 Canned Goods</div>
+            <div id="canned-items" class="shopping-items"></div>
+
+            <div class="category-label">🥣 Cooking Liquids</div>
+            <div id="liquids-items" class="shopping-items"></div>
+
+            <div class="category-label">🧂 Baking</div>
+            <div id="baking-items" class="shopping-items"></div>
+
+            <div class="category-label">🥩 Store Meat</div>
+            <div id="meat-items" class="shopping-items"></div>
+
+            <div class="category-label">🧀 Dairy</div>
+            <div id="dairy-items" class="shopping-items"></div>
+
+            <div class="category-label">❄️ Frozen</div>
+            <div id="frozen-items" class="shopping-items"></div>
+
+            <div class="category-label">🥛 Juice & Milk</div>
+            <div id="juice-items" class="shopping-items"></div>
+
+            <div class="category-label">🍿 Chips/Snacks</div>
+            <div id="snacks-items" class="shopping-items"></div>
+        </div>
+    </div>
+
+    <div id="add-modal" class="modal">
+        <div class="modal-content">
+            <h3 class="modal-title">Add to Shopping List</h3>
+            <div class="form-group">
+                <label for="item-name">Item Name</label>
+                <input type="text" id="item-name" placeholder="e.g., Paper Towels">
+            </div>
+            <div class="form-group">
+                <label for="item-store">Store</label>
+                <select id="item-store">
+                    <option value="bjs">BJs</option>
+                    <option value="produce">ShopRite - Produce</option>
+                    <option value="bakery">ShopRite - Bakery</option>
+                    <option value="condiments">ShopRite - Condiments</option>
+                    <option value="tortillas">ShopRite - Tortillas</option>
+                    <option value="pasta-beans">ShopRite - Tomatoes/Pasta/Beans</option>
+                    <option value="canned">ShopRite - Canned Goods</option>
+                    <option value="liquids">ShopRite - Cooking Liquids</option>
+                    <option value="baking">ShopRite - Baking</option>
+                    <option value="meat">ShopRite - Store Meat</option>
+                    <option value="dairy">ShopRite - Dairy</option>
+                    <option value="frozen">ShopRite - Frozen</option>
+                    <option value="juice">ShopRite - Juice & Milk</option>
+                    <option value="snacks">ShopRite - Chips/Snacks</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="item-quantity">Quantity (optional)</label>
+                <input type="number" id="item-quantity" placeholder="1" min="1">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" style="flex: 1;" onclick="closeAddModal()">Cancel</button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="addItem()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let shoppingList = [];
+
+        // Load shopping list
+        async function loadShoppingList() {
+            try {
+                const { data, error } = await db
+                    .from('shopping_list')
+                    .select('*')
+                    .order('created_at', { ascending: true });
+
+                if (error && error.message.includes('does not exist')) {
+                    console.log('Shopping list table needs to be created');
+                    return;
+                }
+
+                if (error) throw error;
+
+                shoppingList = data || [];
+                renderAll();
+            } catch (error) {
+                console.error('Error loading shopping list:', error);
+            }
+        }
+
+        // Render all categories
+        function renderAll() {
+            const categories = ['bjs', 'produce', 'bakery', 'condiments', 'tortillas', 'pasta-beans', 
+                              'canned', 'liquids', 'baking', 'meat', 'dairy', 'frozen', 'juice', 'snacks'];
+            
+            categories.forEach(cat => {
+                const items = shoppingList.filter(item => item.category === cat && !item.checked);
+                renderCategory(cat, items);
+            });
+        }
+
+        // Render category
+        function renderCategory(category, items) {
+            const container = document.getElementById(`${category}-items`);
+            if (!container) return;
+
+            if (items.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = items.map(item => `
+                <div class="shopping-item ${item.checked ? 'checked' : ''}">
+                    <div class="item-left">
+                        <div class="checkbox ${item.checked ? 'checked' : ''}" onclick="toggleCheck('${item.id}')"></div>
+                        <span class="item-name">${item.name}</span>
+                    </div>
+                    ${item.quantity ? `<span class="item-quantity">×${item.quantity}</span>` : ''}
+                    <button class="delete-btn" onclick="deleteItem('${item.id}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Toggle check
+        async function toggleCheck(id) {
+            const item = shoppingList.find(i => i.id === id);
+            if (!item) return;
+
+            const newChecked = !item.checked;
+
+            try {
+                const { error } = await db
+                    .from('shopping_list')
+                    .update({ checked: newChecked })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                item.checked = newChecked;
+                renderAll();
+            } catch (error) {
+                console.error('Error toggling check:', error);
+            }
+        }
+
+        // Delete item
+        async function deleteItem(id) {
+            if (!confirm('Remove this item?')) return;
+
+            try {
+                const { error } = await db
+                    .from('shopping_list')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                shoppingList = shoppingList.filter(i => i.id !== id);
+                renderAll();
+            } catch (error) {
+                console.error('Error deleting item:', error);
+            }
+        }
+
+        // Clear completed
+        async function clearCompleted() {
+            const completed = shoppingList.filter(i => i.checked);
+            if (completed.length === 0) {
+                alert('No completed items to clear');
+                return;
+            }
+
+            if (!confirm(`Clear ${completed.length} completed item(s)?`)) return;
+
+            try {
+                const { error } = await db
+                    .from('shopping_list')
+                    .delete()
+                    .eq('checked', true);
+
+                if (error) throw error;
+
+                shoppingList = shoppingList.filter(i => !i.checked);
+                renderAll();
+            } catch (error) {
+                console.error('Error clearing completed:', error);
+            }
+        }
+
+        // Modal functions
+        function openAddModal() {
+            document.getElementById('add-modal').classList.add('active');
+            document.getElementById('item-name').value = '';
+            document.getElementById('item-quantity').value = '';
+            document.getElementById('item-name').focus();
+        }
+
+        function closeAddModal() {
+            document.getElementById('add-modal').classList.remove('active');
+        }
+
+        // Add item
+        async function addItem() {
+            const name = document.getElementById('item-name').value.trim();
+            const category = document.getElementById('item-store').value;
+            const quantity = parseInt(document.getElementById('item-quantity').value) || null;
+
+            if (!name) {
+                alert('Please enter an item name');
+                return;
+            }
+
+            try {
+                const { data, error } = await db
+                    .from('shopping_list')
+                    .insert([{ name, category, quantity, checked: false }])
+                    .select();
+
+                if (error) throw error;
+
+                if (data && data[0]) {
+                    shoppingList.push(data[0]);
+                    renderAll();
+                }
+
+                closeAddModal();
+            } catch (error) {
+                console.error('Error adding item:', error);
+                alert('Failed to add item. Please try again.');
+            }
+        }
+
+        // Close modal on outside click
+        document.getElementById('add-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'add-modal') {
+                closeAddModal();
+            }
+        });
+
+        // Enter key handling
+        document.getElementById('item-name').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('item-quantity').focus();
+            }
+        });
+
+        document.getElementById('item-quantity').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addItem();
+            }
+        });
+
+        // Initialize
+        loadShoppingList();
+    </script>
+</body>
+</html>
