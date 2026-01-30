@@ -31,8 +31,22 @@
             font-family: 'Karla', sans-serif;
             background: linear-gradient(135deg, var(--sage-50) 0%, var(--earth-cream) 100%);
             min-height: 100vh;
-            padding: 15px 10px;
+            padding: 0;
+            margin: 0;
             color: var(--sage-800);
+        }
+
+        .pond-banner {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            object-position: center 40%;
+            display: block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .main-content {
+            padding: 15px 10px;
         }
 
         .container {
@@ -42,16 +56,18 @@
 
         header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            padding: 20px 10px 10px 10px;
             animation: fadeInDown 0.8s ease;
         }
 
         h1 {
             font-family: 'Crimson Pro', serif;
-            font-size: 2.5rem;
-            font-weight: 300;
+            font-size: 2rem;
+            font-weight: 400;
             color: var(--sage-700);
             letter-spacing: 1px;
+            margin: 0;
         }
 
         .tabs {
@@ -102,9 +118,21 @@
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 16px;
-            box-shadow: 0 2px 20px rgba(90, 106, 71, 0.08);
+            box-shadow: 0 3px 15px rgba(90, 106, 71, 0.12), 0 1px 3px rgba(139, 115, 85, 0.08);
             border: 1px solid var(--sage-100);
             animation: slideUp 0.6s ease both;
+            position: relative;
+        }
+
+        .category::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #7a9061, #98ab7e, #d4a373);
+            border-radius: 12px 12px 0 0;
         }
 
         .category:nth-child(2) { animation-delay: 0.1s; }
@@ -456,8 +484,12 @@
         }
 
         @media (max-width: 600px) {
+            .pond-banner {
+                height: 150px;
+            }
+
             h1 {
-                font-size: 2rem;
+                font-size: 1.6rem;
             }
 
             .category {
@@ -507,8 +539,12 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <img src="pond.jpeg" alt="Pond Banner" class="pond-banner">
+    
+    <div class="main-content">
+        <div class="container">
         <header>
+            <div style="font-size: 1.5rem; margin-bottom: 6px;">🌱 🐔 🦆</div>
             <h1>Homestead Inventory</h1>
         </header>
 
@@ -523,7 +559,9 @@
         <div id="basement-freezer" class="section active">
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Venison</h2>
+                    <div class="category-title-row">
+                        <h2 class="category-title">🦌 Venison</h2>
+                    </div>
                     <button class="add-btn" data-category="basement-venison">+ Add Item</button>
                 </div>
                 <div id="basement-venison-list" class="items-list">
@@ -533,7 +571,9 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Poultry</h2>
+                    <div class="category-title-row">
+                        <h2 class="category-title">🐔 Poultry</h2>
+                    </div>
                     <button class="add-btn" data-category="basement-poultry">+ Add Item</button>
                 </div>
                 <div id="basement-poultry-list" class="items-list">
@@ -543,7 +583,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Store Meat</h2>
+                    <h2 class="category-title">🥩 Store Meat</h2>
                     <button class="add-btn" data-category="basement-store-meat">+ Add Item</button>
                 </div>
                 <div id="basement-store-meat-list" class="items-list">
@@ -553,7 +593,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Other</h2>
+                    <h2 class="category-title">❄️ Other</h2>
                     <button class="add-btn" data-category="basement-other">+ Add Item</button>
                 </div>
                 <div id="basement-other-list" class="items-list">
@@ -565,7 +605,7 @@
         <div id="upstairs-freezer" class="section">
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Upstairs Freezer Items</h2>
+                    <h2 class="category-title">🍦 Upstairs Freezer Items</h2>
                     <button class="add-btn" data-category="upstairs-freezer">+ Add Item</button>
                 </div>
                 <div id="upstairs-freezer-list" class="items-list">
@@ -577,7 +617,7 @@
         <div id="refrigerator" class="section">
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Cheese & Tortillas</h2>
+                    <h2 class="category-title">🧀 Cheese & Tortillas</h2>
                     <button class="add-btn" data-category="fridge-cheese-tortillas">+ Add Item</button>
                 </div>
                 <div id="fridge-cheese-tortillas-list" class="items-list">
@@ -587,7 +627,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Kids Drawer</h2>
+                    <h2 class="category-title">👧👦 Kids Drawer</h2>
                     <button class="add-btn" data-category="fridge-kids-drawer">+ Add Item</button>
                 </div>
                 <div id="fridge-kids-drawer-list" class="items-list">
@@ -597,7 +637,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Vegetables</h2>
+                    <h2 class="category-title">🥕 Vegetables</h2>
                     <button class="add-btn" data-category="fridge-vegetables">+ Add Item</button>
                 </div>
                 <div id="fridge-vegetables-list" class="items-list">
@@ -607,7 +647,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Other</h2>
+                    <h2 class="category-title">🥛 Other</h2>
                     <button class="add-btn" data-category="fridge-other">+ Add Item</button>
                 </div>
                 <div id="fridge-other-list" class="items-list">
@@ -619,7 +659,7 @@
         <div id="pantry" class="section">
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Tomatoes & Pasta Sauces</h2>
+                    <h2 class="category-title">🍅 Tomatoes & Pasta Sauces</h2>
                     <button class="add-btn" data-category="pantry-tomatoes">+ Add Item</button>
                 </div>
                 <div id="pantry-tomatoes-list" class="items-list">
@@ -629,7 +669,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Beans & Legumes</h2>
+                    <h2 class="category-title">🫘 Beans & Legumes</h2>
                     <button class="add-btn" data-category="pantry-beans">+ Add Item</button>
                 </div>
                 <div id="pantry-beans-list" class="items-list">
@@ -639,7 +679,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Cooking Liquids</h2>
+                    <h2 class="category-title">🥣 Cooking Liquids</h2>
                     <button class="add-btn" data-category="pantry-liquids">+ Add Item</button>
                 </div>
                 <div id="pantry-liquids-list" class="items-list">
@@ -649,7 +689,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Baking</h2>
+                    <h2 class="category-title">🍰 Baking</h2>
                     <button class="add-btn" data-category="pantry-baking">+ Add Item</button>
                 </div>
                 <div id="pantry-baking-list" class="items-list">
@@ -659,7 +699,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Grains & Pasta</h2>
+                    <h2 class="category-title">🌾 Grains & Pasta</h2>
                     <button class="add-btn" data-category="pantry-grains">+ Add Item</button>
                 </div>
                 <div id="pantry-grains-list" class="items-list">
@@ -669,7 +709,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Canned Goods</h2>
+                    <h2 class="category-title">🥫 Canned Goods</h2>
                     <button class="add-btn" data-category="pantry-canned">+ Add Item</button>
                 </div>
                 <div id="pantry-canned-list" class="items-list">
@@ -679,7 +719,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Condiments & Sauces</h2>
+                    <h2 class="category-title">🍯 Condiments & Sauces</h2>
                     <button class="add-btn" data-category="pantry-condiments">+ Add Item</button>
                 </div>
                 <div id="pantry-condiments-list" class="items-list">
@@ -689,7 +729,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Snacks</h2>
+                    <h2 class="category-title">🍿 Snacks</h2>
                     <button class="add-btn" data-category="pantry-snacks">+ Add Item</button>
                 </div>
                 <div id="pantry-snacks-list" class="items-list">
@@ -699,7 +739,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Other</h2>
+                    <h2 class="category-title">📦 Other</h2>
                     <button class="add-btn" data-category="pantry-other">+ Add Item</button>
                 </div>
                 <div id="pantry-other-list" class="items-list">
@@ -711,7 +751,7 @@
         <div id="supplies" class="section">
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Kitchen Supplies</h2>
+                    <h2 class="category-title">🍳 Kitchen Supplies</h2>
                     <button class="add-btn" data-category="supplies-kitchen">+ Add Item</button>
                 </div>
                 <div id="supplies-kitchen-list" class="items-list">
@@ -721,7 +761,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Bathroom Supplies</h2>
+                    <h2 class="category-title">🧼 Bathroom Supplies</h2>
                     <button class="add-btn" data-category="supplies-bathroom">+ Add Item</button>
                 </div>
                 <div id="supplies-bathroom-list" class="items-list">
@@ -731,7 +771,7 @@
 
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Cleaning Supplies</h2>
+                    <h2 class="category-title">🧽 Cleaning Supplies</h2>
                     <button class="add-btn" data-category="supplies-cleaning">+ Add Item</button>
                 </div>
                 <div id="supplies-cleaning-list" class="items-list">
