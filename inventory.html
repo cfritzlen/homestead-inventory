@@ -63,6 +63,23 @@
             animation: fadeInDown 0.8s ease;
         }
 
+        .home-btn {
+            display: inline-block;
+            background: var(--sage-500);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .home-btn:hover {
+            background: var(--sage-600);
+            transform: translateY(-2px);
+        }
+
         .search-container {
             max-width: 500px;
             margin: 20px auto;
@@ -338,33 +355,10 @@
             align-items: center;
         }
 
-        .min-label {
-            font-size: 0.75rem;
+        .item-info {
+            font-size: 0.85rem;
             color: var(--sage-600);
-            font-weight: 600;
-        }
-
-        .min-input {
-            width: 40px;
-            text-align: center;
-            padding: 4px;
-            border: 1px solid var(--sage-300);
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--sage-700);
-            background: white;
-            transition: all 0.2s ease;
-        }
-
-        .min-input:hover {
-            border-color: var(--sage-500);
-        }
-
-        .min-input:focus {
-            outline: none;
-            border-color: var(--sage-500);
-            box-shadow: 0 0 0 2px rgba(122, 144, 97, 0.2);
+            margin-left: 8px;
         }
 
         .counter {
@@ -436,6 +430,24 @@
         .delete-btn:hover {
             background: #a83632;
             transform: scale(1.1);
+        }
+
+        .add-to-shopping-btn {
+            background: var(--sage-600);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Karla', sans-serif;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+
+        .add-to-shopping-btn:hover {
+            background: var(--sage-700);
+            transform: translateY(-1px);
         }
 
         .empty-state {
@@ -625,6 +637,7 @@
     <div class="main-content">
         <div class="container">
             <header>
+                <a href="index.html" class="home-btn">← Home</a>
                 <h1>🫙 Homestead Inventory</h1>
             </header>
 
@@ -634,11 +647,17 @@
             </div>
 
             <div class="tabs">
+                <div class="tab" data-section="low-stock">⚠️ Low Stock</div>
                 <div class="tab active" data-section="basement">🏠 Basement Freezers</div>
                 <div class="tab" data-section="upstairs">❄️ Upstairs Freezer</div>
                 <div class="tab" data-section="fridge">🧊 Fridge</div>
                 <div class="tab" data-section="pantry">🥫 Pantry</div>
                 <div class="tab" data-section="supplies">🧻 Supplies</div>
+            </div>
+
+            <!-- Low Stock Section -->
+            <div class="section" data-section="low-stock">
+                <div id="low-stock-container"></div>
             </div>
 
             <!-- Basement Section -->
@@ -862,10 +881,6 @@
                 <label for="item-quantity">Quantity</label>
                 <input type="number" id="item-quantity" min="0" value="1">
             </div>
-            <div class="form-group">
-                <label for="item-minimum">Minimum Quantity (optional)</label>
-                <input type="number" id="item-minimum" min="0" placeholder="Alert when below this number">
-            </div>
             <div class="modal-actions">
                 <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
                 <button class="modal-btn modal-btn-primary" id="add-btn" onclick="addItem()">Add Item</button>
@@ -899,6 +914,11 @@
                     
                     tab.classList.add('active');
                     document.querySelector(`.section[data-section="${section}"]`).classList.add('active');
+
+                    // Render low stock if that tab is clicked
+                    if (section === 'low-stock') {
+                        renderLowStock();
+                    }
                 });
             });
 
@@ -1084,19 +1104,10 @@
             return categoryMap[category] || 'snacks';
         }
 
-        // Check and handle low stock
-        async function checkLowStock(item) {
-            // Skip if no minimum set or quantity is above minimum
-            if (item.minimum_quantity === null || item.minimum_quantity === undefined) {
-                return;
-            }
-
-            if (item.quantity >= item.minimum_quantity) {
-                return;
-            }
-
-            // Item is low - check if already on shopping list
+        // Add to shopping list
+        async function addToShoppingList(item) {
             try {
+                // Check if already on shopping list
                 const { data: existingItems, error: checkError } = await db
                     .from('shopping_list')
                     .select('*')
@@ -1105,8 +1116,8 @@
 
                 if (checkError) throw checkError;
 
-                // If already on shopping list (unchecked), don't add again
                 if (existingItems && existingItems.length > 0) {
+                    alert(`"${item.name}" is already on your shopping list!`);
                     return;
                 }
 
@@ -1127,11 +1138,56 @@
 
                 if (addError) throw addError;
 
-                console.log(`Low stock alert: Added "${item.name}" to shopping list`);
+                alert(`✓ Added "${item.name}" to shopping list!`);
 
             } catch (error) {
-                console.error('Error handling low stock:', error);
+                console.error('Error adding to shopping list:', error);
+                alert('Failed to add to shopping list. Please try again.');
             }
+        }
+
+        // Render low stock items
+        function renderLowStock() {
+            const container = document.getElementById('low-stock-container');
+            const lowStockItems = [];
+
+            // Find all items below minimum
+            Object.keys(inventory).forEach(category => {
+                inventory[category].forEach(item => {
+                    if (item.minimum_quantity !== null && item.minimum_quantity !== undefined && item.quantity < item.minimum_quantity) {
+                        lowStockItems.push({
+                            ...item,
+                            category: category,
+                            categoryDisplay: getCategoryDisplayName(category)
+                        });
+                    }
+                });
+            });
+
+            if (lowStockItems.length === 0) {
+                container.innerHTML = '<div class="category"><div class="empty-state">🎉 No low stock items! Everything is well stocked.</div></div>';
+                return;
+            }
+
+            // Sort by category
+            lowStockItems.sort((a, b) => a.categoryDisplay.localeCompare(b.categoryDisplay));
+
+            container.innerHTML = lowStockItems.map(item => `
+                <div class="category">
+                    <div class="item low-stock">
+                        <div style="flex: 1;">
+                            <span class="item-name" style="cursor: default;">${item.name}</span>
+                            <span class="low-stock-indicator">⚠️</span>
+                            <div class="item-info">
+                                📍 ${item.categoryDisplay} | Current: ${item.quantity} | Minimum: ${item.minimum_quantity}
+                            </div>
+                        </div>
+                        <div class="item-controls">
+                            <button class="add-to-shopping-btn" onclick='addToShoppingList(${JSON.stringify(item).replace(/'/g, "&apos;")})'>+ Add to Shopping List</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
         }
 
         // Modal functions
@@ -1140,7 +1196,6 @@
             document.getElementById('add-modal').classList.add('active');
             document.getElementById('item-name').value = '';
             document.getElementById('item-quantity').value = '1';
-            document.getElementById('item-minimum').value = '';
             document.getElementById('item-name').focus();
         }
 
@@ -1153,8 +1208,6 @@
         async function addItem() {
             const name = document.getElementById('item-name').value.trim();
             const quantity = parseInt(document.getElementById('item-quantity').value) || 0;
-            const minimum = document.getElementById('item-minimum').value.trim();
-            const minimumQty = minimum === '' ? null : parseInt(minimum);
 
             if (!name) {
                 alert('Please enter an item name');
@@ -1173,7 +1226,7 @@
                         name: name,
                         category: currentCategory,
                         quantity: quantity,
-                        minimum_quantity: minimumQty
+                        minimum_quantity: null
                     }])
                     .select();
 
@@ -1185,9 +1238,6 @@
                     }
                     inventory[currentCategory].push(data[0]);
                     renderCategory(currentCategory);
-
-                    // Check if newly added item is already low stock
-                    await checkLowStock(data[0]);
                 }
 
                 closeModal();
@@ -1232,39 +1282,10 @@
                 if (item) {
                     item.quantity = newQuantity;
                     renderCategory(category);
-
-                    // Check low stock after quantity update
-                    await checkLowStock(item);
                 }
             } catch (error) {
                 console.error('Error updating quantity:', error);
                 alert('Failed to update quantity. Please try again.');
-            }
-        }
-
-        // Update minimum quantity
-        async function updateMinimum(category, id, newMinimum) {
-            const minimumQty = newMinimum === '' ? null : parseInt(newMinimum);
-
-            try {
-                const { error } = await db
-                    .from('inventory')
-                    .update({ minimum_quantity: minimumQty })
-                    .eq('id', id);
-
-                if (error) throw error;
-
-                const item = inventory[category].find(i => i.id === id);
-                if (item) {
-                    item.minimum_quantity = minimumQty;
-                    renderCategory(category);
-
-                    // Check low stock after minimum update
-                    await checkLowStock(item);
-                }
-            } catch (error) {
-                console.error('Error updating minimum:', error);
-                alert('Failed to update minimum. Please try again.');
             }
         }
 
@@ -1285,9 +1306,6 @@
 
                 item.quantity = newQuantity;
                 renderCategory(category);
-
-                // Check low stock after quantity change
-                await checkLowStock(item);
             } catch (error) {
                 console.error('Error updating quantity:', error);
                 alert('Failed to update quantity. Please try again.');
@@ -1348,18 +1366,8 @@
                 return `
                     <div class="item ${isLowStock ? 'low-stock' : ''}" draggable="true" data-item-id="${item.id}" data-item-category="${category}">
                         <span class="item-name" contenteditable="true" data-category="${category}" data-id="${item.id}" data-field="name">${item.name}</span>
-                        <span class="low-stock-indicator" title="Low stock - added to shopping list">⚠️</span>
+                        <span class="low-stock-indicator" title="Low stock">⚠️</span>
                         <div class="item-controls">
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <span class="min-label">Min:</span>
-                                <input type="number" 
-                                       class="min-input" 
-                                       value="${item.minimum_quantity !== null && item.minimum_quantity !== undefined ? item.minimum_quantity : ''}" 
-                                       placeholder="-"
-                                       min="0"
-                                       data-category="${category}" 
-                                       data-id="${item.id}">
-                            </div>
                             <div class="counter">
                                 <button class="counter-btn" data-action="decrease" data-category="${category}" data-id="${item.id}">−</button>
                                 <span class="counter-value" contenteditable="true" data-category="${category}" data-id="${item.id}" data-field="quantity">${item.quantity}</span>
@@ -1384,23 +1392,6 @@
                         updateQuantity(cat, id, -1);
                     } else if (action === 'delete') {
                         deleteItem(cat, id);
-                    }
-                });
-            });
-
-            // Add event listeners to minimum inputs
-            list.querySelectorAll('.min-input').forEach(input => {
-                input.addEventListener('change', async function() {
-                    const cat = this.getAttribute('data-category');
-                    const id = this.getAttribute('data-id');
-                    const newValue = this.value.trim();
-                    
-                    await updateMinimum(cat, id, newValue);
-                });
-
-                input.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        this.blur();
                     }
                 });
             });
@@ -1580,12 +1571,6 @@
         });
 
         document.getElementById('item-quantity').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('item-minimum').focus();
-            }
-        });
-
-        document.getElementById('item-minimum').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 document.getElementById('add-btn').click();
             }
