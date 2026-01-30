@@ -492,17 +492,20 @@
         </header>
 
         <div class="tabs">
-            <div class="tab active" data-tab="freezer">Freezer</div>
+            <div class="tab active" data-tab="basement-freezer">Basement Freezer</div>
+            <div class="tab" data-tab="upstairs-freezer">Upstairs Freezer</div>
+            <div class="tab" data-tab="refrigerator">Refrigerator</div>
             <div class="tab" data-tab="pantry">Pantry</div>
+            <div class="tab" data-tab="supplies">Supplies</div>
         </div>
 
-        <div id="freezer" class="section active">
+        <div id="basement-freezer" class="section active">
             <div class="category">
                 <div class="category-header">
                     <h2 class="category-title">Venison</h2>
-                    <button class="add-btn" data-category="venison">+ Add Item</button>
+                    <button class="add-btn" data-category="basement-venison">+ Add Item</button>
                 </div>
-                <div id="venison-list" class="items-list">
+                <div id="basement-venison-list" class="items-list">
                     <div class="loading">Loading...</div>
                 </div>
             </div>
@@ -510,9 +513,9 @@
             <div class="category">
                 <div class="category-header">
                     <h2 class="category-title">Poultry</h2>
-                    <button class="add-btn" data-category="poultry">+ Add Item</button>
+                    <button class="add-btn" data-category="basement-poultry">+ Add Item</button>
                 </div>
-                <div id="poultry-list" class="items-list">
+                <div id="basement-poultry-list" class="items-list">
                     <div class="loading">Loading...</div>
                 </div>
             </div>
@@ -520,9 +523,73 @@
             <div class="category">
                 <div class="category-header">
                     <h2 class="category-title">Store Meat</h2>
-                    <button class="add-btn" data-category="store-meat">+ Add Item</button>
+                    <button class="add-btn" data-category="basement-store-meat">+ Add Item</button>
                 </div>
-                <div id="store-meat-list" class="items-list">
+                <div id="basement-store-meat-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Other</h2>
+                    <button class="add-btn" data-category="basement-other">+ Add Item</button>
+                </div>
+                <div id="basement-other-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="upstairs-freezer" class="section">
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Upstairs Freezer Items</h2>
+                    <button class="add-btn" data-category="upstairs-freezer">+ Add Item</button>
+                </div>
+                <div id="upstairs-freezer-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="refrigerator" class="section">
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Cheese & Tortillas</h2>
+                    <button class="add-btn" data-category="fridge-cheese-tortillas">+ Add Item</button>
+                </div>
+                <div id="fridge-cheese-tortillas-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Kids Drawer</h2>
+                    <button class="add-btn" data-category="fridge-kids-drawer">+ Add Item</button>
+                </div>
+                <div id="fridge-kids-drawer-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Vegetables</h2>
+                    <button class="add-btn" data-category="fridge-vegetables">+ Add Item</button>
+                </div>
+                <div id="fridge-vegetables-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Other</h2>
+                    <button class="add-btn" data-category="fridge-other">+ Add Item</button>
+                </div>
+                <div id="fridge-other-list" class="items-list">
                     <div class="loading">Loading...</div>
                 </div>
             </div>
@@ -531,10 +598,122 @@
         <div id="pantry" class="section">
             <div class="category">
                 <div class="category-header">
-                    <h2 class="category-title">Pantry Items</h2>
-                    <button class="add-btn" data-category="pantry">+ Add Item</button>
+                    <h2 class="category-title">Tomatoes & Pasta Sauces</h2>
+                    <button class="add-btn" data-category="pantry-tomatoes">+ Add Item</button>
                 </div>
-                <div id="pantry-list" class="items-list">
+                <div id="pantry-tomatoes-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Beans & Legumes</h2>
+                    <button class="add-btn" data-category="pantry-beans">+ Add Item</button>
+                </div>
+                <div id="pantry-beans-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Cooking Liquids</h2>
+                    <button class="add-btn" data-category="pantry-liquids">+ Add Item</button>
+                </div>
+                <div id="pantry-liquids-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Baking</h2>
+                    <button class="add-btn" data-category="pantry-baking">+ Add Item</button>
+                </div>
+                <div id="pantry-baking-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Grains & Pasta</h2>
+                    <button class="add-btn" data-category="pantry-grains">+ Add Item</button>
+                </div>
+                <div id="pantry-grains-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Canned Goods</h2>
+                    <button class="add-btn" data-category="pantry-canned">+ Add Item</button>
+                </div>
+                <div id="pantry-canned-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Condiments & Sauces</h2>
+                    <button class="add-btn" data-category="pantry-condiments">+ Add Item</button>
+                </div>
+                <div id="pantry-condiments-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Snacks</h2>
+                    <button class="add-btn" data-category="pantry-snacks">+ Add Item</button>
+                </div>
+                <div id="pantry-snacks-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Other</h2>
+                    <button class="add-btn" data-category="pantry-other">+ Add Item</button>
+                </div>
+                <div id="pantry-other-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="supplies" class="section">
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Kitchen Supplies</h2>
+                    <button class="add-btn" data-category="supplies-kitchen">+ Add Item</button>
+                </div>
+                <div id="supplies-kitchen-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Bathroom Supplies</h2>
+                    <button class="add-btn" data-category="supplies-bathroom">+ Add Item</button>
+                </div>
+                <div id="supplies-bathroom-list" class="items-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <h2 class="category-title">Cleaning Supplies</h2>
+                    <button class="add-btn" data-category="supplies-cleaning">+ Add Item</button>
+                </div>
+                <div id="supplies-cleaning-list" class="items-list">
                     <div class="loading">Loading...</div>
                 </div>
             </div>
@@ -571,10 +750,27 @@
 
             let currentCategory = '';
             let inventory = {
-                'venison': [],
-                'poultry': [],
-                'store-meat': [],
-                'pantry': []
+                'basement-venison': [],
+                'basement-poultry': [],
+                'basement-store-meat': [],
+                'basement-other': [],
+                'upstairs-freezer': [],
+                'fridge-cheese-tortillas': [],
+                'fridge-kids-drawer': [],
+                'fridge-vegetables': [],
+                'fridge-other': [],
+                'pantry-tomatoes': [],
+                'pantry-beans': [],
+                'pantry-liquids': [],
+                'pantry-baking': [],
+                'pantry-grains': [],
+                'pantry-canned': [],
+                'pantry-condiments': [],
+                'pantry-snacks': [],
+                'pantry-other': [],
+                'supplies-kitchen': [],
+                'supplies-bathroom': [],
+                'supplies-cleaning': []
             };
 
             // Initialize database table
