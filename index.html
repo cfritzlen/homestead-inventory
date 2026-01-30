@@ -31,7 +31,7 @@
             font-family: 'Karla', sans-serif;
             background: linear-gradient(135deg, var(--sage-50) 0%, var(--earth-cream) 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 15px 10px;
             color: var(--sage-800);
         }
 
@@ -42,46 +42,16 @@
 
         header {
             text-align: center;
-            margin-bottom: 50px;
+            margin-bottom: 30px;
             animation: fadeInDown 0.8s ease;
         }
 
         h1 {
             font-family: 'Crimson Pro', serif;
-            font-size: 3rem;
+            font-size: 2.5rem;
             font-weight: 300;
             color: var(--sage-700);
-            margin-bottom: 8px;
             letter-spacing: 1px;
-        }
-
-        .subtitle {
-            font-size: 0.95rem;
-            color: var(--sage-600);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            font-weight: 500;
-        }
-
-        .sync-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 8px;
-            padding: 6px 14px;
-            background: white;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: var(--sage-600);
-            box-shadow: 0 2px 8px rgba(122, 144, 97, 0.1);
-        }
-
-        .sync-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--sage-500);
-            animation: pulse 2s ease-in-out infinite;
         }
 
         .tabs {
@@ -129,9 +99,9 @@
 
         .category {
             background: white;
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 24px;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
             box-shadow: 0 2px 20px rgba(90, 106, 71, 0.08);
             border: 1px solid var(--sage-100);
             animation: slideUp 0.6s ease both;
@@ -145,14 +115,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
             border-bottom: 2px solid var(--sage-100);
         }
 
         .category-title {
             font-family: 'Crimson Pro', serif;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             color: var(--sage-700);
             font-weight: 600;
         }
@@ -179,16 +149,16 @@
         .items-list {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
         }
 
         .item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px;
+            padding: 12px;
             background: var(--sage-50);
-            border-radius: 12px;
+            border-radius: 10px;
             border: 1px solid var(--sage-100);
             transition: all 0.3s ease;
         }
@@ -460,22 +430,33 @@
 
         @media (max-width: 600px) {
             h1 {
-                font-size: 2.2rem;
+                font-size: 2rem;
             }
 
             .category {
-                padding: 20px;
+                padding: 16px;
+                margin-bottom: 12px;
+            }
+
+            .category-title {
+                font-size: 1.1rem;
             }
 
             .item {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 12px;
+                gap: 10px;
+                padding: 10px;
             }
 
             .item-controls {
                 width: 100%;
                 justify-content: space-between;
+            }
+
+            .tab {
+                padding: 10px 16px;
+                font-size: 0.85rem;
             }
         }
     </style>
@@ -484,11 +465,6 @@
     <div class="container">
         <header>
             <h1>Homestead Inventory</h1>
-            <p class="subtitle">Track Your Provisions</p>
-            <div class="sync-status">
-                <span class="sync-dot"></span>
-                <span>Synced across devices</span>
-            </div>
         </header>
 
         <div class="tabs">
