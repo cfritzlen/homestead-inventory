@@ -120,11 +120,23 @@
             border-bottom: 2px solid var(--sage-100);
         }
 
+        .category-title-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
         .category-title {
             font-family: 'Crimson Pro', serif;
             font-size: 1.3rem;
             color: var(--sage-700);
             font-weight: 600;
+        }
+
+        .category-total {
+            font-size: 0.85rem;
+            color: var(--sage-600);
+            font-weight: 500;
         }
 
         .add-btn {
@@ -149,16 +161,16 @@
         .items-list {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
+            padding: 8px 10px;
             background: var(--sage-50);
-            border-radius: 10px;
+            border-radius: 8px;
             border: 1px solid var(--sage-100);
             transition: all 0.3s ease;
         }
@@ -442,11 +454,19 @@
                 font-size: 1.1rem;
             }
 
+            .category-total {
+                font-size: 0.8rem;
+            }
+
             .item {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 10px;
-                padding: 10px;
+                gap: 8px;
+                padding: 8px;
+            }
+
+            .item-name {
+                font-size: 0.95rem;
             }
 
             .item-controls {
@@ -457,6 +477,16 @@
             .tab {
                 padding: 10px 16px;
                 font-size: 0.85rem;
+            }
+
+            .counter {
+                padding: 4px 10px;
+            }
+
+            .counter-btn {
+                width: 26px;
+                height: 26px;
+                font-size: 1rem;
             }
         }
     </style>
@@ -1000,6 +1030,8 @@
 
                 if (items.length === 0) {
                     list.innerHTML = '<div class="empty-state">No items yet. Click "+ Add Item" to get started.</div>';
+                    // Clear total if exists
+                    updateCategoryTotal(category, 0);
                     return;
                 }
 
@@ -1007,6 +1039,16 @@
                 const sortedItems = [...items].sort((a, b) => 
                     a.name.toLowerCase().localeCompare(b.name.toLowerCase())
                 );
+
+                // Calculate total portions (whole birds count as 2)
+                let totalPortions = 0;
+                sortedItems.forEach(item => {
+                    const isWhole = item.name.toLowerCase().includes('whole');
+                    totalPortions += item.quantity * (isWhole ? 2 : 1);
+                });
+
+                // Update the total display
+                updateCategoryTotal(category, totalPortions);
 
                 list.innerHTML = sortedItems.map(item => `
                     <div class="item">
@@ -1083,6 +1125,47 @@
                         sel.addRange(range);
                     });
                 });
+            }
+
+            // Update category total display
+            function updateCategoryTotal(category, totalPortions) {
+                // Only show totals for venison and poultry categories
+                const showTotalCategories = [
+                    'basement-venison', 'basement-poultry',
+                    'upstairs-venison', 'upstairs-poultry'
+                ];
+                
+                if (!showTotalCategories.includes(category)) return;
+
+                // Find the category header
+                const listElement = document.getElementById(`${category}-list`);
+                if (!listElement) return;
+                
+                const categoryElement = listElement.closest('.category');
+                if (!categoryElement) return;
+                
+                const headerElement = categoryElement.querySelector('.category-header');
+                if (!headerElement) return;
+
+                // Check if we need to create the title row structure
+                let titleElement = headerElement.querySelector('.category-title');
+                let totalElement = headerElement.querySelector('.category-total');
+                
+                if (!totalElement) {
+                    // Wrap title and create total element
+                    const titleRow = document.createElement('div');
+                    titleRow.className = 'category-title-row';
+                    
+                    titleElement.parentNode.insertBefore(titleRow, titleElement);
+                    titleRow.appendChild(titleElement);
+                    
+                    totalElement = document.createElement('div');
+                    totalElement.className = 'category-total';
+                    titleRow.appendChild(totalElement);
+                }
+
+                // Update total text
+                totalElement.textContent = `Total: ${totalPortions} portion${totalPortions !== 1 ? 's' : ''}`;
             }
 
             // Render all categories
