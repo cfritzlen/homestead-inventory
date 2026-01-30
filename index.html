@@ -61,6 +61,92 @@
             animation: fadeInDown 0.8s ease;
         }
 
+        .search-container {
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 0 10px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 16px 12px 45px;
+            border: 2px solid var(--sage-200);
+            border-radius: 25px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            background: white;
+            transition: all 0.3s ease;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237a9061' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: 15px center;
+            background-size: 20px;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.2);
+        }
+
+        .search-results {
+            margin-top: 10px;
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            display: none;
+            box-shadow: 0 4px 20px rgba(90, 106, 71, 0.15);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 10px;
+            border-bottom: 1px solid var(--sage-100);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 8px;
+        }
+
+        .search-result-item:hover {
+            background: var(--sage-50);
+            transform: translateX(4px);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-name {
+            font-weight: 500;
+            color: var(--sage-800);
+        }
+
+        .search-result-location {
+            font-size: 0.85rem;
+            color: var(--sage-600);
+            margin-top: 2px;
+        }
+
+        .search-result-quantity {
+            font-weight: 600;
+            color: var(--sage-700);
+            font-size: 1.1rem;
+        }
+
+        .no-results {
+            text-align: center;
+            color: var(--sage-500);
+            padding: 20px;
+            font-style: italic;
+        }
+
         h1 {
             font-family: 'Crimson Pro', serif;
             font-size: 2rem;
@@ -548,6 +634,11 @@
             <h1>Homestead Inventory</h1>
         </header>
 
+        <div class="search-container">
+            <input type="text" id="search-box" class="search-box" placeholder="Search inventory... (e.g., 'paper towels')">
+            <div id="search-results" class="search-results"></div>
+        </div>
+
         <div class="tabs">
             <div class="tab active" data-tab="basement-freezer">Basement Freezer</div>
             <div class="tab" data-tab="upstairs-freezer">Upstairs Freezer</div>
@@ -981,6 +1072,169 @@
                     console.error('Error details:', error.message);
                     console.error('Error code:', error.code);
                     showError('Failed to add item: ' + error.message);
+                }
+            });
+
+            // Search functionality
+            const searchBox = document.getElementById('search-box');
+            const searchResults = document.getElementById('search-results');
+
+            // Category name mapping for display
+            const categoryNames = {
+                'basement-venison': 'Basement Freezer → Venison',
+                'basement-poultry': 'Basement Freezer → Poultry',
+                'basement-store-meat': 'Basement Freezer → Store Meat',
+                'basement-other': 'Basement Freezer → Other',
+                'upstairs-freezer': 'Upstairs Freezer',
+                'fridge-cheese-tortillas': 'Refrigerator → Cheese & Tortillas',
+                'fridge-kids-drawer': 'Refrigerator → Kids Drawer',
+                'fridge-vegetables': 'Refrigerator → Vegetables',
+                'fridge-other': 'Refrigerator → Other',
+                'pantry-tomatoes': 'Pantry → Tomatoes & Pasta Sauces',
+                'pantry-beans': 'Pantry → Beans & Legumes',
+                'pantry-liquids': 'Pantry → Cooking Liquids',
+                'pantry-baking': 'Pantry → Baking',
+                'pantry-grains': 'Pantry → Grains & Pasta',
+                'pantry-canned': 'Pantry → Canned Goods',
+                'pantry-condiments': 'Pantry → Condiments & Sauces',
+                'pantry-snacks': 'Pantry → Snacks',
+                'pantry-other': 'Pantry → Other',
+                'supplies-kitchen': 'Supplies → Kitchen',
+                'supplies-bathroom': 'Supplies → Bathroom',
+                'supplies-cleaning': 'Supplies → Cleaning'
+            };
+
+            function searchInventory(query) {
+                if (!query || query.trim().length < 2) {
+                    searchResults.classList.remove('active');
+                    return;
+                }
+
+                const searchTerm = query.toLowerCase().trim();
+                const results = [];
+
+                // Search through all categories
+                Object.keys(inventory).forEach(category => {
+                    inventory[category].forEach(item => {
+                        if (item.name.toLowerCase().includes(searchTerm)) {
+                            results.push({
+                                ...item,
+                                category: category,
+                                categoryName: categoryNames[category] || category
+                            });
+                        }
+                    });
+                });
+
+                // Display results
+                if (results.length === 0) {
+                    searchResults.innerHTML = '<div class="no-results">No items found</div>';
+                } else {
+                    searchResults.innerHTML = results.map(item => `
+                        <div class="search-result-item" onclick="goToItem('${item.category}', '${item.id}')">
+                            <div>
+                                <div class="search-result-name">${item.name}</div>
+                                <div class="search-result-location">${item.categoryName}</div>
+                            </div>
+                            <div class="search-result-quantity">${item.quantity}</div>
+                        </div>
+                    `).join('');
+                }
+
+                searchResults.classList.add('active');
+            }
+
+            // Navigate to item and highlight it
+            function goToItem(category, itemId) {
+                // Close search results
+                searchResults.classList.remove('active');
+                searchBox.value = '';
+
+                // Figure out which tab the category belongs to
+                const tabMap = {
+                    'basement-venison': 'basement-freezer',
+                    'basement-poultry': 'basement-freezer',
+                    'basement-store-meat': 'basement-freezer',
+                    'basement-other': 'basement-freezer',
+                    'upstairs-freezer': 'upstairs-freezer',
+                    'fridge-cheese-tortillas': 'refrigerator',
+                    'fridge-kids-drawer': 'refrigerator',
+                    'fridge-vegetables': 'refrigerator',
+                    'fridge-other': 'refrigerator',
+                    'pantry-tomatoes': 'pantry',
+                    'pantry-beans': 'pantry',
+                    'pantry-liquids': 'pantry',
+                    'pantry-baking': 'pantry',
+                    'pantry-grains': 'pantry',
+                    'pantry-canned': 'pantry',
+                    'pantry-condiments': 'pantry',
+                    'pantry-snacks': 'pantry',
+                    'pantry-other': 'pantry',
+                    'supplies-kitchen': 'supplies',
+                    'supplies-bathroom': 'supplies',
+                    'supplies-cleaning': 'supplies'
+                };
+
+                const targetTab = tabMap[category];
+
+                // Switch to the correct tab
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                    if (tab.getAttribute('data-tab') === targetTab) {
+                        tab.classList.add('active');
+                    }
+                });
+
+                document.querySelectorAll('.section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                document.getElementById(targetTab).classList.add('active');
+
+                // Wait for render, then scroll to and highlight the item
+                setTimeout(() => {
+                    const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+                    if (itemElement) {
+                        // Scroll to item
+                        itemElement.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                        });
+
+                        // Highlight the item temporarily
+                        itemElement.style.background = 'var(--earth-warm)';
+                        itemElement.style.transform = 'scale(1.02)';
+                        itemElement.style.boxShadow = '0 4px 20px rgba(212, 163, 115, 0.4)';
+
+                        setTimeout(() => {
+                            itemElement.style.background = '';
+                            itemElement.style.transform = '';
+                            itemElement.style.boxShadow = '';
+                        }, 2000);
+                    }
+                }, 100);
+            }
+            window.goToItem = goToItem;
+
+            // Debounce search input
+            let searchTimeout;
+            searchBox.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    searchInventory(e.target.value);
+                }, 300);
+            });
+
+            // Close search results when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!searchBox.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.classList.remove('active');
+                }
+            });
+
+            // Reopen results when clicking search box if there's a query
+            searchBox.addEventListener('focus', () => {
+                if (searchBox.value.trim().length >= 2) {
+                    searchInventory(searchBox.value);
                 }
             });
 
