@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --sage-50: #f6f7f3;
+            --sage-100: #e8ebe0;
+            --sage-200: #d4dac5;
+            --sage-300: #b8c5a3;
+            --sage-400: #98ab7e;
+            --sage-500: #7a9061;
+            --sage-600: #5f734c;
+            --sage-700: #4a5a3b;
+            --sage-800: #3d4a32;
+            --cream: #ece8dd;
+            --taupe: #c4b5a4;
+            --dusty-sage: #a4ac95;
+            --mauve: #a88479;
+            --charcoal: #4a4d47;
+            --dusty-rose: #9b7269;
+        }
+
+        body {
+            font-family: 'Karla', sans-serif;
+            background: var(--charcoal);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            color: var(--cream);
+        }
+
+        .pond-banner {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            object-position: center 40%;
+            display: block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .main-content {
+            padding: 40px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 3rem;
+            font-weight: 300;
+            color: var(--cream);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--taupe);
+            font-weight: 400;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-top: 40px;
+        }
+
+        .dashboard-card {
+            background: rgba(236, 232, 221, 0.95);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(196, 181, 164, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--charcoal);
+            display: block;
+            position: relative;
+        }
+
+        .dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--sage-500);
+            border-radius: 16px 16px 0 0;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            background: var(--cream);
+        }
+
+        .card-icon {
+            font-size: 3.5rem;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--sage-700);
+            margin-bottom: 8px;
+        }
+
+        .card-description {
+            font-size: 0.95rem;
+            color: var(--sage-600);
+            line-height: 1.5;
+        }
+
+        .coming-soon {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .coming-soon-badge {
+            display: inline-block;
+            background: var(--dusty-rose);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .pond-banner {
+                height: 180px;
+            }
+
+            h1 {
+                font-size: 2.2rem;
+            }
+
+            .main-content {
+                padding: 30px 15px;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .dashboard-card {
+                padding: 24px;
+            }
+
+            .card-icon {
+                font-size: 2.8rem;
+            }
+
+            .card-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <img src="pond.jpeg" alt="Pond Banner" class="pond-banner">
+    
+    <div class="main-content">
+        <header>
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">🌱 🐔 🦆</div>
+            <h1>Homestead Hub</h1>
+            <p class="subtitle">Your complete homestead management system</p>
+        </header>
+
+        <div class="dashboard-grid">
+            <a href="inventory.html" class="dashboard-card">
+                <div class="card-icon">🫙</div>
+                <h2 class="card-title">Inventory</h2>
+                <p class="card-description">Track everything in your freezers, fridge, pantry & supplies</p>
+            </a>
+
+            <a href="shopping.html" class="dashboard-card">
+                <div class="card-icon">🏪</div>
+                <h2 class="card-title">Shopping List</h2>
+                <p class="card-description">Organized by store with low stock alerts</p>
+            </a>
+
+            <a href="recipes.html" class="dashboard-card coming-soon">
+                <div class="card-icon">🍳</div>
+                <h2 class="card-title">Recipes & Meals</h2>
+                <p class="card-description">Plan meals and track what you cook</p>
+                <span class="coming-soon-badge">Coming Soon</span>
+            </a>
+
+            <a href="calendar.html" class="dashboard-card coming-soon">
+                <div class="card-icon">📅</div>
+                <h2 class="card-title">Homestead Calendar</h2>
+                <p class="card-description">Garden tasks, planting schedule & bird hatching</p>
+                <span class="coming-soon-badge">Coming Soon</span>
+            </a>
+
+            <a href="chores.html" class="dashboard-card coming-soon">
+                <div class="card-icon">🧺</div>
+                <h2 class="card-title">Chores</h2>
+                <p class="card-description">Laundry, cleaning, and household tasks</p>
+                <span class="coming-soon-badge">Coming Soon</span>
+            </a>
+
+            <div class="dashboard-card coming-soon">
+                <div class="card-icon">🎤</div>
+                <h2 class="card-title">Alexa Integration</h2>
+                <p class="card-description">Voice control for your entire homestead</p>
+                <span class="coming-soon-badge">Coming Soon</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
