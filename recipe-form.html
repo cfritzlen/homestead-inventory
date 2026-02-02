@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Recipe - Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --sage-50: #f6f7f3;
+            --sage-100: #e8ebe0;
+            --sage-200: #d4dac5;
+            --sage-300: #b8c5a3;
+            --sage-400: #98ab7e;
+            --sage-500: #7a9061;
+            --sage-600: #5f734c;
+            --sage-700: #4a5a3b;
+            --sage-800: #3d4a32;
+            --earth-warm: #d4a373;
+            --earth-cream: #faf8f3;
+            --warning-red: #c74440;
+        }
+
+        body {
+            font-family: 'Karla', sans-serif;
+            background: linear-gradient(135deg, var(--sage-50) 0%, var(--earth-cream) 100%);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            color: var(--sage-800);
+        }
+
+        .pond-banner {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            object-position: center 40%;
+            display: block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            background: rgba(122, 144, 97, 0.1);
+            border: 1px solid var(--sage-200);
+            border-radius: 20px;
+            color: var(--sage-700);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: rgba(122, 144, 97, 0.2);
+            border-color: var(--sage-400);
+        }
+
+        .nav-link.active {
+            background: var(--sage-500);
+            color: white;
+            border-color: var(--sage-500);
+        }
+
+        .main-content {
+            padding: 20px 15px 60px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 2.5rem;
+            font-weight: 400;
+            color: var(--sage-700);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 3px 15px rgba(90, 106, 71, 0.12);
+            border: 1px solid var(--sage-100);
+        }
+
+        .section-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.5rem;
+            color: var(--sage-700);
+            margin: 30px 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--sage-200);
+        }
+
+        .section-title:first-child {
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--sage-700);
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--sage-200);
+            border-radius: 10px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .ingredient-item,
+        .step-item {
+            background: var(--sage-50);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            display: flex;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .ingredient-item input {
+            flex: 1;
+        }
+
+        .step-item textarea {
+            flex: 1;
+            min-height: 60px;
+        }
+
+        .step-number {
+            background: var(--sage-500);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .remove-btn {
+            background: var(--warning-red);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .remove-btn:hover {
+            background: #a83632;
+            transform: scale(1.1);
+        }
+
+        .add-btn {
+            background: var(--sage-500);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Karla', sans-serif;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .add-btn:hover {
+            background: var(--sage-600);
+            transform: translateY(-2px);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 2px solid var(--sage-100);
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-family: 'Karla', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: var(--sage-500);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--sage-600);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--sage-100);
+            color: var(--sage-700);
+        }
+
+        .btn-secondary:hover {
+            background: var(--sage-200);
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .form-container {
+                padding: 24px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <img src="pond.jpeg" alt="Pond Banner" class="pond-banner">
+    
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-link">🏡 Home</a>
+            <a href="inventory.html" class="nav-link">🫙 Inventory</a>
+            <a href="shopping.html" class="nav-link">🏪 Shopping</a>
+            <a href="recipes.html" class="nav-link active">🍳 Recipes</a>
+            <a href="meal-plan.html" class="nav-link">📅 This Week</a>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <header>
+            <h1 id="page-title">🍳 Add New Recipe</h1>
+        </header>
+
+        <div class="form-container">
+            <div class="section-title">Basic Information</div>
+
+            <div class="form-group">
+                <label for="recipe-name">Recipe Name *</label>
+                <input type="text" id="recipe-name" placeholder="e.g., Shepherd's Pie" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="protein-category">Protein Category *</label>
+                    <select id="protein-category" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="ground-meat">Ground Meat</option>
+                        <option value="venison">Venison</option>
+                        <option value="chicken">Chicken</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="min-days">Min Days Between Cooking</label>
+                    <input type="number" id="min-days" value="21" min="0">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" placeholder="Any special notes about this recipe..."></textarea>
+            </div>
+
+            <div class="section-title">Ingredients</div>
+            <div id="ingredients-container"></div>
+            <button class="add-btn" onclick="addIngredient()">+ Add Ingredient</button>
+
+            <div class="section-title">Steps</div>
+            <div id="steps-container"></div>
+            <button class="add-btn" onclick="addStep()">+ Add Step</button>
+
+            <div class="form-actions">
+                <a href="recipes.html" class="btn btn-secondary">Cancel</a>
+                <button class="btn btn-primary" onclick="saveRecipe()">Save Recipe</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let ingredients = [];
+        let steps = [];
+        let editingRecipeId = null;
+
+        // Check if editing
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('id')) {
+            editingRecipeId = urlParams.get('id');
+            document.getElementById('page-title').textContent = '✏️ Edit Recipe';
+            loadRecipe(editingRecipeId);
+        } else {
+            // Add default ingredient and step
+            addIngredient();
+            addStep();
+        }
+
+        // Load recipe for editing
+        async function loadRecipe(id) {
+            try {
+                // Load recipe
+                const { data: recipe, error: recipeError } = await db
+                    .from('recipes')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (recipeError) throw recipeError;
+
+                // Fill form
+                document.getElementById('recipe-name').value = recipe.name;
+                document.getElementById('protein-category').value = recipe.protein_category;
+                document.getElementById('min-days').value = recipe.min_days_between || 21;
+                document.getElementById('notes').value = recipe.notes || '';
+
+                // Load ingredients
+                const { data: ingredientsData, error: ingredientsError } = await db
+                    .from('recipe_ingredients')
+                    .select('*')
+                    .eq('recipe_id', id)
+                    .order('created_at');
+
+                if (ingredientsError) throw ingredientsError;
+
+                ingredients = ingredientsData || [];
+                renderIngredients();
+
+                // Load steps
+                const { data: stepsData, error: stepsError } = await db
+                    .from('recipe_steps')
+                    .select('*')
+                    .eq('recipe_id', id)
+                    .order('step_number');
+
+                if (stepsError) throw stepsError;
+
+                steps = stepsData || [];
+                renderSteps();
+
+            } catch (error) {
+                console.error('Error loading recipe:', error);
+                alert('Failed to load recipe');
+            }
+        }
+
+        // Add ingredient
+        function addIngredient(name = '', quantity = '') {
+            ingredients.push({ name, quantity });
+            renderIngredients();
+        }
+
+        // Remove ingredient
+        function removeIngredient(index) {
+            ingredients.splice(index, 1);
+            renderIngredients();
+        }
+
+        // Render ingredients
+        function renderIngredients() {
+            const container = document.getElementById('ingredients-container');
+            container.innerHTML = ingredients.map((ing, index) => `
+                <div class="ingredient-item">
+                    <input type="text" 
+                           placeholder="Ingredient name (e.g., Ground Venison)" 
+                           value="${ing.ingredient_name || ing.name || ''}"
+                           onchange="ingredients[${index}].name = this.value">
+                    <input type="text" 
+                           placeholder="Quantity (e.g., 2 lbs)" 
+                           value="${ing.quantity || ''}"
+                           onchange="ingredients[${index}].quantity = this.value">
+                    <button class="remove-btn" onclick="removeIngredient(${index})">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Add step
+        function addStep(instruction = '') {
+            steps.push({ instruction });
+            renderSteps();
+        }
+
+        // Remove step
+        function removeStep(index) {
+            steps.splice(index, 1);
+            renderSteps();
+        }
+
+        // Render steps
+        function renderSteps() {
+            const container = document.getElementById('steps-container');
+            container.innerHTML = steps.map((step, index) => `
+                <div class="step-item">
+                    <div class="step-number">${index + 1}</div>
+                    <textarea placeholder="Describe this step..." 
+                              onchange="steps[${index}].instruction = this.value">${step.instruction || ''}</textarea>
+                    <button class="remove-btn" onclick="removeStep(${index})">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Save recipe
+        async function saveRecipe() {
+            const name = document.getElementById('recipe-name').value.trim();
+            const proteinCategory = document.getElementById('protein-category').value;
+            const minDays = parseInt(document.getElementById('min-days').value) || 21;
+            const notes = document.getElementById('notes').value.trim();
+
+            // Validation
+            if (!name) {
+                alert('Please enter a recipe name');
+                return;
+            }
+
+            if (!proteinCategory) {
+                alert('Please select a protein category');
+                return;
+            }
+
+            // Update ingredients array from inputs
+            document.querySelectorAll('.ingredient-item').forEach((item, index) => {
+                const inputs = item.querySelectorAll('input');
+                ingredients[index] = {
+                    name: inputs[0].value.trim(),
+                    quantity: inputs[1].value.trim()
+                };
+            });
+
+            // Update steps array from textareas
+            document.querySelectorAll('.step-item').forEach((item, index) => {
+                const textarea = item.querySelector('textarea');
+                steps[index] = {
+                    instruction: textarea.value.trim()
+                };
+            });
+
+            // Filter out empty ingredients and steps
+            const validIngredients = ingredients.filter(i => i.name);
+            const validSteps = steps.filter(s => s.instruction);
+
+            if (validIngredients.length === 0) {
+                alert('Please add at least one ingredient');
+                return;
+            }
+
+            if (validSteps.length === 0) {
+                alert('Please add at least one step');
+                return;
+            }
+
+            try {
+                let recipeId = editingRecipeId;
+
+                if (editingRecipeId) {
+                    // Update existing recipe
+                    const { error: updateError } = await db
+                        .from('recipes')
+                        .update({
+                            name,
+                            protein_category: proteinCategory,
+                            min_days_between: minDays,
+                            notes: notes || null,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', editingRecipeId);
+
+                    if (updateError) throw updateError;
+
+                    // Delete old ingredients and steps
+                    await db.from('recipe_ingredients').delete().eq('recipe_id', editingRecipeId);
+                    await db.from('recipe_steps').delete().eq('recipe_id', editingRecipeId);
+
+                } else {
+                    // Create new recipe
+                    const { data: newRecipe, error: createError } = await db
+                        .from('recipes')
+                        .insert([{
+                            name,
+                            protein_category: proteinCategory,
+                            min_days_between: minDays,
+                            notes: notes || null
+                        }])
+                        .select()
+                        .single();
+
+                    if (createError) throw createError;
+                    recipeId = newRecipe.id;
+                }
+
+                // Insert ingredients
+                const ingredientsToInsert = validIngredients.map(ing => ({
+                    recipe_id: recipeId,
+                    ingredient_name: ing.name,
+                    quantity: ing.quantity || null,
+                    master_item_id: null
+                }));
+
+                const { error: ingredientsError } = await db
+                    .from('recipe_ingredients')
+                    .insert(ingredientsToInsert);
+
+                if (ingredientsError) throw ingredientsError;
+
+                // Insert steps
+                const stepsToInsert = validSteps.map((step, index) => ({
+                    recipe_id: recipeId,
+                    step_number: index + 1,
+                    instruction: step.instruction
+                }));
+
+                const { error: stepsError } = await db
+                    .from('recipe_steps')
+                    .insert(stepsToInsert);
+
+                if (stepsError) throw stepsError;
+
+                // Success!
+                alert(editingRecipeId ? 'Recipe updated!' : 'Recipe created!');
+                window.location.href = 'recipes.html';
+
+            } catch (error) {
+                console.error('Error saving recipe:', error);
+                alert('Failed to save recipe. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>

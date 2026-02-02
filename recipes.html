@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipes - Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --sage-50: #f6f7f3;
+            --sage-100: #e8ebe0;
+            --sage-200: #d4dac5;
+            --sage-300: #b8c5a3;
+            --sage-400: #98ab7e;
+            --sage-500: #7a9061;
+            --sage-600: #5f734c;
+            --sage-700: #4a5a3b;
+            --sage-800: #3d4a32;
+            --earth-warm: #d4a373;
+            --earth-cream: #faf8f3;
+            --earth-brown: #8b7355;
+        }
+
+        body {
+            font-family: 'Karla', sans-serif;
+            background: linear-gradient(135deg, var(--sage-50) 0%, var(--earth-cream) 100%);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            color: var(--sage-800);
+        }
+
+        .pond-banner {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            object-position: center 40%;
+            display: block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            background: rgba(122, 144, 97, 0.1);
+            border: 1px solid var(--sage-200);
+            border-radius: 20px;
+            color: var(--sage-700);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: rgba(122, 144, 97, 0.2);
+            border-color: var(--sage-400);
+        }
+
+        .nav-link.active {
+            background: var(--sage-500);
+            color: white;
+            border-color: var(--sage-500);
+        }
+
+        .main-content {
+            padding: 20px 15px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 2.5rem;
+            font-weight: 400;
+            color: var(--sage-700);
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Karla', sans-serif;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--sage-500);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--sage-600);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--sage-700);
+            border: 2px solid var(--sage-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--sage-50);
+            border-color: var(--sage-500);
+        }
+
+        .search-container {
+            max-width: 500px;
+            margin: 0 auto 30px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 16px 12px 45px;
+            border: 2px solid var(--sage-200);
+            border-radius: 25px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            background: white;
+            transition: all 0.3s ease;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237a9061' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: 15px center;
+            background-size: 20px;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.2);
+        }
+
+        .protein-group {
+            margin-bottom: 40px;
+        }
+
+        .group-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid var(--sage-300);
+        }
+
+        .group-icon {
+            font-size: 2rem;
+        }
+
+        .group-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.8rem;
+            color: var(--sage-700);
+            font-weight: 600;
+        }
+
+        .recipes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .recipe-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 3px 15px rgba(90, 106, 71, 0.12);
+            border: 1px solid var(--sage-100);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .recipe-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 25px rgba(90, 106, 71, 0.2);
+        }
+
+        .recipe-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--sage-500) 0%, var(--sage-400) 100%);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .recipe-name {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.4rem;
+            color: var(--sage-800);
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-top: 4px;
+        }
+
+        .recipe-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--sage-100);
+        }
+
+        .recipe-rating {
+            display: flex;
+            gap: 4px;
+        }
+
+        .star {
+            color: #ffd700;
+            font-size: 1.1rem;
+        }
+
+        .star.empty {
+            color: var(--sage-200);
+        }
+
+        .recipe-info {
+            font-size: 0.85rem;
+            color: var(--sage-600);
+        }
+
+        .last-cooked {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: var(--sage-500);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--sage-500);
+            padding: 60px 20px;
+            font-style: italic;
+            font-size: 1.1rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .recipes-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .group-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <img src="pond.jpeg" alt="Pond Banner" class="pond-banner">
+    
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-link">🏡 Home</a>
+            <a href="inventory.html" class="nav-link">🫙 Inventory</a>
+            <a href="shopping.html" class="nav-link">🏪 Shopping</a>
+            <a href="recipes.html" class="nav-link active">🍳 Recipes</a>
+            <a href="meal-plan.html" class="nav-link">📅 This Week</a>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <header>
+            <h1>🍳 Recipe Collection</h1>
+            <div class="header-actions">
+                <a href="recipe-form.html" class="btn btn-primary">+ Add New Recipe</a>
+                <a href="meal-plan.html" class="btn btn-secondary">📅 View Meal Plan</a>
+            </div>
+        </header>
+
+        <div class="search-container">
+            <input type="text" id="search-box" class="search-box" placeholder="Search recipes...">
+        </div>
+
+        <div id="recipes-container"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let recipes = [];
+
+        // Load recipes
+        async function loadRecipes() {
+            try {
+                const { data, error } = await db
+                    .from('recipes')
+                    .select('*')
+                    .order('rating', { ascending: false, nullsLast: true })
+                    .order('name');
+
+                if (error) throw error;
+                recipes = data || [];
+                renderRecipes();
+            } catch (error) {
+                console.error('Error loading recipes:', error);
+            }
+        }
+
+        // Render recipes grouped by protein
+        function renderRecipes(searchQuery = '') {
+            const container = document.getElementById('recipes-container');
+            
+            // Filter by search
+            let filtered = recipes;
+            if (searchQuery) {
+                filtered = recipes.filter(r => 
+                    r.name.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }
+
+            // Group by protein category
+            const proteinGroups = {
+                'ground-meat': { title: 'Ground Meat', icon: '🥩', recipes: [] },
+                'venison': { title: 'Venison', icon: '🦌', recipes: [] },
+                'chicken': { title: 'Chicken', icon: '🐔', recipes: [] },
+                'other': { title: 'Other', icon: '🍽️', recipes: [] }
+            };
+
+            filtered.forEach(recipe => {
+                if (proteinGroups[recipe.protein_category]) {
+                    proteinGroups[recipe.protein_category].recipes.push(recipe);
+                }
+            });
+
+            // Render
+            let html = '';
+
+            Object.keys(proteinGroups).forEach(key => {
+                const group = proteinGroups[key];
+                if (group.recipes.length === 0) return;
+
+                html += `
+                    <div class="protein-group">
+                        <div class="group-header">
+                            <span class="group-icon">${group.icon}</span>
+                            <h2 class="group-title">${group.title}</h2>
+                        </div>
+                        <div class="recipes-grid">
+                            ${group.recipes.map(recipe => renderRecipeCard(recipe)).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (html === '') {
+                html = '<div class="empty-state">No recipes found. Add your first recipe to get started!</div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        // Render individual recipe card
+        function renderRecipeCard(recipe) {
+            const stars = renderStars(recipe.rating);
+            const lastCooked = recipe.last_cooked_date 
+                ? formatLastCooked(recipe.last_cooked_date)
+                : '';
+
+            return `
+                <div class="recipe-card" onclick="viewRecipe('${recipe.id}')">
+                    <div class="recipe-name">${recipe.name}</div>
+                    ${recipe.notes ? `<div class="recipe-info">${recipe.notes}</div>` : ''}
+                    <div class="recipe-meta">
+                        <div class="recipe-rating">${stars}</div>
+                    </div>
+                    ${lastCooked ? `<div class="last-cooked">${lastCooked}</div>` : ''}
+                </div>
+            `;
+        }
+
+        // Render star rating
+        function renderStars(rating) {
+            if (!rating) return '<span class="recipe-info">Not rated yet</span>';
+            
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                stars += `<span class="star ${i <= rating ? '' : 'empty'}">★</span>`;
+            }
+            return stars;
+        }
+
+        // Format last cooked date
+        function formatLastCooked(dateString) {
+            const date = new Date(dateString);
+            const today = new Date();
+            const diffTime = today - date;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) return 'Cooked today';
+            if (diffDays === 1) return 'Cooked yesterday';
+            if (diffDays < 7) return `Cooked ${diffDays} days ago`;
+            if (diffDays < 30) return `Cooked ${Math.floor(diffDays / 7)} weeks ago`;
+            return `Cooked ${Math.floor(diffDays / 30)} months ago`;
+        }
+
+        // View recipe
+        function viewRecipe(id) {
+            window.location.href = `recipe-detail.html?id=${id}`;
+        }
+
+        // Search functionality
+        document.getElementById('search-box').addEventListener('input', (e) => {
+            renderRecipes(e.target.value.trim());
+        });
+
+        // Initialize
+        loadRecipes();
+    </script>
+</body>
+</html>

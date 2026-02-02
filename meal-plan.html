@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>This Week's Meals - Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --sage-50: #f6f7f3;
+            --sage-100: #e8ebe0;
+            --sage-200: #d4dac5;
+            --sage-300: #b8c5a3;
+            --sage-400: #98ab7e;
+            --sage-500: #7a9061;
+            --sage-600: #5f734c;
+            --sage-700: #4a5a3b;
+            --sage-800: #3d4a32;
+            --earth-warm: #d4a373;
+            --earth-cream: #faf8f3;
+        }
+
+        body {
+            font-family: 'Karla', sans-serif;
+            background: linear-gradient(135deg, var(--sage-50) 0%, var(--earth-cream) 100%);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            color: var(--sage-800);
+        }
+
+        .pond-banner {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            object-position: center 40%;
+            display: block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            background: rgba(122, 144, 97, 0.1);
+            border: 1px solid var(--sage-200);
+            border-radius: 20px;
+            color: var(--sage-700);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: rgba(122, 144, 97, 0.2);
+            border-color: var(--sage-400);
+        }
+
+        .nav-link.active {
+            background: var(--sage-500);
+            color: white;
+            border-color: var(--sage-500);
+        }
+
+        .main-content {
+            padding: 20px 15px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 2.5rem;
+            font-weight: 400;
+            color: var(--sage-700);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .week-info {
+            font-size: 1.1rem;
+            color: var(--sage-600);
+            margin-bottom: 20px;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Karla', sans-serif;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--sage-700);
+            border: 2px solid var(--sage-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--sage-50);
+            border-color: var(--sage-500);
+        }
+
+        .day-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 15px rgba(90, 106, 71, 0.12);
+            border: 1px solid var(--sage-100);
+        }
+
+        .day-section.today {
+            border: 3px solid var(--sage-500);
+        }
+
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--sage-100);
+        }
+
+        .day-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.6rem;
+            color: var(--sage-700);
+            font-weight: 600;
+        }
+
+        .day-title.today {
+            color: var(--sage-500);
+        }
+
+        .day-date {
+            font-size: 0.9rem;
+            color: var(--sage-600);
+        }
+
+        .meal-card {
+            background: var(--sage-50);
+            padding: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .meal-card:hover {
+            background: var(--sage-100);
+            transform: translateX(4px);
+            border-color: var(--sage-400);
+        }
+
+        .meal-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--sage-800);
+            margin-bottom: 8px;
+        }
+
+        .meal-rating {
+            display: flex;
+            gap: 4px;
+        }
+
+        .star {
+            color: #ffd700;
+            font-size: 1rem;
+        }
+
+        .star.empty {
+            color: var(--sage-200);
+        }
+
+        .empty-day {
+            text-align: center;
+            color: var(--sage-500);
+            padding: 20px;
+            font-style: italic;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--sage-500);
+            padding: 60px 20px;
+            font-style: italic;
+            font-size: 1.1rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 3px 15px rgba(90, 106, 71, 0.12);
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .day-section {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <img src="pond.jpeg" alt="Pond Banner" class="pond-banner">
+    
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-link">🏡 Home</a>
+            <a href="inventory.html" class="nav-link">🫙 Inventory</a>
+            <a href="shopping.html" class="nav-link">🏪 Shopping</a>
+            <a href="recipes.html" class="nav-link">🍳 Recipes</a>
+            <a href="meal-plan.html" class="nav-link active">📅 This Week</a>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <header>
+            <h1>📅 This Week's Meals</h1>
+            <div class="week-info" id="week-info"></div>
+            <div class="header-actions">
+                <a href="recipes.html" class="btn btn-secondary">🍳 Browse Recipes</a>
+            </div>
+        </header>
+
+        <div id="meals-container"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let recipes = [];
+
+        // Get week range
+        function getWeekRange() {
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0 = Sunday
+            
+            // Get Monday of this week
+            const monday = new Date(today);
+            const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            monday.setDate(today.getDate() + diff);
+            monday.setHours(0, 0, 0, 0);
+
+            // Get Sunday of this week
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23, 59, 59, 999);
+
+            return { monday, sunday };
+        }
+
+        // Load planned meals
+        async function loadPlannedMeals() {
+            const { monday, sunday } = getWeekRange();
+            
+            // Set week info
+            const weekInfo = document.getElementById('week-info');
+            weekInfo.textContent = `${formatDate(monday, false)} - ${formatDate(sunday, false)}`;
+
+            try {
+                const { data, error } = await db
+                    .from('recipes')
+                    .select('*')
+                    .not('planned_cook_date', 'is', null)
+                    .gte('planned_cook_date', monday.toISOString().split('T')[0])
+                    .lte('planned_cook_date', sunday.toISOString().split('T')[0])
+                    .order('planned_cook_date');
+
+                if (error) throw error;
+                recipes = data || [];
+                renderMealPlan();
+            } catch (error) {
+                console.error('Error loading planned meals:', error);
+            }
+        }
+
+        // Render meal plan
+        function renderMealPlan() {
+            const container = document.getElementById('meals-container');
+            
+            if (recipes.length === 0) {
+                container.innerHTML = '<div class="empty-state">No meals planned for this week yet.<br>Browse recipes and plan some meals!</div>';
+                return;
+            }
+
+            const { monday } = getWeekRange();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let html = '';
+
+            // Group recipes by day
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(monday);
+                date.setDate(monday.getDate() + i);
+                const dateStr = date.toISOString().split('T')[0];
+                const isToday = date.getTime() === today.getTime();
+
+                const dayRecipes = recipes.filter(r => r.planned_cook_date === dateStr);
+
+                html += `
+                    <div class="day-section ${isToday ? 'today' : ''}">
+                        <div class="day-header">
+                            <h2 class="day-title ${isToday ? 'today' : ''}">${days[i]}${isToday ? ' (Today)' : ''}</h2>
+                            <span class="day-date">${formatDate(date, true)}</span>
+                        </div>
+                        ${dayRecipes.length > 0 
+                            ? dayRecipes.map(r => renderMealCard(r)).join('') 
+                            : '<div class="empty-day">No meals planned</div>'}
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // Render meal card
+        function renderMealCard(recipe) {
+            const stars = renderStars(recipe.rating);
+            
+            return `
+                <div class="meal-card" onclick="viewRecipe('${recipe.id}')">
+                    <div class="meal-name">${recipe.name}</div>
+                    <div class="meal-rating">${stars}</div>
+                </div>
+            `;
+        }
+
+        // Render star rating
+        function renderStars(rating) {
+            if (!rating) return '<span style="color: var(--sage-500); font-size: 0.9rem;">Not rated yet</span>';
+            
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                stars += `<span class="star ${i <= rating ? '' : 'empty'}">★</span>`;
+            }
+            return stars;
+        }
+
+        // Format date
+        function formatDate(date, withDay) {
+            const options = withDay 
+                ? { month: 'short', day: 'numeric' }
+                : { month: 'long', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        // View recipe
+        function viewRecipe(id) {
+            window.location.href = `recipe-detail.html?id=${id}`;
+        }
+
+        // Initialize
+        loadPlannedMeals();
+    </script>
+</body>
+</html>
