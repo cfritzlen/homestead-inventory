@@ -106,7 +106,7 @@
             font-weight: 300;
             color: var(--cream);
             letter-spacing: 1px;
-            margin-bottom: 8px;
+            margin-bottom: 20px;
         }
 
         .header-actions {
@@ -210,6 +210,11 @@
             border-radius: 10px;
             border: 1px solid rgba(196, 181, 164, 0.2);
             transition: all 0.3s ease;
+            cursor: grab;
+        }
+
+        .shopping-item:active {
+            cursor: grabbing;
         }
 
         .shopping-item:hover {
@@ -220,6 +225,15 @@
         .shopping-item.checked {
             opacity: 0.5;
             text-decoration: line-through;
+        }
+
+        .shopping-item.dragging {
+            opacity: 0.5;
+            transform: scale(1.02);
+        }
+
+        .shopping-item.drag-over {
+            border-top: 3px solid var(--sage-500);
         }
 
         .item-left {
@@ -374,6 +388,79 @@
             background: rgba(236, 232, 221, 0.15);
         }
 
+        .searchable-select-wrapper {
+            position: relative;
+        }
+
+        .searchable-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid rgba(196, 181, 164, 0.3);
+            border-radius: 10px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            background: rgba(236, 232, 221, 0.1);
+            color: var(--cream);
+        }
+
+        .searchable-select:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            background: rgba(236, 232, 221, 0.15);
+        }
+
+        .searchable-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--charcoal);
+            border: 2px solid var(--sage-500);
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .searchable-dropdown.active {
+            display: block;
+        }
+
+        .dropdown-group-label {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--taupe);
+            background: rgba(164, 172, 149, 0.1);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--cream);
+            border-bottom: 1px solid rgba(196, 181, 164, 0.1);
+        }
+
+        .dropdown-item:hover {
+            background: rgba(122, 144, 97, 0.2);
+        }
+
+        .dropdown-item.add-new {
+            background: rgba(122, 144, 97, 0.15);
+            font-weight: 600;
+            color: var(--sage-300);
+        }
+
+        .dropdown-item.add-new:hover {
+            background: rgba(122, 144, 97, 0.3);
+        }
+
         .modal-buttons {
             display: flex;
             gap: 12px;
@@ -451,12 +538,10 @@
 
     <div class="main-content">
         <header>
-            <a href="index.html" class="nav-link" style="background: var(--sage-500); margin-right: 10px;">← Home</a>
-            <a href="inventory.html#low-stock" class="nav-link" style="background: var(--sage-600);">⚠️ Check Low Stock</a>
             <h1>🪃 Shopping List</h1>
             <div class="header-actions">
+                <a href="inventory.html#low-stock" class="btn btn-secondary">⚠️ Check Low Stock</a>
                 <button class="btn btn-primary" onclick="openAddModal()">+ Add Item</button>
-                <button class="btn btn-secondary" onclick="clearCompleted()">Clear Completed</button>
             </div>
         </header>
 
@@ -518,36 +603,43 @@
     <div id="add-modal" class="modal">
         <div class="modal-content">
             <h3 class="modal-title">Add to Shopping List</h3>
+            
             <div class="form-group">
-                <label for="item-store">Where will you buy this?</label>
-                <select id="item-store" onchange="updateItemDropdown()">
-                    <option value="">-- Select Store Section --</option>
-                    <option value="bjs">BJs</option>
-                    <option value="produce">ShopRite - Produce</option>
-                    <option value="bakery">ShopRite - Bakery</option>
-                    <option value="condiments">ShopRite - Condiments</option>
-                    <option value="tortillas">ShopRite - Tortillas</option>
-                    <option value="pasta-beans">ShopRite - Tomatoes/Pasta/Beans</option>
-                    <option value="canned">ShopRite - Canned Goods</option>
-                    <option value="liquids">ShopRite - Cooking Liquids</option>
-                    <option value="baking">ShopRite - Baking</option>
-                    <option value="meat">ShopRite - Store Meat</option>
-                    <option value="dairy">ShopRite - Dairy</option>
-                    <option value="frozen">ShopRite - Frozen</option>
-                    <option value="juice">ShopRite - Juice & Milk</option>
-                    <option value="snacks">ShopRite - Chips/Snacks</option>
-                </select>
+                <label for="item-search">Search or Select Item</label>
+                <div class="searchable-select-wrapper">
+                    <input type="text" 
+                           id="item-search" 
+                           class="searchable-select" 
+                           placeholder="Type to search items..."
+                           autocomplete="off">
+                    <div id="item-dropdown" class="searchable-dropdown"></div>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="item-select">Item</label>
-                <select id="item-select" disabled onchange="handleItemSelection()">
-                    <option value="">-- Select section first --</option>
-                </select>
-            </div>
+
             <div id="new-item-form" class="new-item-fields">
                 <div class="form-group">
                     <label for="new-item-name">New Item Name</label>
                     <input type="text" id="new-item-name" placeholder="e.g., Purple Cauliflower">
+                </div>
+                <div class="form-group">
+                    <label for="new-item-store">Where will you buy this?</label>
+                    <select id="new-item-store">
+                        <option value="">-- Select Store Section --</option>
+                        <option value="bjs">BJs</option>
+                        <option value="produce">ShopRite - Produce</option>
+                        <option value="bakery">ShopRite - Bakery</option>
+                        <option value="condiments">ShopRite - Condiments</option>
+                        <option value="tortillas">ShopRite - Tortillas</option>
+                        <option value="pasta-beans">ShopRite - Tomatoes/Pasta/Beans</option>
+                        <option value="canned">ShopRite - Canned Goods</option>
+                        <option value="liquids">ShopRite - Cooking Liquids</option>
+                        <option value="baking">ShopRite - Baking</option>
+                        <option value="meat">ShopRite - Store Meat</option>
+                        <option value="dairy">ShopRite - Dairy</option>
+                        <option value="frozen">ShopRite - Frozen</option>
+                        <option value="juice">ShopRite - Juice & Milk</option>
+                        <option value="snacks">ShopRite - Chips/Snacks</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="new-item-category">Inventory Category</label>
@@ -584,10 +676,12 @@
                     </div>
                 </div>
             </div>
+
             <div class="form-group">
                 <label for="item-quantity">Quantity (optional)</label>
                 <input type="number" id="item-quantity" placeholder="1" min="1">
             </div>
+
             <div class="modal-buttons">
                 <button class="btn btn-secondary" style="flex: 1;" onclick="closeAddModal()">Cancel</button>
                 <button class="btn btn-primary" style="flex: 1;" onclick="addItem()">Add</button>
@@ -605,6 +699,7 @@
         let shoppingList = [];
         let masterItems = [];
         let newItemFavorite = false;
+        let selectedMasterItem = null;
 
         // Load data
         async function loadData() {
@@ -642,60 +737,86 @@
             }
         }
 
-        // Update item dropdown based on selected store
-        function updateItemDropdown() {
-            const storeSection = document.getElementById('item-store').value;
-            const itemSelect = document.getElementById('item-select');
-            
-            if (!storeSection) {
-                itemSelect.disabled = true;
-                itemSelect.innerHTML = '<option value="">-- Select section first --</option>';
-                return;
-            }
+        // Searchable dropdown functionality
+        function setupSearchableDropdown() {
+            const searchInput = document.getElementById('item-search');
+            const dropdown = document.getElementById('item-dropdown');
+            const newItemForm = document.getElementById('new-item-form');
 
-            // Filter master items by store section
-            const relevantItems = masterItems.filter(item => item.store_section === storeSection);
-            
-            // Separate favorites from non-favorites
-            const favorites = relevantItems.filter(item => item.is_favorite);
-            const others = relevantItems.filter(item => !item.is_favorite);
+            searchInput.addEventListener('focus', () => {
+                renderDropdown('');
+                dropdown.classList.add('active');
+            });
 
-            // Build dropdown
-            let html = '<option value="">-- Select Item --</option>';
-            
-            if (favorites.length > 0) {
-                html += '<optgroup label="⭐ Favorites">';
-                favorites.forEach(item => {
-                    html += `<option value="${item.id}">${item.name}</option>`;
-                });
-                html += '</optgroup>';
-            }
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                renderDropdown(query);
+                dropdown.classList.add('active');
+            });
 
-            if (others.length > 0) {
-                html += '<optgroup label="Other Items">';
-                others.forEach(item => {
-                    html += `<option value="${item.id}">${item.name}</option>`;
-                });
-                html += '</optgroup>';
-            }
-
-            html += '<option value="NEW">➕ Add New Item</option>';
-            
-            itemSelect.innerHTML = html;
-            itemSelect.disabled = false;
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('active');
+                }
+            });
         }
 
-        // Handle item selection
-        function handleItemSelection() {
-            const selected = document.getElementById('item-select').value;
-            const newItemForm = document.getElementById('new-item-form');
+        function renderDropdown(query) {
+            const dropdown = document.getElementById('item-dropdown');
             
-            if (selected === 'NEW') {
-                newItemForm.classList.add('active');
-                document.getElementById('new-item-name').focus();
-            } else {
-                newItemForm.classList.remove('active');
+            // Filter items
+            let filtered = masterItems;
+            if (query) {
+                filtered = masterItems.filter(item => 
+                    item.name.toLowerCase().includes(query)
+                );
             }
+
+            // Separate favorites
+            const favorites = filtered.filter(item => item.is_favorite);
+            const others = filtered.filter(item => !item.is_favorite);
+
+            let html = '';
+
+            // Render favorites
+            if (favorites.length > 0) {
+                html += '<div class="dropdown-group-label">⭐ Favorites</div>';
+                favorites.forEach(item => {
+                    html += `<div class="dropdown-item" onclick="selectItem('${item.id}')">${item.name}</div>`;
+                });
+            }
+
+            // Render others
+            if (others.length > 0) {
+                html += '<div class="dropdown-group-label">Other Items</div>';
+                others.forEach(item => {
+                    html += `<div class="dropdown-item" onclick="selectItem('${item.id}')">${item.name}</div>`;
+                });
+            }
+
+            // Add new item option
+            html += '<div class="dropdown-item add-new" onclick="selectNewItem()">➕ Add New Item</div>';
+
+            dropdown.innerHTML = html;
+        }
+
+        function selectItem(itemId) {
+            const item = masterItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            selectedMasterItem = item;
+            document.getElementById('item-search').value = item.name;
+            document.getElementById('item-dropdown').classList.remove('active');
+            document.getElementById('new-item-form').classList.remove('active');
+        }
+
+        function selectNewItem() {
+            selectedMasterItem = null;
+            document.getElementById('item-search').value = '➕ Add New Item';
+            document.getElementById('item-dropdown').classList.remove('active');
+            document.getElementById('new-item-form').classList.add('active');
+            document.getElementById('new-item-name').focus();
         }
 
         // Toggle favorite for new item
@@ -728,7 +849,13 @@
             }
 
             container.innerHTML = items.map(item => `
-                <div class="shopping-item ${item.checked ? 'checked' : ''}">
+                <div class="shopping-item ${item.checked ? 'checked' : ''}" 
+                     draggable="true" 
+                     data-item-id="${item.id}"
+                     ondragstart="handleDragStart(event)"
+                     ondragend="handleDragEnd(event)"
+                     ondragover="handleDragOver(event)"
+                     ondrop="handleDrop(event)">
                     <div class="item-left">
                         <div class="checkbox ${item.checked ? 'checked' : ''}" onclick="toggleCheck('${item.id}')"></div>
                         <span class="item-name">${item.name}</span>
@@ -737,6 +864,51 @@
                     <button class="delete-btn" onclick="deleteItem('${item.id}')">×</button>
                 </div>
             `).join('');
+        }
+
+        // Drag and drop handlers
+        let draggedItem = null;
+
+        function handleDragStart(e) {
+            draggedItem = e.target.dataset.itemId;
+            e.target.classList.add('dragging');
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.shopping-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            const target = e.target.closest('.shopping-item');
+            if (target && target.dataset.itemId !== draggedItem) {
+                target.classList.add('drag-over');
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const target = e.target.closest('.shopping-item');
+            if (!target || !draggedItem) return;
+
+            const targetId = target.dataset.itemId;
+            if (targetId === draggedItem) return;
+
+            // Find the items in the shopping list
+            const draggedIndex = shoppingList.findIndex(item => item.id === draggedItem);
+            const targetIndex = shoppingList.findIndex(item => item.id === targetId);
+
+            if (draggedIndex === -1 || targetIndex === -1) return;
+
+            // Reorder the array
+            const [removed] = shoppingList.splice(draggedIndex, 1);
+            shoppingList.splice(targetIndex, 0, removed);
+
+            // Re-render
+            renderAll();
         }
 
         // Toggle check
@@ -780,77 +952,49 @@
             }
         }
 
-        // Clear completed
-        async function clearCompleted() {
-            const completed = shoppingList.filter(i => i.checked);
-            if (completed.length === 0) {
-                alert('No completed items to clear');
-                return;
-            }
-
-            if (!confirm(`Clear ${completed.length} completed item(s)?`)) return;
-
-            try {
-                const { error } = await db
-                    .from('shopping_list')
-                    .delete()
-                    .eq('checked', true);
-
-                if (error) throw error;
-
-                shoppingList = shoppingList.filter(i => !i.checked);
-                renderAll();
-            } catch (error) {
-                console.error('Error clearing completed:', error);
-            }
-        }
-
         // Modal functions
         function openAddModal() {
             document.getElementById('add-modal').classList.add('active');
-            document.getElementById('item-store').value = '';
-            document.getElementById('item-select').disabled = true;
-            document.getElementById('item-select').innerHTML = '<option value="">-- Select section first --</option>';
+            document.getElementById('item-search').value = '';
             document.getElementById('item-quantity').value = '';
             document.getElementById('new-item-form').classList.remove('active');
             document.getElementById('new-item-name').value = '';
+            document.getElementById('new-item-store').value = '';
             document.getElementById('new-item-category').value = '';
+            selectedMasterItem = null;
             newItemFavorite = false;
             document.getElementById('new-item-favorite').textContent = '☆';
             document.getElementById('new-item-favorite').classList.remove('active');
+            document.getElementById('item-search').focus();
         }
 
         function closeAddModal() {
             document.getElementById('add-modal').classList.remove('active');
+            document.getElementById('item-dropdown').classList.remove('active');
         }
 
         // Add item
         async function addItem() {
-            const storeSection = document.getElementById('item-store').value;
-            const selectedItem = document.getElementById('item-select').value;
             const quantity = parseInt(document.getElementById('item-quantity').value) || null;
 
-            if (!storeSection) {
-                alert('Please select a store section');
-                return;
-            }
-
-            if (!selectedItem) {
-                alert('Please select an item');
-                return;
-            }
-
             try {
-                let itemId = selectedItem;
+                let itemId = null;
                 let itemName = '';
+                let storeSection = '';
 
                 // If adding new item
-                if (selectedItem === 'NEW') {
+                if (!selectedMasterItem) {
                     const newName = document.getElementById('new-item-name').value.trim();
+                    const newStore = document.getElementById('new-item-store').value;
                     const newCategory = document.getElementById('new-item-category').value;
 
                     if (!newName) {
                         alert('Please enter an item name');
+                        return;
+                    }
+
+                    if (!newStore) {
+                        alert('Please select a store section');
                         return;
                     }
 
@@ -865,7 +1009,7 @@
                         .insert([{
                             name: newName,
                             category: newCategory,
-                            store_section: storeSection,
+                            store_section: newStore,
                             is_favorite: newItemFavorite
                         }])
                         .select();
@@ -875,12 +1019,14 @@
                     if (newItem && newItem[0]) {
                         itemId = newItem[0].id;
                         itemName = newItem[0].name;
+                        storeSection = newItem[0].store_section;
                         masterItems.push(newItem[0]);
                     }
                 } else {
-                    // Get existing item name
-                    const masterItem = masterItems.find(i => i.id === itemId);
-                    itemName = masterItem ? masterItem.name : '';
+                    // Use existing item
+                    itemId = selectedMasterItem.id;
+                    itemName = selectedMasterItem.name;
+                    storeSection = selectedMasterItem.store_section;
                 }
 
                 // Add to shopping list
@@ -918,6 +1064,7 @@
 
         // Initialize
         loadData();
+        setupSearchableDropdown();
     </script>
 </body>
 </html>
