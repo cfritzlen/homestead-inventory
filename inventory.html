@@ -484,6 +484,8 @@
             width: 90%;
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             animation: slideUp 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .modal-header {
@@ -506,7 +508,7 @@
             font-size: 0.95rem;
         }
 
-        .form-group input {
+        .form-group input, .form-group select {
             width: 100%;
             padding: 12px;
             border: 2px solid var(--sage-200);
@@ -516,10 +518,111 @@
             transition: all 0.3s ease;
         }
 
-        .form-group input:focus {
+        .form-group input:focus, .form-group select:focus {
             outline: none;
             border-color: var(--sage-500);
             box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.1);
+        }
+
+        .searchable-select-wrapper {
+            position: relative;
+        }
+
+        .searchable-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--sage-200);
+            border-radius: 10px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+        }
+
+        .searchable-select:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.1);
+        }
+
+        .searchable-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid var(--sage-500);
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .searchable-dropdown.active {
+            display: block;
+        }
+
+        .dropdown-group-label {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--sage-600);
+            background: var(--sage-50);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--sage-800);
+            border-bottom: 1px solid var(--sage-100);
+        }
+
+        .dropdown-item:hover {
+            background: var(--sage-50);
+        }
+
+        .dropdown-item.add-new {
+            background: rgba(122, 144, 97, 0.1);
+            font-weight: 600;
+            color: var(--sage-700);
+        }
+
+        .dropdown-item.add-new:hover {
+            background: rgba(122, 144, 97, 0.2);
+        }
+
+        .new-item-fields {
+            display: none;
+            padding: 16px;
+            background: var(--sage-50);
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+
+        .new-item-fields.active {
+            display: block;
+        }
+
+        .favorite-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--sage-600);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .favorite-star {
+            font-size: 1.2rem;
+            transition: all 0.2s ease;
+        }
+
+        .favorite-star.active {
+            color: #ffd700;
         }
 
         .modal-actions {
@@ -872,15 +975,63 @@
     <!-- Add Item Modal -->
     <div id="add-modal" class="modal">
         <div class="modal-content">
-            <h2 class="modal-header">Add New Item</h2>
+            <h2 class="modal-header">Add Item to Inventory</h2>
+            
             <div class="form-group">
-                <label for="item-name">Item Name</label>
-                <input type="text" id="item-name" placeholder="e.g., Ground Venison">
+                <label for="item-search">Search or Select Item</label>
+                <div class="searchable-select-wrapper">
+                    <input type="text" 
+                           id="item-search" 
+                           class="searchable-select" 
+                           placeholder="Type to search items..."
+                           autocomplete="off">
+                    <div id="item-dropdown" class="searchable-dropdown"></div>
+                </div>
             </div>
+
+            <div id="new-item-form" class="new-item-fields">
+                <div class="form-group">
+                    <label for="new-item-name">New Item Name</label>
+                    <input type="text" id="new-item-name" placeholder="e.g., Ground Venison">
+                </div>
+                <div class="form-group">
+                    <label for="new-item-store">Where will you buy this?</label>
+                    <select id="new-item-store">
+                        <option value="">-- Select Store Section --</option>
+                        <option value="bjs">BJs</option>
+                        <option value="produce">ShopRite - Produce</option>
+                        <option value="bakery">ShopRite - Bakery</option>
+                        <option value="condiments">ShopRite - Condiments</option>
+                        <option value="tortillas">ShopRite - Tortillas</option>
+                        <option value="pasta-beans">ShopRite - Tomatoes/Pasta/Beans</option>
+                        <option value="canned">ShopRite - Canned Goods</option>
+                        <option value="liquids">ShopRite - Cooking Liquids</option>
+                        <option value="baking">ShopRite - Baking</option>
+                        <option value="meat">ShopRite - Store Meat</option>
+                        <option value="dairy">ShopRite - Dairy</option>
+                        <option value="frozen">ShopRite - Frozen</option>
+                        <option value="juice">ShopRite - Juice & Milk</option>
+                        <option value="snacks">ShopRite - Chips/Snacks</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <div class="favorite-toggle" onclick="toggleNewItemFavorite()">
+                        <span class="favorite-star" id="new-item-favorite">☆</span>
+                        <span>Mark as favorite</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label for="item-quantity">Quantity</label>
                 <input type="number" id="item-quantity" min="0" value="1">
             </div>
+
+            <div class="form-group">
+                <label for="item-location">Location (optional)</label>
+                <input type="text" id="item-location" placeholder="e.g., Basement, Kitchen">
+            </div>
+
             <div class="modal-actions">
                 <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
                 <button class="modal-btn modal-btn-primary" id="add-btn" onclick="addItem()">Add Item</button>
@@ -901,6 +1052,8 @@
         let currentCategory = null;
         let draggedItem = null;
         let masterItems = [];
+        let selectedMasterItem = null;
+        let newItemFavorite = false;
 
         // Initialize
         (async function() {
@@ -976,7 +1129,98 @@
             await loadMasterItems();
             await loadInventory();
             setupDropZones();
+            setupSearchableDropdown();
         })();
+
+        // Searchable dropdown functionality
+        function setupSearchableDropdown() {
+            const searchInput = document.getElementById('item-search');
+            const dropdown = document.getElementById('item-dropdown');
+            const newItemForm = document.getElementById('new-item-form');
+
+            searchInput.addEventListener('focus', () => {
+                renderDropdown('');
+                dropdown.classList.add('active');
+            });
+
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                renderDropdown(query);
+                dropdown.classList.add('active');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('active');
+                }
+            });
+        }
+
+        function renderDropdown(query) {
+            const dropdown = document.getElementById('item-dropdown');
+            
+            // Filter items
+            let filtered = masterItems;
+            if (query) {
+                filtered = masterItems.filter(item => 
+                    item.name.toLowerCase().includes(query)
+                );
+            }
+
+            // Separate favorites
+            const favorites = filtered.filter(item => item.is_favorite);
+            const others = filtered.filter(item => !item.is_favorite);
+
+            let html = '';
+
+            // Render favorites
+            if (favorites.length > 0) {
+                html += '<div class="dropdown-group-label">⭐ Favorites</div>';
+                favorites.forEach(item => {
+                    html += `<div class="dropdown-item" onclick="selectItem('${item.id}')">${item.name}</div>`;
+                });
+            }
+
+            // Render others
+            if (others.length > 0) {
+                html += '<div class="dropdown-group-label">Other Items</div>';
+                others.forEach(item => {
+                    html += `<div class="dropdown-item" onclick="selectItem('${item.id}')">${item.name}</div>`;
+                });
+            }
+
+            // Add new item option
+            html += '<div class="dropdown-item add-new" onclick="selectNewItem()">➕ Add New Item</div>';
+
+            dropdown.innerHTML = html;
+        }
+
+        function selectItem(itemId) {
+            const item = masterItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            selectedMasterItem = item;
+            document.getElementById('item-search').value = item.name;
+            document.getElementById('item-dropdown').classList.remove('active');
+            document.getElementById('new-item-form').classList.remove('active');
+        }
+
+        function selectNewItem() {
+            selectedMasterItem = null;
+            document.getElementById('item-search').value = '➕ Add New Item';
+            document.getElementById('item-dropdown').classList.remove('active');
+            document.getElementById('new-item-form').classList.add('active');
+            document.getElementById('new-item-name').focus();
+        }
+
+        // Toggle favorite for new item
+        function toggleNewItemFavorite() {
+            newItemFavorite = !newItemFavorite;
+            const star = document.getElementById('new-item-favorite');
+            star.textContent = newItemFavorite ? '★' : '☆';
+            star.classList.toggle('active');
+        }
 
         // Get category display name
         function getCategoryDisplayName(category) {
@@ -1043,6 +1287,7 @@
                 const { data, error } = await db
                     .from('master_items')
                     .select('*')
+                    .order('is_favorite', { ascending: false })
                     .order('name');
 
                 if (error) throw error;
@@ -1194,25 +1439,29 @@
         function openModal(category) {
             currentCategory = category;
             document.getElementById('add-modal').classList.add('active');
-            document.getElementById('item-name').value = '';
+            document.getElementById('item-search').value = '';
             document.getElementById('item-quantity').value = '1';
-            document.getElementById('item-name').focus();
+            document.getElementById('item-location').value = '';
+            document.getElementById('new-item-form').classList.remove('active');
+            document.getElementById('new-item-name').value = '';
+            document.getElementById('new-item-store').value = '';
+            selectedMasterItem = null;
+            newItemFavorite = false;
+            document.getElementById('new-item-favorite').textContent = '☆';
+            document.getElementById('new-item-favorite').classList.remove('active');
+            document.getElementById('item-search').focus();
         }
 
         function closeModal() {
             document.getElementById('add-modal').classList.remove('active');
+            document.getElementById('item-dropdown').classList.remove('active');
             currentCategory = null;
         }
 
         // Add item
         async function addItem() {
-            const name = document.getElementById('item-name').value.trim();
             const quantity = parseInt(document.getElementById('item-quantity').value) || 0;
-
-            if (!name) {
-                alert('Please enter an item name');
-                return;
-            }
+            const location = document.getElementById('item-location').value.trim() || null;
 
             if (!currentCategory) {
                 alert('No category selected');
@@ -1220,12 +1469,53 @@
             }
 
             try {
+                let itemName = '';
+
+                // If adding new master item
+                if (!selectedMasterItem) {
+                    const newName = document.getElementById('new-item-name').value.trim();
+                    const newStore = document.getElementById('new-item-store').value;
+
+                    if (!newName) {
+                        alert('Please enter an item name');
+                        return;
+                    }
+
+                    if (!newStore) {
+                        alert('Please select a store section');
+                        return;
+                    }
+
+                    // Create new master item
+                    const { data: newItem, error: masterError } = await db
+                        .from('master_items')
+                        .insert([{
+                            name: newName,
+                            category: currentCategory,
+                            store_section: newStore,
+                            is_favorite: newItemFavorite
+                        }])
+                        .select();
+
+                    if (masterError) throw masterError;
+
+                    if (newItem && newItem[0]) {
+                        itemName = newItem[0].name;
+                        masterItems.push(newItem[0]);
+                    }
+                } else {
+                    // Use existing item
+                    itemName = selectedMasterItem.name;
+                }
+
+                // Add to inventory
                 const { data, error } = await db
                     .from('inventory')
                     .insert([{
-                        name: name,
+                        name: itemName,
                         category: currentCategory,
                         quantity: quantity,
+                        location: location,
                         minimum_quantity: null
                     }])
                     .select();
