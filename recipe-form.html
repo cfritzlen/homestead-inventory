@@ -107,6 +107,25 @@
             margin-bottom: 10px;
         }
 
+        .import-btn {
+            background: var(--earth-warm);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Karla', sans-serif;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            margin-top: 12px;
+        }
+
+        .import-btn:hover {
+            background: #c0935e;
+            transform: translateY(-2px);
+        }
+
         .form-container {
             background: white;
             border-radius: 12px;
@@ -309,6 +328,99 @@
             background: var(--sage-50);
         }
 
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal-header {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.8rem;
+            color: var(--sage-700);
+            margin-bottom: 20px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid var(--sage-200);
+            border-radius: 10px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            margin-bottom: 16px;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--sage-500);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            color: var(--sage-600);
+            font-style: italic;
+            padding: 20px;
+        }
+
+        .api-setup-notice {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .api-setup-notice strong {
+            color: #856404;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 2rem;
@@ -340,6 +452,7 @@
     <div class="main-content">
         <header>
             <h1 id="page-title">➕ Add Recipe</h1>
+            <button class="import-btn" onclick="openImportModal()">🤖 Import Recipe from URL</button>
         </header>
 
         <div class="form-container">
@@ -388,6 +501,38 @@
         </div>
     </div>
 
+    <!-- Import Modal -->
+    <div id="import-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header">🤖 Import Recipe from URL</h2>
+            
+            <div id="api-key-section">
+                <div class="api-setup-notice">
+                    <strong>⚠️ First Time Setup:</strong> You'll need to add your Anthropic API key to use this feature. 
+                    <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color: var(--sage-700);">Get your API key here</a>
+                </div>
+                
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Anthropic API Key</label>
+                <input type="password" id="api-key-input" class="modal-input" placeholder="sk-ant-...">
+                <p style="font-size: 0.85rem; color: var(--sage-600); margin-bottom: 16px;">
+                    Your key is stored locally in your browser and never leaves your device.
+                </p>
+            </div>
+
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Recipe URL</label>
+            <input type="url" id="url-input" class="modal-input" placeholder="https://www.allrecipes.com/...">
+            
+            <div id="import-loading" class="loading" style="display: none;">
+                ⏳ Importing recipe... this may take a moment...
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="importRecipe()">Import</button>
+                <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // Initialize Supabase
@@ -411,6 +556,124 @@
             // Add default ingredient and step
             addIngredient();
             addStep();
+        }
+
+        // Load API key from localStorage
+        const savedApiKey = localStorage.getItem('anthropic_api_key');
+        if (savedApiKey) {
+            document.getElementById('api-key-input').value = savedApiKey;
+            document.getElementById('api-key-section').style.display = 'none';
+        }
+
+        // Modal functions
+        function openImportModal() {
+            document.getElementById('import-modal').classList.add('show');
+            document.getElementById('url-input').focus();
+        }
+
+        function closeImportModal() {
+            document.getElementById('import-modal').classList.remove('show');
+            document.getElementById('url-input').value = '';
+            document.getElementById('import-loading').style.display = 'none';
+        }
+
+        // Import recipe using AI
+        async function importRecipe() {
+            const apiKey = document.getElementById('api-key-input').value.trim();
+            const url = document.getElementById('url-input').value.trim();
+
+            if (!apiKey) {
+                alert('Please enter your Anthropic API key');
+                return;
+            }
+
+            if (!url) {
+                alert('Please enter a recipe URL');
+                return;
+            }
+
+            // Save API key
+            localStorage.setItem('anthropic_api_key', apiKey);
+
+            // Show loading
+            document.getElementById('import-loading').style.display = 'block';
+
+            try {
+                // Fetch the webpage content
+                const response = await fetch(url);
+                const html = await response.text();
+
+                // Extract text content (simple version)
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const pageText = doc.body.innerText.substring(0, 15000); // Limit to avoid token limits
+
+                // Call Claude API
+                const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 2000,
+                        messages: [{
+                            role: 'user',
+                            content: `Extract the recipe from this webpage text and return ONLY valid JSON (no markdown, no explanation) in this exact format:
+{
+  "name": "recipe name",
+  "protein_category": "ground-meat|venison|chicken|other",
+  "notes": "brief description",
+  "ingredients": [
+    {"name": "ingredient", "quantity": "amount"},
+    ...
+  ],
+  "steps": [
+    {"instruction": "step description"},
+    ...
+  ]
+}
+
+Webpage text:
+${pageText}`
+                        }]
+                    })
+                });
+
+                if (!aiResponse.ok) {
+                    throw new Error('API request failed: ' + await aiResponse.text());
+                }
+
+                const aiData = await aiResponse.json();
+                const recipeText = aiData.content[0].text;
+                
+                // Parse the JSON response
+                const recipe = JSON.parse(recipeText);
+
+                // Fill the form
+                document.getElementById('recipe-name').value = recipe.name || '';
+                document.getElementById('protein-category').value = recipe.protein_category || 'other';
+                document.getElementById('notes').value = recipe.notes || '';
+
+                // Set ingredients
+                ingredients = recipe.ingredients || [];
+                renderIngredients();
+
+                // Set steps
+                steps = recipe.steps || [];
+                renderSteps();
+
+                // Close modal
+                closeImportModal();
+                alert('Recipe imported successfully! Review and save when ready.');
+
+            } catch (error) {
+                console.error('Import error:', error);
+                alert('Failed to import recipe. Make sure your API key is correct and the URL contains a recipe. Error: ' + error.message);
+                document.getElementById('import-loading').style.display = 'none';
+            }
         }
 
         // Load recipe for editing
