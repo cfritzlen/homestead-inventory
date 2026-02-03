@@ -452,7 +452,7 @@
     <div class="main-content">
         <header>
             <h1 id="page-title">➕ Add Recipe</h1>
-            <button class="import-btn" onclick="openImportModal()">🤖 Import Recipe from URL</button>
+            <button class="import-btn" onclick="openImportModal()">🤖 Import Recipe with AI</button>
         </header>
 
         <div class="form-container">
@@ -504,14 +504,12 @@
     <!-- Import Modal -->
     <div id="import-modal" class="modal">
         <div class="modal-content">
-            <h2 class="modal-header">🤖 Import Recipe from URL</h2>
+            <h2 class="modal-header">🤖 Import Recipe with AI</h2>
             
+            <p style="margin-bottom: 16px; color: var(--sage-600);">
+                Copy the recipe from any website and paste it below. AI will extract and organize it for you!
+            </p>
             <div id="api-key-section">
-                <div class="api-setup-notice">
-                    <strong>⚠️ First Time Setup:</strong> You'll need to add your Anthropic API key to use this feature. 
-                    <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color: var(--sage-700);">Get your API key here</a>
-                </div>
-                
                 <label style="display: block; margin-bottom: 8px; font-weight: 600;">Anthropic API Key</label>
                 <input type="password" id="api-key-input" class="modal-input" placeholder="sk-ant-...">
                 <p style="font-size: 0.85rem; color: var(--sage-600); margin-bottom: 16px;">
@@ -519,8 +517,8 @@
                 </p>
             </div>
 
-            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Recipe URL</label>
-            <input type="url" id="url-input" class="modal-input" placeholder="https://www.allrecipes.com/...">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Paste Recipe Text Here</label>
+            <textarea id="recipe-text-input" class="modal-input" placeholder="Paste the entire recipe here (ingredients, instructions, etc.)..." style="min-height: 200px; resize: vertical;"></textarea>
             
             <div id="import-loading" class="loading" style="display: none;">
                 ⏳ Importing recipe... this may take a moment...
@@ -562,33 +560,32 @@
         const savedApiKey = localStorage.getItem('anthropic_api_key');
         if (savedApiKey) {
             document.getElementById('api-key-input').value = savedApiKey;
-            document.getElementById('api-key-section').style.display = 'none';
         }
 
         // Modal functions
         function openImportModal() {
             document.getElementById('import-modal').classList.add('show');
-            document.getElementById('url-input').focus();
+            document.getElementById('recipe-text-input').focus();
         }
 
         function closeImportModal() {
             document.getElementById('import-modal').classList.remove('show');
-            document.getElementById('url-input').value = '';
+            document.getElementById('recipe-text-input').value = '';
             document.getElementById('import-loading').style.display = 'none';
         }
 
         // Import recipe using AI
         async function importRecipe() {
             const apiKey = document.getElementById('api-key-input').value.trim();
-            const url = document.getElementById('url-input').value.trim();
+            const recipeText = document.getElementById('recipe-text-input').value.trim();
 
             if (!apiKey) {
                 alert('Please enter your Anthropic API key');
                 return;
             }
 
-            if (!url) {
-                alert('Please enter a recipe URL');
+            if (!recipeText) {
+                alert('Please paste the recipe text');
                 return;
             }
 
@@ -599,7 +596,7 @@
             document.getElementById('import-loading').style.display = 'block';
 
             try {
-                // Call Claude API with URL - Claude can fetch it
+                // Call Claude API
                 const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
                     headers: {
@@ -612,9 +609,7 @@
                         max_tokens: 2000,
                         messages: [{
                             role: 'user',
-                            content: `Please fetch the recipe at this URL: ${url}
-
-Then extract the recipe and return ONLY valid JSON (no markdown, no explanation, no preamble) in this exact format:
+                            content: `Extract the recipe from this text and return ONLY valid JSON (no markdown, no explanation, no preamble) in this exact format:
 {
   "name": "recipe name",
   "protein_category": "ground-meat|venison|chicken|other",
@@ -627,7 +622,10 @@ Then extract the recipe and return ONLY valid JSON (no markdown, no explanation,
   ]
 }
 
-For protein_category, choose the best match: ground-meat (ground beef/turkey/pork), venison (deer meat), chicken, or other.`
+For protein_category, choose the best match: ground-meat (ground beef/turkey/pork), venison (deer meat), chicken, or other.
+
+Recipe text:
+${recipeText}`
                         }]
                     })
                 });
@@ -638,13 +636,13 @@ For protein_category, choose the best match: ground-meat (ground beef/turkey/por
                 }
 
                 const aiData = await aiResponse.json();
-                let recipeText = aiData.content[0].text.trim();
+                let responseText = aiData.content[0].text.trim();
                 
                 // Remove markdown code fences if present
-                recipeText = recipeText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
                 
                 // Parse the JSON response
-                const recipe = JSON.parse(recipeText);
+                const recipe = JSON.parse(responseText);
 
                 // Fill the form
                 document.getElementById('recipe-name').value = recipe.name || '';
@@ -665,7 +663,7 @@ For protein_category, choose the best match: ground-meat (ground beef/turkey/por
 
             } catch (error) {
                 console.error('Import error:', error);
-                alert('Failed to import recipe. Make sure your API key is correct and the URL contains a recipe. Error: ' + error.message);
+                alert('Failed to import recipe. Make sure your API key is correct. Error: ' + error.message);
                 document.getElementById('import-loading').style.display = 'none';
             }
         }
