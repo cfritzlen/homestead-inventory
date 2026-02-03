@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -108,25 +107,6 @@
             margin-bottom: 10px;
         }
 
-        .import-btn {
-            background: var(--earth-warm);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 600;
-            font-family: 'Karla', sans-serif;
-            transition: all 0.3s ease;
-            font-size: 1rem;
-            margin-top: 12px;
-        }
-
-        .import-btn:hover {
-            background: #c0935e;
-            transform: translateY(-2px);
-        }
-
         .form-container {
             background: white;
             border-radius: 12px;
@@ -157,18 +137,18 @@
             margin-bottom: 8px;
             font-weight: 600;
             color: var(--sage-700);
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
 
         .form-group input,
         .form-group select,
         .form-group textarea {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             border: 2px solid var(--sage-200);
             border-radius: 10px;
             font-family: 'Karla', sans-serif;
-            font-size: 1.1rem;
+            font-size: 1rem;
             transition: all 0.3s ease;
         }
 
@@ -194,74 +174,46 @@
         .ingredient-item,
         .step-item {
             background: var(--sage-50);
-            padding: 14px;
+            padding: 12px;
             border-radius: 10px;
             margin-bottom: 12px;
             display: flex;
             gap: 12px;
             align-items: start;
-            cursor: move;
-            border: 2px solid transparent;
-            transition: all 0.2s ease;
-        }
-
-        .ingredient-item.dragging,
-        .step-item.dragging {
-            opacity: 0.5;
-            border-color: var(--sage-500);
-        }
-
-        .ingredient-item.drag-over,
-        .step-item.drag-over {
-            border-color: var(--sage-400);
-            background: var(--sage-100);
-        }
-
-        .drag-handle {
-            color: var(--sage-400);
-            font-size: 1.2rem;
-            cursor: move;
-            padding: 8px 4px;
-            user-select: none;
         }
 
         .ingredient-item input {
             flex: 1;
-            font-size: 1.1rem;
-            padding: 12px;
         }
 
         .step-item textarea {
             flex: 1;
-            min-height: 80px;
-            font-size: 1.1rem;
-            padding: 12px;
+            min-height: 60px;
         }
 
         .step-number {
             background: var(--sage-500);
             color: white;
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 600;
             flex-shrink: 0;
-            font-size: 1rem;
         }
 
         .remove-btn {
             background: var(--warning-red);
             color: white;
             border: none;
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             transition: all 0.2s ease;
             flex-shrink: 0;
         }
@@ -275,13 +227,13 @@
             background: var(--sage-500);
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 20px;
             cursor: pointer;
             font-weight: 600;
             font-family: 'Karla', sans-serif;
             transition: all 0.3s ease;
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
 
         .add-btn:hover {
@@ -298,128 +250,37 @@
         }
 
         .btn {
-            padding: 12px 28px;
+            flex: 1;
+            padding: 14px;
             border: none;
-            border-radius: 20px;
-            cursor: pointer;
+            border-radius: 10px;
             font-weight: 600;
             font-family: 'Karla', sans-serif;
+            cursor: pointer;
             transition: all 0.3s ease;
             font-size: 1rem;
+            text-decoration: none;
+            text-align: center;
         }
 
         .btn-primary {
             background: var(--sage-500);
             color: white;
-            flex: 1;
         }
 
         .btn-primary:hover {
             background: var(--sage-600);
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.3);
         }
 
         .btn-secondary {
-            background: white;
+            background: var(--sage-100);
             color: var(--sage-700);
-            border: 2px solid var(--sage-300);
         }
 
         .btn-secondary:hover {
-            background: var(--sage-50);
-        }
-
-        /* Modal styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            animation: fadeIn 0.2s ease;
-        }
-
-        .modal.show {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 16px;
-            padding: 32px;
-            max-width: 600px;
-            width: 90%;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            animation: slideUp 0.3s ease;
-        }
-
-        .modal-header {
-            font-family: 'Crimson Pro', serif;
-            font-size: 1.8rem;
-            color: var(--sage-700);
-            margin-bottom: 20px;
-        }
-
-        .modal-input {
-            width: 100%;
-            padding: 14px;
-            border: 2px solid var(--sage-200);
-            border-radius: 10px;
-            font-family: 'Karla', sans-serif;
-            font-size: 1rem;
-            margin-bottom: 16px;
-        }
-
-        .modal-input:focus {
-            outline: none;
-            border-color: var(--sage-500);
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        .loading {
-            text-align: center;
-            color: var(--sage-600);
-            font-style: italic;
-            padding: 20px;
-        }
-
-        .api-setup-notice {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            border-radius: 10px;
-            padding: 16px;
-            margin-bottom: 20px;
-            font-size: 0.95rem;
-        }
-
-        .api-setup-notice strong {
-            color: #856404;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-            from { 
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to { 
-                opacity: 1;
-                transform: translateY(0);
-            }
+            background: var(--sage-200);
         }
 
         @media (max-width: 768px) {
@@ -428,11 +289,15 @@
             }
 
             .form-container {
-                padding: 20px;
+                padding: 24px;
             }
 
             .form-row {
                 grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column;
             }
         }
     </style>
@@ -444,7 +309,7 @@
         <div class="nav-container">
             <a href="index.html" class="nav-link">🏡 Home</a>
             <a href="inventory.html" class="nav-link">🫙 Inventory</a>
-            <a href="shopping.html" class="nav-link">🛒 Shopping</a>
+            <a href="shopping.html" class="nav-link">🏪 Shopping</a>
             <a href="recipes.html" class="nav-link active">🍳 Recipes</a>
             <a href="meal-plan.html" class="nav-link">📅 This Week</a>
         </div>
@@ -452,23 +317,22 @@
 
     <div class="main-content">
         <header>
-            <h1 id="page-title">➕ Add Recipe</h1>
-            <button class="import-btn" onclick="openImportModal()">🤖 Import Recipe from URL</button>
+            <h1 id="page-title">🍳 Add New Recipe</h1>
         </header>
 
         <div class="form-container">
-            <h2 class="section-title">Basic Information</h2>
+            <div class="section-title">Basic Information</div>
 
             <div class="form-group">
-                <label for="recipe-name">Recipe Name</label>
+                <label for="recipe-name">Recipe Name *</label>
                 <input type="text" id="recipe-name" placeholder="e.g., Shepherd's Pie" required>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="protein-category">Protein Category</label>
+                    <label for="protein-category">Protein Category *</label>
                     <select id="protein-category" required>
-                        <option value="">Select...</option>
+                        <option value="">-- Select Category --</option>
                         <option value="ground-meat">Ground Meat</option>
                         <option value="venison">Venison</option>
                         <option value="chicken">Chicken</option>
@@ -477,59 +341,27 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="min-days">Min Days Between</label>
-                    <input type="number" id="min-days" value="21" min="1">
+                    <label for="min-days">Min Days Between Cooking</label>
+                    <input type="number" id="min-days" value="21" min="0">
                 </div>
             </div>
 
             <div class="form-group">
-                <label for="notes">Notes (optional)</label>
-                <textarea id="notes" placeholder="Family favorite, freezer-friendly, quick weeknight meal..."></textarea>
+                <label for="notes">Notes</label>
+                <textarea id="notes" placeholder="Any special notes about this recipe..."></textarea>
             </div>
 
-            <h2 class="section-title">Ingredients</h2>
+            <div class="section-title">Ingredients</div>
             <div id="ingredients-container"></div>
             <button class="add-btn" onclick="addIngredient()">+ Add Ingredient</button>
 
-            <h2 class="section-title">Instructions</h2>
+            <div class="section-title">Steps</div>
             <div id="steps-container"></div>
             <button class="add-btn" onclick="addStep()">+ Add Step</button>
 
             <div class="form-actions">
-                <button class="btn btn-primary" onclick="saveRecipe()">💾 Save Recipe</button>
-                <button class="btn btn-secondary" onclick="window.location.href='recipes.html'">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Import Modal -->
-    <div id="import-modal" class="modal">
-        <div class="modal-content">
-            <h2 class="modal-header">🤖 Import Recipe from URL</h2>
-            
-            <div id="api-key-section">
-                <div class="api-setup-notice">
-                    <strong>⚠️ First Time Setup:</strong> You'll need to add your Anthropic API key to use this feature. 
-                    <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color: var(--sage-700);">Get your API key here</a>
-                </div>
-                
-                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Anthropic API Key</label>
-                <input type="password" id="api-key-input" class="modal-input" placeholder="sk-ant-...">
-                <p style="font-size: 0.85rem; color: var(--sage-600); margin-bottom: 16px;">
-                    Your key is stored locally in your browser and never leaves your device.
-                </p>
-            </div>
-
-            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Recipe URL</label>
-            <input type="url" id="url-input" class="modal-input" placeholder="https://www.allrecipes.com/...">
-            
-            <div id="import-loading" class="loading" style="display: none;">
-                ⏳ Importing recipe... this may take a moment...
-            </div>
-
-            <div class="modal-actions">
-                <button class="btn btn-primary" onclick="importRecipe()">Import</button>
-                <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+                <a href="recipes.html" class="btn btn-secondary">Cancel</a>
+                <button class="btn btn-primary" onclick="saveRecipe()">Save Recipe</button>
             </div>
         </div>
     </div>
@@ -544,8 +376,6 @@
         let ingredients = [];
         let steps = [];
         let editingRecipeId = null;
-        let draggedElement = null;
-        let draggedIndex = null;
 
         // Check if editing
         const urlParams = new URLSearchParams(window.location.search);
@@ -559,16 +389,10 @@
             addStep();
         }
 
-        // Load API key from localStorage
-        const savedApiKey = localStorage.getItem('anthropic_api_key');
-        if (savedApiKey) {
-            document.getElementById('api-key-input').value = savedApiKey;
-            document.getElementById('api-key-section').style.display = 'none';
-        }
-
         // Load recipe for editing
         async function loadRecipe(id) {
             try {
+                // Load recipe
                 const { data: recipe, error: recipeError } = await db
                     .from('recipes')
                     .select('*')
@@ -577,11 +401,13 @@
 
                 if (recipeError) throw recipeError;
 
+                // Fill form
                 document.getElementById('recipe-name').value = recipe.name;
                 document.getElementById('protein-category').value = recipe.protein_category;
                 document.getElementById('min-days').value = recipe.min_days_between || 21;
                 document.getElementById('notes').value = recipe.notes || '';
 
+                // Load ingredients
                 const { data: ingredientsData, error: ingredientsError } = await db
                     .from('recipe_ingredients')
                     .select('*')
@@ -589,9 +415,11 @@
                     .order('created_at');
 
                 if (ingredientsError) throw ingredientsError;
+
                 ingredients = ingredientsData || [];
                 renderIngredients();
 
+                // Load steps
                 const { data: stepsData, error: stepsError } = await db
                     .from('recipe_steps')
                     .select('*')
@@ -599,6 +427,7 @@
                     .order('step_number');
 
                 if (stepsError) throw stepsError;
+
                 steps = stepsData || [];
                 renderSteps();
 
@@ -620,28 +449,22 @@
             renderIngredients();
         }
 
-        // Render ingredients with drag & drop
+        // Render ingredients
         function renderIngredients() {
             const container = document.getElementById('ingredients-container');
             container.innerHTML = ingredients.map((ing, index) => `
-                <div class="ingredient-item" draggable="true" data-index="${index}">
-                    <span class="drag-handle">⋮⋮</span>
+                <div class="ingredient-item">
                     <input type="text" 
-                           placeholder="Ingredient name" 
+                           placeholder="Ingredient name (e.g., Ground Venison)" 
                            value="${ing.ingredient_name || ing.name || ''}"
-                           onchange="ingredients[${index}].name = this.value"
-                           tabindex="${index * 2 + 1}">
+                           onchange="ingredients[${index}].name = this.value">
                     <input type="text" 
-                           placeholder="Quantity" 
+                           placeholder="Quantity (e.g., 2 lbs)" 
                            value="${ing.quantity || ''}"
-                           onchange="ingredients[${index}].quantity = this.value"
-                           tabindex="${index * 2 + 2}">
-                    <button class="remove-btn" onclick="removeIngredient(${index})" tabindex="-1">×</button>
+                           onchange="ingredients[${index}].quantity = this.value">
+                    <button class="remove-btn" onclick="removeIngredient(${index})">×</button>
                 </div>
             `).join('');
-
-            // Setup drag & drop
-            setupDragAndDrop('.ingredient-item', ingredients);
         }
 
         // Add step
@@ -656,197 +479,17 @@
             renderSteps();
         }
 
-        // Render steps with drag & drop
+        // Render steps
         function renderSteps() {
             const container = document.getElementById('steps-container');
             container.innerHTML = steps.map((step, index) => `
-                <div class="step-item" draggable="true" data-index="${index}">
-                    <span class="drag-handle">⋮⋮</span>
+                <div class="step-item">
                     <div class="step-number">${index + 1}</div>
                     <textarea placeholder="Describe this step..." 
-                              onchange="steps[${index}].instruction = this.value"
-                              tabindex="${1000 + index}">${step.instruction || ''}</textarea>
-                    <button class="remove-btn" onclick="removeStep(${index})" tabindex="-1">×</button>
+                              onchange="steps[${index}].instruction = this.value">${step.instruction || ''}</textarea>
+                    <button class="remove-btn" onclick="removeStep(${index})">×</button>
                 </div>
             `).join('');
-
-            // Setup drag & drop
-            setupDragAndDrop('.step-item', steps);
-        }
-
-        // Setup drag and drop
-        function setupDragAndDrop(selector, array) {
-            const items = document.querySelectorAll(selector);
-            
-            items.forEach(item => {
-                item.addEventListener('dragstart', (e) => {
-                    draggedElement = item;
-                    draggedIndex = parseInt(item.dataset.index);
-                    item.classList.add('dragging');
-                    e.dataTransfer.effectAllowed = 'move';
-                });
-
-                item.addEventListener('dragend', (e) => {
-                    item.classList.remove('dragging');
-                    document.querySelectorAll(selector).forEach(el => el.classList.remove('drag-over'));
-                });
-
-                item.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    const afterElement = getDragAfterElement(item.parentElement, e.clientY);
-                    item.classList.add('drag-over');
-                });
-
-                item.addEventListener('dragleave', (e) => {
-                    item.classList.remove('drag-over');
-                });
-
-                item.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    const dropIndex = parseInt(item.dataset.index);
-                    
-                    if (draggedIndex !== dropIndex) {
-                        // Reorder array
-                        const [movedItem] = array.splice(draggedIndex, 1);
-                        array.splice(dropIndex, 0, movedItem);
-                        
-                        // Re-render
-                        if (selector === '.ingredient-item') {
-                            renderIngredients();
-                        } else {
-                            renderSteps();
-                        }
-                    }
-                    
-                    item.classList.remove('drag-over');
-                });
-            });
-        }
-
-        function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.ingredient-item:not(.dragging), .step-item:not(.dragging)')];
-            
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
-                
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
-
-        // Modal functions
-        function openImportModal() {
-            document.getElementById('import-modal').classList.add('show');
-            document.getElementById('url-input').focus();
-        }
-
-        function closeImportModal() {
-            document.getElementById('import-modal').classList.remove('show');
-            document.getElementById('url-input').value = '';
-            document.getElementById('import-loading').style.display = 'none';
-        }
-
-        // Import recipe using AI
-        async function importRecipe() {
-            const apiKey = document.getElementById('api-key-input').value.trim();
-            const url = document.getElementById('url-input').value.trim();
-
-            if (!apiKey) {
-                alert('Please enter your Anthropic API key');
-                return;
-            }
-
-            if (!url) {
-                alert('Please enter a recipe URL');
-                return;
-            }
-
-            // Save API key
-            localStorage.setItem('anthropic_api_key', apiKey);
-
-            // Show loading
-            document.getElementById('import-loading').style.display = 'block';
-
-            try {
-                // Fetch the webpage content
-                const response = await fetch(url);
-                const html = await response.text();
-
-                // Extract text content (simple version)
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const pageText = doc.body.innerText.substring(0, 15000); // Limit to avoid token limits
-
-                // Call Claude API
-                const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': apiKey,
-                        'anthropic-version': '2023-06-01'
-                    },
-                    body: JSON.stringify({
-                        model: 'claude-sonnet-4-20250514',
-                        max_tokens: 2000,
-                        messages: [{
-                            role: 'user',
-                            content: `Extract the recipe from this webpage text and return ONLY valid JSON (no markdown, no explanation) in this exact format:
-{
-  "name": "recipe name",
-  "protein_category": "ground-meat|venison|chicken|other",
-  "notes": "brief description",
-  "ingredients": [
-    {"name": "ingredient", "quantity": "amount"},
-    ...
-  ],
-  "steps": [
-    {"instruction": "step description"},
-    ...
-  ]
-}
-
-Webpage text:
-${pageText}`
-                        }]
-                    })
-                });
-
-                if (!aiResponse.ok) {
-                    throw new Error('API request failed: ' + await aiResponse.text());
-                }
-
-                const aiData = await aiResponse.json();
-                const recipeText = aiData.content[0].text;
-                
-                // Parse the JSON response
-                const recipe = JSON.parse(recipeText);
-
-                // Fill the form
-                document.getElementById('recipe-name').value = recipe.name || '';
-                document.getElementById('protein-category').value = recipe.protein_category || 'other';
-                document.getElementById('notes').value = recipe.notes || '';
-
-                // Set ingredients
-                ingredients = recipe.ingredients || [];
-                renderIngredients();
-
-                // Set steps
-                steps = recipe.steps || [];
-                renderSteps();
-
-                // Close modal
-                closeImportModal();
-                alert('Recipe imported successfully! Review and save when ready.');
-
-            } catch (error) {
-                console.error('Import error:', error);
-                alert('Failed to import recipe. Make sure your API key is correct and the URL contains a recipe. Error: ' + error.message);
-                document.getElementById('import-loading').style.display = 'none';
-            }
         }
 
         // Save recipe
@@ -856,6 +499,7 @@ ${pageText}`
             const minDays = parseInt(document.getElementById('min-days').value) || 21;
             const notes = document.getElementById('notes').value.trim();
 
+            // Validation
             if (!name) {
                 alert('Please enter a recipe name');
                 return;
@@ -866,7 +510,7 @@ ${pageText}`
                 return;
             }
 
-            // Update arrays from current inputs
+            // Update ingredients array from inputs
             document.querySelectorAll('.ingredient-item').forEach((item, index) => {
                 const inputs = item.querySelectorAll('input');
                 ingredients[index] = {
@@ -875,6 +519,7 @@ ${pageText}`
                 };
             });
 
+            // Update steps array from textareas
             document.querySelectorAll('.step-item').forEach((item, index) => {
                 const textarea = item.querySelector('textarea');
                 steps[index] = {
@@ -882,6 +527,7 @@ ${pageText}`
                 };
             });
 
+            // Filter out empty ingredients and steps
             const validIngredients = ingredients.filter(i => i.name);
             const validSteps = steps.filter(s => s.instruction);
 
@@ -899,6 +545,7 @@ ${pageText}`
                 let recipeId = editingRecipeId;
 
                 if (editingRecipeId) {
+                    // Update existing recipe
                     const { error: updateError } = await db
                         .from('recipes')
                         .update({
@@ -912,10 +559,12 @@ ${pageText}`
 
                     if (updateError) throw updateError;
 
+                    // Delete old ingredients and steps
                     await db.from('recipe_ingredients').delete().eq('recipe_id', editingRecipeId);
                     await db.from('recipe_steps').delete().eq('recipe_id', editingRecipeId);
 
                 } else {
+                    // Create new recipe
                     const { data: newRecipe, error: createError } = await db
                         .from('recipes')
                         .insert([{
@@ -931,6 +580,7 @@ ${pageText}`
                     recipeId = newRecipe.id;
                 }
 
+                // Insert ingredients
                 const ingredientsToInsert = validIngredients.map(ing => ({
                     recipe_id: recipeId,
                     ingredient_name: ing.name,
@@ -944,6 +594,7 @@ ${pageText}`
 
                 if (ingredientsError) throw ingredientsError;
 
+                // Insert steps
                 const stepsToInsert = validSteps.map((step, index) => ({
                     recipe_id: recipeId,
                     step_number: index + 1,
@@ -956,6 +607,7 @@ ${pageText}`
 
                 if (stepsError) throw stepsError;
 
+                // Success!
                 alert(editingRecipeId ? 'Recipe updated!' : 'Recipe created!');
                 window.location.href = 'recipes.html';
 
