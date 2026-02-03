@@ -599,16 +599,7 @@
             document.getElementById('import-loading').style.display = 'block';
 
             try {
-                // Fetch the webpage content
-                const response = await fetch(url);
-                const html = await response.text();
-
-                // Extract text content (simple version)
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const pageText = doc.body.innerText.substring(0, 15000); // Limit to avoid token limits
-
-                // Call Claude API
+                // Call Claude API with URL - Claude can fetch it
                 const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
                     headers: {
@@ -621,33 +612,36 @@
                         max_tokens: 2000,
                         messages: [{
                             role: 'user',
-                            content: `Extract the recipe from this webpage text and return ONLY valid JSON (no markdown, no explanation) in this exact format:
+                            content: `Please fetch the recipe at this URL: ${url}
+
+Then extract the recipe and return ONLY valid JSON (no markdown, no explanation, no preamble) in this exact format:
 {
   "name": "recipe name",
   "protein_category": "ground-meat|venison|chicken|other",
   "notes": "brief description",
   "ingredients": [
-    {"name": "ingredient", "quantity": "amount"},
-    ...
+    {"name": "ingredient", "quantity": "amount"}
   ],
   "steps": [
-    {"instruction": "step description"},
-    ...
+    {"instruction": "step description"}
   ]
 }
 
-Webpage text:
-${pageText}`
+For protein_category, choose the best match: ground-meat (ground beef/turkey/pork), venison (deer meat), chicken, or other.`
                         }]
                     })
                 });
 
                 if (!aiResponse.ok) {
-                    throw new Error('API request failed: ' + await aiResponse.text());
+                    const errorText = await aiResponse.text();
+                    throw new Error('API request failed: ' + errorText);
                 }
 
                 const aiData = await aiResponse.json();
-                const recipeText = aiData.content[0].text;
+                let recipeText = aiData.content[0].text.trim();
+                
+                // Remove markdown code fences if present
+                recipeText = recipeText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
                 
                 // Parse the JSON response
                 const recipe = JSON.parse(recipeText);
