@@ -232,6 +232,20 @@
             gap: 12px;
         }
 
+        .ingredient.section-header {
+            background: var(--sage-300);
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--sage-800);
+            padding: 14px 16px;
+            margin-top: 16px;
+            margin-bottom: 12px;
+        }
+
+        .ingredient.section-header:first-child {
+            margin-top: 0;
+        }
+
         .ingredient-checkbox {
             width: 20px;
             height: 20px;
@@ -273,6 +287,21 @@
             padding: 16px;
             background: var(--sage-50);
             border-radius: 10px;
+        }
+
+        .step.section-header {
+            background: var(--sage-300);
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--sage-800);
+            padding: 14px 16px;
+            margin-top: 16px;
+            margin-bottom: 12px;
+            justify-content: center;
+        }
+
+        .step.section-header:first-child {
+            margin-top: 0;
         }
 
         .step-number {
@@ -550,22 +579,35 @@
 
             // Ingredients
             const ingredientsList = document.getElementById('ingredients-list');
-            ingredientsList.innerHTML = ingredients.map((ing, index) => `
-                <div class="ingredient">
-                    <div class="ingredient-checkbox" onclick="toggleIngredient(${index})"></div>
-                    <span class="ingredient-text">${ing.ingredient_name}</span>
-                    ${ing.quantity ? `<span class="ingredient-quantity">${ing.quantity}</span>` : ''}
-                </div>
-            `).join('');
+            ingredientsList.innerHTML = ingredients.map((ing, index) => {
+                if (ing.is_section) {
+                    return `<div class="ingredient section-header">${ing.ingredient_name}</div>`;
+                } else {
+                    return `
+                        <div class="ingredient">
+                            <div class="ingredient-checkbox" onclick="toggleIngredient(${index})"></div>
+                            <span class="ingredient-text">${ing.ingredient_name}</span>
+                            ${ing.quantity ? `<span class="ingredient-quantity">${ing.quantity}</span>` : ''}
+                        </div>
+                    `;
+                }
+            }).join('');
 
             // Steps
             const stepsList = document.getElementById('steps-list');
-            stepsList.innerHTML = steps.map(step => `
-                <div class="step">
-                    <div class="step-number">${step.step_number}</div>
-                    <div class="step-text">${step.instruction}</div>
-                </div>
-            `).join('');
+            let stepNumber = 1;
+            stepsList.innerHTML = steps.map(step => {
+                if (step.is_section) {
+                    return `<div class="step section-header">${step.instruction}</div>`;
+                } else {
+                    return `
+                        <div class="step">
+                            <div class="step-number">${stepNumber++}</div>
+                            <div class="step-text">${step.instruction}</div>
+                        </div>
+                    `;
+                }
+            }).join('');
         }
 
         // Render rating
