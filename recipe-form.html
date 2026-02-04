@@ -675,18 +675,40 @@
             // Update ingredients array from inputs
             document.querySelectorAll('.ingredient-item').forEach((item, index) => {
                 const inputs = item.querySelectorAll('input');
-                ingredients[index] = {
-                    name: inputs[0].value.trim(),
-                    quantity: inputs[1].value.trim()
-                };
+                const isSection = item.classList.contains('section-header');
+                
+                if (isSection) {
+                    ingredients[index] = {
+                        name: inputs[0].value.trim(),
+                        quantity: '',
+                        isSection: true
+                    };
+                } else {
+                    ingredients[index] = {
+                        name: inputs[0].value.trim(),
+                        quantity: inputs[1].value.trim(),
+                        isSection: false
+                    };
+                }
             });
 
             // Update steps array from textareas
             document.querySelectorAll('.step-item').forEach((item, index) => {
-                const textarea = item.querySelector('textarea');
-                steps[index] = {
-                    instruction: textarea.value.trim()
-                };
+                const isSection = item.classList.contains('section-header');
+                
+                if (isSection) {
+                    const input = item.querySelector('input');
+                    steps[index] = {
+                        instruction: input.value.trim(),
+                        isSection: true
+                    };
+                } else {
+                    const textarea = item.querySelector('textarea');
+                    steps[index] = {
+                        instruction: textarea.value.trim(),
+                        isSection: false
+                    };
+                }
             });
 
             // Filter out empty ingredients and steps (but keep sections for structure)
