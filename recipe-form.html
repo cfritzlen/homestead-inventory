@@ -477,7 +477,7 @@
                     .from('recipe_steps')
                     .select('*')
                     .eq('recipe_id', id)
-                    .order('step_number');
+                    .order('created_at');
 
                 if (stepsError) throw stepsError;
 
