@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>This Week's Meals - Homestead Hub</title>
+    <title>Meal Plan - Homestead Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -87,7 +87,7 @@
 
         .main-content {
             padding: 20px 15px;
-            max-width: 1000px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
@@ -104,12 +104,6 @@
             color: var(--sage-700);
             letter-spacing: 1px;
             margin-bottom: 10px;
-        }
-
-        .week-info {
-            font-size: 1.1rem;
-            color: var(--sage-600);
-            margin-bottom: 20px;
         }
 
         .header-actions {
@@ -144,17 +138,27 @@
             border-color: var(--sage-500);
         }
 
-        .day-section {
+        .days-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .day-card {
             background: white;
             border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
+            padding: 20px;
             box-shadow: 0 3px 15px rgba(90, 106, 71, 0.12);
             border: 1px solid var(--sage-100);
         }
 
-        .day-section.today {
+        .day-card.today {
             border: 3px solid var(--sage-500);
+        }
+
+        .day-card.past {
+            opacity: 0.7;
         }
 
         .day-header {
@@ -168,7 +172,7 @@
 
         .day-title {
             font-family: 'Crimson Pro', serif;
-            font-size: 1.6rem;
+            font-size: 1.4rem;
             color: var(--sage-700);
             font-weight: 600;
         }
@@ -182,67 +186,194 @@
             color: var(--sage-600);
         }
 
+        .meals-drop-zone {
+            min-height: 100px;
+            border: 2px dashed var(--sage-200);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .meals-drop-zone.drag-over {
+            background: var(--sage-50);
+            border-color: var(--sage-500);
+        }
+
         .meal-card {
             background: var(--sage-50);
-            padding: 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: move;
             border: 2px solid transparent;
+            transition: all 0.2s ease;
         }
 
         .meal-card:hover {
             background: var(--sage-100);
-            transform: translateX(4px);
             border-color: var(--sage-400);
         }
 
-        .meal-name {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--sage-800);
+        .meal-card.dragging {
+            opacity: 0.5;
+        }
+
+        .meal-card.side {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+
+        .meal-card.special {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+        }
+
+        .meal-card.cooked {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+
+        .meal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 8px;
         }
 
-        .meal-rating {
-            display: flex;
-            gap: 4px;
-        }
-
-        .star {
-            color: #ffd700;
+        .meal-name {
+            font-weight: 600;
             font-size: 1rem;
+            color: var(--sage-800);
+            flex: 1;
         }
 
-        .star.empty {
-            color: var(--sage-200);
+        .meal-badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: var(--sage-500);
+            color: white;
+            margin-left: 8px;
         }
 
-        .empty-day {
-            text-align: center;
-            color: var(--sage-500);
-            padding: 20px;
-            font-style: italic;
+        .meal-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .meal-action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .meal-action-btn:hover {
+            background: var(--sage-200);
+        }
+
+        .add-meal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .add-meal-btn {
+            background: var(--sage-500);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .add-meal-btn:hover {
+            background: var(--sage-600);
+        }
+
+        .add-meal-btn.special {
+            background: #ff9800;
+        }
+
+        .add-meal-btn.special:hover {
+            background: #f57c00;
+        }
+
+        /* Recipe selector modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.8rem;
+            color: var(--sage-700);
+            margin-bottom: 20px;
+        }
+
+        .recipe-list-item {
+            padding: 12px;
+            background: var(--sage-50);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .recipe-list-item:hover {
+            background: var(--sage-100);
+            transform: translateX(4px);
+        }
+
+        .recipe-list-item.side-recipe {
+            border-left: 4px solid #4caf50;
         }
 
         .empty-state {
             text-align: center;
             color: var(--sage-500);
-            padding: 60px 20px;
+            padding: 30px;
             font-style: italic;
-            font-size: 1.1rem;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 3px 15px rgba(90, 106, 71, 0.12);
         }
 
         @media (max-width: 768px) {
-            h1 {
-                font-size: 2rem;
+            .days-container {
+                grid-template-columns: 1fr;
             }
 
-            .day-section {
-                padding: 16px;
+            h1 {
+                font-size: 2rem;
             }
         }
     </style>
@@ -254,22 +385,29 @@
         <div class="nav-container">
             <a href="index.html" class="nav-link">🏡 Home</a>
             <a href="inventory.html" class="nav-link">🫙 Inventory</a>
-            <a href="shopping.html" class="nav-link">🏪 Shopping</a>
+            <a href="shopping.html" class="nav-link">🛒 Shopping</a>
             <a href="recipes.html" class="nav-link">🍳 Recipes</a>
-            <a href="meal-plan.html" class="nav-link active">📅 This Week</a>
+            <a href="meal-plan.html" class="nav-link active">📅 Meal Plan</a>
         </div>
     </nav>
 
     <div class="main-content">
         <header>
-            <h1>📅 This Week's Meals</h1>
-            <div class="week-info" id="week-info"></div>
+            <h1>📅 Meal Plan</h1>
             <div class="header-actions">
                 <a href="recipes.html" class="btn btn-secondary">🍳 Browse Recipes</a>
             </div>
         </header>
 
-        <div id="meals-container"></div>
+        <div id="days-container" class="days-container"></div>
+    </div>
+
+    <!-- Recipe selector modal -->
+    <div id="recipe-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-header" id="modal-title">Add Recipe</h2>
+            <div id="recipe-list"></div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -280,131 +418,315 @@
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let recipes = [];
+        let mealPlan = [];
+        let currentDate = null;
+        let currentIsSide = false;
 
-        // Get week range
-        function getWeekRange() {
+        // Get date range (3 days past + today + 6 days future = 10 days)
+        function getDateRange() {
             const today = new Date();
-            const dayOfWeek = today.getDay(); // 0 = Sunday
+            today.setHours(0, 0, 0, 0);
             
-            // Get Monday of this week
-            const monday = new Date(today);
-            const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-            monday.setDate(today.getDate() + diff);
-            monday.setHours(0, 0, 0, 0);
-
-            // Get Sunday of this week
-            const sunday = new Date(monday);
-            sunday.setDate(monday.getDate() + 6);
-            sunday.setHours(23, 59, 59, 999);
-
-            return { monday, sunday };
+            const dates = [];
+            for (let i = -3; i <= 6; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                dates.push(date);
+            }
+            return dates;
         }
 
-        // Load planned meals
-        async function loadPlannedMeals() {
-            const { monday, sunday } = getWeekRange();
-            
-            // Set week info
-            const weekInfo = document.getElementById('week-info');
-            weekInfo.textContent = `${formatDate(monday, false)} - ${formatDate(sunday, false)}`;
-
+        // Load all recipes
+        async function loadRecipes() {
             try {
                 const { data, error } = await db
                     .from('recipes')
                     .select('*')
-                    .not('planned_cook_date', 'is', null)
-                    .gte('planned_cook_date', monday.toISOString().split('T')[0])
-                    .lte('planned_cook_date', sunday.toISOString().split('T')[0])
-                    .order('planned_cook_date');
+                    .order('name');
 
                 if (error) throw error;
                 recipes = data || [];
-                renderMealPlan();
             } catch (error) {
-                console.error('Error loading planned meals:', error);
+                console.error('Error loading recipes:', error);
             }
         }
 
-        // Render meal plan
-        function renderMealPlan() {
-            const container = document.getElementById('meals-container');
-            
-            if (recipes.length === 0) {
-                container.innerHTML = '<div class="empty-state">No meals planned for this week yet.<br>Browse recipes and plan some meals!</div>';
-                return;
-            }
+        // Load meal plan
+        async function loadMealPlan() {
+            const dates = getDateRange();
+            const startDate = dates[0].toISOString().split('T')[0];
+            const endDate = dates[dates.length - 1].toISOString().split('T')[0];
 
-            const { monday } = getWeekRange();
+            try {
+                const { data, error } = await db
+                    .from('meal_plan')
+                    .select('*')
+                    .gte('date', startDate)
+                    .lte('date', endDate)
+                    .order('display_order');
+
+                if (error) throw error;
+                mealPlan = data || [];
+                renderDays();
+            } catch (error) {
+                console.error('Error loading meal plan:', error);
+            }
+        }
+
+        // Render days
+        function renderDays() {
+            const dates = getDateRange();
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-
-            let html = '';
-
-            // Group recipes by day
-            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
             
-            for (let i = 0; i < 7; i++) {
-                const date = new Date(monday);
-                date.setDate(monday.getDate() + i);
+            const container = document.getElementById('days-container');
+            container.innerHTML = dates.map(date => {
                 const dateStr = date.toISOString().split('T')[0];
                 const isToday = date.getTime() === today.getTime();
-
-                const dayRecipes = recipes.filter(r => r.planned_cook_date === dateStr);
-
-                html += `
-                    <div class="day-section ${isToday ? 'today' : ''}">
+                const isPast = date < today;
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+                const dateDisplay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                
+                const dayMeals = mealPlan.filter(m => m.date === dateStr);
+                
+                return `
+                    <div class="day-card ${isToday ? 'today' : ''} ${isPast ? 'past' : ''}" data-date="${dateStr}">
                         <div class="day-header">
-                            <h2 class="day-title ${isToday ? 'today' : ''}">${days[i]}${isToday ? ' (Today)' : ''}</h2>
-                            <span class="day-date">${formatDate(date, true)}</span>
+                            <h2 class="day-title ${isToday ? 'today' : ''}">${dayName}${isToday ? ' (Today)' : ''}</h2>
+                            <span class="day-date">${dateDisplay}</span>
                         </div>
-                        ${dayRecipes.length > 0 
-                            ? dayRecipes.map(r => renderMealCard(r)).join('') 
-                            : '<div class="empty-day">No meals planned</div>'}
+                        <div class="meals-drop-zone" data-date="${dateStr}" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                            ${renderMeals(dayMeals, dateStr)}
+                        </div>
+                        <div class="add-meal-buttons">
+                            <button class="add-meal-btn" onclick="openRecipeSelector('${dateStr}', false)">+ Add Main</button>
+                            <button class="add-meal-btn" onclick="openRecipeSelector('${dateStr}', true)">+ Add Side</button>
+                            <button class="add-meal-btn special" onclick="addSpecialDay('${dateStr}', 'pizza-day')">🍕 Pizza Day</button>
+                            <button class="add-meal-btn special" onclick="addSpecialDay('${dateStr}', 'leftover-day')">♻️ Leftover Day</button>
+                        </div>
                     </div>
                 `;
+            }).join('');
+        }
+
+        // Render meals for a day
+        function renderMeals(dayMeals, dateStr) {
+            if (dayMeals.length === 0) {
+                return '<div class="empty-state">No meals planned</div>';
             }
 
-            container.innerHTML = html;
+            return dayMeals.map(meal => {
+                const recipe = meal.recipe_id ? recipes.find(r => r.id === meal.recipe_id) : null;
+                const mealName = meal.entry_type === 'pizza-day' ? '🍕 Pizza Day' :
+                                meal.entry_type === 'leftover-day' ? '♻️ Leftover Day' :
+                                recipe ? recipe.name : 'Unknown';
+                
+                const classes = [
+                    'meal-card',
+                    meal.is_side ? 'side' : '',
+                    meal.entry_type !== 'recipe' ? 'special' : '',
+                    meal.is_cooked ? 'cooked' : ''
+                ].filter(Boolean).join(' ');
+
+                return `
+                    <div class="${classes}" 
+                         draggable="true" 
+                         data-meal-id="${meal.id}"
+                         ondragstart="handleDragStart(event)">
+                        <div class="meal-header">
+                            <span class="meal-name">${mealName}</span>
+                            ${meal.is_side ? '<span class="meal-badge">Side</span>' : ''}
+                        </div>
+                        <div class="meal-actions">
+                            ${!meal.is_cooked && meal.entry_type === 'recipe' ? 
+                                `<button class="meal-action-btn" onclick="markCooked('${meal.id}', '${dateStr}')" title="Mark as cooked">✓</button>` : ''}
+                            ${meal.entry_type === 'recipe' ? 
+                                `<button class="meal-action-btn" onclick="viewRecipe('${meal.recipe_id}')" title="View recipe">👁️</button>` : ''}
+                            <button class="meal-action-btn" onclick="removeMeal('${meal.id}')" title="Remove">×</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
-        // Render meal card
-        function renderMealCard(recipe) {
-            const stars = renderStars(recipe.rating);
-            
-            return `
-                <div class="meal-card" onclick="viewRecipe('${recipe.id}')">
-                    <div class="meal-name">${recipe.name}</div>
-                    <div class="meal-rating">${stars}</div>
-                </div>
-            `;
+        // Drag and drop handlers
+        let draggedMealId = null;
+
+        function handleDragStart(e) {
+            draggedMealId = e.target.dataset.mealId;
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
         }
 
-        // Render star rating
-        function renderStars(rating) {
-            if (!rating) return '<span style="color: var(--sage-500); font-size: 0.9rem;">Not rated yet</span>';
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        async function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
             
-            let stars = '';
-            for (let i = 1; i <= 5; i++) {
-                stars += `<span class="star ${i <= rating ? '' : 'empty'}">★</span>`;
+            const newDate = e.currentTarget.dataset.date;
+            
+            if (!draggedMealId) return;
+
+            try {
+                const { error } = await db
+                    .from('meal_plan')
+                    .update({ date: newDate })
+                    .eq('id', draggedMealId);
+
+                if (error) throw error;
+                
+                await loadMealPlan();
+            } catch (error) {
+                console.error('Error moving meal:', error);
+                alert('Failed to move meal');
             }
-            return stars;
+
+            draggedMealId = null;
         }
 
-        // Format date
-        function formatDate(date, withDay) {
-            const options = withDay 
-                ? { month: 'short', day: 'numeric' }
-                : { month: 'long', day: 'numeric' };
-            return date.toLocaleDateString('en-US', options);
+        // Open recipe selector
+        function openRecipeSelector(date, isSide) {
+            currentDate = date;
+            currentIsSide = isSide;
+            
+            const modal = document.getElementById('recipe-modal');
+            const title = document.getElementById('modal-title');
+            const list = document.getElementById('recipe-list');
+            
+            title.textContent = isSide ? 'Add Side Dish' : 'Add Main Dish';
+            
+            // Filter recipes
+            const filteredRecipes = isSide ? 
+                recipes.filter(r => r.protein_category === 'sides') :
+                recipes.filter(r => r.protein_category !== 'sides');
+            
+            if (filteredRecipes.length === 0) {
+                list.innerHTML = '<div class="empty-state">No recipes available. Add some recipes first!</div>';
+            } else {
+                list.innerHTML = filteredRecipes.map(recipe => `
+                    <div class="recipe-list-item ${recipe.protein_category === 'sides' ? 'side-recipe' : ''}" 
+                         onclick="addRecipeToDay('${recipe.id}')">
+                        ${recipe.name}
+                    </div>
+                `).join('');
+            }
+            
+            modal.classList.add('show');
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            };
+        }
+
+        // Add recipe to day
+        async function addRecipeToDay(recipeId) {
+            try {
+                const { error } = await db
+                    .from('meal_plan')
+                    .insert([{
+                        date: currentDate,
+                        recipe_id: recipeId,
+                        entry_type: 'recipe',
+                        is_side: currentIsSide,
+                        display_order: 0
+                    }]);
+
+                if (error) throw error;
+                
+                document.getElementById('recipe-modal').classList.remove('show');
+                await loadMealPlan();
+            } catch (error) {
+                console.error('Error adding recipe:', error);
+                alert('Failed to add recipe');
+            }
+        }
+
+        // Add special day
+        async function addSpecialDay(date, type) {
+            try {
+                const { error } = await db
+                    .from('meal_plan')
+                    .insert([{
+                        date: date,
+                        recipe_id: null,
+                        entry_type: type,
+                        is_side: false,
+                        display_order: 0
+                    }]);
+
+                if (error) throw error;
+                await loadMealPlan();
+            } catch (error) {
+                console.error('Error adding special day:', error);
+                alert('Failed to add special day');
+            }
+        }
+
+        // Mark meal as cooked
+        async function markCooked(mealId, date) {
+            try {
+                // Get the meal to find its recipe
+                const meal = mealPlan.find(m => m.id === mealId);
+                if (!meal || !meal.recipe_id) return;
+
+                // Update meal plan entry
+                await db
+                    .from('meal_plan')
+                    .update({ is_cooked: true })
+                    .eq('id', mealId);
+
+                // Update recipe's last_cooked_date
+                await db
+                    .from('recipes')
+                    .update({ last_cooked_date: date })
+                    .eq('id', meal.recipe_id);
+
+                await loadMealPlan();
+            } catch (error) {
+                console.error('Error marking cooked:', error);
+                alert('Failed to mark as cooked');
+            }
+        }
+
+        // Remove meal
+        async function removeMeal(mealId) {
+            if (!confirm('Remove this from the meal plan?')) return;
+
+            try {
+                const { error } = await db
+                    .from('meal_plan')
+                    .delete()
+                    .eq('id', mealId);
+
+                if (error) throw error;
+                await loadMealPlan();
+            } catch (error) {
+                console.error('Error removing meal:', error);
+                alert('Failed to remove meal');
+            }
         }
 
         // View recipe
-        function viewRecipe(id) {
-            window.location.href = `recipe-detail.html?id=${id}`;
+        function viewRecipe(recipeId) {
+            window.location.href = `recipe-detail.html?id=${recipeId}`;
         }
 
         // Initialize
-        loadPlannedMeals();
+        async function init() {
+            await loadRecipes();
+            await loadMealPlan();
+        }
+
+        init();
     </script>
 </body>
 </html>
