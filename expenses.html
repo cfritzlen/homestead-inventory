@@ -33,7 +33,6 @@
             color: var(--cream);
         }
 
-        /* Top Nav */
         .top-nav {
             background: rgba(61, 74, 50, 0.95);
             padding: 12px 20px;
@@ -45,315 +44,111 @@
             top: 0;
             z-index: 100;
         }
-        .top-nav a {
-            color: var(--cream);
-            text-decoration: none;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
+        .top-nav a { color: var(--cream); text-decoration: none; font-size: 0.95rem; }
         .top-nav a:hover { color: var(--sage-300); }
-        .nav-title {
-            font-family: 'Crimson Pro', serif;
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: var(--cream);
-        }
+        .nav-title { font-family: 'Crimson Pro', serif; font-size: 1.4rem; font-weight: 600; }
 
-        .main-content {
-            padding: 24px 16px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            font-family: 'Crimson Pro', serif;
-            font-size: 2.2rem;
-            font-weight: 300;
-            text-align: center;
-            margin-bottom: 24px;
-        }
+        .main-content { padding: 24px 16px; max-width: 1000px; margin: 0 auto; }
+        h1 { font-family: 'Crimson Pro', serif; font-size: 2.2rem; font-weight: 300; text-align: center; margin-bottom: 24px; }
 
         /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 24px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 12px;
-            padding: 4px;
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 10px 16px;
-            border: none;
-            background: transparent;
-            color: var(--taupe);
-            font-family: 'Karla', sans-serif;
-            font-size: 0.9rem;
-            font-weight: 500;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .tab-btn.active {
-            background: var(--sage-600);
-            color: white;
-        }
-        .tab-btn:hover:not(.active) {
-            background: rgba(255,255,255,0.05);
-        }
+        .tabs { display: flex; gap: 4px; margin-bottom: 24px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 4px; }
+        .tab-btn { flex: 1; padding: 10px 16px; border: none; background: transparent; color: var(--taupe); font-family: 'Karla', sans-serif; font-size: 0.9rem; font-weight: 500; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+        .tab-btn.active { background: var(--sage-600); color: white; }
+        .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.05); }
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
 
+        /* Summary */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .summary-box { background: rgba(0,0,0,0.15); border-radius: 12px; padding: 16px; text-align: center; }
+        .summary-box .label { font-size: 0.8rem; color: var(--taupe); margin-bottom: 4px; }
+        .summary-box .value { font-family: 'Crimson Pro', serif; font-size: 1.6rem; font-weight: 600; color: var(--cream); }
+
         /* Cards */
-        .card {
-            background: rgba(236, 232, 221, 0.95);
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
-            color: var(--charcoal);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            border: 1px solid rgba(196, 181, 164, 0.3);
-        }
-        .card h2 {
-            font-family: 'Crimson Pro', serif;
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--sage-700);
-            margin-bottom: 16px;
-        }
+        .card { background: rgba(236, 232, 221, 0.95); border-radius: 16px; padding: 24px; margin-bottom: 20px; color: var(--charcoal); box-shadow: 0 4px 20px rgba(0,0,0,0.3); border: 1px solid rgba(196, 181, 164, 0.3); }
+        .card h2 { font-family: 'Crimson Pro', serif; font-size: 1.5rem; font-weight: 600; color: var(--sage-700); margin-bottom: 16px; }
 
         /* Form */
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
         .form-group { display: flex; flex-direction: column; gap: 4px; }
         .form-group.full { grid-column: 1 / -1; }
-
-        label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--sage-700);
-        }
-        input, select, textarea {
-            padding: 10px 12px;
-            border: 1px solid var(--sage-200);
-            border-radius: 8px;
-            font-family: 'Karla', sans-serif;
-            font-size: 0.95rem;
-            background: white;
-            color: var(--charcoal);
-        }
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--sage-500);
-            box-shadow: 0 0 0 2px rgba(122, 144, 97, 0.2);
-        }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--sage-700); }
+        input, select, textarea { padding: 10px 12px; border: 1px solid var(--sage-200); border-radius: 8px; font-family: 'Karla', sans-serif; font-size: 0.95rem; background: white; color: var(--charcoal); }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--sage-500); box-shadow: 0 0 0 2px rgba(122, 144, 97, 0.2); }
         textarea { resize: vertical; min-height: 60px; }
 
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-family: 'Karla', sans-serif;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-primary {
-            background: var(--sage-600);
-            color: white;
-        }
+        /* Vendor combo box */
+        .vendor-wrap { position: relative; }
+        .vendor-wrap input { width: 100%; }
+        .vendor-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--sage-200); border-top: none; border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .vendor-dropdown.open { display: block; }
+        .vendor-option { padding: 8px 12px; cursor: pointer; font-size: 0.9rem; color: var(--charcoal); }
+        .vendor-option:hover { background: var(--sage-100); }
+        .vendor-option.add-new { color: var(--sage-600); font-weight: 600; border-top: 1px solid var(--sage-100); }
+
+        /* Receipt upload area */
+        .receipt-area { border: 2px dashed var(--sage-300); border-radius: 10px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--sage-50); }
+        .receipt-area:hover, .receipt-area.dragover { border-color: var(--sage-500); background: var(--sage-100); }
+        .receipt-area input[type="file"] { display: none; }
+        .receipt-area p { color: var(--sage-600); font-size: 0.9rem; }
+        .receipt-previews { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .receipt-thumb { position: relative; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid var(--sage-200); }
+        .receipt-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .receipt-thumb .pdf-icon { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--sage-100); font-size: 2rem; }
+        .receipt-thumb .remove-receipt { position: absolute; top: 2px; right: 2px; background: var(--dusty-rose); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .existing-receipts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .existing-receipt { position: relative; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid var(--sage-200); cursor: pointer; }
+        .existing-receipt img { width: 100%; height: 100%; object-fit: cover; }
+        .existing-receipt .remove-existing { position: absolute; top: 2px; right: 2px; background: var(--dusty-rose); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        /* Buttons */
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-family: 'Karla', sans-serif; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--sage-600); color: white; }
         .btn-primary:hover { background: var(--sage-700); }
-        .btn-danger {
-            background: var(--dusty-rose);
-            color: white;
-            padding: 6px 12px;
-            font-size: 0.8rem;
-        }
+        .btn-danger { background: var(--dusty-rose); color: white; padding: 6px 12px; font-size: 0.8rem; }
         .btn-danger:hover { background: #8a6158; }
-        .btn-secondary {
-            background: var(--taupe);
-            color: white;
-            padding: 6px 12px;
-            font-size: 0.85rem;
-        }
+        .btn-secondary { background: var(--taupe); color: white; padding: 6px 12px; font-size: 0.85rem; }
         .btn-secondary:hover { background: #b0a191; }
-
-        .btn-row {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        /* Summary boxes */
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .summary-box {
-            background: rgba(0,0,0,0.15);
-            border-radius: 12px;
-            padding: 16px;
-            text-align: center;
-        }
-        .summary-box .label {
-            font-size: 0.8rem;
-            color: var(--taupe);
-            margin-bottom: 4px;
-        }
-        .summary-box .value {
-            font-family: 'Crimson Pro', serif;
-            font-size: 1.6rem;
-            font-weight: 600;
-            color: var(--cream);
-        }
+        .btn-row { display: flex; gap: 8px; margin-top: 12px; }
 
         /* Filter bar */
-        .filter-bar {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 16px;
-            align-items: flex-end;
-        }
+        .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-end; }
         .filter-bar .form-group { min-width: 140px; }
         .filter-bar label { color: var(--sage-200); font-size: 0.8rem; }
-        .filter-bar input, .filter-bar select {
-            padding: 8px 10px;
-            font-size: 0.85rem;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.15);
-            color: var(--cream);
-            border-radius: 8px;
-        }
+        .filter-bar input, .filter-bar select { padding: 8px 10px; font-size: 0.85rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: var(--cream); border-radius: 8px; }
         .filter-bar select option { color: var(--charcoal); background: white; }
+        .export-btn { background: var(--sage-500); color: white; padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-family: 'Karla', sans-serif; font-weight: 600; font-size: 0.85rem; }
+        .export-btn:hover { background: var(--sage-600); }
+        .header-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 
         /* Table */
-        .table-wrap {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th {
-            text-align: left;
-            padding: 10px 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--sage-700);
-            border-bottom: 2px solid var(--sage-200);
-            white-space: nowrap;
-        }
-        td {
-            padding: 10px 12px;
-            font-size: 0.9rem;
-            border-bottom: 1px solid var(--sage-100);
-            color: var(--charcoal);
-        }
+        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 10px 12px; font-size: 0.8rem; font-weight: 600; color: var(--sage-700); border-bottom: 2px solid var(--sage-200); white-space: nowrap; }
+        td { padding: 10px 12px; font-size: 0.9rem; border-bottom: 1px solid var(--sage-100); color: var(--charcoal); }
         tr:hover td { background: var(--sage-50); }
         .amount-col { text-align: right; font-weight: 600; }
         .actions-col { white-space: nowrap; }
-        .total-row td {
-            font-weight: 700;
-            border-top: 2px solid var(--sage-500);
-            color: var(--sage-700);
-            font-size: 1rem;
-        }
+        .total-row td { font-weight: 700; border-top: 2px solid var(--sage-500); color: var(--sage-700); font-size: 1rem; }
+        .empty-state { text-align: center; padding: 40px; color: var(--taupe); font-style: italic; }
+        .cat-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+        .receipt-indicator { font-size: 0.85rem; cursor: pointer; }
 
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: var(--taupe);
-            font-style: italic;
-        }
-
-        /* Category badges */
-        .cat-badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        /* Edit modal */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6);
-            z-index: 200;
-            justify-content: center;
-            align-items: center;
-            padding: 16px;
-        }
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 200; justify-content: center; align-items: center; padding: 16px; }
         .modal-overlay.active { display: flex; }
-        .modal {
-            background: var(--cream);
-            border-radius: 16px;
-            padding: 28px;
-            width: 100%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            color: var(--charcoal);
-        }
-        .modal h2 {
-            font-family: 'Crimson Pro', serif;
-            color: var(--sage-700);
-            margin-bottom: 16px;
-        }
+        .modal { background: var(--cream); border-radius: 16px; padding: 28px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; color: var(--charcoal); }
+        .modal h2 { font-family: 'Crimson Pro', serif; color: var(--sage-700); margin-bottom: 16px; }
 
-        /* CSV button */
-        .export-btn {
-            background: var(--sage-500);
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-family: 'Karla', sans-serif;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-        .export-btn:hover { background: var(--sage-600); }
-
-        .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
+        /* Lightbox for receipt viewing */
+        .lightbox { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 300; justify-content: center; align-items: center; padding: 20px; }
+        .lightbox.active { display: flex; }
+        .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
+        .lightbox .close-lb { position: absolute; top: 16px; right: 20px; color: white; font-size: 2rem; cursor: pointer; background: none; border: none; }
 
         /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: var(--sage-700);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 300;
-            transform: translateY(80px);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
+        .toast { position: fixed; bottom: 24px; right: 24px; background: var(--sage-700); color: white; padding: 12px 20px; border-radius: 10px; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 300; transform: translateY(80px); opacity: 0; transition: all 0.3s ease; }
         .toast.show { transform: translateY(0); opacity: 1; }
         .toast.error { background: var(--dusty-rose); }
 
@@ -366,6 +161,7 @@
             .filter-bar .form-group { min-width: 100%; }
             th, td { padding: 8px 6px; font-size: 0.8rem; }
             .btn-danger { padding: 4px 8px; font-size: 0.75rem; }
+            .receipt-thumb, .existing-receipt { width: 60px; height: 60px; }
         }
     </style>
 </head>
@@ -379,8 +175,7 @@
 <div class="main-content">
     <h1>💰 Expense Tracker</h1>
 
-    <!-- Summary -->
-    <div class="summary-grid" id="summaryGrid">
+    <div class="summary-grid">
         <div class="summary-box">
             <div class="label">This Month</div>
             <div class="value" id="monthTotal">$0.00</div>
@@ -395,7 +190,6 @@
         </div>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
         <button class="tab-btn active" data-tab="add">Add New</button>
         <button class="tab-btn" data-tab="list">View All</button>
@@ -420,15 +214,11 @@
                             <option value="Solar Project">☀️ Solar Project</option>
                             <option value="Poultry">🐔 Poultry</option>
                             <option value="Plantings">🌱 Plantings</option>
+                            <option value="2nd Floor">🏠 2nd Floor</option>
                             <option value="Home Repairs">🔧 Home Repairs</option>
                             <option value="Equipment & Tools">🛠️ Equipment & Tools</option>
                             <option value="Feed & Supplies">🌾 Feed & Supplies</option>
                             <option value="Seeds & Soil">🪴 Seeds & Soil</option>
-                            <option value="Groceries">🛒 Groceries</option>
-                            <option value="Auto & Gas">⛽ Auto & Gas</option>
-                            <option value="Insurance">🛡️ Insurance</option>
-                            <option value="Property Tax">🏠 Property Tax</option>
-                            <option value="Mortgage">🏦 Mortgage</option>
                             <option value="Other">📦 Other</option>
                         </select>
                     </div>
@@ -439,6 +229,15 @@
                         <input type="number" id="expAmount" step="0.01" min="0" placeholder="0.00" required>
                     </div>
                     <div class="form-group">
+                        <label>Vendor</label>
+                        <div class="vendor-wrap">
+                            <input type="text" id="expVendor" placeholder="Type or select..." autocomplete="off">
+                            <div class="vendor-dropdown" id="addVendorDD"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group full">
                         <label>Description</label>
                         <input type="text" id="expDescription" placeholder="What was this for?">
                     </div>
@@ -447,6 +246,17 @@
                     <div class="form-group full">
                         <label>Notes (optional)</label>
                         <textarea id="expNotes" placeholder="Any extra details..."></textarea>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group full">
+                        <label>Receipts</label>
+                        <div class="receipt-area" id="addReceiptArea">
+                            <input type="file" id="addReceiptInput" multiple accept="image/*,.pdf,application/pdf">
+                            <p>📎 Tap to add or drag & drop receipts</p>
+                            <p style="font-size:0.75rem; color:var(--taupe); margin-top:4px;">Images & PDFs accepted</p>
+                        </div>
+                        <div class="receipt-previews" id="addReceiptPreviews"></div>
                     </div>
                 </div>
                 <div class="btn-row">
@@ -458,7 +268,6 @@
 
     <!-- LIST TAB -->
     <div class="tab-panel" id="tab-list">
-        <!-- Filters -->
         <div class="filter-bar">
             <div class="form-group">
                 <label>From</label>
@@ -476,23 +285,24 @@
                     <option value="Solar Project">Solar Project</option>
                     <option value="Poultry">Poultry</option>
                     <option value="Plantings">Plantings</option>
+                    <option value="2nd Floor">2nd Floor</option>
                     <option value="Home Repairs">Home Repairs</option>
                     <option value="Equipment & Tools">Equipment & Tools</option>
                     <option value="Feed & Supplies">Feed & Supplies</option>
                     <option value="Seeds & Soil">Seeds & Soil</option>
-                    <option value="Groceries">Groceries</option>
-                    <option value="Auto & Gas">Auto & Gas</option>
-                    <option value="Insurance">Insurance</option>
-                    <option value="Property Tax">Property Tax</option>
-                    <option value="Mortgage">Mortgage</option>
                     <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Vendor</label>
+                <select id="filterVendor">
+                    <option value="">All Vendors</option>
                 </select>
             </div>
             <div class="form-group">
                 <button class="export-btn" onclick="exportCSV()">📥 Export CSV</button>
             </div>
         </div>
-
         <div class="card">
             <div class="header-row">
                 <h2>All Expenses</h2>
@@ -504,17 +314,17 @@
                         <tr>
                             <th>Date</th>
                             <th>Category</th>
+                            <th>Vendor</th>
                             <th>Description</th>
                             <th class="amount-col">Amount</th>
+                            <th></th>
                             <th class="actions-col"></th>
                         </tr>
                     </thead>
                     <tbody id="expenseTable"></tbody>
                 </table>
             </div>
-            <div class="empty-state" id="emptyState" style="display:none;">
-                No expenses found. Start adding some! 🌿
-            </div>
+            <div class="empty-state" id="emptyState" style="display:none;">No expenses found. Start adding some! 🌿</div>
         </div>
     </div>
 
@@ -529,22 +339,13 @@
                 <label>Month</label>
                 <select id="summaryMonth">
                     <option value="">All Year</option>
-                    <option value="0">January</option>
-                    <option value="1">February</option>
-                    <option value="2">March</option>
-                    <option value="3">April</option>
-                    <option value="4">May</option>
-                    <option value="5">June</option>
-                    <option value="6">July</option>
-                    <option value="7">August</option>
-                    <option value="8">September</option>
-                    <option value="9">October</option>
-                    <option value="10">November</option>
-                    <option value="11">December</option>
+                    <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+                    <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+                    <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+                    <option value="9">October</option><option value="10">November</option><option value="11">December</option>
                 </select>
             </div>
         </div>
-
         <div class="card">
             <h2>Spending by Category</h2>
             <div id="categoryBreakdown"></div>
@@ -552,7 +353,7 @@
     </div>
 </div>
 
-<!-- Edit Modal -->
+<!-- EDIT MODAL -->
 <div class="modal-overlay" id="editModal">
     <div class="modal">
         <h2>Edit Expense</h2>
@@ -570,15 +371,11 @@
                         <option value="Solar Project">☀️ Solar Project</option>
                         <option value="Poultry">🐔 Poultry</option>
                         <option value="Plantings">🌱 Plantings</option>
+                        <option value="2nd Floor">🏠 2nd Floor</option>
                         <option value="Home Repairs">🔧 Home Repairs</option>
                         <option value="Equipment & Tools">🛠️ Equipment & Tools</option>
                         <option value="Feed & Supplies">🌾 Feed & Supplies</option>
                         <option value="Seeds & Soil">🪴 Seeds & Soil</option>
-                        <option value="Groceries">🛒 Groceries</option>
-                        <option value="Auto & Gas">⛽ Auto & Gas</option>
-                        <option value="Insurance">🛡️ Insurance</option>
-                        <option value="Property Tax">🏠 Property Tax</option>
-                        <option value="Mortgage">🏦 Mortgage</option>
                         <option value="Other">📦 Other</option>
                     </select>
                 </div>
@@ -589,6 +386,15 @@
                     <input type="number" id="editAmount" step="0.01" min="0" required>
                 </div>
                 <div class="form-group">
+                    <label>Vendor</label>
+                    <div class="vendor-wrap">
+                        <input type="text" id="editVendor" placeholder="Type or select..." autocomplete="off">
+                        <div class="vendor-dropdown" id="editVendorDD"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group full">
                     <label>Description</label>
                     <input type="text" id="editDescription">
                 </div>
@@ -599,6 +405,18 @@
                     <textarea id="editNotes"></textarea>
                 </div>
             </div>
+            <div class="form-row">
+                <div class="form-group full">
+                    <label>Existing Receipts</label>
+                    <div class="existing-receipts" id="editExistingReceipts"></div>
+                    <label style="margin-top:8px;">Add More Receipts</label>
+                    <div class="receipt-area" id="editReceiptArea">
+                        <input type="file" id="editReceiptInput" multiple accept="image/*,.pdf,application/pdf">
+                        <p>📎 Tap to add receipts</p>
+                    </div>
+                    <div class="receipt-previews" id="editReceiptPreviews"></div>
+                </div>
+            </div>
             <div class="btn-row">
                 <button type="submit" class="btn btn-primary">💾 Save Changes</button>
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
@@ -607,366 +425,595 @@
     </div>
 </div>
 
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox">
+    <button class="close-lb" onclick="closeLightbox()">×</button>
+    <img id="lightboxImg" src="" alt="Receipt">
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-    // ===================== SUPABASE CONFIG =====================
-    const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExMzQ0NDIsImV4cCI6MjA1NjcxMDQ0Mn0.r66fLJcqlUPc7m1wmrIksQ_rIwoTNyb-pHjBYwkGVx8';
+// ===================== CONFIG =====================
+const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExMzQ0NDIsImV4cCI6MjA1NjcxMDQ0Mn0.r66fLJcqlUPc7m1wmrIksQ_rIwoTNyb-pHjBYwkGVx8';
+const STORAGE_BUCKET = 'home-receipts';
 
-    const headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
-    };
+const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+};
 
-    let allExpenses = [];
+let allExpenses = [];
+let allVendors = [];
+let receiptMap = {}; // expense_id -> [receipt objects]
+let pendingFiles = []; // files queued for add form
+let editPendingFiles = []; // files queued for edit form
 
-    // Category colors
-    const catColors = {
-        'Utilities': { bg: '#e8ebe0', text: '#4a5a3b', icon: '🔌' },
-        'Solar Project': { bg: '#fff3cd', text: '#856404', icon: '☀️' },
-        'Poultry': { bg: '#fce4d6', text: '#8b4513', icon: '🐔' },
-        'Plantings': { bg: '#d4edda', text: '#155724', icon: '🌱' },
-        'Home Repairs': { bg: '#d6e9f8', text: '#004085', icon: '🔧' },
-        'Equipment & Tools': { bg: '#e2d9f3', text: '#4a3070', icon: '🛠️' },
-        'Feed & Supplies': { bg: '#f5e6c8', text: '#6b5200', icon: '🌾' },
-        'Seeds & Soil': { bg: '#d9f0d3', text: '#2d6a1e', icon: '🪴' },
-        'Groceries': { bg: '#dfe6e9', text: '#2d3436', icon: '🛒' },
-        'Auto & Gas': { bg: '#fde8e8', text: '#922b21', icon: '⛽' },
-        'Insurance': { bg: '#d4dac5', text: '#3d4a32', icon: '🛡️' },
-        'Property Tax': { bg: '#e8ddd0', text: '#5a4a3a', icon: '🏠' },
-        'Mortgage': { bg: '#d0dde8', text: '#3a4a5a', icon: '🏦' },
-        'Other': { bg: '#ece8dd', text: '#4a4d47', icon: '📦' }
-    };
+const CATEGORIES = [
+    { value: 'Utilities', icon: '🔌', bg: '#e8ebe0', text: '#4a5a3b' },
+    { value: 'Solar Project', icon: '☀️', bg: '#fff3cd', text: '#856404' },
+    { value: 'Poultry', icon: '🐔', bg: '#fce4d6', text: '#8b4513' },
+    { value: 'Plantings', icon: '🌱', bg: '#d4edda', text: '#155724' },
+    { value: '2nd Floor', icon: '🏠', bg: '#e8ddd0', text: '#5a4a3a' },
+    { value: 'Home Repairs', icon: '🔧', bg: '#d6e9f8', text: '#004085' },
+    { value: 'Equipment & Tools', icon: '🛠️', bg: '#e2d9f3', text: '#4a3070' },
+    { value: 'Feed & Supplies', icon: '🌾', bg: '#f5e6c8', text: '#6b5200' },
+    { value: 'Seeds & Soil', icon: '🪴', bg: '#d9f0d3', text: '#2d6a1e' },
+    { value: 'Other', icon: '📦', bg: '#ece8dd', text: '#4a4d47' }
+];
 
-    // ===================== INIT =====================
-    document.addEventListener('DOMContentLoaded', () => {
-        // Set today as default date
-        document.getElementById('expDate').value = new Date().toISOString().split('T')[0];
+function getCat(name) {
+    return CATEGORIES.find(c => c.value === name) || CATEGORIES[CATEGORIES.length - 1];
+}
 
-        // Default filter: current month
-        const now = new Date();
-        const y = now.getFullYear(), m = now.getMonth();
-        document.getElementById('filterFrom').value = `${y}-${String(m+1).padStart(2,'0')}-01`;
-        const lastDay = new Date(y, m+1, 0).getDate();
-        document.getElementById('filterTo').value = `${y}-${String(m+1).padStart(2,'0')}-${lastDay}`;
+// ===================== INIT =====================
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('expDate').value = new Date().toISOString().split('T')[0];
 
-        // Summary year dropdown
-        const yearSel = document.getElementById('summaryYear');
-        for (let yr = now.getFullYear(); yr >= now.getFullYear() - 3; yr--) {
-            yearSel.innerHTML += `<option value="${yr}">${yr}</option>`;
-        }
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    document.getElementById('filterFrom').value = `${y}-${String(m+1).padStart(2,'0')}-01`;
+    document.getElementById('filterTo').value = `${y}-${String(m+1).padStart(2,'0')}-${new Date(y, m+1, 0).getDate()}`;
 
-        loadExpenses();
-        setupListeners();
+    const yearSel = document.getElementById('summaryYear');
+    for (let yr = y; yr >= y - 3; yr--) yearSel.innerHTML += `<option value="${yr}">${yr}</option>`;
+
+    loadAll();
+    setupListeners();
+});
+
+function setupListeners() {
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+            if (btn.dataset.tab === 'list') renderTable();
+            if (btn.dataset.tab === 'summary') renderCategorySummary();
+        });
     });
 
-    function setupListeners() {
-        // Tabs
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+    document.getElementById('expenseForm').addEventListener('submit', addExpense);
+    document.getElementById('editForm').addEventListener('submit', saveEdit);
 
-                if (btn.dataset.tab === 'list') renderTable();
-                if (btn.dataset.tab === 'summary') renderCategorySummary();
-            });
-        });
+    ['filterFrom','filterTo','filterCategory','filterVendor'].forEach(id => {
+        document.getElementById(id).addEventListener('change', renderTable);
+    });
+    ['summaryYear','summaryMonth'].forEach(id => {
+        document.getElementById(id).addEventListener('change', renderCategorySummary);
+    });
 
-        // Add form
-        document.getElementById('expenseForm').addEventListener('submit', addExpense);
+    document.getElementById('editModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeModal();
+    });
 
-        // Edit form
-        document.getElementById('editForm').addEventListener('submit', saveEdit);
+    // Vendor dropdowns
+    setupVendorInput('expVendor', 'addVendorDD');
+    setupVendorInput('editVendor', 'editVendorDD');
 
-        // Filters
-        ['filterFrom','filterTo','filterCategory'].forEach(id => {
-            document.getElementById(id).addEventListener('change', renderTable);
-        });
+    // Receipt uploads - ADD form
+    const addArea = document.getElementById('addReceiptArea');
+    const addInput = document.getElementById('addReceiptInput');
+    addArea.addEventListener('click', () => addInput.click());
+    addArea.addEventListener('dragover', e => { e.preventDefault(); addArea.classList.add('dragover'); });
+    addArea.addEventListener('dragleave', () => addArea.classList.remove('dragover'));
+    addArea.addEventListener('drop', e => { e.preventDefault(); addArea.classList.remove('dragover'); handleNewFiles(e.dataTransfer.files, 'add'); });
+    addInput.addEventListener('change', e => handleNewFiles(e.target.files, 'add'));
 
-        // Summary filters
-        ['summaryYear','summaryMonth'].forEach(id => {
-            document.getElementById(id).addEventListener('change', renderCategorySummary);
-        });
+    // Receipt uploads - EDIT form
+    const editArea = document.getElementById('editReceiptArea');
+    const editInput = document.getElementById('editReceiptInput');
+    editArea.addEventListener('click', () => editInput.click());
+    editArea.addEventListener('dragover', e => { e.preventDefault(); editArea.classList.add('dragover'); });
+    editArea.addEventListener('dragleave', () => editArea.classList.remove('dragover'));
+    editArea.addEventListener('drop', e => { e.preventDefault(); editArea.classList.remove('dragover'); handleNewFiles(e.dataTransfer.files, 'edit'); });
+    editInput.addEventListener('change', e => handleNewFiles(e.target.files, 'edit'));
+}
 
-        // Close modal on overlay click
-        document.getElementById('editModal').addEventListener('click', e => {
-            if (e.target === e.currentTarget) closeModal();
-        });
+// ===================== VENDOR DROPDOWN =====================
+function setupVendorInput(inputId, ddId) {
+    const input = document.getElementById(inputId);
+    const dd = document.getElementById(ddId);
+
+    input.addEventListener('focus', () => showVendorDD(input, dd));
+    input.addEventListener('input', () => showVendorDD(input, dd));
+    input.addEventListener('blur', () => setTimeout(() => dd.classList.remove('open'), 200));
+}
+
+function showVendorDD(input, dd) {
+    const val = input.value.toLowerCase().trim();
+    const matches = allVendors.filter(v => v.toLowerCase().includes(val));
+
+    let html = matches.map(v => `<div class="vendor-option" onmousedown="pickVendor('${input.id}','${ddId(dd)}','${escHtml(v)}')">${escHtml(v)}</div>`).join('');
+
+    if (val && !allVendors.some(v => v.toLowerCase() === val)) {
+        html += `<div class="vendor-option add-new" onmousedown="addVendor('${input.id}','${ddId(dd)}')">+ Add "${escHtml(input.value.trim())}"</div>`;
     }
 
-    // ===================== LOAD =====================
-    async function loadExpenses() {
-        try {
-            const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/home_expenses?order=expense_date.desc,created_at.desc`,
-                { headers }
-            );
-            if (!res.ok) throw new Error('Failed to load');
-            allExpenses = await res.json();
-            updateSummary();
-            renderTable();
-        } catch (err) {
-            showToast('Error loading expenses', true);
-            console.error(err);
+    if (!html) { dd.classList.remove('open'); return; }
+    dd.innerHTML = html;
+    dd.classList.add('open');
+}
+
+function ddId(el) { return el.id; }
+
+function pickVendor(inputId, ddId, val) {
+    document.getElementById(inputId).value = val;
+    document.getElementById(ddId).classList.remove('open');
+}
+
+async function addVendor(inputId, ddIdStr) {
+    const input = document.getElementById(inputId);
+    const name = input.value.trim();
+    if (!name) return;
+
+    try {
+        await fetch(`${SUPABASE_URL}/rest/v1/home_vendors`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ name })
+        });
+        if (!allVendors.includes(name)) allVendors.push(name);
+        allVendors.sort((a, b) => a.localeCompare(b));
+        updateVendorFilter();
+        document.getElementById(ddIdStr).classList.remove('open');
+        showToast(`Vendor "${name}" added ✅`);
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function updateVendorFilter() {
+    const sel = document.getElementById('filterVendor');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">All Vendors</option>' + allVendors.map(v => `<option value="${escHtml(v)}">${escHtml(v)}</option>`).join('');
+    sel.value = current;
+}
+
+// ===================== RECEIPT HANDLING =====================
+function handleNewFiles(fileList, mode) {
+    const arr = mode === 'add' ? pendingFiles : editPendingFiles;
+    const previewId = mode === 'add' ? 'addReceiptPreviews' : 'editReceiptPreviews';
+
+    for (const f of fileList) {
+        if (!f.type.startsWith('image/') && f.type !== 'application/pdf') continue;
+        arr.push(f);
+    }
+    renderPendingPreviews(arr, previewId, mode);
+}
+
+function renderPendingPreviews(arr, containerId, mode) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = arr.map((f, i) => {
+        if (f.type === 'application/pdf') {
+            return `<div class="receipt-thumb"><div class="pdf-icon">📄</div><button class="remove-receipt" onclick="removePending(${i},'${mode}')" type="button">×</button></div>`;
         }
-    }
+        const url = URL.createObjectURL(f);
+        return `<div class="receipt-thumb"><img src="${url}"><button class="remove-receipt" onclick="removePending(${i},'${mode}')" type="button">×</button></div>`;
+    }).join('');
+}
 
-    // ===================== ADD =====================
-    async function addExpense(e) {
-        e.preventDefault();
-        const data = {
-            expense_date: document.getElementById('expDate').value,
-            category: document.getElementById('expCategory').value,
-            amount: parseFloat(document.getElementById('expAmount').value),
-            description: document.getElementById('expDescription').value || null,
-            notes: document.getElementById('expNotes').value || null
-        };
+function removePending(idx, mode) {
+    if (mode === 'add') { pendingFiles.splice(idx, 1); renderPendingPreviews(pendingFiles, 'addReceiptPreviews', 'add'); }
+    else { editPendingFiles.splice(idx, 1); renderPendingPreviews(editPendingFiles, 'editReceiptPreviews', 'edit'); }
+}
 
-        try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/home_expenses`, {
+async function uploadReceipts(expenseId, files) {
+    const results = [];
+    for (const file of files) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        const safeName = `${expenseId}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`;
+        const contentType = file.type || 'application/octet-stream';
+
+        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${safeName}`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': contentType,
+                'x-upsert': 'true'
+            },
+            body: file
+        });
+
+        if (uploadRes.ok) {
+            const receiptRes = await fetch(`${SUPABASE_URL}/rest/v1/home_expense_receipts`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify(data)
+                body: JSON.stringify({ expense_id: expenseId, file_name: file.name, storage_path: safeName, file_type: contentType })
             });
-            if (!res.ok) throw new Error('Failed to save');
-            const [newExp] = await res.json();
-            allExpenses.unshift(newExp);
-            updateSummary();
-
-            // Reset form but keep date
-            document.getElementById('expCategory').value = '';
-            document.getElementById('expAmount').value = '';
-            document.getElementById('expDescription').value = '';
-            document.getElementById('expNotes').value = '';
-
-            showToast('Expense saved! ✅');
-        } catch (err) {
-            showToast('Error saving expense', true);
-            console.error(err);
+            if (receiptRes.ok) {
+                const [rec] = await receiptRes.json();
+                results.push(rec);
+            }
         }
     }
+    return results;
+}
 
-    // ===================== DELETE =====================
-    async function deleteExpense(id) {
-        if (!confirm('Delete this expense?')) return;
-        try {
-            const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/home_expenses?id=eq.${id}`,
-                { method: 'DELETE', headers }
-            );
-            if (!res.ok) throw new Error('Failed to delete');
-            allExpenses = allExpenses.filter(e => e.id !== id);
-            updateSummary();
-            renderTable();
-            showToast('Deleted ✅');
-        } catch (err) {
-            showToast('Error deleting', true);
-        }
-    }
+function getReceiptUrl(storagePath) {
+    return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${storagePath}`;
+}
 
-    // ===================== EDIT =====================
-    function openEdit(id) {
-        const exp = allExpenses.find(e => e.id === id);
-        if (!exp) return;
-        document.getElementById('editId').value = id;
-        document.getElementById('editDate').value = exp.expense_date;
-        document.getElementById('editCategory').value = exp.category;
-        document.getElementById('editAmount').value = exp.amount;
-        document.getElementById('editDescription').value = exp.description || '';
-        document.getElementById('editNotes').value = exp.notes || '';
-        document.getElementById('editModal').classList.add('active');
-    }
+// ===================== LOAD =====================
+async function loadAll() {
+    try {
+        const [expRes, vendorRes, receiptRes] = await Promise.all([
+            fetch(`${SUPABASE_URL}/rest/v1/home_expenses?order=expense_date.desc,created_at.desc`, { headers }),
+            fetch(`${SUPABASE_URL}/rest/v1/home_vendors?order=name.asc`, { headers }),
+            fetch(`${SUPABASE_URL}/rest/v1/home_expense_receipts?order=created_at.asc`, { headers })
+        ]);
 
-    function closeModal() {
-        document.getElementById('editModal').classList.remove('active');
-    }
+        allExpenses = await expRes.json();
+        const vendors = await vendorRes.json();
+        allVendors = vendors.map(v => v.name);
+        updateVendorFilter();
 
-    async function saveEdit(e) {
-        e.preventDefault();
-        const id = document.getElementById('editId').value;
-        const data = {
-            expense_date: document.getElementById('editDate').value,
-            category: document.getElementById('editCategory').value,
-            amount: parseFloat(document.getElementById('editAmount').value),
-            description: document.getElementById('editDescription').value || null,
-            notes: document.getElementById('editNotes').value || null
-        };
-
-        try {
-            const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/home_expenses?id=eq.${id}`,
-                { method: 'PATCH', headers, body: JSON.stringify(data) }
-            );
-            if (!res.ok) throw new Error('Failed to update');
-            const [updated] = await res.json();
-            const idx = allExpenses.findIndex(e => e.id === id);
-            if (idx >= 0) allExpenses[idx] = updated;
-            updateSummary();
-            renderTable();
-            closeModal();
-            showToast('Updated ✅');
-        } catch (err) {
-            showToast('Error updating', true);
-        }
-    }
-
-    // ===================== RENDER =====================
-    function updateSummary() {
-        const now = new Date();
-        const thisMonth = allExpenses.filter(e => {
-            const d = new Date(e.expense_date + 'T00:00:00');
-            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        });
-        const thisYear = allExpenses.filter(e => {
-            const d = new Date(e.expense_date + 'T00:00:00');
-            return d.getFullYear() === now.getFullYear();
+        const receipts = await receiptRes.json();
+        receiptMap = {};
+        receipts.forEach(r => {
+            if (!receiptMap[r.expense_id]) receiptMap[r.expense_id] = [];
+            receiptMap[r.expense_id].push(r);
         });
 
-        document.getElementById('monthTotal').textContent = fmt(sum(thisMonth));
-        document.getElementById('yearTotal').textContent = fmt(sum(thisYear));
-        document.getElementById('expenseCount').textContent = allExpenses.length;
+        updateSummary();
+        renderTable();
+    } catch (err) {
+        showToast('Error loading data', true);
+        console.error(err);
     }
+}
 
-    function renderTable() {
-        const from = document.getElementById('filterFrom').value;
-        const to = document.getElementById('filterTo').value;
-        const cat = document.getElementById('filterCategory').value;
+// ===================== ADD =====================
+async function addExpense(e) {
+    e.preventDefault();
+    const vendorName = document.getElementById('expVendor').value.trim();
+    const data = {
+        expense_date: document.getElementById('expDate').value,
+        category: document.getElementById('expCategory').value,
+        amount: parseFloat(document.getElementById('expAmount').value),
+        vendor: vendorName || null,
+        description: document.getElementById('expDescription').value || null,
+        notes: document.getElementById('expNotes').value || null
+    };
 
-        let filtered = allExpenses.filter(e => {
-            if (from && e.expense_date < from) return false;
-            if (to && e.expense_date > to) return false;
-            if (cat && e.category !== cat) return false;
-            return true;
-        });
-
-        const tbody = document.getElementById('expenseTable');
-        const emptyEl = document.getElementById('emptyState');
-
-        if (filtered.length === 0) {
-            tbody.innerHTML = '';
-            emptyEl.style.display = 'block';
-            document.getElementById('filteredTotal').textContent = '';
-            return;
+    try {
+        // Auto-add new vendor
+        if (vendorName && !allVendors.includes(vendorName)) {
+            try {
+                await fetch(`${SUPABASE_URL}/rest/v1/home_vendors`, { method: 'POST', headers, body: JSON.stringify({ name: vendorName }) });
+                allVendors.push(vendorName);
+                allVendors.sort((a, b) => a.localeCompare(b));
+                updateVendorFilter();
+            } catch (err) { /* vendor may already exist */ }
         }
 
-        emptyEl.style.display = 'none';
-        const total = sum(filtered);
-        document.getElementById('filteredTotal').textContent = `Total: ${fmt(total)}`;
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/home_expenses`, { method: 'POST', headers, body: JSON.stringify(data) });
+        if (!res.ok) throw new Error('Failed to save');
+        const [newExp] = await res.json();
 
-        tbody.innerHTML = filtered.map(e => {
-            const c = catColors[e.category] || catColors['Other'];
-            return `<tr>
-                <td>${formatDate(e.expense_date)}</td>
-                <td><span class="cat-badge" style="background:${c.bg};color:${c.text}">${c.icon} ${e.category}</span></td>
-                <td>${e.description || '—'}</td>
-                <td class="amount-col">${fmt(e.amount)}</td>
-                <td class="actions-col">
-                    <button class="btn btn-secondary" onclick="openEdit('${e.id}')">✏️</button>
-                    <button class="btn btn-danger" onclick="deleteExpense('${e.id}')">🗑️</button>
-                </td>
-            </tr>`;
-        }).join('') + `<tr class="total-row"><td colspan="3" style="text-align:right">Total</td><td class="amount-col">${fmt(total)}</td><td></td></tr>`;
-    }
-
-    function renderCategorySummary() {
-        const year = parseInt(document.getElementById('summaryYear').value);
-        const monthVal = document.getElementById('summaryMonth').value;
-
-        let filtered = allExpenses.filter(e => {
-            const d = new Date(e.expense_date + 'T00:00:00');
-            if (d.getFullYear() !== year) return false;
-            if (monthVal !== '' && d.getMonth() !== parseInt(monthVal)) return false;
-            return true;
-        });
-
-        const byCategory = {};
-        filtered.forEach(e => {
-            if (!byCategory[e.category]) byCategory[e.category] = 0;
-            byCategory[e.category] += parseFloat(e.amount);
-        });
-
-        const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
-        const grandTotal = sorted.reduce((s, [, v]) => s + v, 0);
-
-        const container = document.getElementById('categoryBreakdown');
-        if (sorted.length === 0) {
-            container.innerHTML = '<div class="empty-state">No expenses for this period 🌿</div>';
-            return;
+        // Upload receipts
+        if (pendingFiles.length > 0) {
+            const uploaded = await uploadReceipts(newExp.id, pendingFiles);
+            receiptMap[newExp.id] = uploaded;
+            pendingFiles = [];
+            document.getElementById('addReceiptPreviews').innerHTML = '';
+            document.getElementById('addReceiptInput').value = '';
         }
 
-        container.innerHTML = sorted.map(([cat, total]) => {
-            const c = catColors[cat] || catColors['Other'];
-            const pct = grandTotal > 0 ? ((total / grandTotal) * 100).toFixed(1) : 0;
-            return `<div style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--sage-100);">
-                <span style="font-size:1.5rem; min-width:36px; text-align:center;">${c.icon}</span>
-                <div style="flex:1;">
-                    <div style="font-weight:600; color:var(--sage-700); margin-bottom:4px;">${cat}</div>
-                    <div style="background:var(--sage-100); border-radius:4px; height:8px; overflow:hidden;">
-                        <div style="background:var(--sage-500); height:100%; width:${pct}%; border-radius:4px;"></div>
-                    </div>
+        allExpenses.unshift(newExp);
+        updateSummary();
+
+        document.getElementById('expCategory').value = '';
+        document.getElementById('expAmount').value = '';
+        document.getElementById('expVendor').value = '';
+        document.getElementById('expDescription').value = '';
+        document.getElementById('expNotes').value = '';
+
+        showToast('Expense saved! ✅');
+    } catch (err) {
+        showToast('Error saving expense', true);
+        console.error(err);
+    }
+}
+
+// ===================== DELETE =====================
+async function deleteExpense(id) {
+    if (!confirm('Delete this expense and its receipts?')) return;
+    try {
+        // Delete receipt files from storage
+        const receipts = receiptMap[id] || [];
+        for (const r of receipts) {
+            await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${r.storage_path}`, {
+                method: 'DELETE',
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+            });
+        }
+
+        await fetch(`${SUPABASE_URL}/rest/v1/home_expenses?id=eq.${id}`, { method: 'DELETE', headers });
+        allExpenses = allExpenses.filter(e => e.id !== id);
+        delete receiptMap[id];
+        updateSummary();
+        renderTable();
+        showToast('Deleted ✅');
+    } catch (err) {
+        showToast('Error deleting', true);
+    }
+}
+
+// ===================== EDIT =====================
+function openEdit(id) {
+    const exp = allExpenses.find(e => e.id === id);
+    if (!exp) return;
+    document.getElementById('editId').value = id;
+    document.getElementById('editDate').value = exp.expense_date;
+    document.getElementById('editCategory').value = exp.category;
+    document.getElementById('editAmount').value = exp.amount;
+    document.getElementById('editVendor').value = exp.vendor || '';
+    document.getElementById('editDescription').value = exp.description || '';
+    document.getElementById('editNotes').value = exp.notes || '';
+
+    editPendingFiles = [];
+    document.getElementById('editReceiptPreviews').innerHTML = '';
+    document.getElementById('editReceiptInput').value = '';
+
+    // Show existing receipts
+    const existing = receiptMap[id] || [];
+    const container = document.getElementById('editExistingReceipts');
+    container.innerHTML = existing.map(r => {
+        const url = getReceiptUrl(r.storage_path);
+        if (r.file_type === 'application/pdf') {
+            return `<div class="existing-receipt" onclick="window.open('${url}','_blank')"><div class="pdf-icon" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--sage-100);font-size:2rem;">📄</div><button class="remove-existing" onclick="event.stopPropagation();deleteReceipt('${r.id}','${r.storage_path}','${id}')" type="button">×</button></div>`;
+        }
+        return `<div class="existing-receipt" onclick="openLightbox('${url}')"><img src="${url}"><button class="remove-existing" onclick="event.stopPropagation();deleteReceipt('${r.id}','${r.storage_path}','${id}')" type="button">×</button></div>`;
+    }).join('') || '<span style="color:var(--taupe); font-size:0.85rem;">No receipts yet</span>';
+
+    document.getElementById('editModal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('editModal').classList.remove('active');
+}
+
+async function deleteReceipt(receiptId, storagePath, expenseId) {
+    if (!confirm('Remove this receipt?')) return;
+    try {
+        await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${storagePath}`, {
+            method: 'DELETE',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+        });
+        await fetch(`${SUPABASE_URL}/rest/v1/home_expense_receipts?id=eq.${receiptId}`, { method: 'DELETE', headers });
+        receiptMap[expenseId] = (receiptMap[expenseId] || []).filter(r => r.id !== receiptId);
+        openEdit(expenseId); // refresh modal
+        renderTable();
+        showToast('Receipt removed ✅');
+    } catch (err) {
+        showToast('Error removing receipt', true);
+    }
+}
+
+async function saveEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('editId').value;
+    const vendorName = document.getElementById('editVendor').value.trim();
+    const data = {
+        expense_date: document.getElementById('editDate').value,
+        category: document.getElementById('editCategory').value,
+        amount: parseFloat(document.getElementById('editAmount').value),
+        vendor: vendorName || null,
+        description: document.getElementById('editDescription').value || null,
+        notes: document.getElementById('editNotes').value || null
+    };
+
+    try {
+        if (vendorName && !allVendors.includes(vendorName)) {
+            try {
+                await fetch(`${SUPABASE_URL}/rest/v1/home_vendors`, { method: 'POST', headers, body: JSON.stringify({ name: vendorName }) });
+                allVendors.push(vendorName);
+                allVendors.sort((a, b) => a.localeCompare(b));
+                updateVendorFilter();
+            } catch (err) {}
+        }
+
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/home_expenses?id=eq.${id}`, { method: 'PATCH', headers, body: JSON.stringify(data) });
+        if (!res.ok) throw new Error('Failed to update');
+        const [updated] = await res.json();
+        const idx = allExpenses.findIndex(e => e.id === id);
+        if (idx >= 0) allExpenses[idx] = updated;
+
+        if (editPendingFiles.length > 0) {
+            const uploaded = await uploadReceipts(id, editPendingFiles);
+            receiptMap[id] = [...(receiptMap[id] || []), ...uploaded];
+            editPendingFiles = [];
+        }
+
+        updateSummary();
+        renderTable();
+        closeModal();
+        showToast('Updated ✅');
+    } catch (err) {
+        showToast('Error updating', true);
+    }
+}
+
+// ===================== LIGHTBOX =====================
+function openLightbox(url) {
+    document.getElementById('lightboxImg').src = url;
+    document.getElementById('lightbox').classList.add('active');
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+}
+
+document.getElementById('lightbox').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeLightbox();
+});
+
+// ===================== RENDER =====================
+function updateSummary() {
+    const now = new Date();
+    const thisMonth = allExpenses.filter(e => { const d = new Date(e.expense_date + 'T00:00:00'); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
+    const thisYear = allExpenses.filter(e => { const d = new Date(e.expense_date + 'T00:00:00'); return d.getFullYear() === now.getFullYear(); });
+    document.getElementById('monthTotal').textContent = fmt(sum(thisMonth));
+    document.getElementById('yearTotal').textContent = fmt(sum(thisYear));
+    document.getElementById('expenseCount').textContent = allExpenses.length;
+}
+
+function renderTable() {
+    const from = document.getElementById('filterFrom').value;
+    const to = document.getElementById('filterTo').value;
+    const cat = document.getElementById('filterCategory').value;
+    const vendor = document.getElementById('filterVendor').value;
+
+    let filtered = allExpenses.filter(e => {
+        if (from && e.expense_date < from) return false;
+        if (to && e.expense_date > to) return false;
+        if (cat && e.category !== cat) return false;
+        if (vendor && e.vendor !== vendor) return false;
+        return true;
+    });
+
+    const tbody = document.getElementById('expenseTable');
+    const emptyEl = document.getElementById('emptyState');
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        emptyEl.style.display = 'block';
+        document.getElementById('filteredTotal').textContent = '';
+        return;
+    }
+
+    emptyEl.style.display = 'none';
+    const total = sum(filtered);
+    document.getElementById('filteredTotal').textContent = `Total: ${fmt(total)}`;
+
+    tbody.innerHTML = filtered.map(e => {
+        const c = getCat(e.category);
+        const receipts = receiptMap[e.id] || [];
+        const receiptIcon = receipts.length > 0 ? `<span class="receipt-indicator" onclick="openEdit('${e.id}')" title="${receipts.length} receipt(s)">📎${receipts.length}</span>` : '';
+        return `<tr>
+            <td>${formatDate(e.expense_date)}</td>
+            <td><span class="cat-badge" style="background:${c.bg};color:${c.text}">${c.icon} ${e.category}</span></td>
+            <td>${escHtml(e.vendor || '—')}</td>
+            <td>${escHtml(e.description || '—')}</td>
+            <td class="amount-col">${fmt(e.amount)}</td>
+            <td>${receiptIcon}</td>
+            <td class="actions-col">
+                <button class="btn btn-secondary" onclick="openEdit('${e.id}')">✏️</button>
+                <button class="btn btn-danger" onclick="deleteExpense('${e.id}')">🗑️</button>
+            </td>
+        </tr>`;
+    }).join('') + `<tr class="total-row"><td colspan="4" style="text-align:right">Total</td><td class="amount-col">${fmt(total)}</td><td></td><td></td></tr>`;
+}
+
+function renderCategorySummary() {
+    const year = parseInt(document.getElementById('summaryYear').value);
+    const monthVal = document.getElementById('summaryMonth').value;
+
+    let filtered = allExpenses.filter(e => {
+        const d = new Date(e.expense_date + 'T00:00:00');
+        if (d.getFullYear() !== year) return false;
+        if (monthVal !== '' && d.getMonth() !== parseInt(monthVal)) return false;
+        return true;
+    });
+
+    const byCategory = {};
+    filtered.forEach(e => { byCategory[e.category] = (byCategory[e.category] || 0) + parseFloat(e.amount); });
+    const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+    const grandTotal = sorted.reduce((s, [, v]) => s + v, 0);
+
+    const container = document.getElementById('categoryBreakdown');
+    if (sorted.length === 0) {
+        container.innerHTML = '<div class="empty-state">No expenses for this period 🌿</div>';
+        return;
+    }
+
+    container.innerHTML = sorted.map(([cat, total]) => {
+        const c = getCat(cat);
+        const pct = grandTotal > 0 ? ((total / grandTotal) * 100).toFixed(1) : 0;
+        return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--sage-100);">
+            <span style="font-size:1.5rem;min-width:36px;text-align:center;">${c.icon}</span>
+            <div style="flex:1;">
+                <div style="font-weight:600;color:var(--sage-700);margin-bottom:4px;">${cat}</div>
+                <div style="background:var(--sage-100);border-radius:4px;height:8px;overflow:hidden;">
+                    <div style="background:var(--sage-500);height:100%;width:${pct}%;border-radius:4px;"></div>
                 </div>
-                <div style="text-align:right; min-width:80px;">
-                    <div style="font-weight:700; color:var(--sage-700);">${fmt(total)}</div>
-                    <div style="font-size:0.75rem; color:var(--taupe);">${pct}%</div>
-                </div>
-            </div>`;
-        }).join('') + `<div style="display:flex; justify-content:space-between; padding:16px 0; font-weight:700; font-size:1.1rem; color:var(--sage-700); border-top:2px solid var(--sage-500); margin-top:4px;">
-            <span>Total</span><span>${fmt(grandTotal)}</span>
+            </div>
+            <div style="text-align:right;min-width:80px;">
+                <div style="font-weight:700;color:var(--sage-700);">${fmt(total)}</div>
+                <div style="font-size:0.75rem;color:var(--taupe);">${pct}%</div>
+            </div>
         </div>`;
-    }
+    }).join('') + `<div style="display:flex;justify-content:space-between;padding:16px 0;font-weight:700;font-size:1.1rem;color:var(--sage-700);border-top:2px solid var(--sage-500);margin-top:4px;">
+        <span>Total</span><span>${fmt(grandTotal)}</span>
+    </div>`;
+}
 
-    // ===================== CSV EXPORT =====================
-    function exportCSV() {
-        const from = document.getElementById('filterFrom').value;
-        const to = document.getElementById('filterTo').value;
-        const cat = document.getElementById('filterCategory').value;
+// ===================== CSV =====================
+function exportCSV() {
+    const from = document.getElementById('filterFrom').value;
+    const to = document.getElementById('filterTo').value;
+    const cat = document.getElementById('filterCategory').value;
+    const vendor = document.getElementById('filterVendor').value;
 
-        let filtered = allExpenses.filter(e => {
-            if (from && e.expense_date < from) return false;
-            if (to && e.expense_date > to) return false;
-            if (cat && e.category !== cat) return false;
-            return true;
-        });
+    let filtered = allExpenses.filter(e => {
+        if (from && e.expense_date < from) return false;
+        if (to && e.expense_date > to) return false;
+        if (cat && e.category !== cat) return false;
+        if (vendor && e.vendor !== vendor) return false;
+        return true;
+    });
 
-        if (filtered.length === 0) {
-            showToast('No expenses to export', true);
-            return;
-        }
+    if (filtered.length === 0) { showToast('No expenses to export', true); return; }
 
-        const rows = [['Date', 'Category', 'Description', 'Amount', 'Notes']];
-        filtered.forEach(e => {
-            rows.push([e.expense_date, e.category, e.description || '', e.amount, e.notes || '']);
-        });
+    const rows = [['Date', 'Category', 'Vendor', 'Description', 'Amount', 'Notes']];
+    filtered.forEach(e => rows.push([e.expense_date, e.category, e.vendor || '', e.description || '', e.amount, e.notes || '']));
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `home_expenses_${from || 'all'}_to_${to || 'all'}.csv`;
+    a.click();
+    showToast('CSV downloaded! 📥');
+}
 
-        const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `home_expenses_${from || 'all'}_to_${to || 'all'}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast('CSV downloaded! 📥');
-    }
-
-    // ===================== HELPERS =====================
-    function fmt(n) { return '$' + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
-    function sum(arr) { return arr.reduce((s, e) => s + parseFloat(e.amount), 0); }
-    function formatDate(d) {
-        const [y, m, day] = d.split('-');
-        return `${parseInt(m)}/${parseInt(day)}/${y}`;
-    }
-    function showToast(msg, isError = false) {
-        const t = document.getElementById('toast');
-        t.textContent = msg;
-        t.className = 'toast show' + (isError ? ' error' : '');
-        setTimeout(() => t.className = 'toast', 2500);
-    }
+// ===================== HELPERS =====================
+function fmt(n) { return '$' + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function sum(arr) { return arr.reduce((s, e) => s + parseFloat(e.amount), 0); }
+function formatDate(d) { const [y, m, day] = d.split('-'); return `${parseInt(m)}/${parseInt(day)}/${y}`; }
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => t.className = 'toast', 2500);
+}
 </script>
 </body>
 </html>
