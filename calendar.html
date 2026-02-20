@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homestead Calendar - Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --sage-50: #f6f7f3;
+            --sage-100: #e8ebe0;
+            --sage-200: #d4dac5;
+            --sage-300: #b8c5a3;
+            --sage-400: #98ab7e;
+            --sage-500: #7a9061;
+            --sage-600: #5f734c;
+            --sage-700: #4a5a3b;
+            --sage-800: #3d4a32;
+            --earth-warm: #d4a373;
+            --earth-cream: #faf8f3;
+            --earth-brown: #8b7355;
+            --cream: #ece8dd;
+            --taupe: #c4b5a4;
+            --charcoal: #4a4d47;
+            --dusty-rose: #9b7269;
+            --warning-red: #c74440;
+        }
+
+        body {
+            font-family: 'Karla', sans-serif;
+            background: linear-gradient(135deg, var(--sage-50) 0%, var(--earth-cream) 100%);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            color: var(--sage-800);
+        }
+
+        .pond-banner {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            object-position: center 40%;
+            display: block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Navigation */
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            background: rgba(122, 144, 97, 0.1);
+            border: 1px solid var(--sage-200);
+            border-radius: 20px;
+            color: var(--sage-700);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: rgba(122, 144, 97, 0.2);
+            border-color: var(--sage-400);
+        }
+
+        .nav-link.active {
+            background: var(--sage-500);
+            color: white;
+            border-color: var(--sage-500);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 20px 15px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-top: 20px;
+        }
+
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 2.5rem;
+            font-weight: 400;
+            color: var(--sage-700);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        /* Section Toggle */
+        .section-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .toggle-btn {
+            padding: 12px 24px;
+            border: 2px solid var(--sage-300);
+            border-radius: 25px;
+            background: white;
+            color: var(--sage-700);
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn.active {
+            background: var(--sage-500);
+            color: white;
+            border-color: var(--sage-500);
+        }
+
+        .toggle-btn:hover:not(.active) {
+            background: var(--sage-100);
+        }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: 'Karla', sans-serif;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: var(--sage-500);
+            color: white;
+        }
+
+        .btn-primary:hover { background: var(--sage-600); }
+
+        .btn-secondary {
+            background: white;
+            color: var(--sage-700);
+            border: 2px solid var(--sage-300);
+        }
+
+        .btn-secondary:hover { background: var(--sage-100); }
+
+        .btn-danger {
+            background: var(--warning-red);
+            color: white;
+        }
+
+        .btn-small {
+            padding: 6px 14px;
+            font-size: 0.85rem;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid var(--sage-100);
+        }
+
+        /* ===== CHORES SECTION ===== */
+        .chore-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .category-filter {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .filter-pill {
+            padding: 6px 14px;
+            border-radius: 15px;
+            border: 1px solid var(--sage-200);
+            background: white;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: var(--sage-700);
+            font-family: 'Karla', sans-serif;
+        }
+
+        .filter-pill.active {
+            background: var(--sage-500);
+            color: white;
+            border-color: var(--sage-500);
+        }
+
+        .chore-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            border: 1px solid var(--sage-100);
+            transition: all 0.2s ease;
+        }
+
+        .chore-item.completed {
+            opacity: 0.6;
+            background: var(--sage-50);
+        }
+
+        .chore-item.completed .chore-name {
+            text-decoration: line-through;
+        }
+
+        .chore-checkbox {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid var(--sage-400);
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .chore-checkbox.checked {
+            background: var(--sage-500);
+            border-color: var(--sage-500);
+        }
+
+        .chore-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .chore-info { flex: 1; }
+
+        .chore-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--sage-800);
+        }
+
+        .chore-meta {
+            font-size: 0.8rem;
+            color: var(--sage-600);
+            margin-top: 2px;
+        }
+
+        .chore-category-badge {
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: var(--sage-100);
+            color: var(--sage-700);
+        }
+
+        .chore-date-input {
+            padding: 4px 8px;
+            border: 1px solid var(--sage-200);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-family: 'Karla', sans-serif;
+            color: var(--sage-700);
+        }
+
+        .chore-delete {
+            background: none;
+            border: none;
+            color: var(--sage-400);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 4px;
+            opacity: 0.5;
+            transition: all 0.2s;
+        }
+
+        .chore-delete:hover {
+            color: var(--warning-red);
+            opacity: 1;
+        }
+
+        /* ===== PLANT TRACKER SECTION ===== */
+        .plant-group {
+            margin-bottom: 24px;
+        }
+
+        .plant-group-header {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.4rem;
+            color: var(--sage-700);
+            padding: 8px 0;
+            border-bottom: 2px solid var(--sage-300);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .plant-card {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid var(--sage-100);
+            overflow: hidden;
+        }
+
+        .plant-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .plant-card-header:hover {
+            background: var(--sage-50);
+        }
+
+        .plant-variety-name {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--sage-800);
+        }
+
+        .plant-method-badge {
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-indoor {
+            background: #e8d5f5;
+            color: #6b3fa0;
+        }
+
+        .badge-direct {
+            background: #d5ecd4;
+            color: #2d6a2e;
+        }
+
+        .plant-card-body {
+            display: none;
+            padding: 0 16px 16px;
+            border-top: 1px solid var(--sage-100);
+        }
+
+        .plant-card-body.open { display: block; }
+
+        .milestone-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .milestone-grid { grid-template-columns: 1fr; }
+        }
+
+        .milestone-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .milestone-label {
+            font-size: 0.8rem;
+            color: var(--sage-600);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .milestone-input {
+            padding: 8px 10px;
+            border: 1px solid var(--sage-200);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: 'Karla', sans-serif;
+            color: var(--sage-800);
+            background: var(--sage-50);
+            width: 100%;
+        }
+
+        .milestone-input:focus {
+            outline: none;
+            border-color: var(--sage-400);
+            background: white;
+        }
+
+        /* Notes area */
+        .notes-area {
+            width: 100%;
+            min-height: 60px;
+            padding: 10px;
+            border: 1px solid var(--sage-200);
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 0.9rem;
+            resize: vertical;
+            color: var(--sage-800);
+            background: var(--sage-50);
+        }
+
+        .notes-area:focus {
+            outline: none;
+            border-color: var(--sage-400);
+            background: white;
+        }
+
+        /* Photos */
+        .photo-section {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--sage-200);
+        }
+
+        .photo-stage-tabs {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .photo-tab {
+            padding: 5px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--sage-200);
+            background: white;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: var(--sage-700);
+            font-family: 'Karla', sans-serif;
+        }
+
+        .photo-tab.active {
+            background: var(--earth-warm);
+            color: white;
+            border-color: var(--earth-warm);
+        }
+
+        .photo-grid {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .photo-thumb {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid var(--sage-200);
+            cursor: pointer;
+        }
+
+        .photo-upload-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            border: 2px dashed var(--sage-300);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: var(--sage-400);
+            transition: all 0.2s;
+        }
+
+        .photo-upload-btn:hover {
+            border-color: var(--sage-500);
+            color: var(--sage-500);
+            background: var(--sage-50);
+        }
+
+        /* Harvest Log */
+        .harvest-section {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--sage-200);
+        }
+
+        .harvest-entry {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--sage-50);
+        }
+
+        .harvest-entry:last-child { border-bottom: none; }
+
+        .harvest-add-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .harvest-add-row input, .harvest-add-row select {
+            padding: 6px 10px;
+            border: 1px solid var(--sage-200);
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 0.85rem;
+        }
+
+        /* Plant action buttons */
+        .plant-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--sage-200);
+        }
+
+        /* Modals */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal h2 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.5rem;
+            color: var(--sage-700);
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--sage-600);
+            margin-bottom: 4px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--sage-200);
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 0.95rem;
+            color: var(--sage-800);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--sage-400);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        /* Year selector */
+        .year-selector {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .year-selector button {
+            background: white;
+            border: 1px solid var(--sage-300);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--sage-700);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .year-selector span {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.3rem;
+            color: var(--sage-700);
+            font-weight: 600;
+        }
+
+        /* Photo lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 300;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .lightbox.open { display: flex; }
+
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 8px;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--sage-400);
+        }
+
+        .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
+        .empty-state-text { font-size: 1rem; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .section-toggle { flex-direction: column; align-items: center; }
+            .toggle-btn { width: 80%; }
+            .form-row { grid-template-columns: 1fr; }
+            .nav-container { gap: 6px; }
+            .nav-link { font-size: 0.8rem; padding: 6px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <img src="pond.jpeg" alt="Pond Banner" class="pond-banner">
+    
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-link">🏠 Home</a>
+            <a href="inventory.html" class="nav-link">🫙 Inventory</a>
+            <a href="shopping.html" class="nav-link">🛒 Shopping</a>
+            <a href="recipes.html" class="nav-link">🍳 Recipes</a>
+            <a href="meal-plan.html" class="nav-link">📅 Meals</a>
+            <a href="expenses.html" class="nav-link">💰 Expenses</a>
+            <a href="calendar.html" class="nav-link active">🌱 Calendar</a>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <header>
+            <h1>🌱 Homestead Calendar</h1>
+        </header>
+
+        <!-- Year Selector -->
+        <div class="year-selector">
+            <button onclick="changeYear(-1)">◀</button>
+            <span id="current-year">2026</span>
+            <button onclick="changeYear(1)">▶</button>
+        </div>
+
+        <!-- Section Toggle -->
+        <div class="section-toggle">
+            <button class="toggle-btn active" onclick="switchSection('chores')">🧹 Homestead Chores</button>
+            <button class="toggle-btn" onclick="switchSection('plants')">🌿 Plant Tracker</button>
+        </div>
+
+        <!-- ===== CHORES SECTION ===== -->
+        <div id="chores-section" class="section active">
+            <div class="chore-header">
+                <div class="category-filter" id="chore-filters"></div>
+                <button class="btn btn-primary btn-small" onclick="openChoreModal()">+ Add Chore</button>
+            </div>
+            <div id="chores-list"></div>
+        </div>
+
+        <!-- ===== PLANT TRACKER SECTION ===== -->
+        <div id="plants-section" class="section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                <div class="category-filter" id="plant-filters"></div>
+                <button class="btn btn-primary btn-small" onclick="openPlantModal()">+ Add Plant</button>
+            </div>
+            <div id="plants-list"></div>
+        </div>
+    </div>
+
+    <!-- Add Chore Modal -->
+    <div class="modal-overlay" id="chore-modal">
+        <div class="modal">
+            <h2 id="chore-modal-title">Add Chore</h2>
+            <div class="form-group">
+                <label>Task</label>
+                <input type="text" id="chore-task" placeholder="e.g. Set up greenhouse">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="chore-category">
+                        <option value="General">General</option>
+                        <option value="Greenhouse">Greenhouse</option>
+                        <option value="Birds">Birds</option>
+                        <option value="Garden Prep">Garden Prep</option>
+                        <option value="Brooder">Brooder</option>
+                        <option value="Planting">Planting</option>
+                        <option value="Maintenance">Maintenance</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Due Date (optional)</label>
+                    <input type="date" id="chore-due">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Notes (optional)</label>
+                <textarea id="chore-notes" rows="2" placeholder="Any details..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeChoreModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveChore()">Save Chore</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Plant Modal -->
+    <div class="modal-overlay" id="plant-modal">
+        <div class="modal">
+            <h2>Add Plant Entry</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Plant Type</label>
+                    <input type="text" id="plant-type" list="plant-types" placeholder="e.g. Tomato">
+                    <datalist id="plant-types">
+                        <option value="Tomato">
+                        <option value="Pepper">
+                        <option value="Eggplant">
+                        <option value="Cucumber">
+                        <option value="Bean">
+                        <option value="Potato">
+                        <option value="Sweet Potato">
+                        <option value="Herb">
+                        <option value="Broccoli">
+                        <option value="Brussels Sprouts">
+                        <option value="Onion">
+                        <option value="Carrot">
+                        <option value="Corn">
+                        <option value="Watermelon">
+                        <option value="Pumpkin">
+                        <option value="Strawberry">
+                        <option value="Tomatillo">
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label>Variety</label>
+                    <input type="text" id="plant-variety" placeholder="e.g. San Marzano II">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Grow Method</label>
+                    <select id="plant-method">
+                        <option value="indoor_start">🏠 Indoor Start</option>
+                        <option value="direct_sow">🌾 Direct Sow</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Planned Plant Count</label>
+                    <input type="number" id="plant-planned" placeholder="How many you want">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closePlantModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="savePlant()">Add Plant</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Lightbox -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+        <img id="lightbox-img" src="" alt="Photo">
+    </div>
+
+    <script>
+        // ===== SUPABASE SETUP =====
+        const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentYear = new Date().getFullYear();
+        let currentChoreFilter = 'All';
+        let currentPlantFilter = 'All';
+        let allChores = [];
+        let allPlants = [];
+        let allPhotos = {};
+        let allHarvests = {};
+
+        // ===== SECTION SWITCHING =====
+        function switchSection(section) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(section + '-section').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function changeYear(delta) {
+            currentYear += delta;
+            document.getElementById('current-year').textContent = currentYear;
+            loadChores();
+            loadPlants();
+        }
+
+        // ===== CHORES =====
+        async function loadChores() {
+            const { data, error } = await db
+                .from('homestead_chores')
+                .select('*')
+                .eq('year', currentYear)
+                .order('completed', { ascending: true })
+                .order('due_date', { ascending: true, nullsFirst: false })
+                .order('sort_order', { ascending: true });
+
+            if (error) { console.error('Error loading chores:', error); return; }
+            allChores = data || [];
+            renderChoreFilters();
+            renderChores();
+        }
+
+        function renderChoreFilters() {
+            const categories = ['All', ...new Set(allChores.map(c => c.category))];
+            document.getElementById('chore-filters').innerHTML = categories.map(cat => 
+                `<button class="filter-pill ${cat === currentChoreFilter ? 'active' : ''}" 
+                    onclick="filterChores('${cat}')">${cat}</button>`
+            ).join('');
+        }
+
+        function filterChores(cat) {
+            currentChoreFilter = cat;
+            renderChoreFilters();
+            renderChores();
+        }
+
+        function renderChores() {
+            const filtered = currentChoreFilter === 'All' 
+                ? allChores 
+                : allChores.filter(c => c.category === currentChoreFilter);
+
+            if (filtered.length === 0) {
+                document.getElementById('chores-list').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🧹</div>
+                        <div class="empty-state-text">No chores yet. Add your first homestead task!</div>
+                    </div>`;
+                return;
+            }
+
+            document.getElementById('chores-list').innerHTML = filtered.map(chore => `
+                <div class="chore-item ${chore.completed ? 'completed' : ''}">
+                    <div class="chore-checkbox ${chore.completed ? 'checked' : ''}" 
+                         onclick="toggleChore('${chore.id}', ${!chore.completed})"></div>
+                    <div class="chore-info">
+                        <div class="chore-name">${chore.task}</div>
+                        <div class="chore-meta">
+                            ${chore.due_date ? '📅 Due: ' + formatDate(chore.due_date) : ''}
+                            ${chore.completion_date ? ' ✅ Done: ' + formatDate(chore.completion_date) : ''}
+                            ${chore.notes ? ' · ' + chore.notes : ''}
+                        </div>
+                    </div>
+                    <span class="chore-category-badge">${chore.category}</span>
+                    ${chore.completed && !chore.completion_date ? 
+                        `<input type="date" class="chore-date-input" onchange="setCompletionDate('${chore.id}', this.value)">` : ''}
+                    <button class="chore-delete" onclick="deleteChore('${chore.id}')" title="Delete">🗑</button>
+                </div>
+            `).join('');
+        }
+
+        async function toggleChore(id, completed) {
+            const updates = { completed };
+            if (completed) {
+                updates.completion_date = new Date().toISOString().split('T')[0];
+            } else {
+                updates.completion_date = null;
+            }
+            await db.from('homestead_chores').update(updates).eq('id', id);
+            loadChores();
+        }
+
+        async function setCompletionDate(id, date) {
+            await db.from('homestead_chores').update({ completion_date: date }).eq('id', id);
+            loadChores();
+        }
+
+        async function deleteChore(id) {
+            if (!confirm('Delete this chore?')) return;
+            await db.from('homestead_chores').delete().eq('id', id);
+            loadChores();
+        }
+
+        function openChoreModal() {
+            document.getElementById('chore-modal').classList.add('open');
+            document.getElementById('chore-task').value = '';
+            document.getElementById('chore-category').value = 'General';
+            document.getElementById('chore-due').value = '';
+            document.getElementById('chore-notes').value = '';
+            document.getElementById('chore-task').focus();
+        }
+
+        function closeChoreModal() {
+            document.getElementById('chore-modal').classList.remove('open');
+        }
+
+        async function saveChore() {
+            const task = document.getElementById('chore-task').value.trim();
+            if (!task) { alert('Please enter a task name'); return; }
+
+            const chore = {
+                task,
+                category: document.getElementById('chore-category').value,
+                due_date: document.getElementById('chore-due').value || null,
+                notes: document.getElementById('chore-notes').value.trim() || null,
+                year: currentYear
+            };
+
+            const { error } = await db.from('homestead_chores').insert(chore);
+            if (error) { console.error('Error saving chore:', error); alert('Failed to save'); return; }
+            closeChoreModal();
+            loadChores();
+        }
+
+        // ===== PLANTS =====
+        async function loadPlants() {
+            const { data, error } = await db
+                .from('plant_entries')
+                .select('*')
+                .eq('year', currentYear)
+                .order('plant_type', { ascending: true })
+                .order('variety', { ascending: true });
+
+            if (error) { console.error('Error loading plants:', error); return; }
+            allPlants = data || [];
+
+            // Load photos for all plants
+            const plantIds = allPlants.map(p => p.id);
+            if (plantIds.length > 0) {
+                const { data: photos } = await db
+                    .from('plant_photos')
+                    .select('*')
+                    .in('plant_entry_id', plantIds)
+                    .order('taken_date', { ascending: false });
+                
+                allPhotos = {};
+                (photos || []).forEach(p => {
+                    if (!allPhotos[p.plant_entry_id]) allPhotos[p.plant_entry_id] = [];
+                    allPhotos[p.plant_entry_id].push(p);
+                });
+
+                const { data: harvests } = await db
+                    .from('harvest_log')
+                    .select('*')
+                    .in('plant_entry_id', plantIds)
+                    .order('harvest_date', { ascending: false });
+                
+                allHarvests = {};
+                (harvests || []).forEach(h => {
+                    if (!allHarvests[h.plant_entry_id]) allHarvests[h.plant_entry_id] = [];
+                    allHarvests[h.plant_entry_id].push(h);
+                });
+            }
+
+            renderPlantFilters();
+            renderPlants();
+        }
+
+        function renderPlantFilters() {
+            const types = ['All', ...new Set(allPlants.map(p => p.plant_type))];
+            document.getElementById('plant-filters').innerHTML = types.map(t =>
+                `<button class="filter-pill ${t === currentPlantFilter ? 'active' : ''}"
+                    onclick="filterPlants('${t}')">${t}</button>`
+            ).join('');
+        }
+
+        function filterPlants(type) {
+            currentPlantFilter = type;
+            renderPlantFilters();
+            renderPlants();
+        }
+
+        function renderPlants() {
+            const filtered = currentPlantFilter === 'All' 
+                ? allPlants 
+                : allPlants.filter(p => p.plant_type === currentPlantFilter);
+
+            if (filtered.length === 0) {
+                document.getElementById('plants-list').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🌿</div>
+                        <div class="empty-state-text">No plants tracked yet. Add your first variety!</div>
+                    </div>`;
+                return;
+            }
+
+            // Group by plant type
+            const grouped = {};
+            filtered.forEach(p => {
+                if (!grouped[p.plant_type]) grouped[p.plant_type] = [];
+                grouped[p.plant_type].push(p);
+            });
+
+            let html = '';
+            Object.entries(grouped).forEach(([type, plants]) => {
+                html += `<div class="plant-group">
+                    <div class="plant-group-header">
+                        <span>${getPlantEmoji(type)} ${type}</span>
+                        <span style="font-size: 0.85rem; color: var(--sage-500);">${plants.length} ${plants.length === 1 ? 'variety' : 'varieties'}</span>
+                    </div>`;
+                
+                plants.forEach(plant => {
+                    html += renderPlantCard(plant);
+                });
+                html += '</div>';
+            });
+
+            document.getElementById('plants-list').innerHTML = html;
+        }
+
+        function renderPlantCard(plant) {
+            const isIndoor = plant.grow_method === 'indoor_start';
+            const photos = allPhotos[plant.id] || [];
+            const harvests = allHarvests[plant.id] || [];
+
+            return `
+                <div class="plant-card" id="plant-${plant.id}">
+                    <div class="plant-card-header" onclick="togglePlantCard('${plant.id}')">
+                        <div>
+                            <span class="plant-variety-name">${plant.variety}</span>
+                            <span class="plant-method-badge ${isIndoor ? 'badge-indoor' : 'badge-direct'}">
+                                ${isIndoor ? '🏠 Indoor Start' : '🌾 Direct Sow'}
+                            </span>
+                        </div>
+                        <span style="color: var(--sage-400);">▼</span>
+                    </div>
+                    <div class="plant-card-body" id="body-${plant.id}">
+                        <!-- Counts -->
+                        <div class="milestone-grid" style="margin-top: 12px;">
+                            <div class="milestone-item">
+                                <span class="milestone-label">Seeds Sowed</span>
+                                <input type="number" class="milestone-input" value="${plant.seeds_sowed || ''}" 
+                                    placeholder="—" onchange="updatePlant('${plant.id}', 'seeds_sowed', this.value ? parseInt(this.value) : null)">
+                            </div>
+                            <div class="milestone-item">
+                                <span class="milestone-label">Plant Count</span>
+                                <input type="number" class="milestone-input" value="${plant.plant_count || ''}" 
+                                    placeholder="—" onchange="updatePlant('${plant.id}', 'plant_count', this.value ? parseInt(this.value) : null)">
+                            </div>
+                            <div class="milestone-item">
+                                <span class="milestone-label">Planned Count</span>
+                                <input type="number" class="milestone-input" value="${plant.planned_count || ''}" 
+                                    placeholder="—" onchange="updatePlant('${plant.id}', 'planned_count', this.value ? parseInt(this.value) : null)">
+                            </div>
+                            <div class="milestone-item">
+                                <span class="milestone-label">Survival Count</span>
+                                <input type="number" class="milestone-input" value="${plant.survival_count || ''}" 
+                                    placeholder="—" onchange="updatePlant('${plant.id}', 'survival_count', this.value ? parseInt(this.value) : null)">
+                            </div>
+                        </div>
+
+                        <!-- Milestone Dates -->
+                        <div style="margin-top: 16px;">
+                            <div class="milestone-label" style="margin-bottom: 8px; font-size: 0.9rem;">📅 Milestone Dates</div>
+                            <div class="milestone-grid">
+                                ${isIndoor ? renderIndoorMilestones(plant) : renderDirectMilestones(plant)}
+                                <div class="milestone-item">
+                                    <span class="milestone-label">Germination</span>
+                                    <input type="date" class="milestone-input" value="${plant.germination_date || ''}"
+                                        onchange="updatePlant('${plant.id}', 'germination_date', this.value || null)">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div style="margin-top: 16px;">
+                            <div class="milestone-label" style="margin-bottom: 6px;">General Notes</div>
+                            <textarea class="notes-area" placeholder="Notes about this variety..."
+                                onchange="updatePlant('${plant.id}', 'general_notes', this.value || null)">${plant.general_notes || ''}</textarea>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <div class="milestone-label" style="margin-bottom: 6px;">🐛 Pest / Disease Notes</div>
+                            <textarea class="notes-area" placeholder="Any pest or disease issues..."
+                                onchange="updatePlant('${plant.id}', 'pest_notes', this.value || null)">${plant.pest_notes || ''}</textarea>
+                        </div>
+
+                        <!-- Photos -->
+                        <div class="photo-section">
+                            <div class="milestone-label" style="margin-bottom: 8px;">📷 Photos</div>
+                            <div class="photo-stage-tabs" id="photo-tabs-${plant.id}">
+                                ${['germination','potup','growing','harvest','pest_disease'].map(stage =>
+                                    `<button class="photo-tab" onclick="selectPhotoStage('${plant.id}', '${stage}', this)">
+                                        ${getStageLabel(stage)} 
+                                        ${photos.filter(p => p.stage === stage).length > 0 ? 
+                                            '(' + photos.filter(p => p.stage === stage).length + ')' : ''}
+                                    </button>`
+                                ).join('')}
+                            </div>
+                            <div class="photo-grid" id="photos-${plant.id}">
+                                <div class="photo-upload-btn" onclick="uploadPhoto('${plant.id}')">+</div>
+                            </div>
+                            <input type="file" id="file-${plant.id}" accept="image/*" style="display:none" 
+                                onchange="handlePhotoUpload('${plant.id}', this)">
+                        </div>
+
+                        <!-- Harvest Log -->
+                        <div class="harvest-section">
+                            <div class="milestone-label" style="margin-bottom: 8px;">🥕 Harvest Log</div>
+                            ${harvests.map(h => `
+                                <div class="harvest-entry">
+                                    <span>${formatDate(h.harvest_date)}</span>
+                                    <strong>${h.amount} ${h.unit}</strong>
+                                    <span style="color: var(--sage-500);">${h.notes || ''}</span>
+                                    <button class="chore-delete" onclick="deleteHarvest('${h.id}', '${plant.id}')" style="margin-left: auto;">🗑</button>
+                                </div>
+                            `).join('')}
+                            <div class="harvest-add-row">
+                                <input type="date" id="harvest-date-${plant.id}" value="${new Date().toISOString().split('T')[0]}">
+                                <input type="number" id="harvest-amt-${plant.id}" placeholder="Amount" style="width: 80px;" step="0.1">
+                                <select id="harvest-unit-${plant.id}">
+                                    <option value="lbs">lbs</option>
+                                    <option value="oz">oz</option>
+                                    <option value="count">count</option>
+                                    <option value="bushel">bushel</option>
+                                </select>
+                                <input type="text" id="harvest-notes-${plant.id}" placeholder="Notes" style="flex: 1; min-width: 80px;">
+                                <button class="btn btn-primary btn-small" onclick="addHarvest('${plant.id}')">+ Add</button>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="plant-actions">
+                            <button class="btn btn-danger btn-small" onclick="deletePlant('${plant.id}')">Delete Plant</button>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function renderIndoorMilestones(plant) {
+            return `
+                <div class="milestone-item">
+                    <span class="milestone-label">Suggested Sow Date</span>
+                    <input type="date" class="milestone-input" value="${plant.suggested_sow_date || ''}"
+                        onchange="updatePlant('${plant.id}', 'suggested_sow_date', this.value || null)">
+                </div>
+                <div class="milestone-item">
+                    <span class="milestone-label">Actual Sow Date</span>
+                    <input type="date" class="milestone-input" value="${plant.actual_sow_date || ''}"
+                        onchange="updatePlant('${plant.id}', 'actual_sow_date', this.value || null)">
+                </div>
+                <div class="milestone-item">
+                    <span class="milestone-label">Pot-up Date</span>
+                    <input type="date" class="milestone-input" value="${plant.potup_date || ''}"
+                        onchange="updatePlant('${plant.id}', 'potup_date', this.value || null)">
+                </div>
+                <div class="milestone-item">
+                    <span class="milestone-label">Greenhouse Window Start</span>
+                    <input type="date" class="milestone-input" value="${plant.greenhouse_window_start || ''}"
+                        onchange="updatePlant('${plant.id}', 'greenhouse_window_start', this.value || null)">
+                </div>
+                <div class="milestone-item">
+                    <span class="milestone-label">Greenhouse Window End</span>
+                    <input type="date" class="milestone-input" value="${plant.greenhouse_window_end || ''}"
+                        onchange="updatePlant('${plant.id}', 'greenhouse_window_end', this.value || null)">
+                </div>
+                <div class="milestone-item">
+                    <span class="milestone-label">Transplanted Outdoors</span>
+                    <input type="date" class="milestone-input" value="${plant.transplant_outdoor_date || ''}"
+                        onchange="updatePlant('${plant.id}', 'transplant_outdoor_date', this.value || null)">
+                </div>`;
+        }
+
+        function renderDirectMilestones(plant) {
+            return `
+                <div class="milestone-item">
+                    <span class="milestone-label">Sow Date</span>
+                    <input type="date" class="milestone-input" value="${plant.sow_date || ''}"
+                        onchange="updatePlant('${plant.id}', 'sow_date', this.value || null)">
+                </div>
+                <div class="milestone-item">
+                    <span class="milestone-label">Thinning Date</span>
+                    <input type="date" class="milestone-input" value="${plant.thinning_date || ''}"
+                        onchange="updatePlant('${plant.id}', 'thinning_date', this.value || null)">
+                </div>
+                <div class="milestone-item">
+                    <span class="milestone-label">Garden Location</span>
+                    <input type="text" class="milestone-input" value="${plant.garden_location || ''}" placeholder="e.g. Bed 3"
+                        onchange="updatePlant('${plant.id}', 'garden_location', this.value || null)">
+                </div>`;
+        }
+
+        // ===== PLANT CRUD =====
+        async function updatePlant(id, field, value) {
+            const { error } = await db.from('plant_entries').update({ [field]: value }).eq('id', id);
+            if (error) console.error('Error updating plant:', error);
+        }
+
+        function togglePlantCard(id) {
+            const body = document.getElementById('body-' + id);
+            body.classList.toggle('open');
+        }
+
+        function openPlantModal() {
+            document.getElementById('plant-modal').classList.add('open');
+            document.getElementById('plant-type').value = '';
+            document.getElementById('plant-variety').value = '';
+            document.getElementById('plant-method').value = 'indoor_start';
+            document.getElementById('plant-planned').value = '';
+            document.getElementById('plant-type').focus();
+        }
+
+        function closePlantModal() {
+            document.getElementById('plant-modal').classList.remove('open');
+        }
+
+        async function savePlant() {
+            const plant_type = document.getElementById('plant-type').value.trim();
+            const variety = document.getElementById('plant-variety').value.trim();
+            if (!plant_type || !variety) { alert('Please enter plant type and variety'); return; }
+
+            const entry = {
+                plant_type,
+                variety,
+                grow_method: document.getElementById('plant-method').value,
+                planned_count: document.getElementById('plant-planned').value ? parseInt(document.getElementById('plant-planned').value) : null,
+                year: currentYear
+            };
+
+            const { error } = await db.from('plant_entries').insert(entry);
+            if (error) { console.error('Error saving plant:', error); alert('Failed to save'); return; }
+            closePlantModal();
+            loadPlants();
+        }
+
+        async function deletePlant(id) {
+            if (!confirm('Delete this plant and all its photos/harvests?')) return;
+            await db.from('plant_entries').delete().eq('id', id);
+            loadPlants();
+        }
+
+        // ===== PHOTOS =====
+        let currentPhotoStage = {};
+
+        function selectPhotoStage(plantId, stage, btn) {
+            currentPhotoStage[plantId] = stage;
+            // Update active tab
+            const tabs = btn.parentElement.querySelectorAll('.photo-tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            // Show photos for this stage
+            renderPhotoGrid(plantId, stage);
+        }
+
+        function renderPhotoGrid(plantId, stage) {
+            const photos = (allPhotos[plantId] || []).filter(p => p.stage === stage);
+            const grid = document.getElementById('photos-' + plantId);
+            grid.innerHTML = photos.map(p => 
+                `<img src="${p.photo_url}" class="photo-thumb" onclick="openLightbox('${p.photo_url}')" title="${p.caption || ''}">`
+            ).join('') + `<div class="photo-upload-btn" onclick="uploadPhoto('${plantId}')">+</div>`;
+        }
+
+        function uploadPhoto(plantId) {
+            if (!currentPhotoStage[plantId]) {
+                alert('Please select a photo stage first (Germination, Pot-up, etc.)');
+                return;
+            }
+            document.getElementById('file-' + plantId).click();
+        }
+
+        async function handlePhotoUpload(plantId, input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const stage = currentPhotoStage[plantId];
+            const fileName = `${plantId}/${stage}/${Date.now()}_${file.name}`;
+
+            // Upload to Supabase Storage
+            const { data, error } = await db.storage
+                .from('plant-photos')
+                .upload(fileName, file);
+
+            if (error) {
+                console.error('Upload error:', error);
+                alert('Photo upload failed. Make sure the storage bucket is set up (see migration SQL).');
+                return;
+            }
+
+            // Get public URL
+            const { data: urlData } = db.storage
+                .from('plant-photos')
+                .getPublicUrl(fileName);
+
+            // Save photo record
+            await db.from('plant_photos').insert({
+                plant_entry_id: plantId,
+                stage: stage,
+                photo_url: urlData.publicUrl,
+                taken_date: new Date().toISOString().split('T')[0]
+            });
+
+            input.value = '';
+            loadPlants();
+        }
+
+        function openLightbox(url) {
+            document.getElementById('lightbox-img').src = url;
+            document.getElementById('lightbox').classList.add('open');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('open');
+        }
+
+        // ===== HARVEST LOG =====
+        async function addHarvest(plantId) {
+            const date = document.getElementById('harvest-date-' + plantId).value;
+            const amount = document.getElementById('harvest-amt-' + plantId).value;
+            const unit = document.getElementById('harvest-unit-' + plantId).value;
+            const notes = document.getElementById('harvest-notes-' + plantId).value;
+
+            if (!amount) { alert('Please enter an amount'); return; }
+
+            const { error } = await db.from('harvest_log').insert({
+                plant_entry_id: plantId,
+                harvest_date: date,
+                amount: parseFloat(amount),
+                unit,
+                notes: notes || null
+            });
+
+            if (error) { console.error('Error adding harvest:', error); return; }
+            loadPlants();
+        }
+
+        async function deleteHarvest(id, plantId) {
+            await db.from('harvest_log').delete().eq('id', id);
+            loadPlants();
+        }
+
+        // ===== HELPERS =====
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr + 'T12:00:00');
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function getPlantEmoji(type) {
+            const emojis = {
+                'Tomato': '🍅', 'Pepper': '🌶️', 'Eggplant': '🍆',
+                'Cucumber': '🥒', 'Bean': '🫘', 'Potato': '🥔',
+                'Sweet Potato': '🍠', 'Herb': '🌿', 'Broccoli': '🥦',
+                'Brussels Sprouts': '🥬', 'Onion': '🧅', 'Carrot': '🥕',
+                'Corn': '🌽', 'Watermelon': '🍉', 'Pumpkin': '🎃',
+                'Strawberry': '🍓', 'Tomatillo': '🟢'
+            };
+            return emojis[type] || '🌱';
+        }
+
+        function getStageLabel(stage) {
+            const labels = {
+                'germination': '🌱 Sprout',
+                'potup': '🪴 Pot-up',
+                'growing': '🌿 Growing',
+                'harvest': '🥕 Harvest',
+                'pest_disease': '🐛 Pests'
+            };
+            return labels[stage] || stage;
+        }
+
+        // ===== KEYBOARD: close modals with Escape =====
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeChoreModal();
+                closePlantModal();
+                closeLightbox();
+            }
+        });
+
+        // Close modals on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('open');
+                }
+            });
+        });
+
+        // ===== INIT =====
+        loadChores();
+        loadPlants();
+    </script>
+</body>
+</html>
