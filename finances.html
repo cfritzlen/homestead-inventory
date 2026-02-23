@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finances - Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --sage-50: #f6f7f3;
+            --sage-100: #e8ebe0;
+            --sage-200: #d4dac5;
+            --sage-300: #b8c5a3;
+            --sage-400: #98ab7e;
+            --sage-500: #7a9061;
+            --sage-600: #5f734c;
+            --sage-700: #4a5a3b;
+            --sage-800: #3d4a32;
+            --cream: #ece8dd;
+            --taupe: #c4b5a4;
+            --dusty-sage: #a4ac95;
+            --mauve: #a88479;
+            --charcoal: #4a4d47;
+            --dusty-rose: #9b7269;
+            --red-soft: #c0392b;
+            --green-soft: #27ae60;
+        }
+
+        body {
+            font-family: 'Karla', sans-serif;
+            background: var(--charcoal);
+            min-height: 100vh;
+            color: var(--cream);
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: rgba(61, 74, 50, 0.9);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--sage-700);
+        }
+        .top-bar a {
+            color: var(--sage-200);
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .top-bar a:hover { color: var(--cream); }
+        .top-bar h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.4rem;
+            font-weight: 400;
+            color: var(--cream);
+        }
+
+        /* Tabs */
+        .tab-bar {
+            display: flex;
+            gap: 0;
+            background: rgba(74, 90, 59, 0.5);
+            overflow-x: auto;
+        }
+        .tab-btn {
+            padding: 14px 24px;
+            background: none;
+            border: none;
+            color: var(--sage-200);
+            font-family: 'Karla', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { background: rgba(255,255,255,0.05); color: var(--cream); }
+        .tab-btn.active {
+            color: var(--cream);
+            border-bottom-color: var(--sage-400);
+            background: rgba(255,255,255,0.08);
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px 20px;
+        }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Cards */
+        .card {
+            background: rgba(236, 232, 221, 0.95);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            color: var(--charcoal);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        }
+        .card h2 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--sage-700);
+            margin-bottom: 16px;
+        }
+        .card h3 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--sage-600);
+            margin-bottom: 12px;
+        }
+
+        /* Forms */
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--sage-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input, .form-group select {
+            padding: 10px 12px;
+            border: 1px solid var(--sage-200);
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 0.95rem;
+            background: white;
+            color: var(--charcoal);
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.15);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--sage-500); color: white; }
+        .btn-primary:hover { background: var(--sage-600); }
+        .btn-secondary { background: var(--taupe); color: white; }
+        .btn-secondary:hover { background: var(--mauve); }
+        .btn-danger { background: var(--dusty-rose); color: white; }
+        .btn-danger:hover { background: var(--red-soft); }
+        .btn-small { padding: 6px 12px; font-size: 0.8rem; }
+        .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .data-table th {
+            background: var(--sage-600);
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+        }
+        .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--sage-100);
+        }
+        .data-table tr:hover { background: rgba(122, 144, 97, 0.08); }
+        .data-table .amount { text-align: right; font-variant-numeric: tabular-nums; }
+        .data-table .negative { color: var(--red-soft); }
+        .data-table .positive { color: var(--green-soft); }
+
+        /* Summary boxes */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .summary-box {
+            background: var(--sage-700);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            color: var(--cream);
+        }
+        .summary-box .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--sage-200);
+            margin-bottom: 6px;
+        }
+        .summary-box .value {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+        .summary-box .value.positive { color: #6dd59a; }
+        .summary-box .value.negative { color: #e88; }
+        .summary-box.highlight {
+            background: var(--sage-500);
+            border: 2px solid var(--sage-300);
+        }
+
+        /* Checkbox styling */
+        .check-paid {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--sage-500);
+        }
+
+        /* Toggle */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: var(--sage-200);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .toggle-switch.on { background: var(--sage-500); }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: left 0.2s;
+        }
+        .toggle-switch.on::after { left: 22px; }
+
+        /* Bill status badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-paid { background: rgba(39, 174, 96, 0.15); color: var(--green-soft); }
+        .badge-unpaid { background: rgba(192, 57, 43, 0.1); color: var(--red-soft); }
+        .badge-auto { background: rgba(122, 144, 97, 0.15); color: var(--sage-600); }
+        .badge-variable { background: rgba(168, 132, 121, 0.15); color: var(--mauve); }
+
+        /* Snapshot fast-entry */
+        .snapshot-entry {
+            display: grid;
+            grid-template-columns: 1fr 140px;
+            gap: 8px;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--sage-100);
+        }
+        .snapshot-entry label {
+            font-weight: 500;
+            color: var(--charcoal);
+        }
+        .snapshot-entry input {
+            padding: 8px 12px;
+            border: 1px solid var(--sage-200);
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            text-align: right;
+            background: white;
+            color: var(--charcoal);
+        }
+        .snapshot-entry input:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.15);
+        }
+        .snapshot-section-header {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.1rem;
+            color: var(--sage-600);
+            padding: 12px 0 4px;
+            border-bottom: 2px solid var(--sage-300);
+            margin-top: 8px;
+        }
+
+        /* Amortization */
+        .amort-table-wrapper {
+            max-height: 500px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid var(--sage-200);
+        }
+        .amort-highlight { background: rgba(122, 144, 97, 0.15) !important; font-weight: 600; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .tab-btn { padding: 12px 16px; font-size: 0.85rem; }
+            .form-row { grid-template-columns: 1fr; }
+            .summary-grid { grid-template-columns: 1fr 1fr; }
+            .card { padding: 16px; }
+            .data-table { font-size: 0.8rem; }
+            .data-table th, .data-table td { padding: 8px 6px; }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--sage-600);
+        }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+
+        /* Month selector */
+        .month-selector {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .month-selector button {
+            background: var(--sage-600);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+        .month-selector button:hover { background: var(--sage-700); }
+        .month-selector .current-month {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.3rem;
+            color: var(--charcoal);
+            min-width: 160px;
+            text-align: center;
+        }
+
+        /* Modal overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--cream);
+            border-radius: 12px;
+            padding: 28px;
+            max-width: 500px;
+            width: 90%;
+            color: var(--charcoal);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+        }
+        .modal h2 {
+            font-family: 'Crimson Pro', serif;
+            color: var(--sage-700);
+            margin-bottom: 16px;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <a href="index.html">← Back to Hub</a>
+    <h1>💰 Finances</h1>
+    <div></div>
+</div>
+
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('accounts')">Accounts</button>
+    <button class="tab-btn" onclick="switchTab('bills')">Bills</button>
+    <button class="tab-btn" onclick="switchTab('snapshot')">Weekly Snapshot</button>
+    <button class="tab-btn" onclick="switchTab('retirement')">Retirement Loan</button>
+</div>
+
+<div class="main-content">
+
+    <!-- ==================== ACCOUNTS TAB ==================== -->
+    <div id="tab-accounts" class="tab-panel active">
+        <div class="card">
+            <h2>➕ Add Account</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Account Name</label>
+                    <input type="text" id="acc-name" placeholder="e.g. Family CC, HD Loan">
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="acc-type">
+                        <option value="credit_card">Credit Card</option>
+                        <option value="loan">Loan</option>
+                        <option value="bank">Bank Account</option>
+                        <option value="tax_debt">Tax Debt</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Interest Rate %</label>
+                    <input type="number" id="acc-rate" step="0.01" placeholder="24.24">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Starting Balance</label>
+                    <input type="number" id="acc-starting" step="0.01" placeholder="5000.00">
+                </div>
+                <div class="form-group">
+                    <label>Min Payment</label>
+                    <input type="number" id="acc-minpay" step="0.01" placeholder="150.00">
+                </div>
+                <div class="form-group">
+                    <label>Is Debt?</label>
+                    <select id="acc-isdebt">
+                        <option value="true">Yes (CC, Loan, etc.)</option>
+                        <option value="false">No (Bank account)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="saveAccount()">Save Account</button>
+                <button class="btn btn-secondary" id="btn-cancel-edit" style="display:none" onclick="cancelEditAccount()">Cancel</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Your Accounts</h2>
+            <div class="table-scroll">
+                <table class="data-table" id="accounts-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Rate</th>
+                            <th>Starting Bal</th>
+                            <th>Min Pay</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="accounts-body"></tbody>
+                </table>
+            </div>
+            <div id="accounts-empty" class="empty-state" style="display:none;">
+                <div class="icon">🏦</div>
+                <p>No accounts yet. Add your CCs, loans, and bank accounts above.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== BILLS TAB ==================== -->
+    <div id="tab-bills" class="tab-panel">
+        <div class="card">
+            <h2>➕ Add Recurring Bill</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Bill Name</label>
+                    <input type="text" id="bill-name" placeholder="e.g. Electric - House 1">
+                </div>
+                <div class="form-group">
+                    <label>Expected Amount</label>
+                    <input type="number" id="bill-amount" step="0.01" placeholder="150.00">
+                </div>
+                <div class="form-group">
+                    <label>Amount Varies?</label>
+                    <select id="bill-variable-amt">
+                        <option value="false">No - Fixed Amount</option>
+                        <option value="true">Yes - I'll enter each month</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Due Day of Month</label>
+                    <input type="number" id="bill-due-day" min="1" max="31" placeholder="15">
+                </div>
+                <div class="form-group">
+                    <label>Date Varies?</label>
+                    <select id="bill-variable-date">
+                        <option value="false">No - Same day each month</option>
+                        <option value="true">Yes - Changes monthly</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Auto-Pay?</label>
+                    <select id="bill-autopay">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Pays From</label>
+                    <input type="text" id="bill-pays-from" placeholder="e.g. PNC Checking">
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="bill-category">
+                        <option value="electric">Electric</option>
+                        <option value="mortgage">Mortgage</option>
+                        <option value="insurance">Insurance</option>
+                        <option value="phone">Phone</option>
+                        <option value="internet">Internet</option>
+                        <option value="subscription">Subscription</option>
+                        <option value="vehicle">Vehicle</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <input type="text" id="bill-notes" placeholder="Optional notes">
+                </div>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="saveBill()">Save Bill</button>
+                <button class="btn btn-secondary" id="btn-cancel-bill-edit" style="display:none" onclick="cancelEditBill()">Cancel</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Monthly Bill Tracker</h2>
+            <div class="month-selector">
+                <button onclick="changeMonth(-1)">◀</button>
+                <span class="current-month" id="bill-month-display"></span>
+                <button onclick="changeMonth(1)">▶</button>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table" id="bills-table">
+                    <thead>
+                        <tr>
+                            <th>Paid</th>
+                            <th>Bill</th>
+                            <th>Due Day</th>
+                            <th>Expected</th>
+                            <th>Actual</th>
+                            <th>Auto-Pay</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bills-body"></tbody>
+                </table>
+            </div>
+            <div id="bills-empty" class="empty-state" style="display:none;">
+                <div class="icon">📋</div>
+                <p>No bills set up yet. Add your recurring bills above.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== WEEKLY SNAPSHOT TAB ==================== -->
+    <div id="tab-snapshot" class="tab-panel">
+        <div class="card">
+            <h2>📸 New Weekly Snapshot</h2>
+            <div class="form-row" style="margin-bottom: 20px;">
+                <div class="form-group">
+                    <label>Snapshot Date</label>
+                    <input type="date" id="snap-date">
+                </div>
+            </div>
+
+            <div id="snapshot-entries">
+                <!-- Dynamically populated from accounts -->
+            </div>
+
+            <div style="margin-top: 16px;">
+                <div class="snapshot-section-header">Other Accounts</div>
+                <div class="snapshot-entry">
+                    <label>PNC Checking</label>
+                    <input type="number" id="snap-pnc" step="0.01" placeholder="0.00" oninput="calcSnapshot()">
+                </div>
+                <div class="snapshot-entry">
+                    <label>Recurring Bills Remaining</label>
+                    <input type="number" id="snap-bills" step="0.01" placeholder="0.00" oninput="calcSnapshot()">
+                </div>
+                <div class="snapshot-entry">
+                    <label>Rental Account</label>
+                    <input type="number" id="snap-rental" step="0.01" placeholder="0.00" oninput="calcSnapshot()">
+                </div>
+            </div>
+
+            <div class="summary-grid" style="margin-top: 24px;">
+                <div class="summary-box">
+                    <div class="label">Total Debt</div>
+                    <div class="value negative" id="snap-total-debt">$0</div>
+                </div>
+                <div class="summary-box">
+                    <div class="label">PNC After $500 Reserve</div>
+                    <div class="value" id="snap-after-reserve">$0</div>
+                </div>
+                <div class="summary-box">
+                    <div class="label">Minus Upcoming Bills</div>
+                    <div class="value" id="snap-after-bills">$0</div>
+                </div>
+                <div class="summary-box highlight">
+                    <div class="label">Available to Pay Debt</div>
+                    <div class="value positive" id="snap-available">$0</div>
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="saveSnapshot()">💾 Save Snapshot</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Snapshot History</h2>
+            <div class="table-scroll">
+                <table class="data-table" id="snapshot-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Total Debt</th>
+                            <th>PNC Checking</th>
+                            <th>Available</th>
+                            <th>Debt +/-</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="snapshot-body"></tbody>
+                </table>
+            </div>
+            <div id="snapshot-empty" class="empty-state" style="display:none;">
+                <div class="icon">📊</div>
+                <p>No snapshots yet. Enter your first weekly balances above.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== RETIREMENT LOAN TAB ==================== -->
+    <div id="tab-retirement" class="tab-panel">
+        <div class="card">
+            <h2>🏦 Retirement Loan Setup</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Loan Name</label>
+                    <input type="text" id="ret-name" value="CF Retirement Loan">
+                </div>
+                <div class="form-group">
+                    <label>Original Amount</label>
+                    <input type="number" id="ret-amount" step="0.01" placeholder="15802.18">
+                </div>
+                <div class="form-group">
+                    <label>Interest Rate %</label>
+                    <input type="number" id="ret-rate" step="0.01" placeholder="6.99">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Payment Amount</label>
+                    <input type="number" id="ret-payment" step="0.01" placeholder="150.00">
+                </div>
+                <div class="form-group">
+                    <label>Start Date</label>
+                    <input type="date" id="ret-start">
+                </div>
+                <div class="form-group">
+                    <label>Payment Frequency</label>
+                    <select id="ret-frequency">
+                        <option value="biweekly">Biweekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="weekly">Weekly</option>
+                    </select>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="saveRetirementLoan()">Save & Generate Schedule</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Amortization Schedule</h2>
+            <div class="summary-grid" id="ret-summary" style="display:none;">
+                <div class="summary-box">
+                    <div class="label">Total Payments</div>
+                    <div class="value" id="ret-total-payments">0</div>
+                </div>
+                <div class="summary-box">
+                    <div class="label">Total Interest</div>
+                    <div class="value negative" id="ret-total-interest">$0</div>
+                </div>
+                <div class="summary-box">
+                    <div class="label">Payoff Date</div>
+                    <div class="value" id="ret-payoff-date">-</div>
+                </div>
+            </div>
+            <div class="amort-table-wrapper">
+                <table class="data-table" id="amort-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Date</th>
+                            <th>Beginning Bal</th>
+                            <th>Payment</th>
+                            <th>Principal</th>
+                            <th>Interest</th>
+                            <th>Ending Bal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="amort-body"></tbody>
+                </table>
+            </div>
+            <div id="amort-empty" class="empty-state">
+                <div class="icon">📅</div>
+                <p>Set up your loan above to see the full payment schedule.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Bill Amount Modal -->
+<div class="modal-overlay" id="modal-bill-amount">
+    <div class="modal">
+        <h2>Enter Actual Amount</h2>
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label>Amount Paid</label>
+            <input type="number" id="modal-actual-amount" step="0.01" placeholder="0.00">
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveActualAmount()">Save</button>
+            <button class="btn btn-secondary" onclick="closeModal('modal-bill-amount')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ========== SUPABASE SETUP ==========
+    const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
+
+    async function supaFetch(table, method = 'GET', body = null, query = '') {
+        const opts = {
+            method,
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': method === 'POST' ? 'return=representation' : (method === 'PATCH' ? 'return=representation' : '')
+            }
+        };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, opts);
+        if (!res.ok) {
+            const err = await res.text();
+            throw new Error(err);
+        }
+        const text = await res.text();
+        return text ? JSON.parse(text) : null;
+    }
+
+    // ========== STATE ==========
+    let accounts = [];
+    let bills = [];
+    let billPayments = [];
+    let snapshots = [];
+    let retirementLoan = null;
+    let editingAccountId = null;
+    let editingBillId = null;
+    let editingBillPaymentId = null;
+    let currentBillMonth = new Date();
+    currentBillMonth.setDate(1);
+
+    // ========== TABS ==========
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`tab-${tab}`).classList.add('active');
+        event.target.classList.add('active');
+
+        if (tab === 'snapshot') buildSnapshotEntries();
+        if (tab === 'bills') renderBills();
+    }
+
+    // ========== FORMAT HELPERS ==========
+    function fmt(n) {
+        if (n == null) return '-';
+        return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function fmtDate(d) {
+        if (!d) return '-';
+        return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function monthKey(d) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    }
+    function monthDisplay(d) {
+        return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+    function typeLabel(t) {
+        const map = { credit_card: 'Credit Card', loan: 'Loan', bank: 'Bank', tax_debt: 'Tax Debt', other: 'Other' };
+        return map[t] || t;
+    }
+
+    // ========== ACCOUNTS ==========
+    async function loadAccounts() {
+        try {
+            accounts = await supaFetch('finance_accounts', 'GET', null, '?is_active=eq.true&order=display_order.asc,name.asc');
+            renderAccounts();
+        } catch (e) { console.error('Load accounts error:', e); }
+    }
+
+    function renderAccounts() {
+        const tbody = document.getElementById('accounts-body');
+        const empty = document.getElementById('accounts-empty');
+        if (!accounts.length) {
+            tbody.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+        tbody.innerHTML = accounts.map(a => `
+            <tr>
+                <td><strong>${a.name}</strong></td>
+                <td>${typeLabel(a.account_type)}</td>
+                <td class="amount">${a.interest_rate}%</td>
+                <td class="amount">${fmt(a.starting_balance)}</td>
+                <td class="amount">${fmt(a.min_payment)}</td>
+                <td>
+                    <button class="btn btn-small btn-secondary" onclick="editAccount('${a.id}')">Edit</button>
+                    <button class="btn btn-small btn-danger" onclick="deleteAccount('${a.id}')">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function saveAccount() {
+        const data = {
+            name: document.getElementById('acc-name').value.trim(),
+            account_type: document.getElementById('acc-type').value,
+            interest_rate: parseFloat(document.getElementById('acc-rate').value) || 0,
+            starting_balance: parseFloat(document.getElementById('acc-starting').value) || 0,
+            min_payment: parseFloat(document.getElementById('acc-minpay').value) || 0,
+            is_debt: document.getElementById('acc-isdebt').value === 'true'
+        };
+        if (!data.name) return alert('Please enter an account name.');
+
+        try {
+            if (editingAccountId) {
+                await supaFetch('finance_accounts', 'PATCH', data, `?id=eq.${editingAccountId}`);
+                editingAccountId = null;
+                document.getElementById('btn-cancel-edit').style.display = 'none';
+            } else {
+                await supaFetch('finance_accounts', 'POST', data);
+            }
+            clearAccountForm();
+            await loadAccounts();
+        } catch (e) { alert('Error saving: ' + e.message); }
+    }
+
+    function editAccount(id) {
+        const a = accounts.find(x => x.id === id);
+        if (!a) return;
+        editingAccountId = id;
+        document.getElementById('acc-name').value = a.name;
+        document.getElementById('acc-type').value = a.account_type;
+        document.getElementById('acc-rate').value = a.interest_rate;
+        document.getElementById('acc-starting').value = a.starting_balance;
+        document.getElementById('acc-minpay').value = a.min_payment;
+        document.getElementById('acc-isdebt').value = String(a.is_debt);
+        document.getElementById('btn-cancel-edit').style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelEditAccount() {
+        editingAccountId = null;
+        document.getElementById('btn-cancel-edit').style.display = 'none';
+        clearAccountForm();
+    }
+
+    function clearAccountForm() {
+        ['acc-name', 'acc-rate', 'acc-starting', 'acc-minpay'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('acc-type').value = 'credit_card';
+        document.getElementById('acc-isdebt').value = 'true';
+    }
+
+    async function deleteAccount(id) {
+        if (!confirm('Delete this account? This cannot be undone.')) return;
+        try {
+            await supaFetch('finance_accounts', 'PATCH', { is_active: false }, `?id=eq.${id}`);
+            await loadAccounts();
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // ========== BILLS ==========
+    async function loadBills() {
+        try {
+            bills = await supaFetch('finance_bills', 'GET', null, '?is_active=eq.true&order=due_day.asc.nullsfirst,name.asc');
+            renderBills();
+        } catch (e) { console.error('Load bills error:', e); }
+    }
+
+    async function loadBillPayments() {
+        const mk = monthKey(currentBillMonth);
+        try {
+            billPayments = await supaFetch('finance_bill_payments', 'GET', null, `?bill_month=eq.${mk}`);
+        } catch (e) { billPayments = []; }
+        renderBills();
+    }
+
+    function renderBills() {
+        const tbody = document.getElementById('bills-body');
+        const empty = document.getElementById('bills-empty');
+        document.getElementById('bill-month-display').textContent = monthDisplay(currentBillMonth);
+
+        if (!bills.length) {
+            tbody.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+
+        tbody.innerHTML = bills.map(b => {
+            const payment = billPayments.find(p => p.bill_id === b.id);
+            const isPaid = payment?.is_paid || false;
+            const actualAmt = payment?.actual_amount;
+            return `
+                <tr>
+                    <td>
+                        <input type="checkbox" class="check-paid" 
+                            ${isPaid ? 'checked' : ''} 
+                            ${b.is_auto_pay ? 'disabled title="Auto-pay"' : ''}
+                            onchange="toggleBillPaid('${b.id}', this.checked)">
+                    </td>
+                    <td>
+                        <strong>${b.name}</strong>
+                        ${b.is_variable_amount ? '<br><span class="badge badge-variable">Variable</span>' : ''}
+                    </td>
+                    <td>${b.is_variable_date ? 'Varies' : (b.due_day || '-')}</td>
+                    <td class="amount">${b.is_variable_amount ? '~' + fmt(b.expected_amount) : fmt(b.expected_amount)}</td>
+                    <td class="amount">
+                        ${actualAmt != null ? fmt(actualAmt) : '-'}
+                        ${b.is_variable_amount ? `<br><button class="btn btn-small btn-secondary" onclick="openAmountModal('${b.id}')">Enter</button>` : ''}
+                    </td>
+                    <td>${b.is_auto_pay ? '<span class="badge badge-auto">Auto</span>' : ''}</td>
+                    <td>
+                        <button class="btn btn-small btn-secondary" onclick="editBill('${b.id}')">Edit</button>
+                        <button class="btn btn-small btn-danger" onclick="deleteBill('${b.id}')">Del</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function changeMonth(delta) {
+        currentBillMonth.setMonth(currentBillMonth.getMonth() + delta);
+        loadBillPayments();
+    }
+
+    async function toggleBillPaid(billId, isPaid) {
+        const mk = monthKey(currentBillMonth);
+        const existing = billPayments.find(p => p.bill_id === billId);
+        const bill = bills.find(b => b.id === billId);
+
+        try {
+            if (existing) {
+                await supaFetch('finance_bill_payments', 'PATCH', {
+                    is_paid: isPaid,
+                    paid_date: isPaid ? new Date().toISOString().split('T')[0] : null
+                }, `?id=eq.${existing.id}`);
+            } else {
+                await supaFetch('finance_bill_payments', 'POST', {
+                    bill_id: billId,
+                    bill_month: mk,
+                    actual_amount: bill?.expected_amount || 0,
+                    is_paid: isPaid,
+                    paid_date: isPaid ? new Date().toISOString().split('T')[0] : null
+                });
+            }
+            await loadBillPayments();
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    function openAmountModal(billId) {
+        editingBillPaymentId = billId;
+        const payment = billPayments.find(p => p.bill_id === billId);
+        document.getElementById('modal-actual-amount').value = payment?.actual_amount || '';
+        document.getElementById('modal-bill-amount').classList.add('active');
+    }
+
+    async function saveActualAmount() {
+        const amount = parseFloat(document.getElementById('modal-actual-amount').value) || 0;
+        const mk = monthKey(currentBillMonth);
+        const existing = billPayments.find(p => p.bill_id === editingBillPaymentId);
+
+        try {
+            if (existing) {
+                await supaFetch('finance_bill_payments', 'PATCH', { actual_amount: amount }, `?id=eq.${existing.id}`);
+            } else {
+                await supaFetch('finance_bill_payments', 'POST', {
+                    bill_id: editingBillPaymentId,
+                    bill_month: mk,
+                    actual_amount: amount,
+                    is_paid: false
+                });
+            }
+            closeModal('modal-bill-amount');
+            await loadBillPayments();
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    async function saveBill() {
+        const data = {
+            name: document.getElementById('bill-name').value.trim(),
+            expected_amount: parseFloat(document.getElementById('bill-amount').value) || 0,
+            is_variable_amount: document.getElementById('bill-variable-amt').value === 'true',
+            due_day: parseInt(document.getElementById('bill-due-day').value) || null,
+            is_variable_date: document.getElementById('bill-variable-date').value === 'true',
+            is_auto_pay: document.getElementById('bill-autopay').value === 'true',
+            pays_from: document.getElementById('bill-pays-from').value.trim(),
+            category: document.getElementById('bill-category').value,
+            notes: document.getElementById('bill-notes').value.trim()
+        };
+        if (!data.name) return alert('Please enter a bill name.');
+
+        try {
+            if (editingBillId) {
+                await supaFetch('finance_bills', 'PATCH', data, `?id=eq.${editingBillId}`);
+                editingBillId = null;
+                document.getElementById('btn-cancel-bill-edit').style.display = 'none';
+            } else {
+                await supaFetch('finance_bills', 'POST', data);
+            }
+            clearBillForm();
+            await loadBills();
+            await loadBillPayments();
+        } catch (e) { alert('Error saving: ' + e.message); }
+    }
+
+    function editBill(id) {
+        const b = bills.find(x => x.id === id);
+        if (!b) return;
+        editingBillId = id;
+        document.getElementById('bill-name').value = b.name;
+        document.getElementById('bill-amount').value = b.expected_amount;
+        document.getElementById('bill-variable-amt').value = String(b.is_variable_amount);
+        document.getElementById('bill-due-day').value = b.due_day || '';
+        document.getElementById('bill-variable-date').value = String(b.is_variable_date);
+        document.getElementById('bill-autopay').value = String(b.is_auto_pay);
+        document.getElementById('bill-pays-from').value = b.pays_from || '';
+        document.getElementById('bill-category').value = b.category || 'other';
+        document.getElementById('bill-notes').value = b.notes || '';
+        document.getElementById('btn-cancel-bill-edit').style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelEditBill() {
+        editingBillId = null;
+        document.getElementById('btn-cancel-bill-edit').style.display = 'none';
+        clearBillForm();
+    }
+
+    function clearBillForm() {
+        ['bill-name', 'bill-amount', 'bill-due-day', 'bill-pays-from', 'bill-notes'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('bill-variable-amt').value = 'false';
+        document.getElementById('bill-variable-date').value = 'false';
+        document.getElementById('bill-autopay').value = 'false';
+        document.getElementById('bill-category').value = 'other';
+    }
+
+    async function deleteBill(id) {
+        if (!confirm('Delete this bill?')) return;
+        try {
+            await supaFetch('finance_bills', 'PATCH', { is_active: false }, `?id=eq.${id}`);
+            await loadBills();
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // ========== WEEKLY SNAPSHOT ==========
+    function buildSnapshotEntries() {
+        const container = document.getElementById('snapshot-entries');
+        const debtAccounts = accounts.filter(a => a.is_debt);
+        if (!debtAccounts.length) {
+            container.innerHTML = '<p style="color: var(--sage-600); padding: 12px 0;">Add your accounts in the Accounts tab first, then come back here.</p>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="snapshot-section-header">Debt Balances</div>
+            ${debtAccounts.map(a => `
+                <div class="snapshot-entry">
+                    <label>${a.name} <span style="color: var(--sage-400); font-size: 0.8rem;">(${a.interest_rate}%)</span></label>
+                    <input type="number" step="0.01" placeholder="0.00" data-account-id="${a.id}" class="snap-balance" oninput="calcSnapshot()">
+                </div>
+            `).join('')}
+        `;
+    }
+
+    function calcSnapshot() {
+        const pnc = parseFloat(document.getElementById('snap-pnc').value) || 0;
+        const billsRemaining = parseFloat(document.getElementById('snap-bills').value) || 0;
+
+        let totalDebt = 0;
+        document.querySelectorAll('.snap-balance').forEach(input => {
+            totalDebt += parseFloat(input.value) || 0;
+        });
+
+        const afterReserve = pnc - 500;
+        const afterBills = afterReserve - billsRemaining;
+        const available = Math.max(0, afterBills);
+
+        document.getElementById('snap-total-debt').textContent = fmt(totalDebt);
+        document.getElementById('snap-after-reserve').textContent = fmt(afterReserve);
+        document.getElementById('snap-after-reserve').className = `value ${afterReserve >= 0 ? 'positive' : 'negative'}`;
+        document.getElementById('snap-after-bills').textContent = fmt(afterBills);
+        document.getElementById('snap-after-bills').className = `value ${afterBills >= 0 ? 'positive' : 'negative'}`;
+        document.getElementById('snap-available').textContent = fmt(available);
+        document.getElementById('snap-available').className = `value ${available > 0 ? 'positive' : 'negative'}`;
+    }
+
+    async function saveSnapshot() {
+        const snapDate = document.getElementById('snap-date').value;
+        if (!snapDate) return alert('Please select a date.');
+
+        const pnc = parseFloat(document.getElementById('snap-pnc').value) || 0;
+        const billsAmt = parseFloat(document.getElementById('snap-bills').value) || 0;
+        const rental = parseFloat(document.getElementById('snap-rental').value) || 0;
+        const afterReserve = pnc - 500;
+        const available = Math.max(0, afterReserve - billsAmt);
+
+        try {
+            // Save snapshot
+            const result = await supaFetch('finance_snapshots', 'POST', {
+                snapshot_date: snapDate,
+                pnc_checking: pnc,
+                recurring_bills_total: billsAmt,
+                rental_account: rental,
+                available_to_pay: available
+            });
+
+            // Save individual balances
+            const snapshotId = result[0].id;
+            const balances = [];
+            document.querySelectorAll('.snap-balance').forEach(input => {
+                const accountId = input.dataset.accountId;
+                const balance = parseFloat(input.value) || 0;
+                if (balance !== 0) {
+                    balances.push({ snapshot_id: snapshotId, account_id: accountId, balance });
+                }
+            });
+
+            if (balances.length) {
+                await supaFetch('finance_snapshot_balances', 'POST', balances);
+            }
+
+            // Reset form
+            document.querySelectorAll('.snap-balance').forEach(i => i.value = '');
+            ['snap-pnc', 'snap-bills', 'snap-rental'].forEach(id => document.getElementById(id).value = '');
+            calcSnapshot();
+            await loadSnapshots();
+            alert('Snapshot saved!');
+        } catch (e) { alert('Error saving: ' + e.message); }
+    }
+
+    async function loadSnapshots() {
+        try {
+            snapshots = await supaFetch('finance_snapshots', 'GET', null, '?order=snapshot_date.desc&limit=20');
+            renderSnapshots();
+        } catch (e) { console.error('Load snapshots error:', e); }
+    }
+
+    function renderSnapshots() {
+        const tbody = document.getElementById('snapshot-body');
+        const empty = document.getElementById('snapshot-empty');
+
+        if (!snapshots.length) {
+            tbody.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+
+        tbody.innerHTML = snapshots.map((s, i) => {
+            const prev = snapshots[i + 1];
+            let debtChange = '';
+            if (prev) {
+                // We'd need individual balances to calc this properly
+                // For now show available amount change
+                const diff = s.available_to_pay - prev.available_to_pay;
+                debtChange = `<span class="${diff >= 0 ? 'positive' : 'negative'}">${diff >= 0 ? '+' : ''}${fmt(diff)}</span>`;
+            }
+            return `
+                <tr>
+                    <td>${fmtDate(s.snapshot_date)}</td>
+                    <td class="amount">-</td>
+                    <td class="amount">${fmt(s.pnc_checking)}</td>
+                    <td class="amount positive">${fmt(s.available_to_pay)}</td>
+                    <td class="amount">${debtChange || '-'}</td>
+                    <td>
+                        <button class="btn btn-small btn-danger" onclick="deleteSnapshot('${s.id}')">Del</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function deleteSnapshot(id) {
+        if (!confirm('Delete this snapshot?')) return;
+        try {
+            await supaFetch('finance_snapshots', 'DELETE', null, `?id=eq.${id}`);
+            await loadSnapshots();
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // ========== RETIREMENT LOAN ==========
+    async function loadRetirementLoan() {
+        try {
+            const loans = await supaFetch('finance_retirement_loan', 'GET', null, '?limit=1');
+            if (loans && loans.length) {
+                retirementLoan = loans[0];
+                document.getElementById('ret-name').value = retirementLoan.loan_name || '';
+                document.getElementById('ret-amount').value = retirementLoan.original_amount || '';
+                document.getElementById('ret-rate').value = retirementLoan.interest_rate || '';
+                document.getElementById('ret-payment').value = retirementLoan.payment_amount || '';
+                document.getElementById('ret-start').value = retirementLoan.start_date || '';
+                document.getElementById('ret-frequency').value = retirementLoan.pay_frequency || 'biweekly';
+                generateAmortization();
+            }
+        } catch (e) { console.error('Load retirement loan error:', e); }
+    }
+
+    async function saveRetirementLoan() {
+        const data = {
+            loan_name: document.getElementById('ret-name').value.trim(),
+            original_amount: parseFloat(document.getElementById('ret-amount').value) || 0,
+            interest_rate: parseFloat(document.getElementById('ret-rate').value) || 0,
+            payment_amount: parseFloat(document.getElementById('ret-payment').value) || 0,
+            start_date: document.getElementById('ret-start').value,
+            pay_frequency: document.getElementById('ret-frequency').value
+        };
+        if (!data.original_amount || !data.payment_amount) return alert('Please enter loan amount and payment.');
+
+        try {
+            if (retirementLoan) {
+                await supaFetch('finance_retirement_loan', 'PATCH', data, `?id=eq.${retirementLoan.id}`);
+            } else {
+                const result = await supaFetch('finance_retirement_loan', 'POST', data);
+                retirementLoan = result[0];
+            }
+            generateAmortization();
+        } catch (e) { alert('Error saving: ' + e.message); }
+    }
+
+    function generateAmortization() {
+        const amount = parseFloat(document.getElementById('ret-amount').value) || 0;
+        const annualRate = parseFloat(document.getElementById('ret-rate').value) || 0;
+        const payment = parseFloat(document.getElementById('ret-payment').value) || 0;
+        const startDate = document.getElementById('ret-start').value;
+        const frequency = document.getElementById('ret-frequency').value;
+
+        if (!amount || !payment || !startDate) return;
+
+        let periodsPerYear;
+        let addDays;
+        if (frequency === 'weekly') { periodsPerYear = 52; addDays = 7; }
+        else if (frequency === 'biweekly') { periodsPerYear = 26; addDays = 14; }
+        else { periodsPerYear = 12; addDays = 30; }
+
+        const periodRate = (annualRate / 100) / periodsPerYear;
+        let balance = amount;
+        let paymentDate = new Date(startDate + 'T00:00:00');
+        const rows = [];
+        let totalInterest = 0;
+        let num = 0;
+        const today = new Date();
+
+        while (balance > 0.01 && num < 1000) {
+            num++;
+            const interestCharge = balance * periodRate;
+            const principalPaid = Math.min(payment - interestCharge, balance);
+            const actualPayment = Math.min(payment, balance + interestCharge);
+            const endingBalance = balance - principalPaid;
+            totalInterest += interestCharge;
+
+            rows.push({
+                num,
+                date: new Date(paymentDate),
+                beginning: balance,
+                payment: actualPayment,
+                principal: principalPaid,
+                interest: interestCharge,
+                ending: Math.max(0, endingBalance),
+                isCurrent: paymentDate <= today && (new Date(paymentDate.getTime() + addDays * 86400000)) > today
+            });
+
+            balance = Math.max(0, endingBalance);
+            paymentDate = new Date(paymentDate.getTime() + addDays * 86400000);
+        }
+
+        // Show summary
+        document.getElementById('ret-summary').style.display = 'grid';
+        document.getElementById('ret-total-payments').textContent = num;
+        document.getElementById('ret-total-interest').textContent = fmt(totalInterest);
+        document.getElementById('ret-payoff-date').textContent = rows.length ? fmtDate(rows[rows.length - 1].date.toISOString().split('T')[0]) : '-';
+
+        // Render table
+        const tbody = document.getElementById('amort-body');
+        document.getElementById('amort-empty').style.display = 'none';
+        tbody.innerHTML = rows.map(r => `
+            <tr class="${r.isCurrent ? 'amort-highlight' : ''}">
+                <td>${r.num}</td>
+                <td>${r.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                <td class="amount">${fmt(r.beginning)}</td>
+                <td class="amount">${fmt(r.payment)}</td>
+                <td class="amount positive">${fmt(r.principal)}</td>
+                <td class="amount negative">${fmt(r.interest)}</td>
+                <td class="amount">${fmt(r.ending)}</td>
+            </tr>
+        `).join('');
+
+        // Scroll to current payment
+        setTimeout(() => {
+            const highlighted = document.querySelector('.amort-highlight');
+            if (highlighted) highlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+    }
+
+    // ========== INIT ==========
+    async function init() {
+        // Set today's date as default for snapshot
+        document.getElementById('snap-date').value = new Date().toISOString().split('T')[0];
+
+        await loadAccounts();
+        await loadBills();
+        await loadBillPayments();
+        await loadSnapshots();
+        await loadRetirementLoan();
+    }
+
+    init();
+</script>
+</body>
+</html>
