@@ -466,7 +466,7 @@
         </div>
 
         <div class="card">
-            <h2>Your Accounts</h2>
+            <h2>Your Active Accounts</h2>
             <div class="table-scroll">
                 <table class="data-table" id="accounts-table">
                     <thead>
@@ -485,6 +485,26 @@
             <div id="accounts-empty" class="empty-state" style="display:none;">
                 <div class="icon">🏦</div>
                 <p>No accounts yet. Add your CCs, loans, and bank accounts above.</p>
+            </div>
+        </div>
+
+        <div class="card" id="closed-accounts-card" style="display:none;">
+            <h2>Closed / Paid Off Accounts</h2>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Rate</th>
+                            <th>Starting Bal</th>
+                            <th>Closed Date</th>
+                            <th>Reason</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="closed-accounts-body"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -764,6 +784,31 @@
     </div>
 </div>
 
+<!-- Close Out Account Modal -->
+<div class="modal-overlay" id="modal-close-account">
+    <div class="modal">
+        <h2>Close Out Account</h2>
+        <p style="margin-bottom: 16px; color: var(--sage-600);">This keeps the account in your history but removes it from weekly snapshots.</p>
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>Close Date</label>
+            <input type="date" id="modal-close-date">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label>Reason</label>
+            <select id="modal-close-reason">
+                <option value="paid_off">Paid Off 🎉</option>
+                <option value="closed">Account Closed</option>
+                <option value="refinanced">Refinanced</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-primary" onclick="confirmCloseAccount()">Close Account</button>
+            <button class="btn btn-secondary" onclick="closeModal('modal-close-account')">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // ========== SUPABASE SETUP ==========
     const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
@@ -791,6 +836,7 @@
 
     // ========== STATE ==========
     let accounts = [];
+    let closedAccounts = [];
     let bills = [];
     let billPayments = [];
     let snapshots = [];
@@ -798,6 +844,7 @@
     let editingAccountId = null;
     let editingBillId = null;
     let editingBillPaymentId = null;
+    let closingAccountId = null;
     let currentBillMonth = new Date();
     currentBillMonth.setDate(1);
 
@@ -836,6 +883,7 @@
     async function loadAccounts() {
         try {
             accounts = await supaFetch('finance_accounts', 'GET', null, '?is_active=eq.true&order=display_order.asc,name.asc');
+            closedAccounts = await supaFetch('finance_accounts', 'GET', null, '?is_active=eq.false&order=closed_date.desc');
             renderAccounts();
         } catch (e) { console.error('Load accounts error:', e); }
     }
@@ -846,22 +894,85 @@
         if (!accounts.length) {
             tbody.innerHTML = '';
             empty.style.display = 'block';
-            return;
+        } else {
+            empty.style.display = 'none';
+            tbody.innerHTML = accounts.map(a => `
+                <tr>
+                    <td><strong>${a.name}</strong></td>
+                    <td>${typeLabel(a.account_type)}</td>
+                    <td class="amount">${a.interest_rate}%</td>
+                    <td class="amount">${fmt(a.starting_balance)}</td>
+                    <td class="amount">${fmt(a.min_payment)}</td>
+                    <td>
+                        <button class="btn btn-small btn-secondary" onclick="editAccount('${a.id}')">Edit</button>
+                        <button class="btn btn-small btn-primary" onclick="openCloseAccount('${a.id}')">Close Out</button>
+                    </td>
+                </tr>
+            `).join('');
         }
-        empty.style.display = 'none';
-        tbody.innerHTML = accounts.map(a => `
-            <tr>
-                <td><strong>${a.name}</strong></td>
-                <td>${typeLabel(a.account_type)}</td>
-                <td class="amount">${a.interest_rate}%</td>
-                <td class="amount">${fmt(a.starting_balance)}</td>
-                <td class="amount">${fmt(a.min_payment)}</td>
-                <td>
-                    <button class="btn btn-small btn-secondary" onclick="editAccount('${a.id}')">Edit</button>
-                    <button class="btn btn-small btn-danger" onclick="deleteAccount('${a.id}')">Delete</button>
-                </td>
-            </tr>
-        `).join('');
+
+        // Render closed accounts
+        const closedCard = document.getElementById('closed-accounts-card');
+        const closedBody = document.getElementById('closed-accounts-body');
+        if (closedAccounts.length) {
+            closedCard.style.display = 'block';
+            closedBody.innerHTML = closedAccounts.map(a => `
+                <tr style="opacity: 0.8;">
+                    <td><strong>${a.name}</strong></td>
+                    <td>${typeLabel(a.account_type)}</td>
+                    <td class="amount">${a.interest_rate}%</td>
+                    <td class="amount">${fmt(a.starting_balance)}</td>
+                    <td>${fmtDate(a.closed_date)}</td>
+                    <td><span class="badge ${a.closed_reason === 'paid_off' ? 'badge-paid' : 'badge-auto'}">${closeReasonLabel(a.closed_reason)}</span></td>
+                    <td>
+                        <button class="btn btn-small btn-secondary" onclick="reopenAccount('${a.id}')">Reopen</button>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            closedCard.style.display = 'none';
+        }
+    }
+
+    function closeReasonLabel(r) {
+        const map = { paid_off: '🎉 Paid Off', closed: 'Closed', refinanced: 'Refinanced', other: 'Other' };
+        return map[r] || r || '-';
+    }
+
+    function openCloseAccount(id) {
+        closingAccountId = id;
+        document.getElementById('modal-close-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('modal-close-reason').value = 'paid_off';
+        document.getElementById('modal-close-account').classList.add('active');
+    }
+
+    async function confirmCloseAccount() {
+        const closeDate = document.getElementById('modal-close-date').value;
+        const reason = document.getElementById('modal-close-reason').value;
+        if (!closeDate) return alert('Please select a close date.');
+
+        try {
+            await supaFetch('finance_accounts', 'PATCH', {
+                is_active: false,
+                closed_date: closeDate,
+                closed_reason: reason
+            }, `?id=eq.${closingAccountId}`);
+            closingAccountId = null;
+            closeModal('modal-close-account');
+            await loadAccounts();
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    async function reopenAccount(id) {
+        if (!confirm('Reopen this account? It will appear in your weekly snapshots again.')) return;
+        try {
+            await supaFetch('finance_accounts', 'PATCH', {
+                is_active: true,
+                closed_date: null,
+                closed_reason: null
+            }, `?id=eq.${id}`);
+            await loadAccounts();
+        } catch (e) { alert('Error: ' + e.message); }
     }
 
     async function saveAccount() {
@@ -912,14 +1023,6 @@
         ['acc-name', 'acc-rate', 'acc-starting', 'acc-minpay'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('acc-type').value = 'credit_card';
         document.getElementById('acc-isdebt').value = 'true';
-    }
-
-    async function deleteAccount(id) {
-        if (!confirm('Delete this account? This cannot be undone.')) return;
-        try {
-            await supaFetch('finance_accounts', 'PATCH', { is_active: false }, `?id=eq.${id}`);
-            await loadAccounts();
-        } catch (e) { alert('Error: ' + e.message); }
     }
 
     // ========== BILLS ==========
