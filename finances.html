@@ -54,6 +54,7 @@
             cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s;
         }
         .tab-btn:hover { background: rgba(255,255,255,0.05); color: var(--cream); }
+        .dash-card:hover { border-color: var(--sage-400) !important; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; }
         .tab-btn.active { color: var(--cream); border-bottom-color: var(--sage-400); background: rgba(255,255,255,0.08); }
 
         .main-content { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
@@ -173,7 +174,7 @@
             <h2>📊 Dashboard</h2>
             <div id="dash-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:16px 0 28px;"></div>
             <div class="card" style="padding:16px;margin:0;background:white;border:1px solid var(--sage-200);">
-                <h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:12px;">📉 Debt Trend (Last Year)</h3>
+                <h3 id="dash-chart-title" onclick="switchChart('debt')" style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:12px;cursor:pointer;" title="Click to show total debt">📉 Total Debt (Last Year)</h3>
                 <div id="dash-debt-chart" style="height:220px;position:relative;"></div>
             </div>
         </div>
@@ -762,6 +763,8 @@ async function autoFillFromPrior(){
 let calculatedBillTotal=0;
 let priorCCEndings={}; // account_id -> ending balance from prior week
 let loanDueDates={}; // account_id -> next due date string
+let dashCharts={}; // key -> {title, data, type}
+let activeChart='debt';
 
 async function autoFillLoans(weekStr, hasSavedData){
     if(!weekStr)return;
@@ -1502,23 +1505,23 @@ async function loadDashboard(){
             else electricTotal+=b.expected_amount||0;
         }
 
-        // Build cards
-        const card=(label,value,color,icon)=>`
-            <div style="background:${color};padding:20px;border-radius:12px;text-align:center;${color==='white'?'border:2px solid var(--sage-200);':''}">
-                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;${color==='white'?'color:var(--sage-500);':'color:rgba(255,255,255,0.8);'}">${icon} ${label}</div>
-                <div style="font-size:1.6rem;font-weight:700;font-family:'Crimson Pro',serif;margin-top:6px;${color==='white'?'color:var(--sage-700);':'color:white;'}">${fmt(value)}</div>
+        // Build clickable cards
+        const card=(key,label,value,icon)=>`
+            <div class="dash-card" data-chart="${key}" onclick="switchChart('${key}')" 
+                 style="background:white;padding:20px;border-radius:12px;text-align:center;border:2px solid var(--sage-200);cursor:pointer;transition:all 0.2s;">
+                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-500);">${icon} ${label}</div>
+                <div style="font-size:1.6rem;font-weight:700;font-family:'Crimson Pro',serif;margin-top:6px;color:var(--sage-700);">${fmt(value)}</div>
             </div>`;
 
         document.getElementById('dash-cards').innerHTML=
-            card('CC Spent This Week',ccSpent,'white','💳')+
-            card('BOA Spent This Week',boaSpent,'white','💳')+
-            card('Total CC Balance',ccTotal,'white','💳')+
-            card('Tax Owed',taxTotal,'white','🏛️')+
-            card('Loan Balance',loanDisplay,'white','🏦')+
-            card('Electric Bills',electricTotal,'white','⚡');
+            card('ccspend','CC Spent This Week',ccSpent,'💳')+
+            card('boaspend','BOA Spent This Week',boaSpent,'💳')+
+            card('ccbal','Total CC Balance',ccTotal,'💳')+
+            card('tax','Tax Owed',taxTotal,'🏛️')+
+            card('loans','Loan Balance',loanDisplay,'🏦')+
+            card('electric','Electric Bills',electricTotal,'⚡');
 
-        // ===== DEBT TREND - LAST YEAR =====
-        // Use loan schedules for consistent loan data, saved entries for CC/tax only
+        // ===== BUILD ALL TREND DATA =====
         const allEntries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date');
         const byDate={};
         allEntries.forEach(e=>{
@@ -1530,7 +1533,7 @@ async function loadDashboard(){
         const yearStr=oneYearAgo.toISOString().split('T')[0];
         const recentDates=dates.filter(d=>d>=yearStr);
 
-        // Pre-fetch all loan schedule data
+        // Pre-fetch loan schedules
         const loanSchedules={};
         for(const a of loanAccs){
             const sched=await supaFetch('finance_loan_schedules','GET',null,
@@ -1538,32 +1541,104 @@ async function loadDashboard(){
             if(sched?.length) loanSchedules[a.id]=sched;
         }
 
-        const debtOverTime=[];
-        for(const d of recentDates){
-            let debt=0;
+        // Compute all trends
+        const tDebt=[],tCCSpend=[],tBOASpend=[],tCCBal=[],tTax=[],tLoans=[];
+        for(let i=0;i<recentDates.length;i++){
+            const d=recentDates[i];
+            const prevD=i>0?recentDates[i-1]:null;
+            let debt=0,ccB=0,taxB=0,loanB=0,ccS=0,boaS=0;
+
             // CC + tax from saved entries
             byDate[d].forEach(e=>{
-                const a=accMap[e.account_id];if(!a||!a.is_debt)return;
-                if(a.account_type==='credit_card'||a.account_type==='tax_debt'){
-                    debt+=parseFloat(e.ending_balance)||0;
+                const a=accMap[e.account_id];if(!a)return;
+                if(a.account_type==='credit_card'){
+                    ccB+=parseFloat(e.ending_balance)||0;
+                    // Spend calc
+                    const thisStart=parseFloat(e.starting_balance)||0;
+                    const prevEntry=prevD?byDate[prevD]?.find(p=>p.account_id===e.account_id):null;
+                    const prevEnd=prevEntry?parseFloat(prevEntry.ending_balance)||0:0;
+                    const spent=Math.max(0,thisStart-prevEnd);
+                    if(a.name?.toLowerCase().includes('boa')) boaS+=spent;
+                    else ccS+=spent;
                 }
+                if(a.account_type==='tax_debt') taxB+=parseFloat(e.ending_balance)||0;
             });
-            // Loans from schedule (find most recent entry on/before this date)
+
+            // Loans from schedule
             for(const a of loanAccs){
                 const sched=loanSchedules[a.id];
                 if(!sched)continue;
                 let bal=0;
-                for(let i=sched.length-1;i>=0;i--){
-                    if(sched[i].due_date<=d){bal=parseFloat(sched[i].balance_after)||0;break;}
+                for(let j=sched.length-1;j>=0;j--){
+                    if(sched[j].due_date<=d){bal=parseFloat(sched[j].balance_after)||0;break;}
                 }
                 if(bal===0&&sched.length) bal=parseFloat(sched[0].balance_after)||0;
-                debt+=bal;
+                loanB+=bal;
             }
-            if(debt>0) debtOverTime.push({date:d,value:debt});
+
+            debt=ccB+taxB+loanB;
+            tDebt.push({date:d,value:debt});
+            tCCSpend.push({date:d,value:ccS});
+            tBOASpend.push({date:d,value:boaS});
+            tCCBal.push({date:d,value:ccB});
+            tTax.push({date:d,value:taxB});
+            tLoans.push({date:d,value:loanB});
         }
-        renderLineChart('dash-debt-chart',debtOverTime);
+
+        // Electric trend from bill payments
+        const tElectric=[];
+        const elecPayments=[];
+        for(const b of elecBills){
+            const pays=await supaFetch('finance_bill_payments','GET',null,
+                `?bill_id=eq.${b.id}&order=bill_month`);
+            if(pays?.length) elecPayments.push(...pays);
+        }
+        // Group by month
+        const elecByMonth={};
+        elecPayments.forEach(p=>{
+            const m=p.bill_month?.substring(0,7)||'';
+            if(!elecByMonth[m]) elecByMonth[m]=0;
+            elecByMonth[m]+=parseFloat(p.actual_amount)||0;
+        });
+        Object.keys(elecByMonth).sort().forEach(m=>{
+            if(m>=yearStr.substring(0,7)) tElectric.push({date:m+'-15',value:elecByMonth[m]});
+        });
+
+        // Store all chart data
+        dashCharts={
+            debt:{title:'📉 Total Debt',data:tDebt},
+            ccspend:{title:'💳 CC Spending Per Week (excl BOA)',data:tCCSpend},
+            boaspend:{title:'💳 BOA Spending Per Week',data:tBOASpend},
+            ccbal:{title:'💳 CC Balance Over Time',data:tCCBal},
+            tax:{title:'🏛️ Tax Balance Over Time',data:tTax},
+            loans:{title:'🏦 Loan Balance Over Time',data:tLoans},
+            electric:{title:'⚡ Electric Bills Over Time',data:tElectric}
+        };
+
+        activeChart='debt';
+        switchChart('debt');
 
     }catch(e){console.error('Dashboard:',e);}
+}
+
+function switchChart(key){
+    const chart=dashCharts[key];
+    if(!chart)return;
+    activeChart=key;
+    document.getElementById('dash-chart-title').textContent=chart.title+' (Last Year)';
+    renderLineChart('dash-debt-chart',chart.data);
+    // Highlight active card (none highlighted for 'debt' default)
+    document.querySelectorAll('.dash-card').forEach(c=>{
+        if(c.dataset.chart===key){
+            c.style.borderColor='var(--sage-500)';
+            c.style.background='var(--sage-50)';
+            c.style.boxShadow='0 0 0 1px var(--sage-400)';
+        }else{
+            c.style.borderColor='var(--sage-200)';
+            c.style.background='white';
+            c.style.boxShadow='none';
+        }
+    });
 }
 
 function monthsDiff(d1,d2){
