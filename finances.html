@@ -601,24 +601,50 @@ function populateWeekDropdown(){
 
 async function onWeekChange(){
     buildWeeklyForm();
-    await loadWeekData();
+    const loaded=await loadWeekData();
+    if(!loaded) await autoFillFromPrior();
     await loadWeeklyBills();
 }
 
 async function loadWeekData(){
     const dt=document.getElementById('entry-date').value;
-    if(!dt)return;
+    if(!dt)return false;
     try{
         const entries=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${dt}`);
-        if(!entries?.length)return;
+        if(!entries?.length)return false;
         entries.forEach(e=>{
             const bI=document.querySelector(`input[data-id="${e.account_id}"][data-f="bal"]`);
             const pI=document.querySelector(`input[data-id="${e.account_id}"][data-f="pay"]`);
             if(bI) bI.value=e.starting_balance||0;
-            if(pI) pI.value=Math.abs(e.payment)||0;
+            if(pI&&!pI.readOnly) pI.value=Math.abs(e.payment)||0;
         });
         calcWeekly();
-    }catch(e){console.error('Load week:',e);}
+        return true;
+    }catch(e){console.error('Load week:',e);return false;}
+}
+
+async function autoFillFromPrior(){
+    // Auto-fill tax balances from prior week's ending
+    const dt=document.getElementById('entry-date').value;
+    if(!dt)return;
+    const d=new Date(dt+'T12:00:00');
+    d.setDate(d.getDate()-7);
+    const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');
+    const prevWed=`${y}-${m}-${dd}`;
+    try{
+        const prevEntries=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${prevWed}`);
+        if(!prevEntries?.length)return;
+        // Fill tax account balances with prior ending
+        const taxAccs=accounts.filter(a=>a.account_type==='tax_debt');
+        prevEntries.forEach(e=>{
+            const isTax=taxAccs.some(a=>a.id===e.account_id);
+            if(isTax){
+                const bI=document.querySelector(`input[data-id="${e.account_id}"][data-f="bal"]`);
+                if(bI) bI.value=e.ending_balance||0;
+            }
+        });
+        calcWeekly();
+    }catch(e){console.error('Auto-fill:',e);}
 }
 
 async function loadWeeklyBills(){
@@ -770,10 +796,16 @@ function buildWeeklyForm(){
 
     let h=`<div class="entry-row header"><div>Account</div><div style="text-align:right">Balance</div><div style="text-align:right">Payment</div><div style="text-align:right">Ending</div></div>`;
 
-    // PNC at top
+    // PNC at top - payment is auto-calculated
     if(pnc){
         h+=`<div class="section-divider">💰 PNC Checking</div>`;
-        h+=entryRow(pnc,false);
+        h+=`<div class="entry-row">
+            <label>${pnc.name}</label>
+            <input type="number" step="0.01" placeholder="0.00" data-id="${pnc.id}" data-f="bal" class="we-in" oninput="calcWeekly()">
+            <input type="number" step="0.01" placeholder="0.00" data-id="${pnc.id}" data-f="pay" class="we-in" readonly style="background:var(--sage-100);font-weight:600;color:var(--sage-700);" title="Auto-calculated from all PNC payments below">
+            <div class="calc" data-id="${pnc.id}" data-f="end">-</div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--sage-400);padding:2px 0 6px;font-style:italic;">↑ Payment auto-totals from all accounts paid by PNC</div>`;
     }
 
     // Credit Cards
@@ -834,26 +866,34 @@ function entryRow(a,showRate){
 }
 
 function calcWeekly(){
-    let totalDebt=0, totalDebtPay=0, pncEnding=0, recurringBills=0;
+    let totalDebt=0, totalDebtPay=0, pncBal=0, recurringBills=0;
     let ccBal=0,ccPay=0,ccEnd=0, taxBal=0,taxPay=0,taxEnd=0, loanBal=0,loanPay=0,loanEnd=0;
+    let pncAutoPayTotal=0;
 
-    // Track which account IDs are tax debts (Fed Tax, PA Tax) so we don't double-count
-    const taxAccountNames=['fed tax','pa tax'];
+    const pncAcc=accounts.find(a=>a.name.toLowerCase().includes('pnc'));
 
+    // First pass: calc all non-PNC accounts and sum payments from PNC
     accounts.forEach(a=>{
         const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
         const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
         const eD=document.querySelector(`div[data-id="${a.id}"][data-f="end"]`);
         if(!bI)return;
+
+        if(pncAcc && a.id===pncAcc.id){
+            pncBal=parseFloat(bI.value)||0;
+            return; // calc PNC after we know the total
+        }
+
         const bal=parseFloat(bI.value)||0, pay=parseFloat(pI.value)||0, end=bal-pay;
         eD.textContent=fmt(end); eD.className=`calc ${end<0?'negative':''}`;
 
-        if(a.is_debt){
-            totalDebt+=bal;
-            totalDebtPay+=pay;
-        }
-        if(a.name.toLowerCase().includes('pnc')){pncEnding=end;}
+        if(a.is_debt){totalDebt+=bal; totalDebtPay+=pay;}
         if(a.name.toLowerCase().includes('recurring')){recurringBills=bal;}
+
+        // Sum payments that come from PNC
+        if(a.pays_from && a.pays_from.toLowerCase().includes('pnc') && pay>0){
+            pncAutoPayTotal+=pay;
+        }
 
         // Group sums
         if(a.account_type==='credit_card'){ccBal+=bal;ccPay+=pay;ccEnd+=end;}
@@ -861,30 +901,32 @@ function calcWeekly(){
         if(a.is_debt&&a.account_type==='loan'){loanBal+=bal;loanPay+=pay;loanEnd+=end;}
     });
 
+    // Set PNC payment auto-total and calc ending
+    if(pncAcc){
+        const pncPayInput=document.querySelector(`input[data-id="${pncAcc.id}"][data-f="pay"]`);
+        const pncEndDiv=document.querySelector(`div[data-id="${pncAcc.id}"][data-f="end"]`);
+        if(pncPayInput) pncPayInput.value=pncAutoPayTotal.toFixed(2);
+        const pncEnding=pncBal-pncAutoPayTotal;
+        if(pncEndDiv){pncEndDiv.textContent=fmt(pncEnding);pncEndDiv.className=`calc ${pncEnding<0?'negative':''}`;}
+
+        // Available = PNC ending - $500 - recurring bills
+        const afterAll=pncEnding-500-recurringBills;
+        const avail=Math.max(0,afterAll);
+
+        document.getElementById('we-after-reserve').textContent=fmt(afterAll);
+        document.getElementById('we-after-reserve').className=`value ${afterAll>=0?'positive':'negative'}`;
+        document.getElementById('we-available').textContent=fmt(avail);
+        document.getElementById('we-available').className=`value ${avail>0?'positive':'negative'}`;
+    }
+
     // Update group sums
     const setSum=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=fmt(val);};
     setSum('sum-cc-bal',ccBal);setSum('sum-cc-pay',ccPay);setSum('sum-cc-end',ccEnd);
     setSum('sum-tax-bal',taxBal);setSum('sum-tax-pay',taxPay);setSum('sum-tax-end',taxEnd);
     setSum('sum-loan-bal',loanBal);setSum('sum-loan-pay',loanPay);setSum('sum-loan-end',loanEnd);
 
-    // Available = PNC ending - $500 reserve - all debt payments - recurring bills
-    // But tax payments (IRS, PA Tax) are already in recurring bills, so subtract them to avoid double-counting
-    let taxPayments=0;
-    accounts.filter(a=>a.account_type==='tax_debt').forEach(a=>{
-        const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
-        if(pI) taxPayments+=parseFloat(pI.value)||0;
-    });
-
-    const debtPayExclTax=totalDebtPay-taxPayments;
-    const afterAll=pncEnding-500-recurringBills-debtPayExclTax;
-    const avail=Math.max(0,afterAll);
-
     document.getElementById('we-total-debt').textContent=fmt(totalDebt);
     document.getElementById('we-total-payments').textContent=fmt(totalDebtPay);
-    document.getElementById('we-after-reserve').textContent=fmt(afterAll);
-    document.getElementById('we-after-reserve').className=`value ${afterAll>=0?'positive':'negative'}`;
-    document.getElementById('we-available').textContent=fmt(avail);
-    document.getElementById('we-available').className=`value ${avail>0?'positive':'negative'}`;
 }
 
 async function loadPreviousWeek(){
