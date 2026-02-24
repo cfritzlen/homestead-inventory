@@ -285,7 +285,7 @@
             <div class="summary-grid">
                 <div class="summary-box"><div class="label">Total Debt</div><div class="value negative" id="we-total-debt">$0</div></div>
                 <div class="summary-box"><div class="label">Total Payments</div><div class="value positive" id="we-total-payments">$0</div></div>
-                <div class="summary-box"><div class="label">PNC - $500 - Bills - Payments</div><div class="value" id="we-after-reserve">$0</div></div>
+                <div class="summary-box"><div class="label">PNC - $500 - Bills</div><div class="value" id="we-after-reserve">$0</div></div>
                 <div class="summary-box highlight"><div class="label">Available for Debt</div><div class="value positive" id="we-available">$0</div></div>
             </div>
 
@@ -296,10 +296,16 @@
             </div>
         </div>
 
-        <!-- Bills due this period - editable -->
+        <!-- Bills due this week - combined with set-aside -->
         <div class="card" id="weekly-bills-section" style="display:none;">
-            <h2>📋 Bills Due This Week</h2>
+            <h2>📋 Bills This Week</h2>
             <div id="weekly-bills-list"></div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:2px solid var(--sage-300);">
+                <label style="font-weight:700;color:var(--sage-700);white-space:nowrap;">Bill Total (subtracted from PNC):</label>
+                <input type="number" step="0.01" id="bills-override-total" oninput="calcWeekly()" style="padding:8px 12px;border:2px solid var(--sage-400);border-radius:8px;font-family:'Karla',sans-serif;font-size:1.1rem;font-weight:700;text-align:right;width:160px;background:white;color:var(--charcoal);">
+                <button class="btn btn-small btn-secondary" onclick="resetBillTotal()" title="Reset to calculated total">↻ Reset</button>
+            </div>
+            <div style="font-size:0.75rem;color:var(--sage-400);margin-top:4px;font-style:italic;">Auto-fills from bills above. Edit to override.</div>
         </div>
     </div>
 
@@ -647,6 +653,8 @@ async function autoFillFromPrior(){
     }catch(e){console.error('Auto-fill:',e);}
 }
 
+let calculatedBillTotal=0;
+
 async function loadWeeklyBills(){
     const dt=document.getElementById('entry-date').value;
     if(!dt||!bills.length){document.getElementById('weekly-bills-section').style.display='none';return;}
@@ -691,37 +699,32 @@ async function loadWeeklyBills(){
     const list=document.getElementById('weekly-bills-list');
     section.style.display='block';
 
-    let totalDue=0;
+    calculatedBillTotal=0;
     let html='';
 
     if(dueBills.length){
-        html+=`<div style="display:grid;grid-template-columns:auto 1fr 100px 120px 80px;gap:8px;align-items:center;padding:8px 0;font-size:0.8rem;font-weight:600;color:var(--sage-600);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--sage-300);">
-            <div>Paid</div><div>Bill</div><div style="text-align:center">Due Date</div><div style="text-align:right">Amount</div><div></div>
+        html+=`<div style="display:grid;grid-template-columns:30px 1fr 110px 110px 60px;gap:8px;align-items:center;padding:8px 0;font-size:0.8rem;font-weight:600;color:var(--sage-600);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--sage-300);">
+            <div>✓</div><div>Bill</div><div style="text-align:center">Date</div><div style="text-align:right">Amount</div><div></div>
         </div>`;
 
         dueBills.forEach(({bill:b, dueDate, payment:p, billMonth})=>{
             const amt=p?.actual_amount||b.expected_amount||0;
             const paid=p?.is_paid||false;
-            const paidDateVal=p?.paid_date||dueDate.toISOString().split('T')[0];
-            if(!paid) totalDue+=amt;
+            const dateVal=p?.paid_date||`${dueDate.getFullYear()}-${String(dueDate.getMonth()+1).padStart(2,'0')}-${String(dueDate.getDate()).padStart(2,'0')}`;
+            if(!paid) calculatedBillTotal+=amt;
 
-            html+=`<div style="display:grid;grid-template-columns:auto 1fr 100px 120px 80px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--sage-100);${paid?'opacity:0.5':''}">
+            html+=`<div style="display:grid;grid-template-columns:30px 1fr 110px 110px 60px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--sage-100);${paid?'opacity:0.5':''}">
                 <div><input type="checkbox" class="check-paid" ${paid?'checked':''} onchange="toggleWeeklyBillPaid('${b.id}','${billMonth}',this.checked,this)" style="accent-color:var(--sage-500);width:18px;height:18px;cursor:pointer;"></div>
                 <div>
                     <strong>${b.name}</strong>
-                    ${b.is_variable_amount?'<span class="badge badge-variable" style="margin-left:4px;">Variable</span>':''}
+                    ${b.is_variable_amount?'<span class="badge badge-variable" style="margin-left:4px;">~</span>':''}
                     ${b.is_auto_pay?'<span class="badge badge-auto" style="margin-left:4px;">Auto</span>':''}
                 </div>
-                <div><input type="date" value="${paidDateVal}" data-bill-id="${b.id}" data-bill-month="${billMonth}" data-field="date" style="padding:4px 6px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.85rem;width:100%;"></div>
-                <div><input type="number" step="0.01" value="${amt.toFixed(2)}" data-bill-id="${b.id}" data-bill-month="${billMonth}" data-field="amount" style="padding:4px 8px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.9rem;text-align:right;width:100%;"></div>
-                <div><button class="btn btn-small btn-secondary" onclick="saveWeeklyBill('${b.id}','${billMonth}')">Save</button></div>
+                <div><input type="date" value="${dateVal}" data-bill-id="${b.id}" data-bill-month="${billMonth}" data-field="date" style="padding:4px 6px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.85rem;width:100%;"></div>
+                <div><input type="number" step="0.01" value="${amt.toFixed(2)}" data-bill-id="${b.id}" data-bill-month="${billMonth}" data-field="amount" onchange="recalcBillTotal()" style="padding:4px 8px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.9rem;text-align:right;width:100%;"></div>
+                <div><button class="btn btn-small btn-secondary" onclick="saveWeeklyBill('${b.id}','${billMonth}')">✓</button></div>
             </div>`;
         });
-
-        html+=`<div style="display:flex;justify-content:space-between;padding:12px 0;margin-top:4px;border-top:2px solid var(--sage-300);font-weight:700;">
-            <span style="color:var(--dusty-rose);">⚠️ Unpaid due before next Wed:</span>
-            <span style="color:var(--dusty-rose);">${fmt(totalDue)}</span>
-        </div>`;
     } else {
         html+='<p style="color:var(--sage-400);padding:12px 0;">No bills due before next Wednesday</p>';
     }
@@ -736,12 +739,36 @@ async function loadWeeklyBills(){
         if(p?.is_paid) paidTotal+=amt;
     });
 
-    html+=`<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:0.85rem;border-top:1px solid var(--sage-200);margin-top:4px;">
+    html+=`<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:0.85rem;border-top:1px solid var(--sage-200);margin-top:8px;">
         <span>Month total: ${fmt(monthTotal)}</span>
         <span style="color:var(--green-soft);">Paid: ${fmt(paidTotal)}</span>
         <span style="color:var(--dusty-rose);">Remaining: ${fmt(monthTotal-paidTotal)}</span>
     </div>`;
     list.innerHTML=html;
+
+    // Set the override total to calculated amount
+    document.getElementById('bills-override-total').value=calculatedBillTotal.toFixed(2);
+    calcWeekly();
+}
+
+function recalcBillTotal(){
+    // Sum all unpaid bill amounts from the inputs
+    let total=0;
+    document.querySelectorAll('#weekly-bills-list input[data-field="amount"]').forEach(input=>{
+        const row=input.closest('div[style*="grid"]');
+        const checkbox=row?.querySelector('.check-paid');
+        if(checkbox && !checkbox.checked){
+            total+=parseFloat(input.value)||0;
+        }
+    });
+    calculatedBillTotal=total;
+    document.getElementById('bills-override-total').value=total.toFixed(2);
+    calcWeekly();
+}
+
+function resetBillTotal(){
+    document.getElementById('bills-override-total').value=calculatedBillTotal.toFixed(2);
+    calcWeekly();
 }
 
 async function toggleWeeklyBillPaid(billId,billMonth,isPaid,checkbox){
@@ -761,7 +788,6 @@ async function toggleWeeklyBillPaid(billId,billMonth,isPaid,checkbox){
         await loadWeeklyBills();
     }catch(e){alert('Error: '+e.message);}
 }
-
 async function saveWeeklyBill(billId,billMonth){
     const amtInput=document.querySelector(`input[data-bill-id="${billId}"][data-bill-month="${billMonth}"][data-field="amount"]`);
     const dateInput=document.querySelector(`input[data-bill-id="${billId}"][data-bill-month="${billMonth}"][data-field="date"]`);
@@ -841,16 +867,13 @@ function buildWeeklyForm(){
         h+=entryRow(rental,false);
     }
 
-    // Recurring Bills set-aside
-    if(recurringAcc){
-        h+=`<div class="section-divider">📋 Set Aside for Bills</div>`;
-        h+=entryRow(recurringAcc,false);
-    }
-
-    // Other
+    // Other (skip recurring bills - now handled in bills card)
     if(other.length){
-        h+=`<div class="section-divider">Other</div>`;
-        other.forEach(a=>{h+=entryRow(a,false);});
+        const filtered=other.filter(a=>!a.name.toLowerCase().includes('recurring'));
+        if(filtered.length){
+            h+=`<div class="section-divider">Other</div>`;
+            filtered.forEach(a=>{h+=entryRow(a,false);});
+        }
     }
 
     c.innerHTML=h;
@@ -866,11 +889,12 @@ function entryRow(a,showRate){
 }
 
 function calcWeekly(){
-    let totalDebt=0, totalDebtPay=0, pncBal=0, recurringBills=0;
+    let totalDebt=0, totalDebtPay=0, pncBal=0;
     let ccBal=0,ccPay=0,ccEnd=0, taxBal=0,taxPay=0,taxEnd=0, loanBal=0,loanPay=0,loanEnd=0;
     let pncAutoPayTotal=0;
 
     const pncAcc=accounts.find(a=>a.name.toLowerCase().includes('pnc'));
+    const billsTotal=parseFloat(document.getElementById('bills-override-total')?.value)||0;
 
     // First pass: calc all non-PNC accounts and sum payments from PNC
     accounts.forEach(a=>{
@@ -881,14 +905,13 @@ function calcWeekly(){
 
         if(pncAcc && a.id===pncAcc.id){
             pncBal=parseFloat(bI.value)||0;
-            return; // calc PNC after we know the total
+            return;
         }
 
         const bal=parseFloat(bI.value)||0, pay=parseFloat(pI.value)||0, end=bal-pay;
         eD.textContent=fmt(end); eD.className=`calc ${end<0?'negative':''}`;
 
         if(a.is_debt){totalDebt+=bal; totalDebtPay+=pay;}
-        if(a.name.toLowerCase().includes('recurring')){recurringBills=bal;}
 
         // Sum payments that come from PNC
         if(a.pays_from && a.pays_from.toLowerCase().includes('pnc') && pay>0){
@@ -909,8 +932,8 @@ function calcWeekly(){
         const pncEnding=pncBal-pncAutoPayTotal;
         if(pncEndDiv){pncEndDiv.textContent=fmt(pncEnding);pncEndDiv.className=`calc ${pncEnding<0?'negative':''}`;}
 
-        // Available = PNC ending - $500 - recurring bills
-        const afterAll=pncEnding-500-recurringBills;
+        // Available = PNC ending - $500 reserve - bills total
+        const afterAll=pncEnding-500-billsTotal;
         const avail=Math.max(0,afterAll);
 
         document.getElementById('we-after-reserve').textContent=fmt(afterAll);
