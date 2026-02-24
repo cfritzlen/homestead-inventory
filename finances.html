@@ -271,21 +271,33 @@
     <div id="tab-weekly" class="tab-panel">
         <div class="card">
             <h2>📸 Weekly Entry</h2>
-            <div class="form-row" style="margin-bottom:20px;">
-                <div class="form-group"><label>Week Date</label><input type="date" id="entry-date"></div>
+            <div class="form-row" style="margin-bottom:12px;">
+                <div class="form-group">
+                    <label>Week Of (Wednesday)</label>
+                    <select id="entry-date" onchange="onWeekChange()" style="padding:10px 12px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;font-size:0.95rem;background:white;color:var(--charcoal);"></select>
+                </div>
                 <div class="form-group" style="justify-content:flex-end;">
-                    <button class="btn btn-secondary btn-small" onclick="loadPreviousWeek()">📋 Copy Last Week's Ending Balances</button>
+                    <button class="btn btn-secondary btn-small" onclick="loadPreviousWeek()">📋 Copy Prior Week's Ending</button>
                 </div>
             </div>
-            <div id="weekly-entries"></div>
 
-            <div class="summary-grid" style="margin-top:24px;">
+            <!-- Summary at top -->
+            <div class="summary-grid">
                 <div class="summary-box"><div class="label">Total Debt</div><div class="value negative" id="we-total-debt">$0</div></div>
                 <div class="summary-box"><div class="label">Total Payments</div><div class="value positive" id="we-total-payments">$0</div></div>
                 <div class="summary-box"><div class="label">PNC After $500</div><div class="value" id="we-after-reserve">$0</div></div>
                 <div class="summary-box highlight"><div class="label">Available for Debt</div><div class="value positive" id="we-available">$0</div></div>
             </div>
-            <div class="btn-row">
+
+            <!-- Recurring bills due this period -->
+            <div id="weekly-bills-section" style="margin-bottom:16px;display:none;">
+                <div class="section-divider">📋 Recurring Bills Due</div>
+                <div id="weekly-bills-list" style="padding:8px 0;"></div>
+            </div>
+
+            <div id="weekly-entries"></div>
+
+            <div class="btn-row" style="margin-top:16px;">
                 <button class="btn btn-primary" onclick="saveWeeklyEntries()">💾 Save Week</button>
             </div>
         </div>
@@ -384,7 +396,7 @@ function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.getElementById(`tab-${tab}`).classList.add('active');
     event.target.classList.add('active');
-    if (tab==='weekly') buildWeeklyForm();
+    if (tab==='weekly') { populateWeekDropdown(); onWeekChange(); }
     if (tab==='bills') loadBillPayments();
     if (tab==='history') loadHistory();
 }
@@ -552,6 +564,139 @@ function clearBillForm(){['bill-name','bill-amount','bill-due-day','bill-pays-fr
 async function deleteBill(id){if(!confirm('Delete?'))return;try{await supaFetch('finance_bills','PATCH',{is_active:false},`?id=eq.${id}`);await loadBills();await loadBillPayments();}catch(e){alert(e.message);}}
 
 // ==================== WEEKLY ENTRY ====================
+
+function getWednesdays(){
+    // Generate Wednesdays from first data date to 4 weeks in the future
+    const weds=[];
+    // Start from June 2024 (first data), go to 4 weeks from now
+    const start=new Date('2024-06-05');
+    const end=new Date();
+    end.setDate(end.getDate()+28);
+    // Find first Wednesday on or after start
+    let d=new Date(start);
+    while(d.getDay()!==3) d.setDate(d.getDate()+1);
+    while(d<=end){
+        weds.push(d.toISOString().split('T')[0]);
+        d.setDate(d.getDate()+7);
+    }
+    return weds;
+}
+
+function populateWeekDropdown(){
+    const sel=document.getElementById('entry-date');
+    const weds=getWednesdays();
+    // Find this week's Wednesday
+    const today=new Date();
+    const dayOfWeek=today.getDay();
+    const diff=dayOfWeek<=3?3-dayOfWeek:10-dayOfWeek;
+    const thisWed=new Date(today);
+    thisWed.setDate(today.getDate()+diff);
+    const thisWedStr=thisWed.toISOString().split('T')[0];
+
+    sel.innerHTML=weds.reverse().map(w=>{
+        const dt=new Date(w+'T00:00:00');
+        const label=dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+        const selected=w===thisWedStr?'selected':'';
+        return`<option value="${w}" ${selected}>${label}</option>`;
+    }).join('');
+}
+
+async function onWeekChange(){
+    buildWeeklyForm();
+    await loadWeekData();
+    await loadWeeklyBills();
+}
+
+async function loadWeekData(){
+    const dt=document.getElementById('entry-date').value;
+    if(!dt)return;
+    try{
+        const entries=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${dt}`);
+        if(!entries?.length)return;
+        entries.forEach(e=>{
+            const bI=document.querySelector(`input[data-id="${e.account_id}"][data-f="bal"]`);
+            const pI=document.querySelector(`input[data-id="${e.account_id}"][data-f="pay"]`);
+            if(bI) bI.value=e.starting_balance||0;
+            if(pI) pI.value=Math.abs(e.payment)||0;
+        });
+        calcWeekly();
+    }catch(e){console.error('Load week:',e);}
+}
+
+async function loadWeeklyBills(){
+    const dt=document.getElementById('entry-date').value;
+    if(!dt||!bills.length){document.getElementById('weekly-bills-section').style.display='none';return;}
+
+    const weekDate=new Date(dt+'T00:00:00');
+    const monthStart=new Date(weekDate.getFullYear(),weekDate.getMonth(),1);
+    const monthEnd=new Date(weekDate.getFullYear(),weekDate.getMonth()+1,0);
+    const weekEnd=new Date(weekDate);
+    weekEnd.setDate(weekEnd.getDate()+6);
+
+    // Get bill payments for this month
+    const mk=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-01`;
+    let payments=[];
+    try{payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${mk}`);}catch(e){payments=[];}
+
+    // Show bills whose due day falls within this week (Wed to Tue)
+    const weekDay=weekDate.getDate();
+    const weekEndDay=weekEnd.getDate();
+    const crossesMonth=weekEndDay<weekDay;
+
+    const dueBills=bills.filter(b=>{
+        if(!b.due_day)return false;
+        if(crossesMonth) return b.due_day>=weekDay || b.due_day<=weekEndDay;
+        return b.due_day>=weekDay && b.due_day<=weekEndDay;
+    });
+
+    // Also show all bills for the month in a summary
+    const section=document.getElementById('weekly-bills-section');
+    const list=document.getElementById('weekly-bills-list');
+
+    if(!bills.length){section.style.display='none';return;}
+    section.style.display='block';
+
+    // Show bills due this week first, then rest of month
+    let totalDue=0;
+    let html='<div style="font-size:0.85rem;">';
+
+    // Bills due this week
+    if(dueBills.length){
+        html+='<div style="font-weight:600;color:var(--sage-700);margin-bottom:4px;">Due this week:</div>';
+        dueBills.forEach(b=>{
+            const p=payments.find(x=>x.bill_id===b.id);
+            const amt=p?.actual_amount||b.expected_amount||0;
+            const paid=p?.is_paid||false;
+            totalDue+=amt;
+            html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;${paid?'text-decoration:line-through;opacity:0.6':''}">
+                <span>${paid?'✅':'⏳'} ${b.name} (due ${b.due_day}${b.is_variable_amount?' ~':''})</span>
+                <span style="font-variant-numeric:tabular-nums;font-weight:500;">${fmt(amt)}</span>
+            </div>`;
+        });
+    } else {
+        html+='<div style="color:var(--sage-400);padding:4px 0;">No bills due this week</div>';
+    }
+
+    // Monthly total
+    let monthTotal=0;
+    bills.forEach(b=>{
+        const p=payments.find(x=>x.bill_id===b.id);
+        monthTotal+=p?.actual_amount||b.expected_amount||0;
+    });
+    const paidTotal=bills.reduce((sum,b)=>{
+        const p=payments.find(x=>x.bill_id===b.id);
+        return sum+(p?.is_paid?p.actual_amount||b.expected_amount||0:0);
+    },0);
+
+    html+=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--sage-200);display:flex;justify-content:space-between;font-weight:600;">
+        <span>Month total: ${fmt(monthTotal)}</span>
+        <span style="color:var(--green-soft);">Paid: ${fmt(paidTotal)}</span>
+        <span style="color:var(--dusty-rose);">Remaining: ${fmt(monthTotal-paidTotal)}</span>
+    </div>`;
+    html+='</div>';
+    list.innerHTML=html;
+}
+
 function buildWeeklyForm(){
     const c=document.getElementById('weekly-entries');
     if(!accounts.length){c.innerHTML='<p style="color:var(--sage-600);padding:12px 0;">Add accounts first.</p>';return;}
@@ -587,8 +732,8 @@ function calcWeekly(){
         if(!bI)return;
         const bal=parseFloat(bI.value)||0, pay=parseFloat(pI.value)||0, end=bal-pay;
         eD.textContent=fmt(end); eD.className=`calc ${end<0?'negative':''}`;
-        if(a.is_debt){totalDebt+=bal; totalPay+=Math.abs(pay);}
-        if(a.name.toLowerCase().includes('pnc')) pncEnding=end;
+        if(a.is_debt){totalDebt+=bal; totalPay+=pay;}
+        if(a.name.toLowerCase().includes('pnc')){pncEnding=end;}
     });
     const afterRes=pncEnding-500, avail=Math.max(0,afterRes);
     document.getElementById('we-total-debt').textContent=fmt(totalDebt);
@@ -600,11 +745,16 @@ function calcWeekly(){
 }
 
 async function loadPreviousWeek(){
+    const currentDate=document.getElementById('entry-date').value;
+    if(!currentDate)return;
+    // Find the Wednesday before this one
+    const d=new Date(currentDate+'T00:00:00');
+    d.setDate(d.getDate()-7);
+    const prevWed=d.toISOString().split('T')[0];
     try{
-        const latest=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date.desc&limit=1');
-        if(!latest?.length)return alert('No previous entries.');
-        const prev=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${latest[0].entry_date}`);
-        prev.forEach(e=>{
+        const prevEntries=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${prevWed}`);
+        if(!prevEntries?.length)return alert('No data for previous week.');
+        prevEntries.forEach(e=>{
             const bI=document.querySelector(`input[data-id="${e.account_id}"][data-f="bal"]`);
             if(bI) bI.value=e.ending_balance||e.starting_balance||0;
         });
@@ -614,22 +764,19 @@ async function loadPreviousWeek(){
 
 async function saveWeeklyEntries(){
     const dt=document.getElementById('entry-date').value;
-    if(!dt)return alert('Pick a date.');
+    if(!dt)return alert('Pick a week.');
     const entries=[];
     accounts.forEach(a=>{
         const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
         const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
         if(!bI)return;
         const bal=parseFloat(bI.value)||0, pay=parseFloat(pI.value)||0;
-        if(bal!==0||pay!==0) entries.push({entry_date:dt,account_id:a.id,starting_balance:bal,payment:pay,ending_balance:bal-pay});
+        if(bal!==0||pay!==0) entries.push({entry_date:dt,account_id:a.id,starting_balance:bal,payment:-pay,ending_balance:bal-pay});
     });
     if(!entries.length)return alert('Enter at least one balance.');
     try{
         await supaFetch('finance_weekly_entries','DELETE',null,`?entry_date=eq.${dt}`);
         await supaFetch('finance_weekly_entries','POST',entries);
-        document.querySelectorAll('.we-in').forEach(i=>i.value='');
-        document.querySelectorAll('.calc').forEach(d=>d.textContent='-');
-        calcWeekly();
         alert('Week saved!');
     }catch(e){alert('Error: '+e.message);}
 }
@@ -743,7 +890,6 @@ function renderHistory(){
 
 // ==================== INIT ====================
 async function init(){
-    document.getElementById('entry-date').value=new Date().toISOString().split('T')[0];
     await loadAccounts(); await loadBills(); await loadBillPayments();
 }
 init();
