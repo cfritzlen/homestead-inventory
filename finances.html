@@ -1518,9 +1518,10 @@ async function loadDashboard(){
             card('Electric Bills',electricTotal,'white','⚡');
 
         // ===== DEBT TREND - LAST YEAR =====
-        const entries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date');
+        // Use loan schedules for consistent loan data, saved entries for CC/tax only
+        const allEntries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date');
         const byDate={};
-        entries.forEach(e=>{
+        allEntries.forEach(e=>{
             if(!byDate[e.entry_date])byDate[e.entry_date]=[];
             byDate[e.entry_date].push(e);
         });
@@ -1529,13 +1530,35 @@ async function loadDashboard(){
         const yearStr=oneYearAgo.toISOString().split('T')[0];
         const recentDates=dates.filter(d=>d>=yearStr);
 
+        // Pre-fetch all loan schedule data
+        const loanSchedules={};
+        for(const a of loanAccs){
+            const sched=await supaFetch('finance_loan_schedules','GET',null,
+                `?account_id=eq.${a.id}&order=due_date`);
+            if(sched?.length) loanSchedules[a.id]=sched;
+        }
+
         const debtOverTime=[];
         for(const d of recentDates){
             let debt=0;
+            // CC + tax from saved entries
             byDate[d].forEach(e=>{
                 const a=accMap[e.account_id];if(!a||!a.is_debt)return;
-                debt+=parseFloat(e.ending_balance)||0;
+                if(a.account_type==='credit_card'||a.account_type==='tax_debt'){
+                    debt+=parseFloat(e.ending_balance)||0;
+                }
             });
+            // Loans from schedule (find most recent entry on/before this date)
+            for(const a of loanAccs){
+                const sched=loanSchedules[a.id];
+                if(!sched)continue;
+                let bal=0;
+                for(let i=sched.length-1;i>=0;i--){
+                    if(sched[i].due_date<=d){bal=parseFloat(sched[i].balance_after)||0;break;}
+                }
+                if(bal===0&&sched.length) bal=parseFloat(sched[0].balance_after)||0;
+                debt+=bal;
+            }
             if(debt>0) debtOverTime.push({date:d,value:debt});
         }
         renderLineChart('dash-debt-chart',debtOverTime);
