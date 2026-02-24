@@ -1096,7 +1096,7 @@ function ccEntryRow(a){
     const isBOA=a.name.toLowerCase().includes('boa');
     return`<div class="entry-row">
         <label data-acct-id="${a.id}">${a.name} <span class="rate">${a.interest_rate}%</span> <span class="cc-spent" data-cc-id="${a.id}" style="color:var(--sage-500);font-size:0.75rem;font-weight:400;"></span></label>
-        <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" data-type="credit_card" data-debt="true" class="we-in" oninput="calcWeekly();${isBOA?'autoPayBOA(this);':''}">
+        <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" data-type="credit_card" data-debt="true" class="we-in" oninput="${isBOA?'autoPayBOA(this);':''}calcWeekly()">
         <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
         <div class="calc" data-id="${a.id}" data-f="end">-</div>
     </div>`;
