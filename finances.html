@@ -762,7 +762,7 @@ async function loadWeeklyBills(){
             calculatedBillTotal+=amt;
 
             html+=`<div style="display:grid;grid-template-columns:30px 1fr 110px 110px 60px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--sage-100);${paid?'opacity:0.5':''}">
-                <div><input type="checkbox" class="check-paid" ${paid?'checked':''} onchange="toggleWeeklyBillPaid('${b.id}','${billMonth}',this.checked,this)" style="accent-color:var(--sage-500);width:18px;height:18px;cursor:pointer;"></div>
+                <div><input type="checkbox" class="check-paid" data-bill-id="${b.id}" data-bill-month="${billMonth}" ${paid?'checked':''} onchange="toggleWeeklyBillPaid('${b.id}','${billMonth}',this.checked,this)" style="accent-color:var(--sage-500);width:18px;height:18px;cursor:pointer;"></div>
                 <div>
                     <strong>${b.name}</strong>
                     ${b.is_variable_amount?'<span class="badge badge-variable" style="margin-left:4px;">~</span>':''}
@@ -1024,8 +1024,39 @@ async function saveWeeklyEntries(){
     try{
         await supaFetch('finance_weekly_entries','DELETE',null,`?entry_date=eq.${dt}`);
         await supaFetch('finance_weekly_entries','POST',entries);
+
+        // Also save all bill edits
+        const billRows=document.querySelectorAll('#weekly-bills-list [data-bill-id]');
+        const billPairs=new Set();
+        billRows.forEach(el=>{
+            const key=el.dataset.billId+'|'+el.dataset.billMonth;
+            if(billPairs.has(key))return;
+            billPairs.add(key);
+            const billId=el.dataset.billId, billMonth=el.dataset.billMonth;
+            const amtInput=document.querySelector(`input[data-bill-id="${billId}"][data-bill-month="${billMonth}"][data-field="amount"]`);
+            const dateInput=document.querySelector(`input[data-bill-id="${billId}"][data-bill-month="${billMonth}"][data-field="date"]`);
+            const checkbox=document.querySelector(`.check-paid[data-bill-id="${billId}"][data-bill-month="${billMonth}"]`);
+            if(amtInput){
+                const amt=parseFloat(amtInput.value)||0;
+                const paidDate=dateInput?.value||null;
+                const isPaid=checkbox?.checked||false;
+                saveBillPayment(billId,billMonth,amt,paidDate,isPaid);
+            }
+        });
+
         alert('Week saved!');
     }catch(e){alert('Error: '+e.message);}
+}
+
+async function saveBillPayment(billId,billMonth,amt,paidDate,isPaid){
+    try{
+        const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
+        if(existing?.length){
+            await supaFetch('finance_bill_payments','PATCH',{actual_amount:amt,paid_date:paidDate,is_paid:isPaid},`?id=eq.${existing[0].id}`);
+        }else{
+            await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:billMonth,actual_amount:amt,is_paid:isPaid,paid_date:paidDate});
+        }
+    }catch(e){console.error('Bill save error:',e);}
 }
 
 // ==================== HISTORY ====================
