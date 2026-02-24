@@ -1437,72 +1437,69 @@ function renderHistory(){
 // ==================== DASHBOARD ====================
 async function loadDashboard(){
     try{
-        const entries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date.desc');
-        if(!entries?.length){
-            document.getElementById('dash-cards').innerHTML='<p style="color:var(--sage-400);grid-column:1/-1;">No data yet — enter your first week!</p>';
-            return;
-        }
-
         const allAcc=[...accounts,...closedAccounts];
         const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
 
-        // Group by date
-        const byDate={};
-        entries.forEach(e=>{
-            if(!byDate[e.entry_date])byDate[e.entry_date]=[];
-            byDate[e.entry_date].push(e);
-        });
-        const dates=Object.keys(byDate).sort();
-        const latestDate=dates[dates.length-1];
-        const latest=byDate[latestDate];
-        const prevDate=dates.length>=2?dates[dates.length-2]:null;
-        const prev=prevDate?byDate[prevDate]:[];
+        // Get the 2 most recent entries PER account (for spend calc)
+        let ccTotal=0, loanTotal=0, taxTotal=0, ccSpent=0, boaSpent=0;
 
-        // Current totals
-        let ccTotal=0,loanTotal=0,taxTotal=0;
-        latest.forEach(e=>{
-            const a=accMap[e.account_id];if(!a)return;
-            const bal=parseFloat(e.ending_balance)||0;
-            if(a.account_type==='credit_card') ccTotal+=bal;
-            if(a.account_type==='loan') loanTotal+=bal;
-            if(a.account_type==='tax_debt') taxTotal+=bal;
-        });
-
-        // Loan totals from schedule (more accurate)
-        let schedLoanTotal=0;
+        const ccAccs=allAcc.filter(a=>a.account_type==='credit_card');
+        const boaAcc=ccAccs.find(a=>a.name?.toLowerCase().includes('boa'));
+        const taxAccs=allAcc.filter(a=>a.account_type==='tax_debt');
         const loanAccs=accounts.filter(a=>a.account_type==='loan');
+
+        // CC balances + spend
+        for(const cc of ccAccs){
+            const rows=await supaFetch('finance_weekly_entries','GET',null,
+                `?account_id=eq.${cc.id}&order=entry_date.desc&limit=2`);
+            if(rows?.length){
+                const latest=rows[0];
+                const bal=parseFloat(latest.ending_balance)||0;
+                ccTotal+=bal;
+                // Spend = this week start - last week end
+                if(rows.length>=2){
+                    const thisStart=parseFloat(latest.starting_balance)||0;
+                    const prevEnd=parseFloat(rows[1].ending_balance)||0;
+                    const spent=Math.max(0,thisStart-prevEnd);
+                    if(cc.id===boaAcc?.id) boaSpent=spent;
+                    else ccSpent+=spent;
+                }
+            }
+        }
+
+        // Tax totals
+        for(const t of taxAccs){
+            const rows=await supaFetch('finance_weekly_entries','GET',null,
+                `?account_id=eq.${t.id}&order=entry_date.desc&limit=1`);
+            if(rows?.length) taxTotal+=parseFloat(rows[0].ending_balance)||0;
+        }
+
+        // Loan totals from schedule
+        let schedLoanTotal=0;
+        const today=new Date().toISOString().split('T')[0];
         for(const a of loanAccs){
             const r=await supaFetch('finance_loan_schedules','GET',null,
-                `?account_id=eq.${a.id}&due_date=lte.${latestDate}&order=due_date.desc&limit=1`);
+                `?account_id=eq.${a.id}&due_date=lte.${today}&order=due_date.desc&limit=1`);
             if(r?.length) schedLoanTotal+=parseFloat(r[0].balance_after)||0;
+        }
+        // Fallback to saved entries if no schedule
+        if(!schedLoanTotal){
+            for(const a of loanAccs){
+                const rows=await supaFetch('finance_weekly_entries','GET',null,
+                    `?account_id=eq.${a.id}&order=entry_date.desc&limit=1`);
+                if(rows?.length) loanTotal+=parseFloat(rows[0].ending_balance)||0;
+            }
         }
         const loanDisplay=schedLoanTotal||loanTotal;
 
-        // CC spend this week (excluding BOA)
-        const ccAccs=allAcc.filter(a=>a.account_type==='credit_card');
-        const boaAcc=ccAccs.find(a=>a.name?.toLowerCase().includes('boa'));
-        let ccSpent=0, boaSpent=0;
-        ccAccs.forEach(cc=>{
-            const curr=latest.find(e=>e.account_id===cc.id);
-            const pr=prev.find(e=>e.account_id===cc.id);
-            const thisStart=curr?parseFloat(curr.starting_balance)||0:0;
-            const prevEnd=pr?parseFloat(pr.ending_balance)||0:0;
-            const spent=Math.max(0,thisStart-prevEnd);
-            if(cc.id===boaAcc?.id) boaSpent=spent;
-            else ccSpent+=spent;
-        });
-
-        // Electric bills total (most recent month)
+        // Electric bills
         let electricTotal=0;
         const elecBills=bills.filter(b=>b.name?.toLowerCase().includes('electric'));
-        if(elecBills.length){
-            // Get most recent payments for each electric bill
-            for(const b of elecBills){
-                const payments=await supaFetch('finance_bill_payments','GET',null,
-                    `?bill_id=eq.${b.id}&order=bill_month.desc&limit=1`);
-                if(payments?.length) electricTotal+=parseFloat(payments[0].actual_amount)||b.expected_amount||0;
-                else electricTotal+=b.expected_amount||0;
-            }
+        for(const b of elecBills){
+            const payments=await supaFetch('finance_bill_payments','GET',null,
+                `?bill_id=eq.${b.id}&order=bill_month.desc&limit=1`);
+            if(payments?.length) electricTotal+=parseFloat(payments[0].actual_amount)||b.expected_amount||0;
+            else electricTotal+=b.expected_amount||0;
         }
 
         // Build cards
@@ -1521,6 +1518,13 @@ async function loadDashboard(){
             card('Electric Bills',electricTotal,'white','⚡');
 
         // ===== DEBT TREND - LAST YEAR =====
+        const entries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date');
+        const byDate={};
+        entries.forEach(e=>{
+            if(!byDate[e.entry_date])byDate[e.entry_date]=[];
+            byDate[e.entry_date].push(e);
+        });
+        const dates=Object.keys(byDate).sort();
         const oneYearAgo=new Date();oneYearAgo.setFullYear(oneYearAgo.getFullYear()-1);
         const yearStr=oneYearAgo.toISOString().split('T')[0];
         const recentDates=dates.filter(d=>d>=yearStr);
@@ -1532,7 +1536,7 @@ async function loadDashboard(){
                 const a=accMap[e.account_id];if(!a||!a.is_debt)return;
                 debt+=parseFloat(e.ending_balance)||0;
             });
-            debtOverTime.push({date:d,value:debt});
+            if(debt>0) debtOverTime.push({date:d,value:debt});
         }
         renderLineChart('dash-debt-chart',debtOverTime);
 
@@ -1541,6 +1545,50 @@ async function loadDashboard(){
 
 function monthsDiff(d1,d2){
     return Math.max(0,Math.round((d2-d1)/(1000*60*60*24*30.44)));
+}
+
+function renderLineChart(containerId,data){
+    const el=document.getElementById(containerId);
+    if(!data.length){el.innerHTML='<p style="color:var(--sage-400);">No data yet</p>';return;}
+    const vals=data.map(d=>d.value);
+    const max=Math.max(...vals);
+    const min=Math.min(...vals);
+    const range=max-min||1;
+    const w=600,h=200,pad=50;
+    const pw=w-pad-10, ph=h-35;
+
+    let points='';
+    let fillPoints=`${pad},${h-25} `;
+    data.forEach((d,i)=>{
+        const x=pad+(i/(data.length-1||1))*pw;
+        const y=(h-25)-((d.value-min)/range)*ph;
+        points+=`${x},${y} `;
+        fillPoints+=`${x},${y} `;
+    });
+    fillPoints+=`${pad+pw},${h-25}`;
+
+    const first=data[0],last=data[data.length-1];
+    const mid=data[Math.floor(data.length/2)];
+    const fmtDate=d=>{const dt=new Date(d+'T12:00:00');return`${dt.getMonth()+1}/${dt.getDate()}`;}
+    const fmtK=v=>v>=1000?'$'+(v/1000).toFixed(0)+'k':'$'+v.toFixed(0);
+
+    let svg=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;" preserveAspectRatio="xMidYMid meet">
+        <polygon points="${fillPoints}" fill="var(--sage-100)" opacity="0.7"/>
+        <polyline points="${points}" fill="none" stroke="var(--sage-500)" stroke-width="2.5" stroke-linejoin="round"/>
+        <text x="${pad}" y="${h-6}" font-size="10" fill="var(--sage-500)" font-family="Karla,sans-serif">${fmtDate(first.date)}</text>
+        <text x="${pad+pw/2}" y="${h-6}" font-size="10" fill="var(--sage-500)" text-anchor="middle" font-family="Karla,sans-serif">${fmtDate(mid.date)}</text>
+        <text x="${pad+pw}" y="${h-6}" font-size="10" fill="var(--sage-500)" text-anchor="end" font-family="Karla,sans-serif">${fmtDate(last.date)}</text>
+        <text x="${pad-4}" y="18" font-size="10" fill="var(--sage-600)" text-anchor="end" font-family="Karla,sans-serif">${fmtK(max)}</text>
+        <text x="${pad-4}" y="${h-27}" font-size="10" fill="var(--sage-600)" text-anchor="end" font-family="Karla,sans-serif">${fmtK(min)}</text>`;
+
+    const x1=pad, y1=(h-25)-((first.value-min)/range)*ph;
+    const x2=pad+pw, y2=(h-25)-((last.value-min)/range)*ph;
+    svg+=`<circle cx="${x1}" cy="${y1}" r="4" fill="var(--sage-500)"/>`;
+    svg+=`<circle cx="${x2}" cy="${y2}" r="4" fill="var(--sage-600)"/>`;
+    // Show current value at end
+    svg+=`<text x="${x2}" y="${y2-10}" font-size="11" fill="var(--sage-700)" text-anchor="end" font-weight="600" font-family="Karla,sans-serif">${fmtK(last.value)}</text>`;
+    svg+=`</svg>`;
+    el.innerHTML=svg;
 }
 
 async function init(){
