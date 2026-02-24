@@ -566,17 +566,15 @@ async function deleteBill(id){if(!confirm('Delete?'))return;try{await supaFetch(
 // ==================== WEEKLY ENTRY ====================
 
 function getWednesdays(){
-    // Generate Wednesdays from first data date to 4 weeks in the future
     const weds=[];
-    // Start from June 2024 (first data), go to 4 weeks from now
-    const start=new Date('2024-06-05');
+    const start=new Date('2024-06-05T12:00:00');
     const end=new Date();
     end.setDate(end.getDate()+28);
-    // Find first Wednesday on or after start
     let d=new Date(start);
     while(d.getDay()!==3) d.setDate(d.getDate()+1);
     while(d<=end){
-        weds.push(d.toISOString().split('T')[0]);
+        const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+        weds.push(`${y}-${m}-${dd}`);
         d.setDate(d.getDate()+7);
     }
     return weds;
@@ -585,17 +583,17 @@ function getWednesdays(){
 function populateWeekDropdown(){
     const sel=document.getElementById('entry-date');
     const weds=getWednesdays();
-    // Find this week's Wednesday
     const today=new Date();
     const dayOfWeek=today.getDay();
     const diff=dayOfWeek<=3?3-dayOfWeek:10-dayOfWeek;
     const thisWed=new Date(today);
     thisWed.setDate(today.getDate()+diff);
-    const thisWedStr=thisWed.toISOString().split('T')[0];
+    const y=thisWed.getFullYear(), m=String(thisWed.getMonth()+1).padStart(2,'0'), dd=String(thisWed.getDate()).padStart(2,'0');
+    const thisWedStr=`${y}-${m}-${dd}`;
 
     sel.innerHTML=weds.reverse().map(w=>{
-        const dt=new Date(w+'T00:00:00');
-        const label=dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+        const dt=new Date(w+'T12:00:00');
+        const label=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
         const selected=w===thisWedStr?'selected':'';
         return`<option value="${w}" ${selected}>${label}</option>`;
     }).join('');
