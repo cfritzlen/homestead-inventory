@@ -625,68 +625,84 @@ async function loadWeeklyBills(){
     const dt=document.getElementById('entry-date').value;
     if(!dt||!bills.length){document.getElementById('weekly-bills-section').style.display='none';return;}
 
-    const weekDate=new Date(dt+'T00:00:00');
-    const monthStart=new Date(weekDate.getFullYear(),weekDate.getMonth(),1);
-    const monthEnd=new Date(weekDate.getFullYear(),weekDate.getMonth()+1,0);
-    const weekEnd=new Date(weekDate);
-    weekEnd.setDate(weekEnd.getDate()+6);
+    const weekDate=new Date(dt+'T12:00:00');
+    const nextWed=new Date(weekDate);
+    nextWed.setDate(nextWed.getDate()+7);
 
-    // Get bill payments for this month
-    const mk=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-01`;
+    // We need to check this month AND possibly next month if week crosses months
+    const mk1=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-01`;
+    const mk2=`${nextWed.getFullYear()}-${String(nextWed.getMonth()+1).padStart(2,'0')}-01`;
+
     let payments=[];
-    try{payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${mk}`);}catch(e){payments=[];}
+    try{
+        payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${mk1}`);
+        if(mk2!==mk1){
+            const p2=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${mk2}`);
+            if(p2) payments=payments.concat(p2);
+        }
+    }catch(e){payments=[];}
 
-    // Show bills whose due day falls within this week (Wed to Tue)
-    const weekDay=weekDate.getDate();
-    const weekEndDay=weekEnd.getDate();
-    const crossesMonth=weekEndDay<weekDay;
-
-    const dueBills=bills.filter(b=>{
-        if(!b.due_day)return false;
-        if(crossesMonth) return b.due_day>=weekDay || b.due_day<=weekEndDay;
-        return b.due_day>=weekDay && b.due_day<=weekEndDay;
+    // Find bills due between this Wed (inclusive) and next Tues (inclusive) = 7 days
+    const dueBills=[];
+    bills.forEach(b=>{
+        if(!b.due_day)return;
+        // Check if due day falls in this 7-day window
+        // Try both this month and next month
+        for(let m=0;m<2;m++){
+            const checkDate=new Date(weekDate);
+            checkDate.setMonth(checkDate.getMonth()+m);
+            checkDate.setDate(b.due_day);
+            // Make sure the date is valid (e.g. Feb 31 -> skip)
+            if(checkDate.getDate()!==b.due_day) continue;
+            if(checkDate>=weekDate && checkDate<nextWed){
+                const p=payments.find(x=>x.bill_id===b.id && x.bill_month===`${checkDate.getFullYear()}-${String(checkDate.getMonth()+1).padStart(2,'0')}-01`);
+                dueBills.push({bill:b, dueDate:new Date(checkDate), payment:p});
+                break;
+            }
+        }
     });
 
-    // Also show all bills for the month in a summary
+    // Sort by due date
+    dueBills.sort((a,b)=>a.dueDate-b.dueDate);
+
     const section=document.getElementById('weekly-bills-section');
     const list=document.getElementById('weekly-bills-list');
-
-    if(!bills.length){section.style.display='none';return;}
     section.style.display='block';
 
-    // Show bills due this week first, then rest of month
     let totalDue=0;
     let html='<div style="font-size:0.85rem;">';
 
-    // Bills due this week
     if(dueBills.length){
-        html+='<div style="font-weight:600;color:var(--sage-700);margin-bottom:4px;">Due this week:</div>';
-        dueBills.forEach(b=>{
-            const p=payments.find(x=>x.bill_id===b.id);
+        html+='<div style="font-weight:600;color:var(--sage-700);margin-bottom:6px;">Bills hitting before next Wednesday:</div>';
+        dueBills.forEach(({bill:b, dueDate, payment:p})=>{
             const amt=p?.actual_amount||b.expected_amount||0;
             const paid=p?.is_paid||false;
-            totalDue+=amt;
-            html+=`<div style="display:flex;justify-content:space-between;padding:4px 0;${paid?'text-decoration:line-through;opacity:0.6':''}">
-                <span>${paid?'✅':'⏳'} ${b.name} (due ${b.due_day}${b.is_variable_amount?' ~':''})</span>
-                <span style="font-variant-numeric:tabular-nums;font-weight:500;">${fmt(amt)}</span>
+            totalDue+=paid?0:amt;
+            const dayLabel=dueDate.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+            html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--sage-100);${paid?'text-decoration:line-through;opacity:0.5':''}">
+                <span>${paid?'✅':'⚠️'} ${b.name}</span>
+                <span style="color:var(--sage-400);font-size:0.8rem;">${dayLabel}</span>
+                <span style="font-variant-numeric:tabular-nums;font-weight:500;">${b.is_variable_amount?'~':''}${fmt(amt)}</span>
             </div>`;
         });
+        html+=`<div style="margin-top:8px;padding-top:8px;border-top:2px solid var(--sage-300);display:flex;justify-content:space-between;font-weight:700;color:var(--dusty-rose);">
+            <span>⚠️ Total due before next Wed:</span><span>${fmt(totalDue)}</span>
+        </div>`;
     } else {
-        html+='<div style="color:var(--sage-400);padding:4px 0;">No bills due this week</div>';
+        html+='<div style="color:var(--sage-400);padding:4px 0;">No bills due before next Wednesday</div>';
     }
 
-    // Monthly total
-    let monthTotal=0;
+    // Monthly summary
+    let monthTotal=0, paidTotal=0;
+    const mkCurrent=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-01`;
     bills.forEach(b=>{
-        const p=payments.find(x=>x.bill_id===b.id);
-        monthTotal+=p?.actual_amount||b.expected_amount||0;
+        const p=payments.find(x=>x.bill_id===b.id && x.bill_month===mkCurrent);
+        const amt=p?.actual_amount||b.expected_amount||0;
+        monthTotal+=amt;
+        if(p?.is_paid) paidTotal+=amt;
     });
-    const paidTotal=bills.reduce((sum,b)=>{
-        const p=payments.find(x=>x.bill_id===b.id);
-        return sum+(p?.is_paid?p.actual_amount||b.expected_amount||0:0);
-    },0);
 
-    html+=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--sage-200);display:flex;justify-content:space-between;font-weight:600;">
+    html+=`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--sage-200);display:flex;justify-content:space-between;font-size:0.85rem;">
         <span>Month total: ${fmt(monthTotal)}</span>
         <span style="color:var(--green-soft);">Paid: ${fmt(paidTotal)}</span>
         <span style="color:var(--dusty-rose);">Remaining: ${fmt(monthTotal-paidTotal)}</span>
