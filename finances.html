@@ -285,14 +285,8 @@
             <div class="summary-grid">
                 <div class="summary-box"><div class="label">Total Debt</div><div class="value negative" id="we-total-debt">$0</div></div>
                 <div class="summary-box"><div class="label">Total Payments</div><div class="value positive" id="we-total-payments">$0</div></div>
-                <div class="summary-box"><div class="label">PNC After $500</div><div class="value" id="we-after-reserve">$0</div></div>
+                <div class="summary-box"><div class="label">PNC - $500 - Bills</div><div class="value" id="we-after-reserve">$0</div></div>
                 <div class="summary-box highlight"><div class="label">Available for Debt</div><div class="value positive" id="we-available">$0</div></div>
-            </div>
-
-            <!-- Recurring bills due this period -->
-            <div id="weekly-bills-section" style="margin-bottom:16px;display:none;">
-                <div class="section-divider">📋 Recurring Bills Due</div>
-                <div id="weekly-bills-list" style="padding:8px 0;"></div>
             </div>
 
             <div id="weekly-entries"></div>
@@ -300,6 +294,12 @@
             <div class="btn-row" style="margin-top:16px;">
                 <button class="btn btn-primary" onclick="saveWeeklyEntries()">💾 Save Week</button>
             </div>
+        </div>
+
+        <!-- Bills due this period - editable -->
+        <div class="card" id="weekly-bills-section" style="display:none;">
+            <h2>📋 Bills Due This Week</h2>
+            <div id="weekly-bills-list"></div>
         </div>
     </div>
 
@@ -629,7 +629,6 @@ async function loadWeeklyBills(){
     const nextWed=new Date(weekDate);
     nextWed.setDate(nextWed.getDate()+7);
 
-    // We need to check this month AND possibly next month if week crosses months
     const mk1=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-01`;
     const mk2=`${nextWed.getFullYear()}-${String(nextWed.getMonth()+1).padStart(2,'0')}-01`;
 
@@ -642,27 +641,24 @@ async function loadWeeklyBills(){
         }
     }catch(e){payments=[];}
 
-    // Find bills due between this Wed (inclusive) and next Tues (inclusive) = 7 days
+    // Find bills due between this Wed and next Wed
     const dueBills=[];
     bills.forEach(b=>{
         if(!b.due_day)return;
-        // Check if due day falls in this 7-day window
-        // Try both this month and next month
         for(let m=0;m<2;m++){
             const checkDate=new Date(weekDate);
             checkDate.setMonth(checkDate.getMonth()+m);
             checkDate.setDate(b.due_day);
-            // Make sure the date is valid (e.g. Feb 31 -> skip)
             if(checkDate.getDate()!==b.due_day) continue;
             if(checkDate>=weekDate && checkDate<nextWed){
-                const p=payments.find(x=>x.bill_id===b.id && x.bill_month===`${checkDate.getFullYear()}-${String(checkDate.getMonth()+1).padStart(2,'0')}-01`);
-                dueBills.push({bill:b, dueDate:new Date(checkDate), payment:p});
+                const billMonth=`${checkDate.getFullYear()}-${String(checkDate.getMonth()+1).padStart(2,'0')}-01`;
+                const p=payments.find(x=>x.bill_id===b.id && x.bill_month===billMonth);
+                dueBills.push({bill:b, dueDate:new Date(checkDate), payment:p, billMonth});
                 break;
             }
         }
     });
 
-    // Sort by due date
     dueBills.sort((a,b)=>a.dueDate-b.dueDate);
 
     const section=document.getElementById('weekly-bills-section');
@@ -670,26 +666,38 @@ async function loadWeeklyBills(){
     section.style.display='block';
 
     let totalDue=0;
-    let html='<div style="font-size:0.85rem;">';
+    let html='';
 
     if(dueBills.length){
-        html+='<div style="font-weight:600;color:var(--sage-700);margin-bottom:6px;">Bills hitting before next Wednesday:</div>';
-        dueBills.forEach(({bill:b, dueDate, payment:p})=>{
+        html+=`<div style="display:grid;grid-template-columns:auto 1fr 100px 120px 80px;gap:8px;align-items:center;padding:8px 0;font-size:0.8rem;font-weight:600;color:var(--sage-600);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--sage-300);">
+            <div>Paid</div><div>Bill</div><div style="text-align:center">Due Date</div><div style="text-align:right">Amount</div><div></div>
+        </div>`;
+
+        dueBills.forEach(({bill:b, dueDate, payment:p, billMonth})=>{
             const amt=p?.actual_amount||b.expected_amount||0;
             const paid=p?.is_paid||false;
-            totalDue+=paid?0:amt;
-            const dayLabel=dueDate.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-            html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--sage-100);${paid?'text-decoration:line-through;opacity:0.5':''}">
-                <span>${paid?'✅':'⚠️'} ${b.name}</span>
-                <span style="color:var(--sage-400);font-size:0.8rem;">${dayLabel}</span>
-                <span style="font-variant-numeric:tabular-nums;font-weight:500;">${b.is_variable_amount?'~':''}${fmt(amt)}</span>
+            const paidDateVal=p?.paid_date||dueDate.toISOString().split('T')[0];
+            if(!paid) totalDue+=amt;
+
+            html+=`<div style="display:grid;grid-template-columns:auto 1fr 100px 120px 80px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--sage-100);${paid?'opacity:0.5':''}">
+                <div><input type="checkbox" class="check-paid" ${paid?'checked':''} onchange="toggleWeeklyBillPaid('${b.id}','${billMonth}',this.checked,this)" style="accent-color:var(--sage-500);width:18px;height:18px;cursor:pointer;"></div>
+                <div>
+                    <strong>${b.name}</strong>
+                    ${b.is_variable_amount?'<span class="badge badge-variable" style="margin-left:4px;">Variable</span>':''}
+                    ${b.is_auto_pay?'<span class="badge badge-auto" style="margin-left:4px;">Auto</span>':''}
+                </div>
+                <div><input type="date" value="${paidDateVal}" data-bill-id="${b.id}" data-bill-month="${billMonth}" data-field="date" style="padding:4px 6px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.85rem;width:100%;"></div>
+                <div><input type="number" step="0.01" value="${amt.toFixed(2)}" data-bill-id="${b.id}" data-bill-month="${billMonth}" data-field="amount" style="padding:4px 8px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.9rem;text-align:right;width:100%;"></div>
+                <div><button class="btn btn-small btn-secondary" onclick="saveWeeklyBill('${b.id}','${billMonth}')">Save</button></div>
             </div>`;
         });
-        html+=`<div style="margin-top:8px;padding-top:8px;border-top:2px solid var(--sage-300);display:flex;justify-content:space-between;font-weight:700;color:var(--dusty-rose);">
-            <span>⚠️ Total due before next Wed:</span><span>${fmt(totalDue)}</span>
+
+        html+=`<div style="display:flex;justify-content:space-between;padding:12px 0;margin-top:4px;border-top:2px solid var(--sage-300);font-weight:700;">
+            <span style="color:var(--dusty-rose);">⚠️ Unpaid due before next Wed:</span>
+            <span style="color:var(--dusty-rose);">${fmt(totalDue)}</span>
         </div>`;
     } else {
-        html+='<div style="color:var(--sage-400);padding:4px 0;">No bills due before next Wednesday</div>';
+        html+='<p style="color:var(--sage-400);padding:12px 0;">No bills due before next Wednesday</p>';
     }
 
     // Monthly summary
@@ -702,19 +710,56 @@ async function loadWeeklyBills(){
         if(p?.is_paid) paidTotal+=amt;
     });
 
-    html+=`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--sage-200);display:flex;justify-content:space-between;font-size:0.85rem;">
+    html+=`<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:0.85rem;border-top:1px solid var(--sage-200);margin-top:4px;">
         <span>Month total: ${fmt(monthTotal)}</span>
         <span style="color:var(--green-soft);">Paid: ${fmt(paidTotal)}</span>
         <span style="color:var(--dusty-rose);">Remaining: ${fmt(monthTotal-paidTotal)}</span>
     </div>`;
-    html+='</div>';
     list.innerHTML=html;
+}
+
+async function toggleWeeklyBillPaid(billId,billMonth,isPaid,checkbox){
+    const row=checkbox.closest('div[style*="grid"]');
+    const amtInput=row.querySelector('input[data-field="amount"]');
+    const dateInput=row.querySelector('input[data-field="date"]');
+    const amt=parseFloat(amtInput?.value)||0;
+    const paidDate=dateInput?.value||null;
+
+    try{
+        const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
+        if(existing?.length){
+            await supaFetch('finance_bill_payments','PATCH',{is_paid:isPaid,actual_amount:amt,paid_date:isPaid?paidDate:null},`?id=eq.${existing[0].id}`);
+        }else{
+            await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:billMonth,actual_amount:amt,is_paid:isPaid,paid_date:isPaid?paidDate:null});
+        }
+        await loadWeeklyBills();
+    }catch(e){alert('Error: '+e.message);}
+}
+
+async function saveWeeklyBill(billId,billMonth){
+    const amtInput=document.querySelector(`input[data-bill-id="${billId}"][data-bill-month="${billMonth}"][data-field="amount"]`);
+    const dateInput=document.querySelector(`input[data-bill-id="${billId}"][data-bill-month="${billMonth}"][data-field="date"]`);
+    const amt=parseFloat(amtInput?.value)||0;
+    const paidDate=dateInput?.value||null;
+
+    try{
+        const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
+        if(existing?.length){
+            await supaFetch('finance_bill_payments','PATCH',{actual_amount:amt,paid_date:paidDate},`?id=eq.${existing[0].id}`);
+        }else{
+            await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:billMonth,actual_amount:amt,is_paid:false,paid_date:paidDate});
+        }
+        await loadWeeklyBills();
+    }catch(e){alert('Error: '+e.message);}
 }
 
 function buildWeeklyForm(){
     const c=document.getElementById('weekly-entries');
     if(!accounts.length){c.innerHTML='<p style="color:var(--sage-600);padding:12px 0;">Add accounts first.</p>';return;}
-    const debts=accounts.filter(a=>a.is_debt), banks=accounts.filter(a=>!a.is_debt);
+    const debts=accounts.filter(a=>a.is_debt);
+    const banks=accounts.filter(a=>!a.is_debt && !a.name.toLowerCase().includes('recurring'));
+    const recurringAcc=accounts.find(a=>a.name.toLowerCase().includes('recurring'));
+
     let h=`<div class="entry-row header"><div>Account</div><div style="text-align:right">Balance</div><div style="text-align:right">Payment</div><div style="text-align:right">Ending</div></div>`;
     if(debts.length){
         h+=`<div class="section-divider">Debts</div>`;
@@ -734,11 +779,20 @@ function buildWeeklyForm(){
             <div class="calc" data-id="${a.id}" data-f="end">-</div>
         </div>`;});
     }
+    if(recurringAcc){
+        h+=`<div class="section-divider">Set Aside for Bills</div>`;
+        h+=`<div class="entry-row">
+            <label>${recurringAcc.name}</label>
+            <input type="number" step="0.01" placeholder="0.00" data-id="${recurringAcc.id}" data-f="bal" class="we-in" oninput="calcWeekly()">
+            <input type="number" step="0.01" placeholder="0.00" data-id="${recurringAcc.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
+            <div class="calc" data-id="${recurringAcc.id}" data-f="end">-</div>
+        </div>`;
+    }
     c.innerHTML=h;
 }
 
 function calcWeekly(){
-    let totalDebt=0, totalPay=0, pncEnding=0;
+    let totalDebt=0, totalPay=0, pncEnding=0, recurringBills=0;
     accounts.forEach(a=>{
         const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
         const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
@@ -748,8 +802,10 @@ function calcWeekly(){
         eD.textContent=fmt(end); eD.className=`calc ${end<0?'negative':''}`;
         if(a.is_debt){totalDebt+=bal; totalPay+=pay;}
         if(a.name.toLowerCase().includes('pnc')){pncEnding=end;}
+        if(a.name.toLowerCase().includes('recurring')){recurringBills=bal;}
     });
-    const afterRes=pncEnding-500, avail=Math.max(0,afterRes);
+    const afterRes=pncEnding-500-recurringBills;
+    const avail=Math.max(0,afterRes);
     document.getElementById('we-total-debt').textContent=fmt(totalDebt);
     document.getElementById('we-total-payments').textContent=fmt(totalPay);
     document.getElementById('we-after-reserve').textContent=fmt(afterRes);
