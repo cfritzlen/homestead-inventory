@@ -274,7 +274,11 @@
             <div class="form-row" style="margin-bottom:12px;">
                 <div class="form-group">
                     <label>Week Of (Wednesday)</label>
-                    <select id="entry-date" onchange="onWeekChange()" style="padding:10px 12px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;font-size:0.95rem;background:white;color:var(--charcoal);"></select>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button class="btn btn-secondary btn-small" onclick="shiftWeek(1)" title="Previous week" style="padding:8px 12px;font-size:1.1rem;">◀</button>
+                        <select id="entry-date" onchange="onWeekChange()" style="padding:10px 12px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;font-size:0.95rem;background:white;color:var(--charcoal);flex:1;"></select>
+                        <button class="btn btn-secondary btn-small" onclick="shiftWeek(-1)" title="Next week" style="padding:8px 12px;font-size:1.1rem;">▶</button>
+                    </div>
                 </div>
             </div>
 
@@ -589,6 +593,15 @@ function populateWeekDropdown(){
         const selected=w===thisWedStr?'selected':'';
         return`<option value="${w}" ${selected}>${label}</option>`;
     }).join('');
+}
+
+function shiftWeek(dir){
+    const sel=document.getElementById('entry-date');
+    const idx=sel.selectedIndex+dir;
+    if(idx>=0 && idx<sel.options.length){
+        sel.selectedIndex=idx;
+        onWeekChange();
+    }
 }
 
 async function onWeekChange(){
