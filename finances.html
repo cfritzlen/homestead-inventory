@@ -596,7 +596,10 @@ function populateWeekDropdown(){
 async function onWeekChange(){
     buildWeeklyForm();
     const loaded=await loadWeekData();
-    if(!loaded) await autoFillFromPrior();
+    if(!loaded){
+        await autoFillFromPrior();
+        await autoFillLoans(document.getElementById('entry-date').value);
+    }
     await loadWeeklyBills();
 }
 
@@ -642,6 +645,60 @@ async function autoFillFromPrior(){
 }
 
 let calculatedBillTotal=0;
+
+async function autoFillLoans(weekStr){
+    if(!weekStr)return;
+    const weekDate=new Date(weekStr+'T12:00:00');
+    const nextWed=new Date(weekDate);
+    nextWed.setDate(nextWed.getDate()+7);
+    const prevDay=new Date(weekDate);
+    prevDay.setDate(prevDay.getDate()-1);
+
+    // Get loan schedules for payments due this week (between Wed and next Tue)
+    const wkStart=weekStr;
+    const wkEnd=nextWed.toISOString().split('T')[0];
+
+    try{
+        // Get all scheduled payments due in this 7-day window
+        const weekPayments=await supaFetch('finance_loan_schedules','GET',null,
+            `?due_date=gte.${wkStart}&due_date=lt.${wkEnd}&order=due_date`);
+
+        // For balance: get the most recent payment ON or BEFORE this Wed for each loan account
+        const loanAccounts=accounts.filter(a=>a.account_type==='loan');
+
+        for(const a of loanAccounts){
+            const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
+            const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
+            if(!bI||!pI)continue;
+
+            // Get balance: latest schedule entry on or before this Wed
+            const balEntries=await supaFetch('finance_loan_schedules','GET',null,
+                `?account_id=eq.${a.id}&due_date=lte.${wkStart}&order=due_date.desc&limit=1`);
+            if(balEntries?.length){
+                bI.value=balEntries[0].balance_after;
+            }
+
+            // Get payments due this week for this account
+            const dueThisWeek=weekPayments?.filter(p=>p.account_id===a.id)||[];
+            if(dueThisWeek.length){
+                const totalPay=dueThisWeek.reduce((s,p)=>s+parseFloat(p.payment_amount),0);
+                pI.value=totalPay.toFixed(2);
+            }
+        }
+        calcWeekly();
+    }catch(e){console.error('Auto-fill loans:',e);}
+}
+
+function isDueThisWeek(dueDay,weekStart,weekEnd){
+    for(let m=0;m<2;m++){
+        const checkDate=new Date(weekStart);
+        checkDate.setMonth(checkDate.getMonth()+m);
+        checkDate.setDate(dueDay);
+        if(checkDate.getDate()!==dueDay)continue;
+        if(checkDate>=weekStart && checkDate<weekEnd) return true;
+    }
+    return false;
+}
 
 async function loadWeeklyBills(){
     const dt=document.getElementById('entry-date').value;
