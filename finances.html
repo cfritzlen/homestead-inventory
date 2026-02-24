@@ -1652,39 +1652,80 @@ function renderLineChart(containerId,data){
     const max=Math.max(...vals);
     const min=Math.min(...vals);
     const range=max-min||1;
-    const w=600,h=200,pad=50;
-    const pw=w-pad-10, ph=h-35;
+    const w=620,h=220,pad=55;
+    const pw=w-pad-15, ph=h-40;
+    const isSpend=activeChart==='ccspend'||activeChart==='boaspend';
 
+    // Gridlines
+    const gridLines=5;
+    let gridSvg='';
+    for(let i=0;i<=gridLines;i++){
+        const y=(h-30)-((i/gridLines)*ph);
+        const val=min+((i/gridLines)*range);
+        const fmtV=val>=1000?'$'+(val/1000).toFixed(1)+'k':'$'+Math.round(val);
+        gridSvg+=`<line x1="${pad}" y1="${y}" x2="${pad+pw}" y2="${y}" stroke="var(--sage-100)" stroke-width="1"/>`;
+        gridSvg+=`<text x="${pad-6}" y="${y+4}" font-size="9" fill="var(--sage-400)" text-anchor="end" font-family="Karla,sans-serif">${fmtV}</text>`;
+    }
+
+    // Data line + fill
     let points='';
-    let fillPoints=`${pad},${h-25} `;
+    let fillPoints=`${pad},${h-30} `;
     data.forEach((d,i)=>{
         const x=pad+(i/(data.length-1||1))*pw;
-        const y=(h-25)-((d.value-min)/range)*ph;
+        const y=(h-30)-((d.value-min)/range)*ph;
         points+=`${x},${y} `;
         fillPoints+=`${x},${y} `;
     });
-    fillPoints+=`${pad+pw},${h-25}`;
+    fillPoints+=`${pad+pw},${h-30}`;
 
-    const first=data[0],last=data[data.length-1];
-    const mid=data[Math.floor(data.length/2)];
-    const fmtDate=d=>{const dt=new Date(d+'T12:00:00');return`${dt.getMonth()+1}/${dt.getDate()}`;}
-    const fmtK=v=>v>=1000?'$'+(v/1000).toFixed(0)+'k':'$'+v.toFixed(0);
+    // Date labels (~5 evenly spaced)
+    const labelCount=Math.min(5,data.length);
+    let dateLabelsSvg='';
+    for(let i=0;i<labelCount;i++){
+        const idx=Math.round(i*(data.length-1)/(labelCount-1||1));
+        const d=data[idx];
+        const x=pad+(idx/(data.length-1||1))*pw;
+        const dt=new Date(d.date+'T12:00:00');
+        const label=`${dt.getMonth()+1}/${dt.getDate()}`;
+        const anchor=i===0?'start':i===labelCount-1?'end':'middle';
+        dateLabelsSvg+=`<text x="${x}" y="${h-8}" font-size="9" fill="var(--sage-400)" text-anchor="${anchor}" font-family="Karla,sans-serif">${label}</text>`;
+    }
 
-    let svg=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;" preserveAspectRatio="xMidYMid meet">
-        <polygon points="${fillPoints}" fill="var(--sage-100)" opacity="0.7"/>
-        <polyline points="${points}" fill="none" stroke="var(--sage-500)" stroke-width="2.5" stroke-linejoin="round"/>
-        <text x="${pad}" y="${h-6}" font-size="10" fill="var(--sage-500)" font-family="Karla,sans-serif">${fmtDate(first.date)}</text>
-        <text x="${pad+pw/2}" y="${h-6}" font-size="10" fill="var(--sage-500)" text-anchor="middle" font-family="Karla,sans-serif">${fmtDate(mid.date)}</text>
-        <text x="${pad+pw}" y="${h-6}" font-size="10" fill="var(--sage-500)" text-anchor="end" font-family="Karla,sans-serif">${fmtDate(last.date)}</text>
-        <text x="${pad-4}" y="18" font-size="10" fill="var(--sage-600)" text-anchor="end" font-family="Karla,sans-serif">${fmtK(max)}</text>
-        <text x="${pad-4}" y="${h-27}" font-size="10" fill="var(--sage-600)" text-anchor="end" font-family="Karla,sans-serif">${fmtK(min)}</text>`;
+    let svg=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;" preserveAspectRatio="xMidYMid meet">`;
+    svg+=gridSvg;
+    svg+=`<polygon points="${fillPoints}" fill="var(--sage-100)" opacity="0.5"/>`;
+    svg+=`<polyline points="${points}" fill="none" stroke="var(--sage-500)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
 
-    const x1=pad, y1=(h-25)-((first.value-min)/range)*ph;
-    const x2=pad+pw, y2=(h-25)-((last.value-min)/range)*ph;
-    svg+=`<circle cx="${x1}" cy="${y1}" r="4" fill="var(--sage-500)"/>`;
-    svg+=`<circle cx="${x2}" cy="${y2}" r="4" fill="var(--sage-600)"/>`;
-    // Show current value at end
-    svg+=`<text x="${x2}" y="${y2-10}" font-size="11" fill="var(--sage-700)" text-anchor="end" font-weight="600" font-family="Karla,sans-serif">${fmtK(last.value)}</text>`;
+    // Dots (every nth)
+    const dotEvery=Math.max(1,Math.floor(data.length/12));
+    data.forEach((d,i)=>{
+        if(i%dotEvery===0||i===data.length-1){
+            const x=pad+(i/(data.length-1||1))*pw;
+            const y=(h-30)-((d.value-min)/range)*ph;
+            svg+=`<circle cx="${x}" cy="${y}" r="3" fill="var(--sage-500)" stroke="white" stroke-width="1.5"/>`;
+        }
+    });
+
+    svg+=dateLabelsSvg;
+
+    // Stats overlay
+    if(isSpend){
+        const avg=vals.reduce((s,v)=>s+v,0)/vals.length;
+        const avgY=(h-30)-((avg-min)/range)*ph;
+        svg+=`<line x1="${pad}" y1="${avgY}" x2="${pad+pw}" y2="${avgY}" stroke="var(--sage-600)" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.7"/>`;
+        const avgLabel=avg>=1000?'$'+(avg/1000).toFixed(1)+'k':'$'+Math.round(avg);
+        svg+=`<rect x="${pad+pw-72}" y="${avgY-19}" width="74" height="17" rx="4" fill="var(--sage-600)" opacity="0.85"/>`;
+        svg+=`<text x="${pad+pw-35}" y="${avgY-7}" font-size="10" fill="white" text-anchor="middle" font-weight="600" font-family="Karla,sans-serif">avg ${avgLabel}</text>`;
+    } else {
+        const startVal=vals[0], endVal=vals[vals.length-1];
+        const diff=endVal-startVal;
+        const absDiff=Math.abs(diff);
+        const diffLabel=(diff<=0?'↓ ':'↑ ')+(absDiff>=1000?'$'+(absDiff/1000).toFixed(1)+'k':'$'+absDiff.toFixed(0));
+        const diffColor=diff<=0?'#4a7c3f':'#c44';
+        svg+=`<rect x="${pad+pw-108}" y="6" width="110" height="22" rx="6" fill="${diffColor}" opacity="0.9"/>`;
+        svg+=`<text x="${pad+pw-53}" y="21" font-size="11" fill="white" text-anchor="middle" font-weight="700" font-family="Karla,sans-serif">${diffLabel}</text>`;
+    }
+
     svg+=`</svg>`;
     el.innerHTML=svg;
 }
