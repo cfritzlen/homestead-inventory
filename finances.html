@@ -285,7 +285,7 @@
             <div class="summary-grid">
                 <div class="summary-box"><div class="label">Total Debt</div><div class="value negative" id="we-total-debt">$0</div></div>
                 <div class="summary-box"><div class="label">Total Payments</div><div class="value positive" id="we-total-payments">$0</div></div>
-                <div class="summary-box"><div class="label">PNC - $500 - Bills</div><div class="value" id="we-after-reserve">$0</div></div>
+                <div class="summary-box"><div class="label">PNC - $500 - Bills - Payments</div><div class="value" id="we-after-reserve">$0</div></div>
                 <div class="summary-box highlight"><div class="label">Available for Debt</div><div class="value positive" id="we-available">$0</div></div>
             </div>
 
@@ -756,43 +756,90 @@ async function saveWeeklyBill(billId,billMonth){
 function buildWeeklyForm(){
     const c=document.getElementById('weekly-entries');
     if(!accounts.length){c.innerHTML='<p style="color:var(--sage-600);padding:12px 0;">Add accounts first.</p>';return;}
-    const debts=accounts.filter(a=>a.is_debt);
-    const banks=accounts.filter(a=>!a.is_debt && !a.name.toLowerCase().includes('recurring'));
+
+    // Categorize accounts
+    const pnc=accounts.find(a=>a.name.toLowerCase().includes('pnc'));
+    const rental=accounts.find(a=>a.name.toLowerCase().includes('rental'));
     const recurringAcc=accounts.find(a=>a.name.toLowerCase().includes('recurring'));
+    const ccs=accounts.filter(a=>a.account_type==='credit_card');
+    const taxes=accounts.filter(a=>a.account_type==='tax_debt');
+    const loans=accounts.filter(a=>a.is_debt && a.account_type==='loan');
+    // Anything else that doesn't fit above
+    const skipIds=new Set([pnc?.id,rental?.id,recurringAcc?.id,...ccs.map(a=>a.id),...taxes.map(a=>a.id),...loans.map(a=>a.id)].filter(Boolean));
+    const other=accounts.filter(a=>!skipIds.has(a.id));
 
     let h=`<div class="entry-row header"><div>Account</div><div style="text-align:right">Balance</div><div style="text-align:right">Payment</div><div style="text-align:right">Ending</div></div>`;
-    if(debts.length){
-        h+=`<div class="section-divider">Debts</div>`;
-        debts.forEach(a=>{h+=`<div class="entry-row">
-            <label>${a.name} <span class="rate">${a.interest_rate}%</span></label>
-            <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" class="we-in" oninput="calcWeekly()">
-            <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
-            <div class="calc" data-id="${a.id}" data-f="end">-</div>
-        </div>`;});
+
+    // PNC at top
+    if(pnc){
+        h+=`<div class="section-divider">💰 PNC Checking</div>`;
+        h+=entryRow(pnc,false);
     }
-    if(banks.length){
-        h+=`<div class="section-divider">Bank Accounts</div>`;
-        banks.forEach(a=>{h+=`<div class="entry-row">
-            <label>${a.name}</label>
-            <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" class="we-in" oninput="calcWeekly()">
-            <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
-            <div class="calc" data-id="${a.id}" data-f="end">-</div>
-        </div>`;});
-    }
-    if(recurringAcc){
-        h+=`<div class="section-divider">Set Aside for Bills</div>`;
-        h+=`<div class="entry-row">
-            <label>${recurringAcc.name}</label>
-            <input type="number" step="0.01" placeholder="0.00" data-id="${recurringAcc.id}" data-f="bal" class="we-in" oninput="calcWeekly()">
-            <input type="number" step="0.01" placeholder="0.00" data-id="${recurringAcc.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
-            <div class="calc" data-id="${recurringAcc.id}" data-f="end">-</div>
+
+    // Credit Cards
+    if(ccs.length){
+        h+=`<div class="section-divider">💳 Credit Cards</div>`;
+        ccs.forEach(a=>{h+=entryRow(a,true);});
+        h+=`<div class="entry-row" style="font-weight:700;color:var(--sage-700);border-top:2px solid var(--sage-300);padding-top:10px;">
+            <label>CC Total</label><div class="calc" id="sum-cc-bal" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-cc-pay" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-cc-end" style="text-align:right;padding-right:12px;">-</div>
         </div>`;
     }
+
+    // Tax Debts
+    if(taxes.length){
+        h+=`<div class="section-divider">🏛️ Tax Debts</div>`;
+        taxes.forEach(a=>{h+=entryRow(a,true);});
+        h+=`<div class="entry-row" style="font-weight:700;color:var(--sage-700);border-top:2px solid var(--sage-300);padding-top:10px;">
+            <label>Tax Total</label><div class="calc" id="sum-tax-bal" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-tax-pay" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-tax-end" style="text-align:right;padding-right:12px;">-</div>
+        </div>`;
+    }
+
+    // Other Loans
+    if(loans.length){
+        h+=`<div class="section-divider">🏦 Loans</div>`;
+        loans.forEach(a=>{h+=entryRow(a,true);});
+        h+=`<div class="entry-row" style="font-weight:700;color:var(--sage-700);border-top:2px solid var(--sage-300);padding-top:10px;">
+            <label>Loan Total</label><div class="calc" id="sum-loan-bal" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-loan-pay" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-loan-end" style="text-align:right;padding-right:12px;">-</div>
+        </div>`;
+    }
+
+    // Rental
+    if(rental){
+        h+=`<div class="section-divider">🏠 Rental</div>`;
+        h+=entryRow(rental,false);
+    }
+
+    // Recurring Bills set-aside
+    if(recurringAcc){
+        h+=`<div class="section-divider">📋 Set Aside for Bills</div>`;
+        h+=entryRow(recurringAcc,false);
+    }
+
+    // Other
+    if(other.length){
+        h+=`<div class="section-divider">Other</div>`;
+        other.forEach(a=>{h+=entryRow(a,false);});
+    }
+
     c.innerHTML=h;
 }
 
+function entryRow(a,showRate){
+    return`<div class="entry-row">
+        <label>${a.name}${showRate?' <span class="rate">'+a.interest_rate+'%</span>':''}</label>
+        <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" data-type="${a.account_type}" data-debt="${a.is_debt}" class="we-in" oninput="calcWeekly()">
+        <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
+        <div class="calc" data-id="${a.id}" data-f="end">-</div>
+    </div>`;
+}
+
 function calcWeekly(){
-    let totalDebt=0, totalPay=0, pncEnding=0, recurringBills=0;
+    let totalDebt=0, totalDebtPay=0, pncEnding=0, recurringBills=0;
+    let ccBal=0,ccPay=0,ccEnd=0, taxBal=0,taxPay=0,taxEnd=0, loanBal=0,loanPay=0,loanEnd=0;
+
+    // Track which account IDs are tax debts (Fed Tax, PA Tax) so we don't double-count
+    const taxAccountNames=['fed tax','pa tax'];
+
     accounts.forEach(a=>{
         const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
         const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
@@ -800,16 +847,42 @@ function calcWeekly(){
         if(!bI)return;
         const bal=parseFloat(bI.value)||0, pay=parseFloat(pI.value)||0, end=bal-pay;
         eD.textContent=fmt(end); eD.className=`calc ${end<0?'negative':''}`;
-        if(a.is_debt){totalDebt+=bal; totalPay+=pay;}
+
+        if(a.is_debt){
+            totalDebt+=bal;
+            totalDebtPay+=pay;
+        }
         if(a.name.toLowerCase().includes('pnc')){pncEnding=end;}
         if(a.name.toLowerCase().includes('recurring')){recurringBills=bal;}
+
+        // Group sums
+        if(a.account_type==='credit_card'){ccBal+=bal;ccPay+=pay;ccEnd+=end;}
+        if(a.account_type==='tax_debt'){taxBal+=bal;taxPay+=pay;taxEnd+=end;}
+        if(a.is_debt&&a.account_type==='loan'){loanBal+=bal;loanPay+=pay;loanEnd+=end;}
     });
-    const afterRes=pncEnding-500-recurringBills;
-    const avail=Math.max(0,afterRes);
+
+    // Update group sums
+    const setSum=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=fmt(val);};
+    setSum('sum-cc-bal',ccBal);setSum('sum-cc-pay',ccPay);setSum('sum-cc-end',ccEnd);
+    setSum('sum-tax-bal',taxBal);setSum('sum-tax-pay',taxPay);setSum('sum-tax-end',taxEnd);
+    setSum('sum-loan-bal',loanBal);setSum('sum-loan-pay',loanPay);setSum('sum-loan-end',loanEnd);
+
+    // Available = PNC ending - $500 reserve - all debt payments - recurring bills
+    // But tax payments (IRS, PA Tax) are already in recurring bills, so subtract them to avoid double-counting
+    let taxPayments=0;
+    accounts.filter(a=>a.account_type==='tax_debt').forEach(a=>{
+        const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
+        if(pI) taxPayments+=parseFloat(pI.value)||0;
+    });
+
+    const debtPayExclTax=totalDebtPay-taxPayments;
+    const afterAll=pncEnding-500-recurringBills-debtPayExclTax;
+    const avail=Math.max(0,afterAll);
+
     document.getElementById('we-total-debt').textContent=fmt(totalDebt);
-    document.getElementById('we-total-payments').textContent=fmt(totalPay);
-    document.getElementById('we-after-reserve').textContent=fmt(afterRes);
-    document.getElementById('we-after-reserve').className=`value ${afterRes>=0?'positive':'negative'}`;
+    document.getElementById('we-total-payments').textContent=fmt(totalDebtPay);
+    document.getElementById('we-after-reserve').textContent=fmt(afterAll);
+    document.getElementById('we-after-reserve').className=`value ${afterAll>=0?'positive':'negative'}`;
     document.getElementById('we-available').textContent=fmt(avail);
     document.getElementById('we-available').className=`value ${avail>0?'positive':'negative'}`;
 }
