@@ -592,14 +592,36 @@ function populateWeekDropdown(){
 }
 
 async function onWeekChange(){
+    loanDueDates={};
     buildWeeklyForm();
     const loaded=await loadWeekData();
     if(!loaded){
         await autoFillFromPrior();
         await autoFillLoans(document.getElementById('entry-date').value);
+    } else {
+        // Still fetch due dates for display even on saved weeks
+        await fetchLoanDueDates(document.getElementById('entry-date').value);
     }
     await loadWeeklyBills();
     await calcCCSpent();
+    updateTaxDueDates();
+}
+
+function updateTaxDueDates(){
+    const dt=document.getElementById('entry-date').value;
+    if(!dt)return;
+    const weekDate=new Date(dt+'T12:00:00');
+    const taxes=accounts.filter(a=>a.account_type==='tax_debt');
+    taxes.forEach(a=>{
+        // Find matching bill by name
+        const bill=bills.find(b=>b.name.toLowerCase().includes(a.name.toLowerCase())||
+            (a.name.toLowerCase().includes('fed')&&b.name.toLowerCase().includes('irs'))||
+            (a.name.toLowerCase().includes('pa')&&b.name.toLowerCase().includes('pa')));
+        if(bill){
+            loanDueDates[a.id]=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-${String(bill.due_day).padStart(2,'0')}`;
+        }
+    });
+    updateDueDateLabels();
 }
 
 async function calcCCSpent(){
@@ -685,25 +707,23 @@ async function autoFillFromPrior(){
 
 let calculatedBillTotal=0;
 let priorCCEndings={}; // account_id -> ending balance from prior week
+let loanDueDates={}; // account_id -> next due date string
 
 async function autoFillLoans(weekStr){
     if(!weekStr)return;
     const weekDate=new Date(weekStr+'T12:00:00');
     const nextWed=new Date(weekDate);
     nextWed.setDate(nextWed.getDate()+7);
-    const prevDay=new Date(weekDate);
-    prevDay.setDate(prevDay.getDate()-1);
-
-    // Get loan schedules for payments due this week (between Wed and next Tue)
-    const wkStart=weekStr;
+    const priorWed=new Date(weekDate);
+    priorWed.setDate(priorWed.getDate()-7);
+    const priorWedStr=priorWed.toISOString().split('T')[0];
     const wkEnd=nextWed.toISOString().split('T')[0];
 
     try{
-        // Get all scheduled payments due in this 7-day window
+        // Payments due AFTER prior Wed through this Wed (catches day-before payments like 3rd for Wed 4th)
         const weekPayments=await supaFetch('finance_loan_schedules','GET',null,
-            `?due_date=gte.${wkStart}&due_date=lt.${wkEnd}&order=due_date`);
+            `?due_date=gt.${priorWedStr}&due_date=lte.${weekStr}&order=due_date`);
 
-        // For balance: get the most recent payment ON or BEFORE this Wed for each loan account
         const loanAccounts=accounts.filter(a=>a.account_type==='loan');
 
         for(const a of loanAccounts){
@@ -711,22 +731,50 @@ async function autoFillLoans(weekStr){
             const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
             if(!bI||!pI)continue;
 
-            // Get balance: latest schedule entry on or before this Wed
+            // Balance: latest schedule entry on or before this Wed
             const balEntries=await supaFetch('finance_loan_schedules','GET',null,
-                `?account_id=eq.${a.id}&due_date=lte.${wkStart}&order=due_date.desc&limit=1`);
+                `?account_id=eq.${a.id}&due_date=lte.${weekStr}&order=due_date.desc&limit=1`);
             if(balEntries?.length){
                 bI.value=balEntries[0].balance_after;
             }
 
-            // Get payments due this week for this account
+            // Payments due this week for this account
             const dueThisWeek=weekPayments?.filter(p=>p.account_id===a.id)||[];
             if(dueThisWeek.length){
                 const totalPay=dueThisWeek.reduce((s,p)=>s+parseFloat(p.payment_amount),0);
                 pI.value=totalPay.toFixed(2);
+                // Store due date for display
+                loanDueDates[a.id]=dueThisWeek[0].due_date;
             }
         }
+
+        // Also fetch next upcoming due date for each loan (for label display)
+        for(const a of loanAccounts){
+            if(!loanDueDates[a.id]){
+                const next=await supaFetch('finance_loan_schedules','GET',null,
+                    `?account_id=eq.${a.id}&due_date=gt.${weekStr}&order=due_date&limit=1`);
+                if(next?.length) loanDueDates[a.id]=next[0].due_date;
+            }
+        }
+        updateDueDateLabels();
         calcWeekly();
     }catch(e){console.error('Auto-fill loans:',e);}
+}
+
+function updateDueDateLabels(){
+    const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    accounts.forEach(a=>{
+        const dd=loanDueDates[a.id];
+        if(!dd)return;
+        const label=document.querySelector(`label[data-acct-id="${a.id}"] .due-date`);
+        if(label){
+            const d=new Date(dd+'T12:00:00');
+            const day=d.getDate();
+            const suffix=day===1||day===21||day===31?'st':day===2||day===22?'nd':day===3||day===23?'rd':'th';
+            label.textContent=`📅 ${monthNames[d.getMonth()]} ${day}${suffix}`;
+        }
+    });
 }
 
 function isDueThisWeek(dueDay,weekStart,weekEnd){
@@ -738,6 +786,33 @@ function isDueThisWeek(dueDay,weekStart,weekEnd){
         if(checkDate>=weekStart && checkDate<weekEnd) return true;
     }
     return false;
+}
+
+async function fetchLoanDueDates(weekStr){
+    if(!weekStr)return;
+    const priorWed=new Date(weekStr+'T12:00:00');
+    priorWed.setDate(priorWed.getDate()-7);
+    const priorWedStr=priorWed.toISOString().split('T')[0];
+
+    const loanAccounts=accounts.filter(a=>a.account_type==='loan');
+    try{
+        // Check for payments due this week
+        const weekPayments=await supaFetch('finance_loan_schedules','GET',null,
+            `?due_date=gt.${priorWedStr}&due_date=lte.${weekStr}&order=due_date`);
+        loanAccounts.forEach(a=>{
+            const due=weekPayments?.find(p=>p.account_id===a.id);
+            if(due) loanDueDates[a.id]=due.due_date;
+        });
+        // For any without, get next upcoming
+        for(const a of loanAccounts){
+            if(!loanDueDates[a.id]){
+                const next=await supaFetch('finance_loan_schedules','GET',null,
+                    `?account_id=eq.${a.id}&due_date=gt.${weekStr}&order=due_date&limit=1`);
+                if(next?.length) loanDueDates[a.id]=next[0].due_date;
+            }
+        }
+        updateDueDateLabels();
+    }catch(e){console.error('Fetch loan due dates:',e);}
 }
 
 async function loadWeeklyBills(){
@@ -962,8 +1037,10 @@ function buildWeeklyForm(){
 }
 
 function entryRow(a,showRate){
+    const rateStr=showRate?' <span class="rate">'+a.interest_rate+'%</span>':'';
+    const dueStr=(a.account_type==='loan'||a.account_type==='tax_debt')?' <span class="rate due-date" style="color:var(--sage-500);"></span>':'';
     return`<div class="entry-row">
-        <label>${a.name}${showRate?' <span class="rate">'+a.interest_rate+'%</span>':''}</label>
+        <label data-acct-id="${a.id}">${a.name}${rateStr}${dueStr}</label>
         <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" class="we-in" oninput="calcWeekly()">
         <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
         <div class="calc" data-id="${a.id}" data-f="end">-</div>
