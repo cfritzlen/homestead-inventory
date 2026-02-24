@@ -617,7 +617,23 @@ async function onWeekChange(){
     }
     await loadWeeklyBills();
     await calcCCSpent();
+    await loadOtherPNC();
     updateTaxDueDates();
+    autoDefaultBOA();
+}
+
+function autoDefaultBOA(){
+    const boa=accounts.find(a=>a.name.toLowerCase().includes('boa'));
+    if(!boa)return;
+    const bI=document.querySelector(`input[data-id="${boa.id}"][data-f="bal"]`);
+    const pI=document.querySelector(`input[data-id="${boa.id}"][data-f="pay"]`);
+    if(bI && pI){
+        const bal=parseFloat(bI.value)||0;
+        const pay=parseFloat(pI.value)||0;
+        // Only auto-fill if payment is 0 or empty and balance exists
+        if(bal>0 && pay===0) pI.value=bal;
+    }
+    calcWeekly();
 }
 
 function updateTaxDueDates(){
@@ -662,18 +678,26 @@ async function calcCCSpent(){
 
 function updateCCSpentDisplay(){
     const ccs=accounts.filter(a=>a.account_type==='credit_card');
-    let spent=0;
+    let totalSpent=0;
     ccs.forEach(a=>{
         const priorEnding=priorCCEndings[a.id]||0;
         const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
         const thisStart=parseFloat(bI?.value)||0;
         const diff=thisStart-priorEnding;
-        if(diff>0) spent+=diff;
+        const spent=diff>0?diff:0;
+        totalSpent+=spent;
+        // Update per-line indicator
+        const spentEl=document.querySelector(`.cc-spent[data-cc-id="${a.id}"]`);
+        if(spentEl){
+            if(spent>0) spentEl.textContent=`(+${fmt(spent)} spent)`;
+            else if(diff<0) spentEl.textContent=`(${fmt(Math.abs(diff))} paid down)`;
+            else spentEl.textContent='';
+        }
     });
     const el=document.getElementById('we-cc-spent');
     if(el){
-        el.textContent=fmt(spent);
-        el.className=`value ${spent>0?'negative':'positive'}`;
+        el.textContent=fmt(totalSpent);
+        el.className=`value ${totalSpent>0?'negative':'positive'}`;
     }
 }
 
@@ -1003,12 +1027,20 @@ function buildWeeklyForm(){
             <input type="number" step="0.01" placeholder="0.00" data-id="${pnc.id}" data-f="pay" class="we-in" readonly style="background:var(--sage-100);font-weight:600;color:var(--sage-700);" title="Auto-calculated">
             <div class="calc" data-id="${pnc.id}" data-f="end">-</div>
         </div>
-        <div style="font-size:0.75rem;color:var(--sage-400);padding:2px 0 6px;font-style:italic;">↑ Auto-totals from all payments + bills below</div>`;
+        <div style="font-size:0.75rem;color:var(--sage-400);padding:2px 0 6px;font-style:italic;">↑ Auto-totals from all payments + bills + other below</div>`;
+
+        // Other PNC Payments (dynamic rows)
+        h+=`<div class="section-divider" style="font-size:0.9rem;">💸 Other PNC Payments</div>`;
+        h+=`<div id="other-pnc-rows"></div>`;
+        h+=`<div style="display:flex;gap:8px;align-items:center;padding:4px 0 12px;">
+            <button class="btn btn-small btn-secondary" onclick="addOtherPNC()">+ Add Payment</button>
+            <div style="flex:1;text-align:right;font-weight:700;color:var(--sage-700);font-size:0.9rem;">Other Total: <span id="other-pnc-total">$0.00</span></div>
+        </div>`;
     }
 
     if(ccs.length){
         h+=`<div class="section-divider">💳 Credit Cards</div>`;
-        ccs.forEach(a=>{h+=entryRow(a,true);});
+        ccs.forEach(a=>{h+=ccEntryRow(a);});
         h+=sumRow('cc','CC Total');
     }
 
@@ -1060,6 +1092,83 @@ function entryRow(a,showRate){
     </div>`;
 }
 
+function ccEntryRow(a){
+    const isBOA=a.name.toLowerCase().includes('boa');
+    return`<div class="entry-row">
+        <label data-acct-id="${a.id}">${a.name} <span class="rate">${a.interest_rate}%</span> <span class="cc-spent" data-cc-id="${a.id}" style="color:var(--sage-500);font-size:0.75rem;font-weight:400;"></span></label>
+        <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" data-type="credit_card" data-debt="true" class="we-in" oninput="calcWeekly();${isBOA?'autoPayBOA(this);':''}">
+        <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
+        <div class="calc" data-id="${a.id}" data-f="end">-</div>
+    </div>`;
+}
+
+function autoPayBOA(balInput){
+    const id=balInput.dataset.id;
+    const payInput=document.querySelector(`input[data-id="${id}"][data-f="pay"]`);
+    if(payInput) payInput.value=balInput.value;
+}
+
+// Other PNC Payments
+let otherPNCCounter=0;
+function addOtherPNC(desc='',amt=''){
+    otherPNCCounter++;
+    const container=document.getElementById('other-pnc-rows');
+    const row=document.createElement('div');
+    row.id=`opnc-${otherPNCCounter}`;
+    row.style.cssText='display:grid;grid-template-columns:1fr 120px 30px;gap:8px;align-items:center;padding:4px 0;';
+    row.innerHTML=`
+        <input type="text" placeholder="Description (e.g. Childcare)" value="${desc}" class="opnc-desc" style="padding:6px 10px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.9rem;">
+        <input type="number" step="0.01" placeholder="0.00" value="${amt}" class="opnc-amt" oninput="calcWeekly()" style="padding:6px 10px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.9rem;text-align:right;">
+        <button onclick="this.parentElement.remove();calcWeekly();" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--sage-400);" title="Remove">✕</button>
+    `;
+    container.appendChild(row);
+}
+
+function getOtherPNCTotal(){
+    let total=0;
+    document.querySelectorAll('.opnc-amt').forEach(i=>{total+=parseFloat(i.value)||0;});
+    const el=document.getElementById('other-pnc-total');
+    if(el) el.textContent=fmt(total);
+    return total;
+}
+
+function getOtherPNCData(){
+    const items=[];
+    document.querySelectorAll('#other-pnc-rows > div').forEach(row=>{
+        const desc=row.querySelector('.opnc-desc')?.value||'';
+        const amt=parseFloat(row.querySelector('.opnc-amt')?.value)||0;
+        if(desc||amt) items.push({description:desc,amount:amt});
+    });
+    return items;
+}
+
+async function loadOtherPNC(){
+    const dt=document.getElementById('entry-date').value;
+    if(!dt)return;
+    const container=document.getElementById('other-pnc-rows');
+    if(!container)return;
+    container.innerHTML='';
+    otherPNCCounter=0;
+    try{
+        const rows=await supaFetch('finance_other_payments','GET',null,`?entry_date=eq.${dt}&order=id`);
+        if(rows?.length){
+            rows.forEach(r=>addOtherPNC(r.description||'',r.amount||''));
+        }
+        calcWeekly();
+    }catch(e){console.error('Load other PNC:',e);}
+}
+
+async function saveOtherPNC(dt){
+    const items=getOtherPNCData();
+    try{
+        await supaFetch('finance_other_payments','DELETE',null,`?entry_date=eq.${dt}`);
+        if(items.length){
+            const rows=items.map(i=>({entry_date:dt,description:i.description,amount:i.amount}));
+            await supaFetch('finance_other_payments','POST',rows);
+        }
+    }catch(e){console.error('Save other PNC:',e);}
+}
+
 function sumRow(prefix,label){
     return`<div class="entry-row" style="font-weight:700;color:var(--sage-700);border-top:2px solid var(--sage-300);padding-top:10px;">
         <label>${label}</label><div class="calc" id="sum-${prefix}-bal" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-${prefix}-pay" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-${prefix}-end" style="text-align:right;padding-right:12px;">-</div>
@@ -1099,9 +1208,10 @@ function calcWeekly(){
         if(a.is_debt&&a.account_type==='loan'){loanBal+=bal;loanPay+=pay;loanEnd+=end;}
     });
 
-    // PNC payment = debt payments from PNC + bills set aside
+    // PNC payment = debt payments from PNC + bills set aside + other PNC payments
     if(pncAcc){
-        const totalOut=pncAutoPayTotal+billsTotal;
+        const otherPNC=getOtherPNCTotal();
+        const totalOut=pncAutoPayTotal+billsTotal+otherPNC;
         const pncPayInput=document.querySelector(`input[data-id="${pncAcc.id}"][data-f="pay"]`);
         const pncEndDiv=document.querySelector(`div[data-id="${pncAcc.id}"][data-f="end"]`);
         if(pncPayInput) pncPayInput.value=totalOut.toFixed(2);
@@ -1177,6 +1287,9 @@ async function saveWeeklyEntries(){
                 saveBillPayment(billId,billMonth,amt,paidDate,isPaid);
             }
         });
+
+        // Save other PNC payments
+        await saveOtherPNC(dt);
 
         alert('Week saved!');
     }catch(e){alert('Error: '+e.message);}
