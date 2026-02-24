@@ -1553,13 +1553,17 @@ async function loadDashboard(){
                 const a=accMap[e.account_id];if(!a)return;
                 if(a.account_type==='credit_card'){
                     ccB+=parseFloat(e.ending_balance)||0;
-                    // Spend calc
-                    const thisStart=parseFloat(e.starting_balance)||0;
-                    const prevEntry=prevD?byDate[prevD]?.find(p=>p.account_id===e.account_id):null;
-                    const prevEnd=prevEntry?parseFloat(prevEntry.ending_balance)||0:0;
-                    const spent=Math.max(0,thisStart-prevEnd);
-                    if(a.name?.toLowerCase().includes('boa')) boaS+=spent;
-                    else ccS+=spent;
+                    // Spend calc - only if prior week exists for this account
+                    if(prevD){
+                        const prevEntry=byDate[prevD]?.find(p=>p.account_id===e.account_id);
+                        if(prevEntry){
+                            const thisStart=parseFloat(e.starting_balance)||0;
+                            const prevEnd=parseFloat(prevEntry.ending_balance)||0;
+                            const spent=Math.max(0,thisStart-prevEnd);
+                            if(a.name?.toLowerCase().includes('boa')) boaS+=spent;
+                            else ccS+=spent;
+                        }
+                    }
                 }
                 if(a.account_type==='tax_debt') taxB+=parseFloat(e.ending_balance)||0;
             });
