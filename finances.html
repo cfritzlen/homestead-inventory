@@ -133,6 +133,8 @@
         .empty-state { text-align: center; padding: 40px; color: var(--sage-600); }
         .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
 
+        #column-picker label:hover { background: var(--sage-100); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
+
         @media (max-width: 768px) {
             .tab-btn { padding: 12px 16px; font-size: 0.85rem; }
             .form-row { grid-template-columns: 1fr; }
@@ -293,6 +295,33 @@
     <div id="tab-history" class="tab-panel">
         <div class="card">
             <h2>📈 Weekly History</h2>
+            
+            <!-- Filters -->
+            <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:16px;">
+                <div class="form-group">
+                    <label>From</label>
+                    <input type="date" id="hist-from" onchange="renderHistory()">
+                </div>
+                <div class="form-group">
+                    <label>To</label>
+                    <input type="date" id="hist-to" onchange="renderHistory()">
+                </div>
+                <button class="btn btn-small btn-secondary" onclick="resetHistoryFilters()">Reset Dates</button>
+                <button class="btn btn-small btn-primary" onclick="toggleColumnPicker()" id="btn-col-toggle">⚙ Columns</button>
+            </div>
+
+            <!-- Column picker -->
+            <div id="column-picker" style="display:none;background:var(--sage-50);border-radius:8px;padding:12px 16px;margin-bottom:16px;border:1px solid var(--sage-200);">
+                <div style="font-size:0.8rem;font-weight:600;color:var(--sage-600);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Show / Hide Columns</div>
+                <div id="column-checks" style="display:flex;flex-wrap:wrap;gap:8px 16px;"></div>
+                <div style="margin-top:10px;display:flex;gap:8px;">
+                    <button class="btn btn-small btn-secondary" onclick="checkAllCols(true)">All</button>
+                    <button class="btn btn-small btn-secondary" onclick="checkAllCols(false)">None</button>
+                    <button class="btn btn-small btn-secondary" onclick="showDebtOnly()">Debts Only</button>
+                    <button class="btn btn-small btn-secondary" onclick="showBanksOnly()">Banks Only</button>
+                </div>
+            </div>
+
             <div class="table-scroll" style="max-height:600px;overflow-y:auto;">
                 <table class="data-table"><thead id="history-head"></thead><tbody id="history-body"></tbody></table>
             </div>
@@ -606,44 +635,110 @@ async function saveWeeklyEntries(){
 }
 
 // ==================== HISTORY ====================
+let historyEntries=[], historyOrdered=[], historyDates=[], historyAccMap={};
+let visibleCols=new Set(); // account IDs that are visible
+
 async function loadHistory(){
     try{
-        const entries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date.desc');
-        if(!entries?.length){document.getElementById('history-empty').style.display='block';document.getElementById('history-head').innerHTML='';document.getElementById('history-body').innerHTML='';return;}
+        historyEntries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date.desc');
+        if(!historyEntries?.length){document.getElementById('history-empty').style.display='block';document.getElementById('history-head').innerHTML='';document.getElementById('history-body').innerHTML='';return;}
         document.getElementById('history-empty').style.display='none';
 
-        const allAcc=[...accounts,...closedAccounts], accMap={};
-        allAcc.forEach(a=>accMap[a.id]=a);
+        const allAcc=[...accounts,...closedAccounts];
+        historyAccMap={};
+        allAcc.forEach(a=>historyAccMap[a.id]=a);
 
-        const dates=[...new Set(entries.map(e=>e.entry_date))];
-        const accIds=[...new Set(entries.map(e=>e.account_id))];
-        const ordered=accIds.map(id=>accMap[id]).filter(Boolean).sort((a,b)=>{
+        historyDates=[...new Set(historyEntries.map(e=>e.entry_date))];
+        const accIds=[...new Set(historyEntries.map(e=>e.account_id))];
+        historyOrdered=accIds.map(id=>historyAccMap[id]).filter(Boolean).sort((a,b)=>{
             if(a.is_debt!==b.is_debt)return a.is_debt?-1:1;
             return(a.display_order||0)-(b.display_order||0);
         });
 
-        document.getElementById('history-head').innerHTML=`<tr><th>Date</th>${ordered.map(a=>`<th class="amount">${a.name}</th>`).join('')}<th class="amount">Total Debt</th></tr>`;
+        // Init visible columns (all on first load)
+        if(visibleCols.size===0) historyOrdered.forEach(a=>visibleCols.add(a.id));
 
-        document.getElementById('history-body').innerHTML=dates.map((date,i)=>{
-            const week=entries.filter(e=>e.entry_date===date), eMap={};
-            week.forEach(e=>eMap[e.account_id]=e);
-            let debt=0;
-            const cells=ordered.map(a=>{
-                const e=eMap[a.id];
-                if(e){if(a.is_debt)debt+=e.ending_balance;return`<td class="amount">${fmt(e.ending_balance)}</td>`;}
-                return`<td class="amount" style="color:var(--sage-300)">-</td>`;
-            }).join('');
-
-            let prevDebt=0;
-            if(i<dates.length-1){
-                entries.filter(e=>e.entry_date===dates[i+1]).forEach(e=>{const a=accMap[e.account_id];if(a?.is_debt)prevDebt+=e.ending_balance;});
-            }
-            const chg=i<dates.length-1?debt-prevDebt:0;
-
-            return`<tr><td><strong>${fmtShort(date)}</strong></td>${cells}
-                <td class="amount">${fmt(debt)}${chg!==0?`<br><small class="${chg<0?'positive':'negative'}">${chg<0?'▼':'▲'} ${fmt(Math.abs(chg))}</small>`:''}</td></tr>`;
-        }).join('');
+        buildColumnPicker();
+        renderHistory();
     }catch(e){console.error('History:',e);}
+}
+
+function buildColumnPicker(){
+    const container=document.getElementById('column-checks');
+    container.innerHTML=historyOrdered.map(a=>`
+        <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer;color:var(--charcoal);">
+            <input type="checkbox" ${visibleCols.has(a.id)?'checked':''} onchange="toggleCol('${a.id}',this.checked)" style="accent-color:var(--sage-500);">
+            ${a.name}
+        </label>
+    `).join('');
+}
+
+function toggleCol(id,checked){
+    if(checked)visibleCols.add(id); else visibleCols.delete(id);
+    renderHistory();
+}
+function checkAllCols(on){
+    historyOrdered.forEach(a=>{if(on)visibleCols.add(a.id);else visibleCols.delete(a.id);});
+    buildColumnPicker();renderHistory();
+}
+function showDebtOnly(){
+    visibleCols.clear();
+    historyOrdered.filter(a=>a.is_debt).forEach(a=>visibleCols.add(a.id));
+    buildColumnPicker();renderHistory();
+}
+function showBanksOnly(){
+    visibleCols.clear();
+    historyOrdered.filter(a=>!a.is_debt).forEach(a=>visibleCols.add(a.id));
+    buildColumnPicker();renderHistory();
+}
+function toggleColumnPicker(){
+    const el=document.getElementById('column-picker');
+    el.style.display=el.style.display==='none'?'block':'none';
+}
+function resetHistoryFilters(){
+    document.getElementById('hist-from').value='';
+    document.getElementById('hist-to').value='';
+    renderHistory();
+}
+
+function renderHistory(){
+    const fromDate=document.getElementById('hist-from').value;
+    const toDate=document.getElementById('hist-to').value;
+
+    // Filter dates
+    let dates=historyDates;
+    if(fromDate) dates=dates.filter(d=>d>=fromDate);
+    if(toDate) dates=dates.filter(d=>d<=toDate);
+
+    // Visible accounts
+    const shown=historyOrdered.filter(a=>visibleCols.has(a.id));
+    const hasDebt=shown.some(a=>a.is_debt);
+
+    document.getElementById('history-head').innerHTML=`<tr><th>Date</th>${shown.map(a=>`<th class="amount">${a.name}</th>`).join('')}${hasDebt?'<th class="amount">Total Debt</th>':''}</tr>`;
+
+    document.getElementById('history-body').innerHTML=dates.map((date,i)=>{
+        const week=historyEntries.filter(e=>e.entry_date===date), eMap={};
+        week.forEach(e=>eMap[e.account_id]=e);
+        let debt=0;
+        const cells=shown.map(a=>{
+            const e=eMap[a.id];
+            if(e){if(a.is_debt)debt+=e.ending_balance;return`<td class="amount">${fmt(e.ending_balance)}</td>`;}
+            return`<td class="amount" style="color:var(--sage-300)">-</td>`;
+        }).join('');
+
+        let prevDebt=0, debtCell='';
+        if(hasDebt){
+            const nextIdx=historyDates.indexOf(dates[i])+1;
+            if(nextIdx<historyDates.length){
+                const prevDate=historyDates[nextIdx];
+                historyEntries.filter(e=>e.entry_date===prevDate).forEach(e=>{const a=historyAccMap[e.account_id];if(a?.is_debt&&visibleCols.has(a.id))prevDebt+=e.ending_balance;});
+            }
+            const chg=nextIdx<historyDates.length?debt-prevDebt:0;
+            debtCell=`<td class="amount">${fmt(debt)}${chg!==0?`<br><small class="${chg<0?'positive':'negative'}">${chg<0?'▼':'▲'} ${fmt(Math.abs(chg))}</small>`:''}</td>`;
+        }
+
+        return`<tr><td><strong>${fmtShort(date)}</strong></td>${cells}${debtCell}</tr>`;
+    }).join('');
 }
 
 // ==================== INIT ====================
