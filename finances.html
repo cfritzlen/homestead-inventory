@@ -160,6 +160,10 @@
             /* Chart taller on mobile */
             #dash-debt-chart { height: 260px !important; }
             #dash-chart-title { font-size: 1rem !important; }
+
+            /* Transactions mobile */
+            #tab-transactions .card > div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+            #txn-table-wrap { font-size: 0.75rem; }
         }
 
         @media (max-width: 420px) {
@@ -184,6 +188,7 @@
 <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
     <button class="tab-btn" onclick="switchTab('weekly')">Weekly Entry</button>
+    <button class="tab-btn" onclick="switchTab('transactions')">Transactions</button>
     <button class="tab-btn" onclick="switchTab('accounts')">Accounts</button>
     <button class="tab-btn" onclick="switchTab('bills')">Bills</button>
     <button class="tab-btn" onclick="switchTab('history')">History</button>
@@ -200,6 +205,49 @@
                 <h3 id="dash-chart-title" onclick="switchChart('debt')" style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:12px;cursor:pointer;" title="Click to show total debt">📉 Total Debt (Last Year)</h3>
                 <div id="dash-debt-chart" style="height:220px;position:relative;"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- ==================== TRANSACTIONS ==================== -->
+    <div id="tab-transactions" class="tab-panel">
+        <div class="card">
+            <h2>📥 Import Transactions</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin-bottom:16px;">
+                <div class="form-group">
+                    <label>Account</label>
+                    <select id="txn-account" style="padding:10px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;"></select>
+                </div>
+                <div class="form-group">
+                    <label>CSV File</label>
+                    <input type="file" id="txn-file" accept=".csv" style="padding:8px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;font-size:0.85rem;">
+                </div>
+                <button class="btn btn-primary" onclick="importCSV()" style="margin-bottom:4px;">Import</button>
+            </div>
+            <div id="txn-import-status" style="display:none;padding:12px;border-radius:8px;margin-bottom:16px;font-size:0.9rem;"></div>
+        </div>
+
+        <div class="card">
+            <h2>🔍 Transactions</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;margin-bottom:16px;">
+                <div class="form-group">
+                    <label>Account</label>
+                    <select id="txn-filter-account" onchange="loadTransactions()" style="padding:8px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;">
+                        <option value="">All Accounts</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="txn-filter-category" onchange="loadTransactions()" style="padding:8px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Search</label>
+                    <input type="text" id="txn-search" placeholder="Search description..." oninput="loadTransactions()" style="padding:8px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;">
+                </div>
+                <div style="margin-bottom:4px;font-weight:700;color:var(--sage-700);font-size:0.9rem;white-space:nowrap;" id="txn-summary"></div>
+            </div>
+            <div id="txn-table-wrap" style="max-height:500px;overflow-y:auto;"></div>
         </div>
     </div>
 
@@ -433,6 +481,7 @@ function switchTab(tab) {
     event.target.classList.add('active');
     if (tab==='dashboard') loadDashboard();
     if (tab==='weekly') { populateWeekDropdown(); onWeekChange(); }
+    if (tab==='transactions') initTransactions();
     if (tab==='bills') loadBillPayments();
     if (tab==='history') loadHistory();
 }
@@ -1755,6 +1804,290 @@ function renderLineChart(containerId,data){
 
     svg+=`</svg>`;
     el.innerHTML=svg;
+}
+
+// ==================== TRANSACTIONS ====================
+let categoryRules=[];
+let txnData=[];
+
+async function initTransactions(){
+    // Populate account dropdowns
+    const allAcc=[...accounts,...closedAccounts];
+    const importSel=document.getElementById('txn-account');
+    const filterSel=document.getElementById('txn-filter-account');
+    importSel.innerHTML=allAcc.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    filterSel.innerHTML='<option value="">All Accounts</option>'+allAcc.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    
+    // Load category rules
+    try{
+        categoryRules=await supaFetch('finance_category_rules','GET',null,'?order=pattern');
+    }catch(e){categoryRules=[];}
+    
+    await loadTransactions();
+    await loadCategoryFilter();
+}
+
+async function loadCategoryFilter(){
+    try{
+        const cats=await supaFetch('finance_transactions','GET',null,'?select=category&order=category');
+        const unique=[...new Set(cats.map(c=>c.category).filter(Boolean))].sort();
+        const sel=document.getElementById('txn-filter-category');
+        sel.innerHTML='<option value="">All Categories</option>'+unique.map(c=>`<option value="${c}">${c}</option>`).join('');
+    }catch(e){}
+}
+
+function detectCSVFormat(headers){
+    const h=headers.map(c=>c.trim().toLowerCase());
+    if(h.includes('reference number')&&h.includes('payee')) return 'boa';
+    if(h.includes('category')&&h.includes('post date')) return 'chase';
+    if(h.includes('transaction description')&&h.includes('balance')) return 'pnc';
+    return 'unknown';
+}
+
+function parseCSVLine(line){
+    const result=[];
+    let current='';
+    let inQuotes=false;
+    for(let i=0;i<line.length;i++){
+        const c=line[i];
+        if(c==='"'){inQuotes=!inQuotes;}
+        else if(c===','&&!inQuotes){result.push(current.trim());current='';}
+        else{current+=c;}
+    }
+    result.push(current.trim());
+    return result;
+}
+
+function parsePNCAmount(str){
+    if(!str)return 0;
+    const clean=str.replace(/[$,\s"]/g,'');
+    if(clean.startsWith('-')) return parseFloat(clean);
+    if(clean.startsWith('+')) return parseFloat(clean);
+    return parseFloat(clean)||0;
+}
+
+function parseDate(str){
+    if(!str)return null;
+    const s=str.replace(/"/g,'').trim();
+    // Handle PNC "PENDING - MM/DD/YYYY"
+    if(s.toUpperCase().startsWith('PENDING')) return null;
+    // YYYY-MM-DD
+    if(s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
+    // MM/DD/YYYY
+    const m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if(m) return `${m[3]}-${m[1]}-${m[2]}`;
+    return null;
+}
+
+function guessCategory(desc){
+    if(!desc)return 'Uncategorized';
+    const upper=desc.toUpperCase();
+    for(const rule of categoryRules){
+        if(upper.includes(rule.pattern.toUpperCase())) return rule.category;
+    }
+    return 'Uncategorized';
+}
+
+function hashTxn(date,desc,amount,ref){
+    // Use reference number if available (BOA), otherwise date+desc+amount
+    const key=ref?`${ref}`:`${date}|${desc}|${amount}`;
+    // Simple hash
+    let h=0;
+    for(let i=0;i<key.length;i++){h=((h<<5)-h)+key.charCodeAt(i);h|=0;}
+    return Math.abs(h).toString(36);
+}
+
+async function importCSV(){
+    const accountId=document.getElementById('txn-account').value;
+    const fileInput=document.getElementById('txn-file');
+    const statusEl=document.getElementById('txn-import-status');
+    
+    if(!fileInput.files.length){
+        statusEl.style.display='block';statusEl.style.background='#fee';statusEl.style.color='#c44';
+        statusEl.textContent='Please select a CSV file.';return;
+    }
+    
+    statusEl.style.display='block';statusEl.style.background='var(--sage-50)';statusEl.style.color='var(--sage-700)';
+    statusEl.textContent='Reading file...';
+    
+    const text=await fileInput.files[0].text();
+    const lines=text.split('\n').filter(l=>l.trim());
+    if(lines.length<2){statusEl.textContent='File appears empty.';return;}
+    
+    const headers=parseCSVLine(lines[0]);
+    const format=detectCSVFormat(headers);
+    
+    if(format==='unknown'){
+        statusEl.style.background='#fee';statusEl.style.color='#c44';
+        statusEl.textContent=`Can't detect format. Headers: ${headers.join(', ')}`;return;
+    }
+    
+    statusEl.textContent=`Detected ${format.toUpperCase()} format. Parsing ${lines.length-1} rows...`;
+    
+    const txns=[];
+    for(let i=1;i<lines.length;i++){
+        const cols=parseCSVLine(lines[i]);
+        if(cols.length<3)continue;
+        
+        let txn={account_id:accountId};
+        
+        if(format==='chase'){
+            txn.transaction_date=parseDate(cols[0]);
+            txn.post_date=parseDate(cols[1]);
+            txn.description=cols[2]||'';
+            txn.category=cols[3]||'Uncategorized';
+            txn.amount=parseFloat(cols[5])||0;
+            txn.memo=cols[6]||null;
+            txn.dedup_hash=hashTxn(txn.transaction_date,txn.description,txn.amount);
+        } else if(format==='boa'){
+            txn.transaction_date=parseDate(cols[0]);
+            txn.post_date=parseDate(cols[0]);
+            txn.description=(cols[2]||'').trim();
+            txn.address=(cols[3]||'').trim();
+            txn.amount=parseFloat(cols[4])||0;
+            txn.reference_number=cols[1]||'';
+            txn.category=guessCategory(txn.description);
+            txn.dedup_hash=hashTxn(null,null,null,txn.reference_number);
+        } else if(format==='pnc'){
+            txn.transaction_date=parseDate(cols[0]);
+            if(!txn.transaction_date)continue; // skip PENDING
+            txn.description=(cols[1]||'').trim();
+            txn.amount=parsePNCAmount(cols[2]);
+            txn.raw_balance=cols[3]||'';
+            txn.category=guessCategory(txn.description);
+            txn.dedup_hash=hashTxn(txn.transaction_date,txn.description,txn.amount);
+        }
+        
+        if(!txn.transaction_date)continue;
+        if(!txn.category) txn.category=guessCategory(txn.description);
+        txns.push(txn);
+    }
+    
+    statusEl.textContent=`Parsed ${txns.length} transactions. Importing (skipping duplicates)...`;
+    
+    let imported=0,skipped=0;
+    // Batch insert, handle conflicts
+    const batchSize=50;
+    for(let i=0;i<txns.length;i+=batchSize){
+        const batch=txns.slice(i,i+batchSize);
+        try{
+            // Clean nulls
+            const clean=batch.map(t=>{
+                const c={...t};
+                Object.keys(c).forEach(k=>{if(c[k]===null||c[k]===undefined||c[k]==='')delete c[k];});
+                if(!c.category)c.category='Uncategorized';
+                return c;
+            });
+            const res=await fetch(`${SUPA_URL}/rest/v1/finance_transactions`,{
+                method:'POST',
+                headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,
+                    'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=representation'},
+                body:JSON.stringify(clean)
+            });
+            const data=await res.json();
+            const batchImported=Array.isArray(data)?data.length:0;
+            imported+=batchImported;
+            skipped+=(batch.length-batchImported);
+        }catch(e){
+            console.error('Batch error:',e);
+            skipped+=batch.length;
+        }
+    }
+    
+    statusEl.style.background='#e8f5e9';statusEl.style.color='#2e7d32';
+    statusEl.innerHTML=`✅ Done! <strong>${imported}</strong> imported, <strong>${skipped}</strong> duplicates skipped.`;
+    fileInput.value='';
+    await loadTransactions();
+    await loadCategoryFilter();
+}
+
+async function loadTransactions(){
+    const acct=document.getElementById('txn-filter-account')?.value||'';
+    const cat=document.getElementById('txn-filter-category')?.value||'';
+    const search=document.getElementById('txn-search')?.value?.trim()||'';
+    
+    let query='?order=transaction_date.desc,id.desc&limit=200';
+    if(acct) query+=`&account_id=eq.${acct}`;
+    if(cat) query+=`&category=eq.${encodeURIComponent(cat)}`;
+    if(search) query+=`&description=ilike.*${encodeURIComponent(search)}*`;
+    
+    try{
+        txnData=await supaFetch('finance_transactions','GET',null,query);
+    }catch(e){txnData=[];console.error('Load txns:',e);}
+    
+    renderTransactions();
+}
+
+function renderTransactions(){
+    const wrap=document.getElementById('txn-table-wrap');
+    const allAcc=[...accounts,...closedAccounts];
+    const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
+    
+    if(!txnData.length){
+        wrap.innerHTML='<p style="color:var(--sage-400);padding:16px;">No transactions found. Import a CSV above!</p>';
+        document.getElementById('txn-summary').textContent='';
+        return;
+    }
+    
+    // Summary
+    let totalSpend=0,totalIncome=0;
+    txnData.forEach(t=>{
+        if(t.amount<0)totalSpend+=t.amount;
+        else totalIncome+=t.amount;
+    });
+    document.getElementById('txn-summary').innerHTML=
+        `${txnData.length} txns | <span style="color:#c44">${fmt(Math.abs(totalSpend))} out</span> | <span style="color:#4a7c3f">${fmt(totalIncome)} in</span>`;
+    
+    let html=`<table class="data-table" style="width:100%;">
+        <thead><tr>
+            <th>Date</th><th>Account</th><th>Description</th>
+            <th>Category</th><th style="text-align:right">Amount</th>
+        </tr></thead><tbody>`;
+    
+    txnData.forEach(t=>{
+        const acctName=accMap[t.account_id]?.name||'?';
+        const isNeg=t.amount<0;
+        const catClass=t.category==='Uncategorized'?'style="color:var(--sage-400);cursor:pointer;" title="Click to categorize"':'style="cursor:pointer;" title="Click to change category"';
+        html+=`<tr>
+            <td style="white-space:nowrap;font-size:0.8rem;">${t.transaction_date}</td>
+            <td style="font-size:0.8rem;">${acctName}</td>
+            <td style="font-size:0.8rem;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.description||'').replace(/"/g,'&quot;')}">${t.description||''}</td>
+            <td><span class="badge" ${catClass} onclick="editCategory(${t.id},'${(t.description||'').replace(/'/g,"\\'")}','${t.category}')">${t.category||'—'}</span></td>
+            <td style="text-align:right;font-weight:600;color:${isNeg?'var(--sage-700)':'#4a7c3f'};">${fmt(Math.abs(t.amount))}</td>
+        </tr>`;
+    });
+    
+    html+=`</tbody></table>`;
+    wrap.innerHTML=html;
+}
+
+async function editCategory(txnId,description,currentCat){
+    const cats=['Groceries','Food & Drink','Gas','Home','Shopping','Health','Automotive',
+        'Subscriptions','Electric','Insurance','Tax Payment','Loan Payment','CC Payment',
+        'Investment','Income','Childcare','Pets','Solar','Entertainment','Travel','Uncategorized'];
+    
+    const newCat=prompt(`Category for "${description}":\n\nCurrent: ${currentCat}\n\nOptions: ${cats.join(', ')}\n\nType a category:`,(currentCat||''));
+    if(!newCat||newCat===currentCat)return;
+    
+    try{
+        await supaFetch('finance_transactions','PATCH',{category:newCat},`?id=eq.${txnId}`);
+        
+        // Learn: save a rule for this vendor
+        const vendor=description.split(/\s{2,}|\d/)[0].trim().toUpperCase();
+        if(vendor.length>=3){
+            try{
+                await fetch(`${SUPA_URL}/rest/v1/finance_category_rules`,{
+                    method:'POST',
+                    headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,
+                        'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates'},
+                    body:JSON.stringify({pattern:vendor,category:newCat})
+                });
+                categoryRules=await supaFetch('finance_category_rules','GET',null,'?order=pattern');
+            }catch(e){}
+        }
+        
+        await loadTransactions();
+    }catch(e){alert('Error: '+e.message);}
 }
 
 async function init(){
