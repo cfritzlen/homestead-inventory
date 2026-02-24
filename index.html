@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finances - Homestead Hub</title>
+    <title>Homestead Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         :root {
             --sage-50: #f6f7f3;
@@ -24,729 +28,226 @@
             --mauve: #a88479;
             --charcoal: #4a4d47;
             --dusty-rose: #9b7269;
-            --red-soft: #c0392b;
-            --green-soft: #27ae60;
         }
 
         body {
             font-family: 'Karla', sans-serif;
             background: var(--charcoal);
             min-height: 100vh;
+            padding: 0;
+            margin: 0;
             color: var(--cream);
         }
 
-        .top-bar {
-            background: rgba(61, 74, 50, 0.9);
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid var(--sage-700);
+        .pond-banner {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            object-position: center 40%;
+            display: block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-        .top-bar a { color: var(--sage-200); text-decoration: none; font-size: 0.9rem; }
-        .top-bar a:hover { color: var(--cream); }
-        .top-bar h1 { font-family: 'Crimson Pro', serif; font-size: 1.4rem; font-weight: 400; color: var(--cream); }
 
-        .tab-bar { display: flex; gap: 0; background: rgba(74, 90, 59, 0.5); overflow-x: auto; }
-        .tab-btn {
-            padding: 14px 24px; background: none; border: none; color: var(--sage-200);
-            font-family: 'Karla', sans-serif; font-size: 0.95rem; font-weight: 500;
-            cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s;
+        .main-content {
+            padding: 40px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
-        .tab-btn:hover { background: rgba(255,255,255,0.05); color: var(--cream); }
-        .tab-btn.active { color: var(--cream); border-bottom-color: var(--sage-400); background: rgba(255,255,255,0.08); }
 
-        .main-content { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
-        .tab-panel { display: none; }
-        .tab-panel.active { display: block; }
-
-        .card {
-            background: rgba(236, 232, 221, 0.95); border-radius: 12px; padding: 24px;
-            margin-bottom: 20px; color: var(--charcoal); box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        header {
+            text-align: center;
+            margin-bottom: 50px;
         }
-        .card h2 { font-family: 'Crimson Pro', serif; font-size: 1.5rem; font-weight: 600; color: var(--sage-700); margin-bottom: 16px; }
 
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; }
-        .form-group { display: flex; flex-direction: column; gap: 4px; }
-        .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--sage-600); text-transform: uppercase; letter-spacing: 0.5px; }
-        .form-group input, .form-group select {
-            padding: 10px 12px; border: 1px solid var(--sage-200); border-radius: 8px;
-            font-family: 'Karla', sans-serif; font-size: 0.95rem; background: white; color: var(--charcoal);
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 3rem;
+            font-weight: 300;
+            color: var(--cream);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
         }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--sage-500); box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.15); }
 
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-family: 'Karla', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .btn-primary { background: var(--sage-500); color: white; }
-        .btn-primary:hover { background: var(--sage-600); }
-        .btn-secondary { background: var(--taupe); color: white; }
-        .btn-secondary:hover { background: var(--mauve); }
-        .btn-danger { background: var(--dusty-rose); color: white; }
-        .btn-danger:hover { background: var(--red-soft); }
-        .btn-small { padding: 6px 12px; font-size: 0.8rem; }
-        .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-
-        .data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-        .data-table th { background: var(--sage-600); color: white; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; position: sticky; top: 0; }
-        .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--sage-100); }
-        .data-table tr:hover { background: rgba(122, 144, 97, 0.08); }
-        .data-table .amount { text-align: right; font-variant-numeric: tabular-nums; }
-        .data-table .negative { color: var(--red-soft); }
-        .data-table .positive { color: var(--green-soft); }
-
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .summary-box { background: var(--sage-700); border-radius: 10px; padding: 16px; text-align: center; color: var(--cream); }
-        .summary-box .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--sage-200); margin-bottom: 6px; }
-        .summary-box .value { font-family: 'Crimson Pro', serif; font-size: 1.6rem; font-weight: 600; }
-        .summary-box .value.positive { color: #6dd59a; }
-        .summary-box .value.negative { color: #e88; }
-        .summary-box.highlight { background: var(--sage-500); border: 2px solid var(--sage-300); }
-
-        .check-paid { width: 20px; height: 20px; cursor: pointer; accent-color: var(--sage-500); }
-        .badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
-        .badge-paid { background: rgba(39, 174, 96, 0.15); color: var(--green-soft); }
-        .badge-auto { background: rgba(122, 144, 97, 0.15); color: var(--sage-600); }
-        .badge-variable { background: rgba(168, 132, 121, 0.15); color: var(--mauve); }
-
-        .entry-row { display: grid; grid-template-columns: 1.5fr 120px 120px 120px; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--sage-100); }
-        .entry-row.header { font-size: 0.8rem; font-weight: 600; color: var(--sage-600); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--sage-300); padding-bottom: 10px; }
-        .entry-row label { font-weight: 500; color: var(--charcoal); }
-        .entry-row .rate { font-size: 0.8rem; color: var(--sage-400); }
-        .entry-row input {
-            padding: 8px 10px; border: 1px solid var(--sage-200); border-radius: 8px;
-            font-family: 'Karla', sans-serif; font-size: 0.95rem; text-align: right; background: white; color: var(--charcoal); width: 100%;
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--taupe);
+            font-weight: 400;
         }
-        .entry-row input:focus { outline: none; border-color: var(--sage-500); box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.15); }
-        .entry-row .calc { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; padding-right: 12px; }
-        .section-divider { font-family: 'Crimson Pro', serif; font-size: 1.1rem; color: var(--sage-600); padding: 16px 0 6px; border-bottom: 2px solid var(--sage-300); margin-top: 8px; }
 
-        .month-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-        .month-selector button { background: var(--sage-600); color: white; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 1.1rem; }
-        .month-selector button:hover { background: var(--sage-700); }
-        .month-selector .current-month { font-family: 'Crimson Pro', serif; font-size: 1.3rem; color: var(--charcoal); min-width: 160px; text-align: center; }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-top: 40px;
+        }
+        
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
-        .modal-overlay.active { display: flex; }
-        .modal { background: var(--cream); border-radius: 12px; padding: 28px; max-width: 500px; width: 90%; color: var(--charcoal); box-shadow: 0 8px 40px rgba(0,0,0,0.4); }
-        .modal h2 { font-family: 'Crimson Pro', serif; color: var(--sage-700); margin-bottom: 16px; }
+        .dashboard-card {
+            background: rgba(236, 232, 221, 0.95);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(196, 181, 164, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--charcoal);
+            display: block;
+            position: relative;
+        }
 
-        .table-scroll { overflow-x: auto; }
-        .empty-state { text-align: center; padding: 40px; color: var(--sage-600); }
-        .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+        .dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--sage-500);
+            border-radius: 16px 16px 0 0;
+        }
 
-        #column-picker label:hover { background: var(--sage-100); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
+        .dashboard-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            background: var(--cream);
+        }
+
+        .card-icon {
+            font-size: 3.5rem;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--sage-700);
+            margin-bottom: 8px;
+        }
+
+        .card-description {
+            font-size: 0.95rem;
+            color: var(--sage-600);
+            line-height: 1.5;
+        }
+
+        .coming-soon {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .coming-soon-badge {
+            display: inline-block;
+            background: var(--dusty-rose);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
 
         @media (max-width: 768px) {
-            .tab-btn { padding: 12px 16px; font-size: 0.85rem; }
-            .form-row { grid-template-columns: 1fr; }
-            .summary-grid { grid-template-columns: 1fr 1fr; }
-            .card { padding: 16px; }
-            .entry-row { grid-template-columns: 1fr 90px 90px 90px; gap: 4px; }
-            .entry-row input { padding: 6px 8px; font-size: 0.85rem; }
-            .data-table { font-size: 0.8rem; }
-            .data-table th, .data-table td { padding: 8px 6px; }
+            .pond-banner {
+                height: 180px;
+            }
+
+            h1 {
+                font-size: 2.2rem;
+            }
+
+            .main-content {
+                padding: 30px 15px;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .dashboard-card {
+                padding: 24px;
+            }
+
+            .card-icon {
+                font-size: 2.8rem;
+            }
+
+            .card-title {
+                font-size: 1.5rem;
+            }
         }
     </style>
 </head>
 <body>
+    <img src="pond.jpeg" alt="Pond Banner" class="pond-banner">
+    
+    <div class="main-content">
+        <header>
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">🌱 🐔 🦆</div>
+            <h1>Homestead Hub</h1>
+            <p class="subtitle">Your complete homestead management system</p>
+        </header>
 
-<div class="top-bar">
-    <a href="index.html">← Back to Hub</a>
-    <h1>📊 Finances</h1>
-    <div></div>
-</div>
+        <div class="dashboard-grid">
+            <a href="inventory.html" class="dashboard-card">
+                <div class="card-icon">🫙</div>
+                <h2 class="card-title">Inventory</h2>
+                <p class="card-description">Track everything in your freezers, fridge, pantry & supplies</p>
+            </a>
 
-<div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('accounts')">Accounts</button>
-    <button class="tab-btn" onclick="switchTab('bills')">Bills</button>
-    <button class="tab-btn" onclick="switchTab('weekly')">Weekly Entry</button>
-    <button class="tab-btn" onclick="switchTab('history')">History</button>
-</div>
+            <a href="shopping.html" class="dashboard-card">
+                <div class="card-icon">🏪</div>
+                <h2 class="card-title">Shopping List</h2>
+                <p class="card-description">Organized by store with low stock alerts</p>
+            </a>
 
-<div class="main-content">
+            <a href="recipes.html" class="dashboard-card">
+                <div class="card-icon">🍳</div>
+                <h2 class="card-title">Recipes</h2>
+                <p class="card-description">Browse and manage your recipe collection</p>
+            </a>
 
-    <!-- ==================== ACCOUNTS ==================== -->
-    <div id="tab-accounts" class="tab-panel active">
-        <div class="card">
-            <h2>➕ Add Account</h2>
-            <div class="form-row">
-                <div class="form-group"><label>Account Name</label><input type="text" id="acc-name" placeholder="e.g. Family CC"></div>
-                <div class="form-group"><label>Type</label>
-                    <select id="acc-type">
-                        <option value="credit_card">Credit Card</option>
-                        <option value="loan">Loan</option>
-                        <option value="bank">Bank Account</option>
-                        <option value="tax_debt">Tax Debt</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group"><label>Interest Rate %</label><input type="number" id="acc-rate" step="0.01" placeholder="24.24"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Starting Balance</label><input type="number" id="acc-starting" step="0.01" placeholder="5000.00"></div>
-                <div class="form-group"><label>Min Payment</label><input type="number" id="acc-minpay" step="0.01" placeholder="150.00"></div>
-                <div class="form-group"><label>Is Debt?</label>
-                    <select id="acc-isdebt"><option value="true">Yes (CC, Loan)</option><option value="false">No (Bank account)</option></select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Pays From</label><input type="text" id="acc-paysfrom" placeholder="e.g. PNC Checking"></div>
-                <div class="form-group"><label>Notes</label><input type="text" id="acc-notes" placeholder="Optional"></div>
-            </div>
-            <div class="btn-row">
-                <button class="btn btn-primary" onclick="saveAccount()">Save Account</button>
-                <button class="btn btn-secondary" id="btn-cancel-edit" style="display:none" onclick="cancelEditAccount()">Cancel</button>
-            </div>
-        </div>
+            <a href="meal-plan.html" class="dashboard-card">
+                <div class="card-icon">📅</div>
+                <h2 class="card-title">This Week's Meals</h2>
+                <p class="card-description">Plan and view your weekly meal schedule</p>
+            </a>
 
-        <div class="card">
-            <h2>Active Accounts</h2>
-            <div class="table-scroll">
-                <table class="data-table"><thead><tr>
-                    <th>Name</th><th>Type</th><th>Rate</th><th>Starting Bal</th><th>Min Pay</th><th>Pays From</th><th>Actions</th>
-                </tr></thead><tbody id="accounts-body"></tbody></table>
-            </div>
-            <div id="accounts-empty" class="empty-state" style="display:none;"><div class="icon">🏦</div><p>No accounts yet.</p></div>
-        </div>
+            <a href="expenses.html" class="dashboard-card">
+                <div class="card-icon">💰</div>
+                <h2 class="card-title">Expense Tracker</h2>
+                <p class="card-description">Track home, homestead & project spending by category</p>
+            </a>
 
-        <div class="card" id="closed-card" style="display:none;">
-            <h2>Closed / Paid Off</h2>
-            <div class="table-scroll">
-                <table class="data-table"><thead><tr>
-                    <th>Name</th><th>Type</th><th>Rate</th><th>Closed</th><th>Reason</th><th>Actions</th>
-                </tr></thead><tbody id="closed-body"></tbody></table>
+            <a href="calendar.html" class="dashboard-card">
+                <div class="card-icon">🗓️</div>
+                <h2 class="card-title">Homestead Calendar</h2>
+                <p class="card-description">Garden tasks, planting schedule & plant tracker</p>
+            </a>
+
+            <a href="finances.html" class="dashboard-card">
+                <div class="card-icon">📊</div>
+                <h2 class="card-title">Finances</h2>
+                <p class="card-description">Track debt, bills, weekly balances & loan payoff</p>
+            </a>
+
+            <a href="chores.html" class="dashboard-card coming-soon">
+                <div class="card-icon">🧺</div>
+                <h2 class="card-title">Chores</h2>
+                <p class="card-description">Laundry, cleaning, and household tasks</p>
+                <span class="coming-soon-badge">Coming Soon</span>
+            </a>
+
+            <div class="dashboard-card coming-soon">
+                <div class="card-icon">🎤</div>
+                <h2 class="card-title">Alexa Integration</h2>
+                <p class="card-description">Voice control for your entire homestead</p>
+                <span class="coming-soon-badge">Coming Soon</span>
             </div>
         </div>
     </div>
-
-    <!-- ==================== BILLS ==================== -->
-    <div id="tab-bills" class="tab-panel">
-        <div class="card">
-            <h2>➕ Add Recurring Bill</h2>
-            <div class="form-row">
-                <div class="form-group"><label>Bill Name</label><input type="text" id="bill-name" placeholder="e.g. Electric - House 1"></div>
-                <div class="form-group"><label>Expected Amount</label><input type="number" id="bill-amount" step="0.01" placeholder="150.00"></div>
-                <div class="form-group"><label>Amount Varies?</label>
-                    <select id="bill-variable-amt"><option value="false">No - Fixed</option><option value="true">Yes - Enter each month</option></select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Due Day</label><input type="number" id="bill-due-day" min="1" max="31" placeholder="15"></div>
-                <div class="form-group"><label>Date Varies?</label>
-                    <select id="bill-variable-date"><option value="false">No</option><option value="true">Yes</option></select>
-                </div>
-                <div class="form-group"><label>Auto-Pay?</label>
-                    <select id="bill-autopay"><option value="false">No</option><option value="true">Yes</option></select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>Pays From</label><input type="text" id="bill-pays-from" placeholder="PNC Checking"></div>
-                <div class="form-group"><label>Category</label>
-                    <select id="bill-category"><option value="electric">Electric</option><option value="mortgage">Mortgage</option><option value="insurance">Insurance</option><option value="phone">Phone</option><option value="internet">Internet</option><option value="subscription">Subscription</option><option value="vehicle">Vehicle</option><option value="other">Other</option></select>
-                </div>
-                <div class="form-group"><label>Notes</label><input type="text" id="bill-notes" placeholder="Optional"></div>
-            </div>
-            <div class="btn-row">
-                <button class="btn btn-primary" onclick="saveBill()">Save Bill</button>
-                <button class="btn btn-secondary" id="btn-cancel-bill" style="display:none" onclick="cancelEditBill()">Cancel</button>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>Monthly Bill Tracker</h2>
-            <div class="month-selector">
-                <button onclick="changeMonth(-1)">◀</button>
-                <span class="current-month" id="bill-month-display"></span>
-                <button onclick="changeMonth(1)">▶</button>
-            </div>
-            <div class="table-scroll">
-                <table class="data-table"><thead><tr>
-                    <th>Paid</th><th>Bill</th><th>Due</th><th>Expected</th><th>Actual</th><th>Auto</th><th>Actions</th>
-                </tr></thead><tbody id="bills-body"></tbody></table>
-            </div>
-            <div id="bills-empty" class="empty-state" style="display:none;"><div class="icon">📋</div><p>No bills yet.</p></div>
-        </div>
-    </div>
-
-    <!-- ==================== WEEKLY ENTRY ==================== -->
-    <div id="tab-weekly" class="tab-panel">
-        <div class="card">
-            <h2>📸 Weekly Entry</h2>
-            <div class="form-row" style="margin-bottom:20px;">
-                <div class="form-group"><label>Week Date</label><input type="date" id="entry-date"></div>
-                <div class="form-group" style="justify-content:flex-end;">
-                    <button class="btn btn-secondary btn-small" onclick="loadPreviousWeek()">📋 Copy Last Week's Ending Balances</button>
-                </div>
-            </div>
-            <div id="weekly-entries"></div>
-
-            <div class="summary-grid" style="margin-top:24px;">
-                <div class="summary-box"><div class="label">Total Debt</div><div class="value negative" id="we-total-debt">$0</div></div>
-                <div class="summary-box"><div class="label">Total Payments</div><div class="value positive" id="we-total-payments">$0</div></div>
-                <div class="summary-box"><div class="label">PNC After $500</div><div class="value" id="we-after-reserve">$0</div></div>
-                <div class="summary-box highlight"><div class="label">Available for Debt</div><div class="value positive" id="we-available">$0</div></div>
-            </div>
-            <div class="btn-row">
-                <button class="btn btn-primary" onclick="saveWeeklyEntries()">💾 Save Week</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== HISTORY ==================== -->
-    <div id="tab-history" class="tab-panel">
-        <div class="card">
-            <h2>📈 Weekly History</h2>
-            
-            <!-- Filters -->
-            <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:16px;">
-                <div class="form-group">
-                    <label>From</label>
-                    <input type="date" id="hist-from" onchange="renderHistory()">
-                </div>
-                <div class="form-group">
-                    <label>To</label>
-                    <input type="date" id="hist-to" onchange="renderHistory()">
-                </div>
-                <button class="btn btn-small btn-secondary" onclick="resetHistoryFilters()">Reset Dates</button>
-                <button class="btn btn-small btn-primary" onclick="toggleColumnPicker()" id="btn-col-toggle">⚙ Columns</button>
-            </div>
-
-            <!-- Column picker -->
-            <div id="column-picker" style="display:none;background:var(--sage-50);border-radius:8px;padding:12px 16px;margin-bottom:16px;border:1px solid var(--sage-200);">
-                <div style="font-size:0.8rem;font-weight:600;color:var(--sage-600);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Show / Hide Columns</div>
-                <div id="column-checks" style="display:flex;flex-wrap:wrap;gap:8px 16px;"></div>
-                <div style="margin-top:10px;display:flex;gap:8px;">
-                    <button class="btn btn-small btn-secondary" onclick="checkAllCols(true)">All</button>
-                    <button class="btn btn-small btn-secondary" onclick="checkAllCols(false)">None</button>
-                    <button class="btn btn-small btn-secondary" onclick="showDebtOnly()">Debts Only</button>
-                    <button class="btn btn-small btn-secondary" onclick="showBanksOnly()">Banks Only</button>
-                </div>
-            </div>
-
-            <div class="table-scroll" style="max-height:600px;overflow-y:auto;">
-                <table class="data-table"><thead id="history-head"></thead><tbody id="history-body"></tbody></table>
-            </div>
-            <div id="history-empty" class="empty-state" style="display:none;"><div class="icon">📊</div><p>No entries yet.</p></div>
-        </div>
-    </div>
-</div>
-
-<!-- Modals -->
-<div class="modal-overlay" id="modal-bill-amount">
-    <div class="modal">
-        <h2>Enter Actual Amount</h2>
-        <div class="form-group" style="margin-bottom:16px;"><label>Amount</label><input type="number" id="modal-actual-amount" step="0.01" placeholder="0.00"></div>
-        <div class="btn-row">
-            <button class="btn btn-primary" onclick="saveActualAmount()">Save</button>
-            <button class="btn btn-secondary" onclick="closeModal('modal-bill-amount')">Cancel</button>
-        </div>
-    </div>
-</div>
-<div class="modal-overlay" id="modal-close-account">
-    <div class="modal">
-        <h2>Close Out Account</h2>
-        <p style="margin-bottom:16px;color:var(--sage-600);">Keeps in history, removes from weekly entry.</p>
-        <div class="form-group" style="margin-bottom:12px;"><label>Close Date</label><input type="date" id="modal-close-date"></div>
-        <div class="form-group" style="margin-bottom:16px;"><label>Reason</label>
-            <select id="modal-close-reason"><option value="paid_off">Paid Off 🎉</option><option value="closed">Closed</option><option value="refinanced">Refinanced</option><option value="other">Other</option></select>
-        </div>
-        <div class="btn-row">
-            <button class="btn btn-primary" onclick="confirmCloseAccount()">Close Account</button>
-            <button class="btn btn-secondary" onclick="closeModal('modal-close-account')">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<script>
-const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
-
-async function supaFetch(table, method='GET', body=null, query='') {
-    const opts = { method, headers: {
-        'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': method==='POST' ? 'return=representation' : method==='PATCH' ? 'return=representation' : ''
-    }};
-    if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query}`, opts);
-    if (!res.ok) throw new Error(await res.text());
-    const text = await res.text();
-    return text ? JSON.parse(text) : null;
-}
-
-// State
-let accounts=[], closedAccounts=[], bills=[], billPayments=[];
-let editingAccountId=null, editingBillId=null, editingBillPaymentId=null, closingAccountId=null;
-let currentBillMonth = new Date(); currentBillMonth.setDate(1);
-
-// Tabs
-function switchTab(tab) {
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    document.getElementById(`tab-${tab}`).classList.add('active');
-    event.target.classList.add('active');
-    if (tab==='weekly') buildWeeklyForm();
-    if (tab==='bills') loadBillPayments();
-    if (tab==='history') loadHistory();
-}
-
-// Helpers
-function fmt(n) {
-    if (n==null||isNaN(n)) return '-';
-    const v=Number(n), s='$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-    return v<0?`(${s})`:s;
-}
-function fmtDate(d){return d?new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'-';}
-function fmtShort(d){return d?new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'-';}
-function monthKey(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;}
-function monthDisplay(d){return d.toLocaleDateString('en-US',{month:'long',year:'numeric'});}
-function typeLabel(t){return{credit_card:'Credit Card',loan:'Loan',bank:'Bank',tax_debt:'Tax Debt',other:'Other'}[t]||t;}
-function closeReasonLabel(r){return{paid_off:'🎉 Paid Off',closed:'Closed',refinanced:'Refinanced',other:'Other'}[r]||'-';}
-function closeModal(id){document.getElementById(id).classList.remove('active');}
-
-// ==================== ACCOUNTS ====================
-async function loadAccounts() {
-    try {
-        accounts = await supaFetch('finance_accounts','GET',null,'?is_active=eq.true&order=display_order.asc,name.asc');
-        closedAccounts = await supaFetch('finance_accounts','GET',null,'?is_active=eq.false&order=closed_date.desc');
-        renderAccounts();
-    } catch(e){console.error('Load accounts:',e);}
-}
-
-function renderAccounts() {
-    const tbody=document.getElementById('accounts-body'), empty=document.getElementById('accounts-empty');
-    if (!accounts.length){tbody.innerHTML='';empty.style.display='block';}
-    else {
-        empty.style.display='none';
-        tbody.innerHTML=accounts.map(a=>`<tr>
-            <td><strong>${a.name}</strong></td><td>${typeLabel(a.account_type)}</td>
-            <td class="amount">${a.interest_rate}%</td><td class="amount">${fmt(a.starting_balance)}</td>
-            <td class="amount">${fmt(a.min_payment)}</td><td>${a.pays_from||'-'}</td>
-            <td><button class="btn btn-small btn-secondary" onclick="editAccount('${a.id}')">Edit</button>
-            <button class="btn btn-small btn-primary" onclick="openCloseAccount('${a.id}')">Close Out</button></td>
-        </tr>`).join('');
-    }
-    const cc=document.getElementById('closed-card'), cb=document.getElementById('closed-body');
-    if (closedAccounts.length){
-        cc.style.display='block';
-        cb.innerHTML=closedAccounts.map(a=>`<tr style="opacity:0.8">
-            <td><strong>${a.name}</strong></td><td>${typeLabel(a.account_type)}</td>
-            <td class="amount">${a.interest_rate}%</td><td>${fmtDate(a.closed_date)}</td>
-            <td><span class="badge ${a.closed_reason==='paid_off'?'badge-paid':'badge-auto'}">${closeReasonLabel(a.closed_reason)}</span></td>
-            <td><button class="btn btn-small btn-secondary" onclick="reopenAccount('${a.id}')">Reopen</button></td>
-        </tr>`).join('');
-    } else cc.style.display='none';
-}
-
-async function saveAccount() {
-    const data={
-        name:document.getElementById('acc-name').value.trim(),
-        account_type:document.getElementById('acc-type').value,
-        interest_rate:parseFloat(document.getElementById('acc-rate').value)||0,
-        starting_balance:parseFloat(document.getElementById('acc-starting').value)||0,
-        min_payment:parseFloat(document.getElementById('acc-minpay').value)||0,
-        is_debt:document.getElementById('acc-isdebt').value==='true',
-        pays_from:document.getElementById('acc-paysfrom').value.trim()||null,
-        notes:document.getElementById('acc-notes').value.trim()||null
-    };
-    if(!data.name)return alert('Enter a name.');
-    try{
-        if(editingAccountId){await supaFetch('finance_accounts','PATCH',data,`?id=eq.${editingAccountId}`);editingAccountId=null;document.getElementById('btn-cancel-edit').style.display='none';}
-        else await supaFetch('finance_accounts','POST',data);
-        clearAccForm(); await loadAccounts();
-    }catch(e){alert('Error: '+e.message);}
-}
-function editAccount(id){
-    const a=accounts.find(x=>x.id===id);if(!a)return;
-    editingAccountId=id;
-    document.getElementById('acc-name').value=a.name;
-    document.getElementById('acc-type').value=a.account_type;
-    document.getElementById('acc-rate').value=a.interest_rate;
-    document.getElementById('acc-starting').value=a.starting_balance;
-    document.getElementById('acc-minpay').value=a.min_payment;
-    document.getElementById('acc-isdebt').value=String(a.is_debt);
-    document.getElementById('acc-paysfrom').value=a.pays_from||'';
-    document.getElementById('acc-notes').value=a.notes||'';
-    document.getElementById('btn-cancel-edit').style.display='inline-block';
-    window.scrollTo({top:0,behavior:'smooth'});
-}
-function cancelEditAccount(){editingAccountId=null;document.getElementById('btn-cancel-edit').style.display='none';clearAccForm();}
-function clearAccForm(){['acc-name','acc-rate','acc-starting','acc-minpay','acc-paysfrom','acc-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('acc-type').value='credit_card';document.getElementById('acc-isdebt').value='true';}
-function openCloseAccount(id){closingAccountId=id;document.getElementById('modal-close-date').value=new Date().toISOString().split('T')[0];document.getElementById('modal-close-account').classList.add('active');}
-async function confirmCloseAccount(){
-    const d=document.getElementById('modal-close-date').value,r=document.getElementById('modal-close-reason').value;
-    if(!d)return alert('Pick a date.');
-    try{await supaFetch('finance_accounts','PATCH',{is_active:false,closed_date:d,closed_reason:r},`?id=eq.${closingAccountId}`);closeModal('modal-close-account');await loadAccounts();}catch(e){alert('Error: '+e.message);}
-}
-async function reopenAccount(id){
-    if(!confirm('Reopen this account?'))return;
-    try{await supaFetch('finance_accounts','PATCH',{is_active:true,closed_date:null,closed_reason:null},`?id=eq.${id}`);await loadAccounts();}catch(e){alert('Error: '+e.message);}
-}
-
-// ==================== BILLS ====================
-async function loadBills(){try{bills=await supaFetch('finance_bills','GET',null,'?is_active=eq.true&order=due_day.asc.nullsfirst,name.asc');}catch(e){console.error(e);}}
-async function loadBillPayments(){
-    try{billPayments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${monthKey(currentBillMonth)}`);}catch(e){billPayments=[];}
-    renderBills();
-}
-function renderBills(){
-    const tbody=document.getElementById('bills-body'),empty=document.getElementById('bills-empty');
-    document.getElementById('bill-month-display').textContent=monthDisplay(currentBillMonth);
-    if(!bills.length){tbody.innerHTML='';empty.style.display='block';return;}
-    empty.style.display='none';
-    tbody.innerHTML=bills.map(b=>{
-        const p=billPayments.find(x=>x.bill_id===b.id);
-        return`<tr>
-            <td><input type="checkbox" class="check-paid" ${p?.is_paid?'checked':''} ${b.is_auto_pay?'disabled title="Auto"':''} onchange="toggleBillPaid('${b.id}',this.checked)"></td>
-            <td><strong>${b.name}</strong>${b.is_variable_amount?'<br><span class="badge badge-variable">Variable</span>':''}</td>
-            <td>${b.is_variable_date?'Varies':(b.due_day||'-')}</td>
-            <td class="amount">${b.is_variable_amount?'~':''}${fmt(b.expected_amount)}</td>
-            <td class="amount">${p?.actual_amount!=null?fmt(p.actual_amount):'-'}${b.is_variable_amount?`<br><button class="btn btn-small btn-secondary" onclick="openAmountModal('${b.id}')">Enter</button>`:''}</td>
-            <td>${b.is_auto_pay?'<span class="badge badge-auto">Auto</span>':''}</td>
-            <td><button class="btn btn-small btn-secondary" onclick="editBill('${b.id}')">Edit</button><button class="btn btn-small btn-danger" onclick="deleteBill('${b.id}')">Del</button></td>
-        </tr>`;
-    }).join('');
-}
-function changeMonth(d){currentBillMonth.setMonth(currentBillMonth.getMonth()+d);loadBillPayments();}
-async function toggleBillPaid(billId,isPaid){
-    const mk=monthKey(currentBillMonth),ex=billPayments.find(p=>p.bill_id===billId),bill=bills.find(b=>b.id===billId);
-    try{
-        if(ex)await supaFetch('finance_bill_payments','PATCH',{is_paid:isPaid,paid_date:isPaid?new Date().toISOString().split('T')[0]:null},`?id=eq.${ex.id}`);
-        else await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:mk,actual_amount:bill?.expected_amount||0,is_paid:isPaid,paid_date:isPaid?new Date().toISOString().split('T')[0]:null});
-        await loadBillPayments();
-    }catch(e){alert('Error: '+e.message);}
-}
-function openAmountModal(billId){editingBillPaymentId=billId;const p=billPayments.find(x=>x.bill_id===billId);document.getElementById('modal-actual-amount').value=p?.actual_amount||'';document.getElementById('modal-bill-amount').classList.add('active');}
-async function saveActualAmount(){
-    const amount=parseFloat(document.getElementById('modal-actual-amount').value)||0,mk=monthKey(currentBillMonth),ex=billPayments.find(p=>p.bill_id===editingBillPaymentId);
-    try{
-        if(ex)await supaFetch('finance_bill_payments','PATCH',{actual_amount:amount},`?id=eq.${ex.id}`);
-        else await supaFetch('finance_bill_payments','POST',{bill_id:editingBillPaymentId,bill_month:mk,actual_amount:amount,is_paid:false});
-        closeModal('modal-bill-amount');await loadBillPayments();
-    }catch(e){alert('Error: '+e.message);}
-}
-async function saveBill(){
-    const data={name:document.getElementById('bill-name').value.trim(),expected_amount:parseFloat(document.getElementById('bill-amount').value)||0,
-        is_variable_amount:document.getElementById('bill-variable-amt').value==='true',due_day:parseInt(document.getElementById('bill-due-day').value)||null,
-        is_variable_date:document.getElementById('bill-variable-date').value==='true',is_auto_pay:document.getElementById('bill-autopay').value==='true',
-        pays_from:document.getElementById('bill-pays-from').value.trim(),category:document.getElementById('bill-category').value,notes:document.getElementById('bill-notes').value.trim()};
-    if(!data.name)return alert('Enter a name.');
-    try{
-        if(editingBillId){await supaFetch('finance_bills','PATCH',data,`?id=eq.${editingBillId}`);editingBillId=null;document.getElementById('btn-cancel-bill').style.display='none';}
-        else await supaFetch('finance_bills','POST',data);
-        clearBillForm();await loadBills();await loadBillPayments();
-    }catch(e){alert('Error: '+e.message);}
-}
-function editBill(id){
-    const b=bills.find(x=>x.id===id);if(!b)return;editingBillId=id;
-    document.getElementById('bill-name').value=b.name;document.getElementById('bill-amount').value=b.expected_amount;
-    document.getElementById('bill-variable-amt').value=String(b.is_variable_amount);document.getElementById('bill-due-day').value=b.due_day||'';
-    document.getElementById('bill-variable-date').value=String(b.is_variable_date);document.getElementById('bill-autopay').value=String(b.is_auto_pay);
-    document.getElementById('bill-pays-from').value=b.pays_from||'';document.getElementById('bill-category').value=b.category||'other';
-    document.getElementById('bill-notes').value=b.notes||'';document.getElementById('btn-cancel-bill').style.display='inline-block';
-    window.scrollTo({top:0,behavior:'smooth'});
-}
-function cancelEditBill(){editingBillId=null;document.getElementById('btn-cancel-bill').style.display='none';clearBillForm();}
-function clearBillForm(){['bill-name','bill-amount','bill-due-day','bill-pays-from','bill-notes'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('bill-variable-amt').value='false';document.getElementById('bill-variable-date').value='false';
-    document.getElementById('bill-autopay').value='false';document.getElementById('bill-category').value='other';}
-async function deleteBill(id){if(!confirm('Delete?'))return;try{await supaFetch('finance_bills','PATCH',{is_active:false},`?id=eq.${id}`);await loadBills();await loadBillPayments();}catch(e){alert(e.message);}}
-
-// ==================== WEEKLY ENTRY ====================
-function buildWeeklyForm(){
-    const c=document.getElementById('weekly-entries');
-    if(!accounts.length){c.innerHTML='<p style="color:var(--sage-600);padding:12px 0;">Add accounts first.</p>';return;}
-    const debts=accounts.filter(a=>a.is_debt), banks=accounts.filter(a=>!a.is_debt);
-    let h=`<div class="entry-row header"><div>Account</div><div style="text-align:right">Balance</div><div style="text-align:right">Payment</div><div style="text-align:right">Ending</div></div>`;
-    if(debts.length){
-        h+=`<div class="section-divider">Debts</div>`;
-        debts.forEach(a=>{h+=`<div class="entry-row">
-            <label>${a.name} <span class="rate">${a.interest_rate}%</span></label>
-            <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" class="we-in" oninput="calcWeekly()">
-            <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
-            <div class="calc" data-id="${a.id}" data-f="end">-</div>
-        </div>`;});
-    }
-    if(banks.length){
-        h+=`<div class="section-divider">Bank Accounts</div>`;
-        banks.forEach(a=>{h+=`<div class="entry-row">
-            <label>${a.name}</label>
-            <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" class="we-in" oninput="calcWeekly()">
-            <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
-            <div class="calc" data-id="${a.id}" data-f="end">-</div>
-        </div>`;});
-    }
-    c.innerHTML=h;
-}
-
-function calcWeekly(){
-    let totalDebt=0, totalPay=0, pncEnding=0;
-    accounts.forEach(a=>{
-        const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
-        const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
-        const eD=document.querySelector(`div[data-id="${a.id}"][data-f="end"]`);
-        if(!bI)return;
-        const bal=parseFloat(bI.value)||0, pay=parseFloat(pI.value)||0, end=bal-pay;
-        eD.textContent=fmt(end); eD.className=`calc ${end<0?'negative':''}`;
-        if(a.is_debt){totalDebt+=bal; totalPay+=Math.abs(pay);}
-        if(a.name.toLowerCase().includes('pnc')) pncEnding=end;
-    });
-    const afterRes=pncEnding-500, avail=Math.max(0,afterRes);
-    document.getElementById('we-total-debt').textContent=fmt(totalDebt);
-    document.getElementById('we-total-payments').textContent=fmt(totalPay);
-    document.getElementById('we-after-reserve').textContent=fmt(afterRes);
-    document.getElementById('we-after-reserve').className=`value ${afterRes>=0?'positive':'negative'}`;
-    document.getElementById('we-available').textContent=fmt(avail);
-    document.getElementById('we-available').className=`value ${avail>0?'positive':'negative'}`;
-}
-
-async function loadPreviousWeek(){
-    try{
-        const latest=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date.desc&limit=1');
-        if(!latest?.length)return alert('No previous entries.');
-        const prev=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${latest[0].entry_date}`);
-        prev.forEach(e=>{
-            const bI=document.querySelector(`input[data-id="${e.account_id}"][data-f="bal"]`);
-            if(bI) bI.value=e.ending_balance||e.starting_balance||0;
-        });
-        calcWeekly();
-    }catch(e){alert('Error: '+e.message);}
-}
-
-async function saveWeeklyEntries(){
-    const dt=document.getElementById('entry-date').value;
-    if(!dt)return alert('Pick a date.');
-    const entries=[];
-    accounts.forEach(a=>{
-        const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
-        const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
-        if(!bI)return;
-        const bal=parseFloat(bI.value)||0, pay=parseFloat(pI.value)||0;
-        if(bal!==0||pay!==0) entries.push({entry_date:dt,account_id:a.id,starting_balance:bal,payment:pay,ending_balance:bal-pay});
-    });
-    if(!entries.length)return alert('Enter at least one balance.');
-    try{
-        await supaFetch('finance_weekly_entries','DELETE',null,`?entry_date=eq.${dt}`);
-        await supaFetch('finance_weekly_entries','POST',entries);
-        document.querySelectorAll('.we-in').forEach(i=>i.value='');
-        document.querySelectorAll('.calc').forEach(d=>d.textContent='-');
-        calcWeekly();
-        alert('Week saved!');
-    }catch(e){alert('Error: '+e.message);}
-}
-
-// ==================== HISTORY ====================
-let historyEntries=[], historyOrdered=[], historyDates=[], historyAccMap={};
-let visibleCols=new Set(); // account IDs that are visible
-
-async function loadHistory(){
-    try{
-        historyEntries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date.desc');
-        if(!historyEntries?.length){document.getElementById('history-empty').style.display='block';document.getElementById('history-head').innerHTML='';document.getElementById('history-body').innerHTML='';return;}
-        document.getElementById('history-empty').style.display='none';
-
-        const allAcc=[...accounts,...closedAccounts];
-        historyAccMap={};
-        allAcc.forEach(a=>historyAccMap[a.id]=a);
-
-        historyDates=[...new Set(historyEntries.map(e=>e.entry_date))];
-        const accIds=[...new Set(historyEntries.map(e=>e.account_id))];
-        historyOrdered=accIds.map(id=>historyAccMap[id]).filter(Boolean).sort((a,b)=>{
-            if(a.is_debt!==b.is_debt)return a.is_debt?-1:1;
-            return(a.display_order||0)-(b.display_order||0);
-        });
-
-        // Init visible columns (all on first load)
-        if(visibleCols.size===0) historyOrdered.forEach(a=>visibleCols.add(a.id));
-
-        buildColumnPicker();
-        renderHistory();
-    }catch(e){console.error('History:',e);}
-}
-
-function buildColumnPicker(){
-    const container=document.getElementById('column-checks');
-    container.innerHTML=historyOrdered.map(a=>`
-        <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;cursor:pointer;color:var(--charcoal);">
-            <input type="checkbox" ${visibleCols.has(a.id)?'checked':''} onchange="toggleCol('${a.id}',this.checked)" style="accent-color:var(--sage-500);">
-            ${a.name}
-        </label>
-    `).join('');
-}
-
-function toggleCol(id,checked){
-    if(checked)visibleCols.add(id); else visibleCols.delete(id);
-    renderHistory();
-}
-function checkAllCols(on){
-    historyOrdered.forEach(a=>{if(on)visibleCols.add(a.id);else visibleCols.delete(a.id);});
-    buildColumnPicker();renderHistory();
-}
-function showDebtOnly(){
-    visibleCols.clear();
-    historyOrdered.filter(a=>a.is_debt).forEach(a=>visibleCols.add(a.id));
-    buildColumnPicker();renderHistory();
-}
-function showBanksOnly(){
-    visibleCols.clear();
-    historyOrdered.filter(a=>!a.is_debt).forEach(a=>visibleCols.add(a.id));
-    buildColumnPicker();renderHistory();
-}
-function toggleColumnPicker(){
-    const el=document.getElementById('column-picker');
-    el.style.display=el.style.display==='none'?'block':'none';
-}
-function resetHistoryFilters(){
-    document.getElementById('hist-from').value='';
-    document.getElementById('hist-to').value='';
-    renderHistory();
-}
-
-function renderHistory(){
-    const fromDate=document.getElementById('hist-from').value;
-    const toDate=document.getElementById('hist-to').value;
-
-    // Filter dates
-    let dates=historyDates;
-    if(fromDate) dates=dates.filter(d=>d>=fromDate);
-    if(toDate) dates=dates.filter(d=>d<=toDate);
-
-    // Visible accounts
-    const shown=historyOrdered.filter(a=>visibleCols.has(a.id));
-    const hasDebt=shown.some(a=>a.is_debt);
-
-    document.getElementById('history-head').innerHTML=`<tr><th>Date</th>${shown.map(a=>`<th class="amount">${a.name}</th>`).join('')}${hasDebt?'<th class="amount">Total Debt</th>':''}</tr>`;
-
-    document.getElementById('history-body').innerHTML=dates.map((date,i)=>{
-        const week=historyEntries.filter(e=>e.entry_date===date), eMap={};
-        week.forEach(e=>eMap[e.account_id]=e);
-        let debt=0;
-        const cells=shown.map(a=>{
-            const e=eMap[a.id];
-            if(e){if(a.is_debt)debt+=e.ending_balance;return`<td class="amount">${fmt(e.ending_balance)}</td>`;}
-            return`<td class="amount" style="color:var(--sage-300)">-</td>`;
-        }).join('');
-
-        let prevDebt=0, debtCell='';
-        if(hasDebt){
-            const nextIdx=historyDates.indexOf(dates[i])+1;
-            if(nextIdx<historyDates.length){
-                const prevDate=historyDates[nextIdx];
-                historyEntries.filter(e=>e.entry_date===prevDate).forEach(e=>{const a=historyAccMap[e.account_id];if(a?.is_debt&&visibleCols.has(a.id))prevDebt+=e.ending_balance;});
-            }
-            const chg=nextIdx<historyDates.length?debt-prevDebt:0;
-            debtCell=`<td class="amount">${fmt(debt)}${chg!==0?`<br><small class="${chg<0?'positive':'negative'}">${chg<0?'▼':'▲'} ${fmt(Math.abs(chg))}</small>`:''}</td>`;
-        }
-
-        return`<tr><td><strong>${fmtShort(date)}</strong></td>${cells}${debtCell}</tr>`;
-    }).join('');
-}
-
-// ==================== INIT ====================
-async function init(){
-    document.getElementById('entry-date').value=new Date().toISOString().split('T')[0];
-    await loadAccounts(); await loadBills(); await loadBillPayments();
-}
-init();
-</script>
 </body>
 </html>
