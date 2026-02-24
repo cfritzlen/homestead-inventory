@@ -1181,7 +1181,7 @@ function buildWeeklyForm(){
     }
 
     if(rental){
-        h+=`<div class="section-divider">🏠 Rental <span style="font-size:0.7rem;color:var(--sage-400);font-weight:400;margin-left:8px;">payment = income into PNC</span></div>`;
+        h+=`<div class="section-divider">🏠 Rental <span style="font-size:0.7rem;color:var(--sage-400);font-weight:400;margin-left:8px;">payment transfers from PNC</span></div>`;
         h+=entryRow(rental,false);
     }
 
@@ -1350,7 +1350,7 @@ function calcWeekly(){
         const totalOut=pncAutoPayTotal+billsTotal+otherPNC;
         const pncPayInput=document.querySelector(`input[data-id="${pncAcc.id}"][data-f="pay"]`);
         const pncEndDiv=document.querySelector(`div[data-id="${pncAcc.id}"][data-f="end"]`);
-        const netOut=totalOut-rentalIncome;
+        const netOut=totalOut+rentalIncome;
         if(pncPayInput) pncPayInput.value=netOut.toFixed(2);
         const pncEnding=pncBal-netOut;
         if(pncEndDiv){pncEndDiv.textContent=fmt(pncEnding);pncEndDiv.className=`calc ${pncEnding<0?'negative':''}`;}
