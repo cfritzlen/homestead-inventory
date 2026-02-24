@@ -54,7 +54,9 @@
             cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s;
         }
         .tab-btn:hover { background: rgba(255,255,255,0.05); color: var(--cream); }
-        .dash-card:hover { border-color: var(--sage-400) !important; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; }
+        .dash-card { transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+        .dash-card:hover, .dash-card:active { border-color: var(--sage-400) !important; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; }
+        @media (hover: none) { .dash-card:active { transform: scale(0.97); } .dash-card:hover { transform: none; } }
         .tab-btn.active { color: var(--cream); border-bottom-color: var(--sage-400); background: rgba(255,255,255,0.08); }
 
         .main-content { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
@@ -137,16 +139,37 @@
         #column-picker label:hover { background: var(--sage-100); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
 
         @media (max-width: 768px) {
-            .tab-btn { padding: 10px 10px; font-size: 0.78rem; }
+            /* Tabs - scrollable, dashboard first */
+            .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
+            .tab-btn { padding: 10px 12px; font-size: 0.78rem; white-space: nowrap; flex-shrink: 0; }
+
             .form-row { grid-template-columns: 1fr; }
             .summary-grid { grid-template-columns: 1fr 1fr; }
-            .card { padding: 16px; }
+            .card { padding: 12px; margin: 8px; }
             .entry-row { grid-template-columns: 1fr 90px 90px 90px; gap: 4px; }
             .entry-row input { padding: 6px 8px; font-size: 0.85rem; }
             .data-table { font-size: 0.8rem; }
             .data-table th, .data-table td { padding: 8px 6px; }
-            #tab-dashboard .card > div[style*="grid-template-columns: 2fr 1fr"] { grid-template-columns: 1fr !important; }
-            #tab-dashboard .card > div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+            /* Dashboard cards - 2 column on phone */
+            #dash-cards { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+            .dash-card { padding: 14px 10px !important; }
+            .dash-card div:first-child { font-size: 0.6rem !important; }
+            .dash-card div:last-child { font-size: 1.3rem !important; }
+
+            /* Chart taller on mobile */
+            #dash-debt-chart { height: 260px !important; }
+            #dash-chart-title { font-size: 1rem !important; }
+        }
+
+        @media (max-width: 420px) {
+            /* Small phones - stack cards */
+            #dash-cards { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+            .dash-card div:last-child { font-size: 1.15rem !important; }
+
+            /* Top bar compact */
+            .top-bar h1 { font-size: 1.2rem; }
+            .top-bar a { font-size: 0.75rem; }
         }
     </style>
 </head>
