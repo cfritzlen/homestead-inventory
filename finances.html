@@ -295,18 +295,6 @@
                 <button class="btn btn-primary" onclick="saveWeeklyEntries()">💾 Save Week</button>
             </div>
         </div>
-
-        <!-- Bills due this week - combined with set-aside -->
-        <div class="card" id="weekly-bills-section" style="display:none;">
-            <h2>📋 Set Aside for Bills</h2>
-            <div id="weekly-bills-list"></div>
-            <div style="display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:2px solid var(--sage-300);">
-                <label style="font-weight:700;color:var(--sage-700);white-space:nowrap;">Bill Total (subtracted from PNC):</label>
-                <input type="number" step="0.01" id="bills-override-total" oninput="calcWeekly()" style="padding:8px 12px;border:2px solid var(--sage-400);border-radius:8px;font-family:'Karla',sans-serif;font-size:1.1rem;font-weight:700;text-align:right;width:160px;background:white;color:var(--charcoal);">
-                <button class="btn btn-small btn-secondary" onclick="resetBillTotal()" title="Reset to calculated total">↻ Reset</button>
-            </div>
-            <div style="font-size:0.75rem;color:var(--sage-400);margin-top:4px;font-style:italic;">Auto-fills from bills above. Edit to override.</div>
-        </div>
     </div>
 
     <!-- ==================== HISTORY ==================== -->
@@ -657,7 +645,7 @@ let calculatedBillTotal=0;
 
 async function loadWeeklyBills(){
     const dt=document.getElementById('entry-date').value;
-    if(!dt||!bills.length){document.getElementById('weekly-bills-section').style.display='none';return;}
+    if(!dt||!bills.length){document.getElementById('weekly-bills-section').style.display='none';document.getElementById('weekly-bills-total-row').style.display='none';return;}
 
     const weekDate=new Date(dt+'T12:00:00');
     const nextWed=new Date(weekDate);
@@ -701,7 +689,9 @@ async function loadWeeklyBills(){
 
     const section=document.getElementById('weekly-bills-section');
     const list=document.getElementById('weekly-bills-list');
-    section.style.display='block';
+    const totalRow=document.getElementById('weekly-bills-total-row');
+    section.style.display='';
+    totalRow.style.display='flex';
 
     calculatedBillTotal=0;
     let html='';
@@ -853,6 +843,15 @@ function buildWeeklyForm(){
         h+=`<div class="section-divider">🏠 Rental</div>`;
         h+=entryRow(rental,false);
     }
+
+    // Set Aside for Bills placeholder - filled by loadWeeklyBills
+    h+=`<div class="section-divider" id="weekly-bills-section" style="display:none;">📋 Set Aside for Bills</div>`;
+    h+=`<div id="weekly-bills-list"></div>`;
+    h+=`<div id="weekly-bills-total-row" style="display:none;display:flex;align-items:center;gap:12px;margin:8px 0 12px;padding-top:8px;border-top:2px solid var(--sage-300);">
+        <label style="font-weight:700;color:var(--sage-700);white-space:nowrap;font-size:0.9rem;">Bill Total (from PNC):</label>
+        <input type="number" step="0.01" id="bills-override-total" oninput="calcWeekly()" style="padding:6px 10px;border:2px solid var(--sage-400);border-radius:8px;font-family:'Karla',sans-serif;font-size:1rem;font-weight:700;text-align:right;width:140px;background:white;color:var(--charcoal);">
+        <button class="btn btn-small btn-secondary" onclick="resetBillTotal()" title="Reset to calculated total">↻</button>
+    </div>`;
 
     if(other.length){
         const filtered=other.filter(a=>!a.name.toLowerCase().includes('recurring'));
