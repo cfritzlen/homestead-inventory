@@ -156,16 +156,16 @@
 </div>
 
 <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('accounts')">Accounts</button>
+    <button class="tab-btn active" onclick="switchTab('weekly')">Weekly Entry</button>
+    <button class="tab-btn" onclick="switchTab('accounts')">Accounts</button>
     <button class="tab-btn" onclick="switchTab('bills')">Bills</button>
-    <button class="tab-btn" onclick="switchTab('weekly')">Weekly Entry</button>
     <button class="tab-btn" onclick="switchTab('history')">History</button>
 </div>
 
 <div class="main-content">
 
     <!-- ==================== ACCOUNTS ==================== -->
-    <div id="tab-accounts" class="tab-panel active">
+    <div id="tab-accounts" class="tab-panel">
         <div class="card">
             <h2>➕ Add Account</h2>
             <div class="form-row">
@@ -268,7 +268,7 @@
     </div>
 
     <!-- ==================== WEEKLY ENTRY ==================== -->
-    <div id="tab-weekly" class="tab-panel">
+    <div id="tab-weekly" class="tab-panel active">
         <div class="card">
             <h2>📸 Weekly Entry</h2>
             <div class="form-row" style="margin-bottom:12px;">
@@ -282,6 +282,7 @@
             <div class="summary-grid">
                 <div class="summary-box"><div class="label">Total Debt</div><div class="value negative" id="we-total-debt">$0</div></div>
                 <div class="summary-box"><div class="label">Total Payments</div><div class="value positive" id="we-total-payments">$0</div></div>
+                <div class="summary-box"><div class="label">CC Spent This Week</div><div class="value negative" id="we-cc-spent">$0</div></div>
                 <div class="summary-box"><div class="label">PNC - $500 - Set Aside</div><div class="value" id="we-after-reserve">$0</div></div>
                 <div class="summary-box highlight"><div class="label">Set Aside for Bills</div><div class="value" id="we-bills-total">$0</div></div>
             </div>
@@ -598,6 +599,47 @@ async function onWeekChange(){
         await autoFillLoans(document.getElementById('entry-date').value);
     }
     await loadWeeklyBills();
+    await calcCCSpent();
+}
+
+async function calcCCSpent(){
+    const dt=document.getElementById('entry-date').value;
+    if(!dt)return;
+    const d=new Date(dt+'T12:00:00');
+    d.setDate(d.getDate()-7);
+    const priorWeek=d.toISOString().split('T')[0];
+
+    const ccs=accounts.filter(a=>a.account_type==='credit_card');
+    if(!ccs.length)return;
+
+    try{
+        const priorEntries=await supaFetch('finance_weekly_entries','GET',null,
+            `?entry_date=eq.${priorWeek}&account_id=in.(${ccs.map(a=>a.id).join(',')})`);
+
+        priorCCEndings={};
+        ccs.forEach(a=>{
+            const prior=priorEntries?.find(e=>e.account_id===a.id);
+            priorCCEndings[a.id]=prior?parseFloat(prior.ending_balance)||0:0;
+        });
+        updateCCSpentDisplay();
+    }catch(e){console.error('CC spent calc:',e);}
+}
+
+function updateCCSpentDisplay(){
+    const ccs=accounts.filter(a=>a.account_type==='credit_card');
+    let spent=0;
+    ccs.forEach(a=>{
+        const priorEnding=priorCCEndings[a.id]||0;
+        const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
+        const thisStart=parseFloat(bI?.value)||0;
+        const diff=thisStart-priorEnding;
+        if(diff>0) spent+=diff;
+    });
+    const el=document.getElementById('we-cc-spent');
+    if(el){
+        el.textContent=fmt(spent);
+        el.className=`value ${spent>0?'negative':'positive'}`;
+    }
 }
 
 async function loadWeekData(){
@@ -642,6 +684,7 @@ async function autoFillFromPrior(){
 }
 
 let calculatedBillTotal=0;
+let priorCCEndings={}; // account_id -> ending balance from prior week
 
 async function autoFillLoans(weekStr){
     if(!weekStr)return;
@@ -989,6 +1032,7 @@ function calcWeekly(){
 
     document.getElementById('we-total-debt').textContent=fmt(totalDebt);
     document.getElementById('we-total-payments').textContent=fmt(totalDebtPay);
+    updateCCSpentDisplay();
 }
 
 async function loadPreviousWeek(){
@@ -1169,6 +1213,7 @@ function renderHistory(){
 // ==================== INIT ====================
 async function init(){
     await loadAccounts(); await loadBills(); await loadBillPayments();
+    populateWeekDropdown(); onWeekChange();
 }
 init();
 </script>
