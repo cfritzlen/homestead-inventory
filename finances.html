@@ -276,9 +276,6 @@
                     <label>Week Of (Wednesday)</label>
                     <select id="entry-date" onchange="onWeekChange()" style="padding:10px 12px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;font-size:0.95rem;background:white;color:var(--charcoal);"></select>
                 </div>
-                <div class="form-group" style="justify-content:flex-end;">
-                    <button class="btn btn-secondary btn-small" onclick="loadPreviousWeek()">📋 Copy Prior Week's Ending</button>
-                </div>
             </div>
 
             <!-- Summary at top -->
@@ -286,7 +283,7 @@
                 <div class="summary-box"><div class="label">Total Debt</div><div class="value negative" id="we-total-debt">$0</div></div>
                 <div class="summary-box"><div class="label">Total Payments</div><div class="value positive" id="we-total-payments">$0</div></div>
                 <div class="summary-box"><div class="label">PNC - $500 - Set Aside</div><div class="value" id="we-after-reserve">$0</div></div>
-                <div class="summary-box highlight"><div class="label">Available for Debt</div><div class="value positive" id="we-available">$0</div></div>
+                <div class="summary-box highlight"><div class="label">Set Aside for Bills</div><div class="value" id="we-bills-total">$0</div></div>
             </div>
 
             <div id="weekly-entries"></div>
@@ -979,12 +976,10 @@ function calcWeekly(){
         if(pncEndDiv){pncEndDiv.textContent=fmt(pncEnding);pncEndDiv.className=`calc ${pncEnding<0?'negative':''}`;}
 
         const afterAll=pncEnding-500;
-        const avail=Math.max(0,afterAll);
 
         document.getElementById('we-after-reserve').textContent=fmt(afterAll);
         document.getElementById('we-after-reserve').className=`value ${afterAll>=0?'positive':'negative'}`;
-        document.getElementById('we-available').textContent=fmt(avail);
-        document.getElementById('we-available').className=`value ${avail>0?'positive':'negative'}`;
+        document.getElementById('we-bills-total').textContent=fmt(billsTotal);
     }
 
     const setSum=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=fmt(val);};
