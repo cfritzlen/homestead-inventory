@@ -285,7 +285,7 @@
             <div class="summary-grid">
                 <div class="summary-box"><div class="label">Total Debt</div><div class="value negative" id="we-total-debt">$0</div></div>
                 <div class="summary-box"><div class="label">Total Payments</div><div class="value positive" id="we-total-payments">$0</div></div>
-                <div class="summary-box"><div class="label">PNC - $500 - Bills</div><div class="value" id="we-after-reserve">$0</div></div>
+                <div class="summary-box"><div class="label">PNC - $500 - Set Aside</div><div class="value" id="we-after-reserve">$0</div></div>
                 <div class="summary-box highlight"><div class="label">Available for Debt</div><div class="value positive" id="we-available">$0</div></div>
             </div>
 
@@ -298,7 +298,7 @@
 
         <!-- Bills due this week - combined with set-aside -->
         <div class="card" id="weekly-bills-section" style="display:none;">
-            <h2>📋 Bills This Week</h2>
+            <h2>📋 Set Aside for Bills</h2>
             <div id="weekly-bills-list"></div>
             <div style="display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:2px solid var(--sage-300);">
                 <label style="font-weight:700;color:var(--sage-700);white-space:nowrap;">Bill Total (subtracted from PNC):</label>
@@ -675,9 +675,13 @@ async function loadWeeklyBills(){
         }
     }catch(e){payments=[];}
 
+    // Only show household bills - exclude tax and loan bills
+    const excludeNames=['irs','pa tax','kubota','side by side'];
+    const householdBills=bills.filter(b=>!excludeNames.some(n=>b.name.toLowerCase().includes(n)));
+
     // Find bills due between this Wed and next Wed
     const dueBills=[];
-    bills.forEach(b=>{
+    householdBills.forEach(b=>{
         if(!b.due_day)return;
         for(let m=0;m<2;m++){
             const checkDate=new Date(weekDate);
@@ -709,9 +713,9 @@ async function loadWeeklyBills(){
 
         dueBills.forEach(({bill:b, dueDate, payment:p, billMonth})=>{
             const amt=p?.actual_amount||b.expected_amount||0;
-            const paid=p?.is_paid||false;
+            const paid=p?p.is_paid:true; // default to paid if no record
             const dateVal=p?.paid_date||`${dueDate.getFullYear()}-${String(dueDate.getMonth()+1).padStart(2,'0')}-${String(dueDate.getDate()).padStart(2,'0')}`;
-            if(!paid) calculatedBillTotal+=amt;
+            calculatedBillTotal+=amt;
 
             html+=`<div style="display:grid;grid-template-columns:30px 1fr 110px 110px 60px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--sage-100);${paid?'opacity:0.5':''}">
                 <div><input type="checkbox" class="check-paid" ${paid?'checked':''} onchange="toggleWeeklyBillPaid('${b.id}','${billMonth}',this.checked,this)" style="accent-color:var(--sage-500);width:18px;height:18px;cursor:pointer;"></div>
@@ -729,10 +733,10 @@ async function loadWeeklyBills(){
         html+='<p style="color:var(--sage-400);padding:12px 0;">No bills due before next Wednesday</p>';
     }
 
-    // Monthly summary
+    // Monthly summary - household bills only
     let monthTotal=0, paidTotal=0;
     const mkCurrent=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-01`;
-    bills.forEach(b=>{
+    householdBills.forEach(b=>{
         const p=payments.find(x=>x.bill_id===b.id && x.bill_month===mkCurrent);
         const amt=p?.actual_amount||b.expected_amount||0;
         monthTotal+=amt;
@@ -752,14 +756,9 @@ async function loadWeeklyBills(){
 }
 
 function recalcBillTotal(){
-    // Sum all unpaid bill amounts from the inputs
     let total=0;
     document.querySelectorAll('#weekly-bills-list input[data-field="amount"]').forEach(input=>{
-        const row=input.closest('div[style*="grid"]');
-        const checkbox=row?.querySelector('.check-paid');
-        if(checkbox && !checkbox.checked){
-            total+=parseFloat(input.value)||0;
-        }
+        total+=parseFloat(input.value)||0;
     });
     calculatedBillTotal=total;
     document.getElementById('bills-override-total').value=total.toFixed(2);
@@ -809,65 +808,52 @@ function buildWeeklyForm(){
     const c=document.getElementById('weekly-entries');
     if(!accounts.length){c.innerHTML='<p style="color:var(--sage-600);padding:12px 0;">Add accounts first.</p>';return;}
 
-    // Categorize accounts
     const pnc=accounts.find(a=>a.name.toLowerCase().includes('pnc'));
     const rental=accounts.find(a=>a.name.toLowerCase().includes('rental'));
-    const recurringAcc=accounts.find(a=>a.name.toLowerCase().includes('recurring'));
     const ccs=accounts.filter(a=>a.account_type==='credit_card');
     const taxes=accounts.filter(a=>a.account_type==='tax_debt');
     const loans=accounts.filter(a=>a.is_debt && a.account_type==='loan');
-    // Anything else that doesn't fit above
-    const skipIds=new Set([pnc?.id,rental?.id,recurringAcc?.id,...ccs.map(a=>a.id),...taxes.map(a=>a.id),...loans.map(a=>a.id)].filter(Boolean));
+    const skipIds=new Set([pnc?.id,rental?.id,...ccs.map(a=>a.id),...taxes.map(a=>a.id),...loans.map(a=>a.id)].filter(Boolean));
+    const recurringAcc=accounts.find(a=>a.name.toLowerCase().includes('recurring'));
+    if(recurringAcc) skipIds.add(recurringAcc.id);
     const other=accounts.filter(a=>!skipIds.has(a.id));
 
     let h=`<div class="entry-row header"><div>Account</div><div style="text-align:right">Balance</div><div style="text-align:right">Payment</div><div style="text-align:right">Ending</div></div>`;
 
-    // PNC at top - payment is auto-calculated
     if(pnc){
         h+=`<div class="section-divider">💰 PNC Checking</div>`;
         h+=`<div class="entry-row">
             <label>${pnc.name}</label>
             <input type="number" step="0.01" placeholder="0.00" data-id="${pnc.id}" data-f="bal" class="we-in" oninput="calcWeekly()">
-            <input type="number" step="0.01" placeholder="0.00" data-id="${pnc.id}" data-f="pay" class="we-in" readonly style="background:var(--sage-100);font-weight:600;color:var(--sage-700);" title="Auto-calculated from all PNC payments below">
+            <input type="number" step="0.01" placeholder="0.00" data-id="${pnc.id}" data-f="pay" class="we-in" readonly style="background:var(--sage-100);font-weight:600;color:var(--sage-700);" title="Auto-calculated">
             <div class="calc" data-id="${pnc.id}" data-f="end">-</div>
         </div>
-        <div style="font-size:0.75rem;color:var(--sage-400);padding:2px 0 6px;font-style:italic;">↑ Payment auto-totals from all accounts paid by PNC</div>`;
+        <div style="font-size:0.75rem;color:var(--sage-400);padding:2px 0 6px;font-style:italic;">↑ Auto-totals from all payments + bills below</div>`;
     }
 
-    // Credit Cards
     if(ccs.length){
         h+=`<div class="section-divider">💳 Credit Cards</div>`;
         ccs.forEach(a=>{h+=entryRow(a,true);});
-        h+=`<div class="entry-row" style="font-weight:700;color:var(--sage-700);border-top:2px solid var(--sage-300);padding-top:10px;">
-            <label>CC Total</label><div class="calc" id="sum-cc-bal" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-cc-pay" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-cc-end" style="text-align:right;padding-right:12px;">-</div>
-        </div>`;
+        h+=sumRow('cc','CC Total');
     }
 
-    // Tax Debts
     if(taxes.length){
         h+=`<div class="section-divider">🏛️ Tax Debts</div>`;
         taxes.forEach(a=>{h+=entryRow(a,true);});
-        h+=`<div class="entry-row" style="font-weight:700;color:var(--sage-700);border-top:2px solid var(--sage-300);padding-top:10px;">
-            <label>Tax Total</label><div class="calc" id="sum-tax-bal" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-tax-pay" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-tax-end" style="text-align:right;padding-right:12px;">-</div>
-        </div>`;
+        h+=sumRow('tax','Tax Total');
     }
 
-    // Other Loans
     if(loans.length){
         h+=`<div class="section-divider">🏦 Loans</div>`;
         loans.forEach(a=>{h+=entryRow(a,true);});
-        h+=`<div class="entry-row" style="font-weight:700;color:var(--sage-700);border-top:2px solid var(--sage-300);padding-top:10px;">
-            <label>Loan Total</label><div class="calc" id="sum-loan-bal" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-loan-pay" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-loan-end" style="text-align:right;padding-right:12px;">-</div>
-        </div>`;
+        h+=sumRow('loan','Loan Total');
     }
 
-    // Rental
     if(rental){
         h+=`<div class="section-divider">🏠 Rental</div>`;
         h+=entryRow(rental,false);
     }
 
-    // Other (skip recurring bills - now handled in bills card)
     if(other.length){
         const filtered=other.filter(a=>!a.name.toLowerCase().includes('recurring'));
         if(filtered.length){
@@ -882,9 +868,15 @@ function buildWeeklyForm(){
 function entryRow(a,showRate){
     return`<div class="entry-row">
         <label>${a.name}${showRate?' <span class="rate">'+a.interest_rate+'%</span>':''}</label>
-        <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" data-type="${a.account_type}" data-debt="${a.is_debt}" class="we-in" oninput="calcWeekly()">
+        <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="bal" class="we-in" oninput="calcWeekly()">
         <input type="number" step="0.01" placeholder="0.00" data-id="${a.id}" data-f="pay" class="we-in" oninput="calcWeekly()">
         <div class="calc" data-id="${a.id}" data-f="end">-</div>
+    </div>`;
+}
+
+function sumRow(prefix,label){
+    return`<div class="entry-row" style="font-weight:700;color:var(--sage-700);border-top:2px solid var(--sage-300);padding-top:10px;">
+        <label>${label}</label><div class="calc" id="sum-${prefix}-bal" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-${prefix}-pay" style="text-align:right;padding-right:12px;">-</div><div class="calc" id="sum-${prefix}-end" style="text-align:right;padding-right:12px;">-</div>
     </div>`;
 }
 
@@ -896,7 +888,6 @@ function calcWeekly(){
     const pncAcc=accounts.find(a=>a.name.toLowerCase().includes('pnc'));
     const billsTotal=parseFloat(document.getElementById('bills-override-total')?.value)||0;
 
-    // First pass: calc all non-PNC accounts and sum payments from PNC
     accounts.forEach(a=>{
         const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
         const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
@@ -913,27 +904,25 @@ function calcWeekly(){
 
         if(a.is_debt){totalDebt+=bal; totalDebtPay+=pay;}
 
-        // Sum payments that come from PNC
         if(a.pays_from && a.pays_from.toLowerCase().includes('pnc') && pay>0){
             pncAutoPayTotal+=pay;
         }
 
-        // Group sums
         if(a.account_type==='credit_card'){ccBal+=bal;ccPay+=pay;ccEnd+=end;}
         if(a.account_type==='tax_debt'){taxBal+=bal;taxPay+=pay;taxEnd+=end;}
         if(a.is_debt&&a.account_type==='loan'){loanBal+=bal;loanPay+=pay;loanEnd+=end;}
     });
 
-    // Set PNC payment auto-total and calc ending
+    // PNC payment = debt payments from PNC + bills set aside
     if(pncAcc){
+        const totalOut=pncAutoPayTotal+billsTotal;
         const pncPayInput=document.querySelector(`input[data-id="${pncAcc.id}"][data-f="pay"]`);
         const pncEndDiv=document.querySelector(`div[data-id="${pncAcc.id}"][data-f="end"]`);
-        if(pncPayInput) pncPayInput.value=pncAutoPayTotal.toFixed(2);
-        const pncEnding=pncBal-pncAutoPayTotal;
+        if(pncPayInput) pncPayInput.value=totalOut.toFixed(2);
+        const pncEnding=pncBal-totalOut;
         if(pncEndDiv){pncEndDiv.textContent=fmt(pncEnding);pncEndDiv.className=`calc ${pncEnding<0?'negative':''}`;}
 
-        // Available = PNC ending - $500 reserve - bills total
-        const afterAll=pncEnding-500-billsTotal;
+        const afterAll=pncEnding-500;
         const avail=Math.max(0,afterAll);
 
         document.getElementById('we-after-reserve').textContent=fmt(afterAll);
@@ -942,7 +931,6 @@ function calcWeekly(){
         document.getElementById('we-available').className=`value ${avail>0?'positive':'negative'}`;
     }
 
-    // Update group sums
     const setSum=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=fmt(val);};
     setSum('sum-cc-bal',ccBal);setSum('sum-cc-pay',ccPay);setSum('sum-cc-end',ccEnd);
     setSum('sum-tax-bal',taxBal);setSum('sum-tax-pay',taxPay);setSum('sum-tax-end',taxEnd);
