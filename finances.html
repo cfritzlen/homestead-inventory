@@ -610,9 +610,10 @@ async function onWeekChange(){
     const loaded=await loadWeekData();
     if(!loaded){
         await autoFillFromPrior();
-        await autoFillLoans(document.getElementById('entry-date').value);
-    } else {
-        // Still fetch due dates for display even on saved weeks
+    }
+    // Always fill loans from schedule (skips accounts that already have data from saved week)
+    await autoFillLoans(document.getElementById('entry-date').value, loaded);
+    if(loaded){
         await fetchLoanDueDates(document.getElementById('entry-date').value);
     }
     await loadWeeklyBills();
@@ -746,7 +747,7 @@ let calculatedBillTotal=0;
 let priorCCEndings={}; // account_id -> ending balance from prior week
 let loanDueDates={}; // account_id -> next due date string
 
-async function autoFillLoans(weekStr){
+async function autoFillLoans(weekStr, hasSavedData){
     if(!weekStr)return;
     const weekDate=new Date(weekStr+'T12:00:00');
     const nextWed=new Date(weekDate);
@@ -757,7 +758,6 @@ async function autoFillLoans(weekStr){
     const wkEnd=nextWed.toISOString().split('T')[0];
 
     try{
-        // Payments due AFTER prior Wed through this Wed (catches day-before payments like 3rd for Wed 4th)
         const weekPayments=await supaFetch('finance_loan_schedules','GET',null,
             `?due_date=gt.${priorWedStr}&due_date=lte.${weekStr}&order=due_date`);
 
@@ -767,6 +767,11 @@ async function autoFillLoans(weekStr){
             const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
             const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
             if(!bI||!pI)continue;
+
+            // Skip if this account already has saved data
+            const existingBal=parseFloat(bI.value)||0;
+            const existingPay=parseFloat(pI.value)||0;
+            if(hasSavedData && (existingBal!==0 || existingPay!==0)) continue;
 
             // Balance: latest schedule entry on or before this Wed
             const balEntries=await supaFetch('finance_loan_schedules','GET',null,
@@ -780,7 +785,6 @@ async function autoFillLoans(weekStr){
             if(dueThisWeek.length){
                 const totalPay=dueThisWeek.reduce((s,p)=>s+parseFloat(p.payment_amount),0);
                 pI.value=totalPay.toFixed(2);
-                // Store due date for display
                 loanDueDates[a.id]=dueThisWeek[0].due_date;
             }
         }
