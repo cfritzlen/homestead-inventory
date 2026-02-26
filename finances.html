@@ -183,6 +183,8 @@
             #txn-table-wrap { font-size: 0.75rem; }
             #import-zones { grid-template-columns: 1fr !important; }
             .drop-zone { min-height: 90px !important; padding: 16px 12px !important; }
+            #ai-review-list > div { grid-template-columns: 26px 60px 1fr 90px 20px 90px !important; font-size: 0.7rem !important; }
+            #ai-review-list select { font-size: 0.7rem !important; padding: 3px 4px !important; }
         }
 
         @media (max-width: 420px) {
@@ -328,22 +330,14 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                     <input type="text" id="txn-search" placeholder="Search description..." oninput="loadTransactions()" style="padding:8px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;">
                 </div>
             </div>
-            <div id="txn-summary" style="font-weight:700;color:var(--sage-700);font-size:0.9rem;margin-bottom:12px;"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div id="txn-summary" style="font-weight:700;color:var(--sage-700);font-size:0.9rem;"></div>
+                <button class="btn btn-small btn-primary" onclick="aiCategorize()" id="btn-ai-cat" style="white-space:nowrap;">🤖 AI Categorize</button>
+            </div>
             <div id="txn-bulk-bar" style="display:none;background:var(--sage-600);color:white;padding:10px 16px;border-radius:8px;margin-bottom:12px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
                 <span id="txn-bulk-count" style="font-weight:600;font-size:0.9rem;"></span>
                 <select id="txn-bulk-category" style="padding:6px 10px;border-radius:6px;border:1px solid var(--sage-300);font-family:'Karla',sans-serif;font-size:0.85rem;">
                     <option value="">Pick category...</option>
-                    <option value="Girls">Girls</option><option value="Groceries">Groceries</option>
-                    <option value="Food & Drink">Food & Drink</option><option value="Gas">Gas</option>
-                    <option value="Home">Home</option><option value="Shopping">Shopping</option>
-                    <option value="Health">Health</option><option value="Automotive">Automotive</option>
-                    <option value="Subscriptions">Subscriptions</option><option value="Electric">Electric</option>
-                    <option value="Insurance">Insurance</option><option value="Tax Payment">Tax Payment</option>
-                    <option value="Loan Payment">Loan Payment</option><option value="CC Payment">CC Payment</option>
-                    <option value="Investment">Investment</option><option value="Income">Income</option>
-                    <option value="Childcare">Childcare</option><option value="Pets">Pets</option>
-                    <option value="Solar">Solar</option><option value="Entertainment">Entertainment</option>
-                    <option value="Travel">Travel</option><option value="Uncategorized">Uncategorized</option>
                 </select>
                 <button class="btn btn-small" style="background:white;color:var(--sage-700);" onclick="bulkApplyCategory()">Apply</button>
                 <button class="btn btn-small" style="background:transparent;color:white;border:1px solid rgba(255,255,255,0.4);" onclick="txnSelected.clear();renderTransactions();">Cancel</button>
@@ -548,6 +542,31 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
         <div class="btn-row">
             <button class="btn btn-primary" onclick="confirmCloseAccount()">Close Account</button>
             <button class="btn btn-secondary" onclick="closeModal('modal-close-account')">Cancel</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modal-ai-review">
+    <div class="modal" style="max-width:700px;max-height:85vh;display:flex;flex-direction:column;">
+        <h2>🤖 AI Category Suggestions</h2>
+        <p id="ai-review-status" style="font-size:0.85rem;color:var(--sage-500);margin-bottom:12px;"></p>
+        <div id="ai-review-list" style="flex:1;overflow-y:auto;margin-bottom:12px;"></div>
+        <div class="btn-row" style="justify-content:space-between;">
+            <button class="btn btn-secondary" onclick="closeModal('modal-ai-review')">Cancel</button>
+            <button class="btn btn-primary" onclick="applyAISuggestions()" id="btn-ai-apply">✅ Apply All</button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="modal-category">
+    <div class="modal" style="max-width:400px;">
+        <h2>Set Category</h2>
+        <p id="modal-cat-desc" style="font-size:0.85rem;color:var(--sage-500);margin-bottom:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></p>
+        <div style="max-height:300px;overflow-y:auto;margin-bottom:12px;" id="modal-cat-list"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+            <input type="text" id="modal-cat-new" placeholder="New category name..." style="flex:1;padding:8px 12px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;font-size:0.9rem;">
+            <button class="btn btn-small btn-primary" onclick="addNewCategory()">+ Add</button>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="closeModal('modal-category')">Cancel</button>
         </div>
     </div>
 </div>
@@ -2021,6 +2040,156 @@ function renderHistory(){
     }).join('');
 }
 
+// ==================== AI CATEGORIZATION ====================
+let aiSuggestions=[];
+
+async function aiCategorize(){
+    if(!txnData.length)return alert('No transactions loaded.');
+    
+    const btn=document.getElementById('btn-ai-cat');
+    btn.disabled=true;
+    btn.textContent='🤖 Working...';
+    
+    const cats=getCatOptions();
+    const allAcc=[...accounts,...closedAccounts];
+    const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
+    
+    // Build transaction list for AI - batch in chunks of 50
+    aiSuggestions=[];
+    const batchSize=50;
+    
+    try{
+        for(let i=0;i<txnData.length;i+=batchSize){
+            const batch=txnData.slice(i,i+batchSize);
+            btn.textContent=`🤖 ${Math.min(i+batchSize,txnData.length)}/${txnData.length}...`;
+            
+            const txnList=batch.map(t=>{
+                const acctName=accMap[t.account_id]?.name||'Unknown';
+                return `ID:${t.id} | Account:${acctName} | ${t.transaction_date} | ${t.description} | ${t.amount<0?'-':''}$${Math.abs(t.amount).toFixed(2)} | Current:${t.category||'Uncategorized'}`;
+            }).join('\n');
+            
+            const prompt=`You are categorizing bank transactions. Assign each transaction one category from this list ONLY:\n${cats.join(', ')}\n\nRules:\n- ALL transactions from "BOA CC" account must be "Girls"\n- DraftKings = "Draftkings"\n- Zelle with Colette or Martin = "Internal Transfer"\n- Grocery stores (ShopRite, Walmart, Aldi) = "Groceries"\n- Gas stations (Wawa, Sheetz, Sunoco) = "Auto"\n- Zaritza = "Rent Payment"\n- Use your best judgment for the rest based on the description\n\nTransactions:\n${txnList}\n\nRespond with ONLY a JSON array of objects, no markdown, no backticks. Each object: {"id": number, "category": "string"}\nExample: [{"id":123,"category":"Groceries"},{"id":456,"category":"Auto"}]`;
+            
+            const response=await fetch('https://api.anthropic.com/v1/messages',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    model:'claude-sonnet-4-20250514',
+                    max_tokens:4000,
+                    messages:[{role:'user',content:prompt}]
+                })
+            });
+            
+            const data=await response.json();
+            const text=data.content?.map(c=>c.text||'').join('')||'';
+            const clean=text.replace(/```json|```/g,'').trim();
+            
+            try{
+                const results=JSON.parse(clean);
+                aiSuggestions.push(...results);
+            }catch(e){
+                console.error('Parse error for batch:',e,clean);
+            }
+        }
+        
+        showAIReview();
+    }catch(e){
+        alert('AI error: '+e.message);
+        console.error('AI categorize:',e);
+    }finally{
+        btn.disabled=false;
+        btn.textContent='🤖 AI Categorize';
+    }
+}
+
+function showAIReview(){
+    const allAcc=[...accounts,...closedAccounts];
+    const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
+    const cats=getCatOptions();
+    
+    // Build a map of suggestions
+    const sugMap={};
+    aiSuggestions.forEach(s=>sugMap[s.id]=s.category);
+    
+    // Count changes
+    let changed=0,same=0;
+    txnData.forEach(t=>{
+        if(sugMap[t.id]&&sugMap[t.id]!==t.category)changed++;
+        else same++;
+    });
+    
+    document.getElementById('ai-review-status').textContent=`${changed} changes suggested, ${same} unchanged`;
+    
+    const catOptions=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+    
+    let html=`<div style="font-size:0.75rem;display:grid;grid-template-columns:30px 80px 1fr 130px 30px 130px;gap:6px;align-items:center;padding:6px 0;font-weight:600;color:var(--sage-600);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--sage-300);position:sticky;top:0;background:var(--cream);z-index:1;">
+        <div>✓</div><div>Date</div><div>Description</div><div>Current</div><div>→</div><div>Suggested</div>
+    </div>`;
+    
+    txnData.forEach(t=>{
+        const sug=sugMap[t.id]||t.category||'Uncategorized';
+        const isChanged=sug!==t.category;
+        const desc=(t.description||'').length>40?(t.description||'').substring(0,40)+'…':(t.description||'');
+        
+        html+=`<div style="display:grid;grid-template-columns:30px 80px 1fr 130px 30px 130px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--sage-100);${isChanged?'background:rgba(122,144,97,0.06);':'opacity:0.5;'}" data-ai-id="${t.id}">
+            <div><input type="checkbox" ${isChanged?'checked':''} class="ai-check" data-ai-id="${t.id}" style="accent-color:var(--sage-500);width:16px;height:16px;cursor:pointer;"></div>
+            <div style="font-size:0.8rem;white-space:nowrap;">${t.transaction_date}</div>
+            <div style="font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.description||'').replace(/"/g,'&quot;')}">${desc}</div>
+            <div style="font-size:0.8rem;color:var(--sage-500);">${t.category||'—'}</div>
+            <div style="color:${isChanged?'var(--sage-500)':'var(--sage-300)'};">${isChanged?'→':'='}</div>
+            <div><select class="ai-cat-select" data-ai-id="${t.id}" style="padding:4px 6px;border:1px solid ${isChanged?'var(--sage-400)':'var(--sage-200)'};border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;width:100%;${isChanged?'font-weight:600;background:rgba(122,144,97,0.1);':''}">
+                ${catOptions.replace(`value="${sug}"`,`value="${sug}" selected`)}
+            </select></div>
+        </div>`;
+    });
+    
+    document.getElementById('ai-review-list').innerHTML=html;
+    document.getElementById('modal-ai-review').classList.add('active');
+}
+
+async function applyAISuggestions(){
+    const btn=document.getElementById('btn-ai-apply');
+    btn.disabled=true;
+    btn.textContent='Saving...';
+    
+    const updates=[];
+    document.querySelectorAll('.ai-check:checked').forEach(cb=>{
+        const id=parseInt(cb.dataset.aiId);
+        const sel=document.querySelector(`.ai-cat-select[data-ai-id="${id}"]`);
+        const txn=txnData.find(t=>t.id===id);
+        if(sel&&txn&&sel.value!==txn.category){
+            updates.push({id,category:sel.value});
+        }
+    });
+    
+    if(!updates.length){
+        closeModal('modal-ai-review');
+        btn.disabled=false;
+        btn.textContent='✅ Apply All';
+        return;
+    }
+    
+    try{
+        // Batch update in groups of 20
+        for(let i=0;i<updates.length;i+=20){
+            const batch=updates.slice(i,i+20);
+            for(const u of batch){
+                await supaFetch('finance_transactions','PATCH',{category:u.category},`?id=eq.${u.id}`);
+            }
+        }
+        
+        closeModal('modal-ai-review');
+        await loadTransactions();
+        await loadCategoryFilter();
+        alert(`✅ Updated ${updates.length} transactions!`);
+    }catch(e){
+        alert('Error saving: '+e.message);
+    }finally{
+        btn.disabled=false;
+        btn.textContent='✅ Apply All';
+    }
+}
+
 // ==================== INIT ====================
 // ==================== DASHBOARD ====================
 async function loadDashboard(){
@@ -2404,6 +2573,13 @@ let txnData=[];
 let lastImport=null;
 let txnSort={col:'transaction_date',dir:'desc'};
 let txnSelected=new Set();
+let financeCategories=[];
+
+async function loadFinanceCategories(){
+    try{
+        financeCategories=await supaFetch('finance_categories','GET',null,'?order=sort_order');
+    }catch(e){financeCategories=[];console.error('Load categories:',e);}
+}
 
 function initImportTab(){
     buildAccountFormatMap();
@@ -2640,6 +2816,7 @@ async function initTransactions(){
         try{categoryRules=await supaFetch('finance_category_rules','GET',null,'?order=pattern');}catch(e){categoryRules=[];}
     }
     
+    populateBulkCatDropdown();
     await loadTransactions();
     await loadCategoryFilter();
     await loadVendorFilter();
@@ -2814,18 +2991,44 @@ async function bulkApplyCategory(){
     }catch(e){alert('Error: '+e.message);}
 }
 
-async function editCategory(txnId,description,currentCat){
-    const cats=['Girls','Groceries','Food & Drink','Gas','Home','Shopping','Health','Automotive',
-        'Subscriptions','Electric','Insurance','Tax Payment','Loan Payment','CC Payment',
-        'Investment','Income','Childcare','Pets','Solar','Entertainment','Travel','Uncategorized'];
+let editingCatTxnId=null;
+let editingCatDesc='';
+
+function getCatOptions(){
+    return financeCategories.map(c=>c.name);
+}
+
+function populateBulkCatDropdown(){
+    const sel=document.getElementById('txn-bulk-category');
+    sel.innerHTML='<option value="">Pick category...</option>'+getCatOptions().map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+function editCategory(txnId,description,currentCat){
+    editingCatTxnId=txnId;
+    editingCatDesc=description;
+    document.getElementById('modal-cat-desc').textContent=description;
+    document.getElementById('modal-cat-new').value='';
     
-    const newCat=prompt(`Category for "${description}":\n\nCurrent: ${currentCat}\n\nOptions: ${cats.join(', ')}\n\nType a category:`,(currentCat||''));
-    if(!newCat||newCat===currentCat)return;
+    const list=document.getElementById('modal-cat-list');
+    list.innerHTML=getCatOptions().map(c=>{
+        const isActive=c===currentCat;
+        return `<div onclick="applyCategory('${c.replace(/'/g,"\\'")}')" style="padding:10px 14px;cursor:pointer;border-radius:8px;margin-bottom:4px;font-size:0.9rem;transition:all 0.15s;
+            ${isActive?'background:var(--sage-500);color:white;font-weight:600;':'background:var(--sage-50);color:var(--charcoal);'}
+            " onmouseover="this.style.background='${isActive?'var(--sage-600)':'var(--sage-100)'}'" 
+            onmouseout="this.style.background='${isActive?'var(--sage-500)':'var(--sage-50)'}'">
+            ${c}${isActive?' ✓':''}
+        </div>`;
+    }).join('');
     
+    document.getElementById('modal-category').classList.add('active');
+}
+
+async function applyCategory(newCat){
+    if(!editingCatTxnId)return;
     try{
-        await supaFetch('finance_transactions','PATCH',{category:newCat},`?id=eq.${txnId}`);
+        await supaFetch('finance_transactions','PATCH',{category:newCat},`?id=eq.${editingCatTxnId}`);
         
-        const vendor=description.split(/\s{2,}|\d/)[0].trim().toUpperCase();
+        const vendor=editingCatDesc.split(/\s{2,}|\d/)[0].trim().toUpperCase();
         if(vendor.length>=3){
             try{
                 await supaFetch('finance_category_rules','POST',{pattern:vendor,category:newCat});
@@ -2833,11 +3036,39 @@ async function editCategory(txnId,description,currentCat){
             }catch(e){}
         }
         
+        closeModal('modal-category');
         await loadTransactions();
+        await loadCategoryFilter();
     }catch(e){alert('Error: '+e.message);}
 }
 
+async function addNewCategory(){
+    const name=document.getElementById('modal-cat-new').value.trim();
+    if(!name)return;
+    
+    // Check if it already exists
+    if(financeCategories.some(c=>c.name.toLowerCase()===name.toLowerCase())){
+        alert('That category already exists!');
+        return;
+    }
+    
+    try{
+        const maxOrder=financeCategories.length?Math.max(...financeCategories.map(c=>c.sort_order)):0;
+        await supaFetch('finance_categories','POST',{name:name,sort_order:maxOrder+1});
+        await loadFinanceCategories();
+        
+        // If we're in the single-edit modal, refresh it and auto-apply
+        if(editingCatTxnId){
+            applyCategory(name);
+        } else {
+            // Refresh the bulk dropdown
+            populateBulkCatDropdown();
+        }
+    }catch(e){alert('Error adding category: '+e.message);}
+}
+
 async function init(){
+    await loadFinanceCategories();
     await loadAccounts(); await loadBills(); await loadBillPayments();
     loadDashboard();
 }
