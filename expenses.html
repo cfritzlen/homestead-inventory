@@ -663,23 +663,30 @@ function getReceiptUrl(storagePath) {
 // ===================== LOAD =====================
 async function loadAll() {
     try {
-        const [expRes, vendorRes, receiptRes] = await Promise.all([
+        const [expRes, vendorRes] = await Promise.all([
             fetch(`${SUPABASE_URL}/rest/v1/home_expenses?order=expense_date.desc,created_at.desc`, { headers }),
-            fetch(`${SUPABASE_URL}/rest/v1/home_vendors?order=name.asc`, { headers }),
-            fetch(`${SUPABASE_URL}/rest/v1/home_expense_receipts?order=created_at.asc`, { headers })
+            fetch(`${SUPABASE_URL}/rest/v1/home_vendors?order=name.asc`, { headers })
         ]);
 
         allExpenses = await expRes.json();
         const vendors = await vendorRes.json();
-        allVendors = vendors.map(v => v.name);
+        allVendors = Array.isArray(vendors) ? vendors.map(v => v.name) : [];
         updateVendorFilter();
 
-        const receipts = await receiptRes.json();
+        // Receipts table may not exist yet — handle gracefully
         receiptMap = {};
-        receipts.forEach(r => {
-            if (!receiptMap[r.expense_id]) receiptMap[r.expense_id] = [];
-            receiptMap[r.expense_id].push(r);
-        });
+        try {
+            const receiptRes = await fetch(`${SUPABASE_URL}/rest/v1/home_expense_receipts?order=created_at.asc`, { headers });
+            if (receiptRes.ok) {
+                const receipts = await receiptRes.json();
+                if (Array.isArray(receipts)) {
+                    receipts.forEach(r => {
+                        if (!receiptMap[r.expense_id]) receiptMap[r.expense_id] = [];
+                        receiptMap[r.expense_id].push(r);
+                    });
+                }
+            }
+        } catch (e) { console.warn('Receipts table not available:', e); }
 
         updateSummary();
         renderTable();
