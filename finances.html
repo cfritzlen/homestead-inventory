@@ -2024,14 +2024,14 @@ async function importCSVForAccount(file,accountId){
                 if(!c.category)c.category='Uncategorized';
                 return c;
             });
-            const res=await fetch(`${SUPA_URL}/rest/v1/finance_transactions`,{
+            const res=await fetch(`${SUPA_URL}/rest/v1/finance_transactions?on_conflict=dedup_hash`,{
                 method:'POST',
                 headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,
                     'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=representation'},
                 body:JSON.stringify(clean)
             });
             const data=await res.json();
-                console.log('IMPORT RESPONSE:', res.status, data);
+            if(!Array.isArray(data)){console.error('Import error:',data);}
             const batchImported=Array.isArray(data)?data.length:0;
             imported+=batchImported;
             skipped+=(batch.length-batchImported);
