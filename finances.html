@@ -1654,6 +1654,7 @@ async function loadDashboard(){
             const r=await supaFetch('finance_loan_schedules','GET',null,
                 `?account_id=eq.${a.id}&due_date=lte.${today}&order=due_date.desc&limit=1`);
             if(r?.length) schedLoanTotal+=parseFloat(r[0].balance_after)||0;
+            else schedLoanTotal+=parseFloat(a.starting_balance)||0;
         }
         // Fallback to saved entries if no schedule
         if(!schedLoanTotal){
