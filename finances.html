@@ -286,7 +286,7 @@
             <div class="form-row">
                 <div class="form-group"><label>Account Name</label><input type="text" id="acc-name" placeholder="e.g. Family CC"></div>
                 <div class="form-group"><label>Type</label>
-                    <select id="acc-type">
+                    <select id="acc-type" onchange="toggleLoanFields()">
                         <option value="credit_card">Credit Card</option>
                         <option value="loan">Loan</option>
                         <option value="bank">Bank Account</option>
@@ -306,6 +306,13 @@
             <div class="form-row">
                 <div class="form-group"><label>Pays From</label><input type="text" id="acc-paysfrom" placeholder="e.g. PNC Checking"></div>
                 <div class="form-group"><label>Notes</label><input type="text" id="acc-notes" placeholder="Optional"></div>
+            </div>
+            <div class="form-row" id="loan-fields" style="display:none;background:var(--sage-50);padding:12px;border-radius:8px;border:1px dashed var(--sage-300);">
+                <div class="form-group"><label>Loan Term (months)</label><input type="number" id="acc-loan-term" placeholder="60"></div>
+                <div class="form-group"><label>First Payment Date</label><input type="date" id="acc-loan-start"></div>
+                <div class="form-group"><label>Auto-create bill?</label>
+                    <select id="acc-loan-bill"><option value="true">Yes</option><option value="false">No</option></select>
+                </div>
             </div>
             <div class="btn-row">
                 <button class="btn btn-primary" onclick="saveAccount()">Save Account</button>
@@ -586,6 +593,12 @@ function renderAccounts() {
     } else cc.style.display='none';
 }
 
+function toggleLoanFields(){
+    const isLoan=document.getElementById('acc-type').value==='loan';
+    document.getElementById('loan-fields').style.display=isLoan?'flex':'none';
+    if(isLoan){document.getElementById('acc-isdebt').value='true';}
+}
+
 async function saveAccount() {
     const data={
         name:document.getElementById('acc-name').value.trim(),
@@ -598,9 +611,70 @@ async function saveAccount() {
         notes:document.getElementById('acc-notes').value.trim()||null
     };
     if(!data.name)return alert('Enter a name.');
+    
+    const isNewLoan=data.account_type==='loan'&&!editingAccountId;
+    const loanTerm=parseInt(document.getElementById('acc-loan-term').value)||0;
+    const loanStart=document.getElementById('acc-loan-start').value;
+    const createBill=document.getElementById('acc-loan-bill').value==='true';
+    
+    if(isNewLoan&&(!loanTerm||!loanStart))return alert('Enter loan term and first payment date.');
+    
     try{
-        if(editingAccountId){await supaFetch('finance_accounts','PATCH',data,`?id=eq.${editingAccountId}`);editingAccountId=null;document.getElementById('btn-cancel-edit').style.display='none';}
-        else await supaFetch('finance_accounts','POST',data);
+        let accountId;
+        if(editingAccountId){
+            await supaFetch('finance_accounts','PATCH',data,`?id=eq.${editingAccountId}`);
+            accountId=editingAccountId;
+            editingAccountId=null;
+            document.getElementById('btn-cancel-edit').style.display='none';
+        } else {
+            const result=await supaFetch('finance_accounts','POST',data);
+            accountId=result?.[0]?.id||result?.id;
+        }
+        
+        // Auto-generate amortization schedule for new loans
+        if(isNewLoan&&accountId&&loanTerm&&loanStart){
+            const balance=data.starting_balance;
+            const monthlyRate=data.interest_rate/100/12;
+            const payment=data.min_payment;
+            let bal=balance;
+            const rows=[];
+            
+            for(let i=0;i<loanTerm;i++){
+                const dt=new Date(loanStart+'T00:00:00');
+                dt.setMonth(dt.getMonth()+i);
+                const dateStr=dt.toISOString().split('T')[0];
+                const interest=Math.round(bal*monthlyRate*100)/100;
+                
+                let payAmt=payment,princ=payment-interest;
+                if(i===loanTerm-1||princ>=bal){payAmt=Math.round((bal+interest)*100)/100;princ=bal;}
+                else{princ=Math.round(princ*100)/100;}
+                
+                const newBal=Math.max(0,Math.round((bal-princ)*100)/100);
+                rows.push({account_id:accountId,payment_number:i+1,due_date:dateStr,
+                    payment_amount:payAmt,interest:interest,principal:princ,balance_after:newBal});
+                bal=newBal;
+                if(bal<=0)break;
+            }
+            
+            // Insert in batches
+            for(let i=0;i<rows.length;i+=50){
+                await supaFetch('finance_loan_schedules','POST',rows.slice(i,i+50));
+            }
+            
+            // Auto-create bill
+            if(createBill){
+                await supaFetch('finance_bills','POST',{
+                    name:data.name,expected_amount:data.min_payment,
+                    is_variable_amount:false,is_auto_pay:true,
+                    pays_from:data.pays_from||'',category:'loan',
+                    is_variable_date:false,notes:'Auto-created from loan setup'
+                });
+                await loadBills();
+            }
+            
+            alert(`✅ ${data.name} set up!\n• ${rows.length} payment schedule created\n${createBill?'• Bill added':''}`)
+        }
+        
         clearAccForm(); await loadAccounts();
     }catch(e){alert('Error: '+e.message);}
 }
@@ -616,10 +690,11 @@ function editAccount(id){
     document.getElementById('acc-paysfrom').value=a.pays_from||'';
     document.getElementById('acc-notes').value=a.notes||'';
     document.getElementById('btn-cancel-edit').style.display='inline-block';
+    toggleLoanFields();
     window.scrollTo({top:0,behavior:'smooth'});
 }
 function cancelEditAccount(){editingAccountId=null;document.getElementById('btn-cancel-edit').style.display='none';clearAccForm();}
-function clearAccForm(){['acc-name','acc-rate','acc-starting','acc-minpay','acc-paysfrom','acc-notes'].forEach(id=>document.getElementById(id).value='');document.getElementById('acc-type').value='credit_card';document.getElementById('acc-isdebt').value='true';}
+function clearAccForm(){['acc-name','acc-rate','acc-starting','acc-minpay','acc-paysfrom','acc-notes','acc-loan-term','acc-loan-start'].forEach(id=>document.getElementById(id).value='');document.getElementById('acc-type').value='credit_card';document.getElementById('acc-isdebt').value='true';document.getElementById('acc-loan-bill').value='true';document.getElementById('loan-fields').style.display='none';}
 function openCloseAccount(id){closingAccountId=id;document.getElementById('modal-close-date').value=new Date().toISOString().split('T')[0];document.getElementById('modal-close-account').classList.add('active');}
 async function confirmCloseAccount(){
     const d=document.getElementById('modal-close-date').value,r=document.getElementById('modal-close-reason').value;
@@ -1742,12 +1817,16 @@ async function loadDashboard(){
             // Loans from schedule
             for(const a of loanAccs){
                 const sched=loanSchedules[a.id];
-                if(!sched)continue;
+                const createdDate=(a.created_at||'').substring(0,10);
+                // Skip this loan for dates before it existed
+                if(createdDate && d<createdDate) continue;
+                if(!sched||!sched.length){loanB+=parseFloat(a.starting_balance)||0;continue;}
+                // If date is before first payment, use starting balance
+                if(d<sched[0].due_date){loanB+=parseFloat(a.starting_balance)||0;continue;}
                 let bal=0;
                 for(let j=sched.length-1;j>=0;j--){
                     if(sched[j].due_date<=d){bal=parseFloat(sched[j].balance_after)||0;break;}
                 }
-                if(bal===0&&sched.length) bal=parseFloat(sched[0].balance_after)||0;
                 loanB+=bal;
             }
 
@@ -1912,6 +1991,7 @@ function detectCSVFormat(headers){
     if(h.includes('reference number')&&h.includes('payee')) return 'boa';
     if(h.includes('category')&&h.includes('post date')) return 'chase';
     if(h.includes('transaction description')&&h.includes('balance')) return 'pnc';
+    if(h[0]==='date'&&h[1]==='description'&&h[2]==='amount'&&h[3]&&h[3].includes('running')) return 'boa_checking';
     return 'unknown';
 }
 
@@ -1968,7 +2048,7 @@ let categoryRules=[];
 let txnData=[];
 
 function initImportTab(){
-    const importNames=['family cc','prime','chase cc','boa cc','pnc checking','rental account'];
+    const importNames=['family cc','prime','chase cc','boa cc','pnc checking','rental account','pnc 1407','boa checking'];
     const allAcc=[...accounts,...closedAccounts].filter(a=>importNames.includes(a.name.toLowerCase()));
     const container=document.getElementById('import-zones');
     const typeIcons={credit_card:'💳',loan:'🏦',bank:'🏧',tax_debt:'🏛️',other:'📁'};
@@ -2016,7 +2096,16 @@ async function importCSVForAccount(file,accountId){
     const lines=text.split('\n').filter(l=>l.trim());
     if(lines.length<2){status.textContent='File appears empty.';zone.classList.add('error');return;}
     
-    const headers=parseCSVLine(lines[0]);
+    // Find the real header row (BOA checking has summary rows first)
+    let headerIdx=0;
+    for(let i=0;i<Math.min(lines.length,15);i++){
+        const test=parseCSVLine(lines[i]).map(c=>c.trim().toLowerCase());
+        if(test[0]==='date'&&test[1]==='description'&&test[2]==='amount'&&test[3]&&test[3].includes('running')){
+            headerIdx=i;break;
+        }
+    }
+    
+    const headers=parseCSVLine(lines[headerIdx]);
     const format=detectCSVFormat(headers);
     
     if(format==='unknown'){
@@ -2026,10 +2115,10 @@ async function importCSVForAccount(file,accountId){
         return;
     }
     
-    status.textContent=`${format.toUpperCase()} · Parsing ${lines.length-1} rows...`;
+    status.textContent=`${format.toUpperCase()} · Parsing rows...`;
     
     const txns=[];
-    for(let i=1;i<lines.length;i++){
+    for(let i=headerIdx+1;i<lines.length;i++){
         const cols=parseCSVLine(lines[i]);
         if(cols.length<3)continue;
         let txn={account_id:accountId};
@@ -2055,6 +2144,15 @@ async function importCSVForAccount(file,accountId){
             txn.transaction_date=parseDate(cols[0]);
             if(!txn.transaction_date)continue;
             txn.description=(cols[1]||'').trim();
+            txn.amount=parsePNCAmount(cols[2]);
+            txn.raw_balance=cols[3]||'';
+            txn.category=guessCategory(txn.description);
+            txn.dedup_hash=hashTxn(txn.transaction_date,txn.description,txn.amount);
+        } else if(format==='boa_checking'){
+            txn.transaction_date=parseDate(cols[0]);
+            if(!txn.transaction_date)continue;
+            txn.description=(cols[1]||'').trim();
+            if(txn.description.toLowerCase().includes('beginning balance'))continue;
             txn.amount=parsePNCAmount(cols[2]);
             txn.raw_balance=cols[3]||'';
             txn.category=guessCategory(txn.description);
