@@ -95,6 +95,7 @@
         .data-table .amount { text-align: right; font-variant-numeric: tabular-nums; }
         .data-table .negative { color: var(--red-soft); }
         .data-table .positive { color: var(--green-soft); }
+        .data-table th[onclick]:hover { background: var(--sage-700); }
 
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .summary-box { background: var(--sage-700); border-radius: 10px; padding: 16px; text-align: center; color: var(--cream); }
@@ -328,6 +329,25 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                 </div>
             </div>
             <div id="txn-summary" style="font-weight:700;color:var(--sage-700);font-size:0.9rem;margin-bottom:12px;"></div>
+            <div id="txn-bulk-bar" style="display:none;background:var(--sage-600);color:white;padding:10px 16px;border-radius:8px;margin-bottom:12px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+                <span id="txn-bulk-count" style="font-weight:600;font-size:0.9rem;"></span>
+                <select id="txn-bulk-category" style="padding:6px 10px;border-radius:6px;border:1px solid var(--sage-300);font-family:'Karla',sans-serif;font-size:0.85rem;">
+                    <option value="">Pick category...</option>
+                    <option value="Girls">Girls</option><option value="Groceries">Groceries</option>
+                    <option value="Food & Drink">Food & Drink</option><option value="Gas">Gas</option>
+                    <option value="Home">Home</option><option value="Shopping">Shopping</option>
+                    <option value="Health">Health</option><option value="Automotive">Automotive</option>
+                    <option value="Subscriptions">Subscriptions</option><option value="Electric">Electric</option>
+                    <option value="Insurance">Insurance</option><option value="Tax Payment">Tax Payment</option>
+                    <option value="Loan Payment">Loan Payment</option><option value="CC Payment">CC Payment</option>
+                    <option value="Investment">Investment</option><option value="Income">Income</option>
+                    <option value="Childcare">Childcare</option><option value="Pets">Pets</option>
+                    <option value="Solar">Solar</option><option value="Entertainment">Entertainment</option>
+                    <option value="Travel">Travel</option><option value="Uncategorized">Uncategorized</option>
+                </select>
+                <button class="btn btn-small" style="background:white;color:var(--sage-700);" onclick="bulkApplyCategory()">Apply</button>
+                <button class="btn btn-small" style="background:transparent;color:white;border:1px solid rgba(255,255,255,0.4);" onclick="txnSelected.clear();renderTransactions();">Cancel</button>
+            </div>
             <div id="txn-table-wrap" style="max-height:500px;overflow-y:auto;"></div>
         </div>
     </div>
@@ -2382,6 +2402,8 @@ function hashTxn(date,desc,amount,ref){
 let categoryRules=[];
 let txnData=[];
 let lastImport=null;
+let txnSort={col:'transaction_date',dir:'desc'};
+let txnSelected=new Set();
 
 function initImportTab(){
     buildAccountFormatMap();
@@ -2668,6 +2690,7 @@ async function loadTransactions(){
         txnData=await supaFetch('finance_transactions','GET',null,query);
     }catch(e){txnData=[];console.error('Load txns:',e);}
     
+    txnSelected.clear();
     renderTransactions();
 }
 
@@ -2679,8 +2702,22 @@ function renderTransactions(){
     if(!txnData.length){
         wrap.innerHTML='<p style="color:var(--sage-400);padding:16px;">No transactions found. Go to the Import tab to upload CSVs!</p>';
         document.getElementById('txn-summary').textContent='';
+        document.getElementById('txn-bulk-bar').style.display='none';
         return;
     }
+    
+    // Sort data
+    const sorted=[...txnData].sort((a,b)=>{
+        let va,vb;
+        if(txnSort.col==='transaction_date'){va=a.transaction_date||'';vb=b.transaction_date||'';}
+        else if(txnSort.col==='account'){va=accMap[a.account_id]?.name||'';vb=accMap[b.account_id]?.name||'';}
+        else if(txnSort.col==='description'){va=(a.description||'').toLowerCase();vb=(b.description||'').toLowerCase();}
+        else if(txnSort.col==='category'){va=(a.category||'').toLowerCase();vb=(b.category||'').toLowerCase();}
+        else if(txnSort.col==='amount'){va=a.amount||0;vb=b.amount||0;return txnSort.dir==='asc'?va-vb:vb-va;}
+        if(va<vb)return txnSort.dir==='asc'?-1:1;
+        if(va>vb)return txnSort.dir==='asc'?1:-1;
+        return 0;
+    });
     
     let totalSpend=0,totalIncome=0;
     txnData.forEach(t=>{
@@ -2690,18 +2727,40 @@ function renderTransactions(){
     document.getElementById('txn-summary').innerHTML=
         `${txnData.length} txns &nbsp;|&nbsp; <span style="color:#c44">${fmt(Math.abs(totalSpend))} out</span> &nbsp;|&nbsp; <span style="color:#4a7c3f">${fmt(totalIncome)} in</span>`;
     
+    // Bulk bar
+    const bulkBar=document.getElementById('txn-bulk-bar');
+    if(txnSelected.size>0){
+        bulkBar.style.display='flex';
+        document.getElementById('txn-bulk-count').textContent=`${txnSelected.size} selected`;
+    } else {
+        bulkBar.style.display='none';
+    }
+    
+    const arrow=col=>{
+        if(txnSort.col!==col)return' <span style="opacity:0.3;font-size:0.7rem;">⇅</span>';
+        return txnSort.dir==='asc'?' ↑':' ↓';
+    };
+    const thStyle='cursor:pointer;user-select:none;';
+    
+    const allChecked=sorted.length>0&&sorted.every(t=>txnSelected.has(t.id));
     let html=`<table class="data-table" style="width:100%;">
         <thead><tr>
-            <th>Date</th><th>Account</th><th>Description</th>
-            <th>Category</th><th style="text-align:right">Amount</th>
+            <th style="width:30px;"><input type="checkbox" ${allChecked?'checked':''} onchange="toggleAllTxn(this.checked)" style="accent-color:var(--sage-500);width:16px;height:16px;cursor:pointer;"></th>
+            <th style="${thStyle}" onclick="sortTxn('transaction_date')">Date${arrow('transaction_date')}</th>
+            <th style="${thStyle}" onclick="sortTxn('account')">Account${arrow('account')}</th>
+            <th style="${thStyle}" onclick="sortTxn('description')">Description${arrow('description')}</th>
+            <th style="${thStyle}" onclick="sortTxn('category')">Category${arrow('category')}</th>
+            <th style="${thStyle}text-align:right;" onclick="sortTxn('amount')">Amount${arrow('amount')}</th>
         </tr></thead><tbody>`;
     
-    txnData.forEach(t=>{
+    sorted.forEach(t=>{
         const acctName=accMap[t.account_id]?.name||'?';
         const shortAcct=acctName.length>12?acctName.substring(0,12)+'…':acctName;
         const isNeg=t.amount<0;
         const catStyle=t.category==='Uncategorized'?'background:#ffeeba;color:#856404;':'';
-        html+=`<tr>
+        const checked=txnSelected.has(t.id)?'checked':'';
+        html+=`<tr style="${checked?'background:rgba(122,144,97,0.12);':''}">
+            <td><input type="checkbox" ${checked} onchange="toggleTxnSelect(${t.id},this.checked)" style="accent-color:var(--sage-500);width:16px;height:16px;cursor:pointer;"></td>
             <td style="white-space:nowrap;font-size:0.8rem;">${t.transaction_date}</td>
             <td style="font-size:0.75rem;color:var(--sage-500);" title="${acctName}">${shortAcct}</td>
             <td style="font-size:0.8rem;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.description||'').replace(/"/g,'&quot;')}">${t.description||''}</td>
@@ -2712,6 +2771,47 @@ function renderTransactions(){
     
     html+=`</tbody></table>`;
     wrap.innerHTML=html;
+}
+
+function sortTxn(col){
+    if(txnSort.col===col){txnSort.dir=txnSort.dir==='asc'?'desc':'asc';}
+    else{txnSort.col=col;txnSort.dir=col==='amount'?'desc':'asc';}
+    renderTransactions();
+}
+
+function toggleTxnSelect(id,checked){
+    if(checked)txnSelected.add(id);else txnSelected.delete(id);
+    renderTransactions();
+}
+
+function toggleAllTxn(checked){
+    if(checked){txnData.forEach(t=>txnSelected.add(t.id));}
+    else{txnSelected.clear();}
+    renderTransactions();
+}
+
+async function bulkApplyCategory(){
+    const cat=document.getElementById('txn-bulk-category').value;
+    if(!cat)return alert('Pick a category first.');
+    if(!txnSelected.size)return;
+    
+    const count=txnSelected.size;
+    if(!confirm(`Set ${count} transaction${count>1?'s':''} to "${cat}"?`))return;
+    
+    try{
+        const ids=[...txnSelected];
+        // Batch in groups of 20
+        for(let i=0;i<ids.length;i+=20){
+            const batch=ids.slice(i,i+20);
+            const idList=batch.join(',');
+            await supaFetch('finance_transactions','PATCH',{category:cat},`?id=in.(${idList})`);
+        }
+        
+        txnSelected.clear();
+        document.getElementById('txn-bulk-category').value='';
+        await loadTransactions();
+        await loadCategoryFilter();
+    }catch(e){alert('Error: '+e.message);}
 }
 
 async function editCategory(txnId,description,currentCat){
