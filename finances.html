@@ -206,11 +206,11 @@
 <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
     <button class="tab-btn" onclick="switchTab('weekly')">Weekly Entry</button>
-    <button class="tab-btn" onclick="switchTab('import')">Import</button>
     <button class="tab-btn" onclick="switchTab('transactions')">Transactions</button>
     <button class="tab-btn" onclick="switchTab('accounts')">Accounts</button>
     <button class="tab-btn" onclick="switchTab('bills')">Bills</button>
     <button class="tab-btn" onclick="switchTab('history')">History</button>
+    <button class="tab-btn" onclick="switchTab('import')">Import</button>
 </div>
 
 <div class="main-content">
@@ -1914,7 +1914,8 @@ let categoryRules=[];
 let txnData=[];
 
 function initImportTab(){
-    const allAcc=[...accounts,...closedAccounts];
+    const importNames=['family cc','prime','chase cc','boa cc','pnc checking','rental account'];
+    const allAcc=[...accounts,...closedAccounts].filter(a=>importNames.includes(a.name.toLowerCase()));
     const container=document.getElementById('import-zones');
     const typeIcons={credit_card:'💳',loan:'🏦',bank:'🏧',tax_debt:'🏛️',other:'📁'};
     const typeLabels={credit_card:'Credit Card',loan:'Loan',bank:'Bank Account',tax_debt:'Tax Debt',other:'Other'};
