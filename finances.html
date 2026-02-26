@@ -921,6 +921,7 @@ async function onWeekChange(){
     await loadWeeklyBills();
     await calcCCSpent();
     await loadOtherPNC();
+    await loadExtraPayment();
     updateTaxDueDates();
     autoDefaultBOA();
 }
@@ -1360,7 +1361,20 @@ function buildWeeklyForm(){
 
     if(loans.length){
         h+=`<div class="section-divider">🏦 Loans</div>`;
-        loans.forEach(a=>{h+=entryRow(a,true);});
+        loans.forEach(a=>{
+            h+=entryRow(a,true);
+            if(a.name.toLowerCase().includes('prudential')){
+                h+=`<div style="display:grid;grid-template-columns:1fr 120px 120px 120px;gap:8px;align-items:center;padding:2px 0 8px;margin-left:8px;" id="extra-pay-row">
+                    <label style="font-size:0.85rem;color:var(--sage-500);font-style:italic;">↳ Extra Payment</label>
+                    <input type="number" step="0.01" placeholder="0.00" id="prudential-extra" data-acct-id="${a.id}" class="we-in" oninput="previewExtraPayment()" style="border:2px dashed var(--sage-400);background:rgba(122,144,97,0.08);">
+                    <div></div><div></div>
+                </div>
+                <div id="extra-pay-impact" style="margin:0 0 12px 8px;padding:10px 14px;border-radius:8px;background:rgba(122,144,97,0.1);border:1px solid var(--sage-300);display:none;">
+                    <div style="font-size:0.8rem;color:var(--sage-600);font-weight:600;margin-bottom:4px;">📊 Extra Payment Impact</div>
+                    <div id="extra-impact-details" style="font-size:0.85rem;color:var(--sage-700);line-height:1.6;"></div>
+                </div>`;
+            }
+        });
         h+=sumRow('loan','Loan Total');
     }
 
@@ -1615,7 +1629,10 @@ async function saveWeeklyEntries(){
         // Save other PNC payments
         await saveOtherPNC(dt);
 
-        alert('Week saved!');
+        // Save extra loan payment and recalculate schedule
+        const extraMsg=await saveExtraPayment(dt);
+
+        alert('Week saved!' + (extraMsg||''));
     }catch(e){alert('Error: '+e.message);}
 }
 
@@ -1628,6 +1645,243 @@ async function saveBillPayment(billId,billMonth,amt,paidDate,isPaid){
             await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:billMonth,actual_amount:amt,is_paid:isPaid,paid_date:paidDate});
         }
     }catch(e){console.error('Bill save error:',e);}
+}
+
+// ==================== EXTRA LOAN PAYMENTS ====================
+
+async function previewExtraPayment(){
+    const extraInput=document.getElementById('prudential-extra');
+    const impactDiv=document.getElementById('extra-pay-impact');
+    const detailsDiv=document.getElementById('extra-impact-details');
+    const extraAmt=parseFloat(extraInput?.value)||0;
+    
+    if(extraAmt<=0){impactDiv.style.display='none';return;}
+    impactDiv.style.display='block';
+    detailsDiv.innerHTML='Calculating...';
+    
+    const accountId=extraInput.dataset.acctId;
+    const weekStr=document.getElementById('entry-date').value;
+    if(!accountId||!weekStr)return;
+    
+    try{
+        const acct=accounts.find(a=>a.id===accountId);
+        if(!acct)return;
+        
+        // Get full current schedule
+        const schedule=await supaFetch('finance_loan_schedules','GET',null,
+            `?account_id=eq.${accountId}&order=due_date`);
+        if(!schedule?.length){detailsDiv.innerHTML='No schedule found.';return;}
+        
+        // Find current position - latest payment on or before this week
+        let currentIdx=-1;
+        for(let i=schedule.length-1;i>=0;i--){
+            if(schedule[i].due_date<=weekStr){currentIdx=i;break;}
+        }
+        
+        const currentBal=currentIdx>=0?parseFloat(schedule[currentIdx].balance_after):parseFloat(acct.starting_balance);
+        const monthlyRate=(acct.interest_rate||0)/100/12;
+        const monthlyPayment=acct.min_payment;
+        const originalPayoff=schedule[schedule.length-1].due_date;
+        const remainingPayments=schedule.length-(currentIdx+1);
+        
+        // Calculate original remaining interest
+        let origInterest=0;
+        for(let i=currentIdx+1;i<schedule.length;i++){
+            origInterest+=parseFloat(schedule[i].interest)||0;
+        }
+        
+        // Simulate with extra payment
+        let newBal=Math.max(0,currentBal-extraAmt);
+        let newPayments=0, newInterest=0;
+        let simBal=newBal;
+        let lastDate='';
+        const nextDueIdx=currentIdx+1;
+        
+        if(simBal<=0){
+            detailsDiv.innerHTML=`<strong style="color:var(--green-soft);">🎉 This would pay off the loan!</strong>`;
+            return;
+        }
+        
+        for(let i=0;i<remainingPayments+60;i++){
+            if(simBal<=0)break;
+            const dt=new Date(schedule[Math.min(nextDueIdx+i,schedule.length-1)]?.due_date+'T12:00:00'||new Date());
+            if(i>=1){dt.setMonth(dt.getMonth()+i);}
+            if(nextDueIdx+i<schedule.length){
+                lastDate=schedule[nextDueIdx+i].due_date;
+            } else {
+                const base=new Date(schedule[nextDueIdx]?.due_date+'T12:00:00'||new Date());
+                base.setMonth(base.getMonth()+i);
+                lastDate=base.toISOString().split('T')[0];
+            }
+            
+            const interest=Math.round(simBal*monthlyRate*100)/100;
+            newInterest+=interest;
+            let princ=monthlyPayment-interest;
+            if(princ>=simBal){princ=simBal;}
+            simBal=Math.max(0,Math.round((simBal-princ)*100)/100);
+            newPayments++;
+        }
+        
+        const savedPayments=remainingPayments-newPayments;
+        const savedInterest=origInterest-newInterest;
+        const origDate=new Date(originalPayoff+'T12:00:00');
+        const newDate=new Date(lastDate+'T12:00:00');
+        
+        const fmtDate=d=>d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+        
+        let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">`;
+        html+=`<div>Original payoff: <strong>${fmtDate(origDate)}</strong></div>`;
+        html+=`<div>New payoff: <strong style="color:var(--green-soft);">${fmtDate(newDate)}</strong></div>`;
+        if(savedPayments>0) html+=`<div>Payments saved: <strong style="color:var(--green-soft);">${savedPayments} months</strong></div>`;
+        if(savedInterest>0) html+=`<div>Interest saved: <strong style="color:var(--green-soft);">${fmt(savedInterest)}</strong></div>`;
+        html+=`</div>`;
+        detailsDiv.innerHTML=html;
+    }catch(e){
+        console.error('Preview extra payment:',e);
+        detailsDiv.innerHTML='Could not calculate impact.';
+    }
+}
+
+async function saveExtraPayment(dt){
+    const extraInput=document.getElementById('prudential-extra');
+    const extraAmt=parseFloat(extraInput?.value)||0;
+    const accountId=extraInput?.dataset?.acctId;
+    if(!accountId||!dt)return '';
+    
+    // Delete any existing extra payment for this week
+    try{
+        await supaFetch('finance_extra_payments','DELETE',null,`?account_id=eq.${accountId}&entry_date=eq.${dt}`);
+    }catch(e){}
+    
+    if(extraAmt<=0)return '';
+    
+    // Save the extra payment record
+    await supaFetch('finance_extra_payments','POST',{account_id:accountId,entry_date:dt,amount:extraAmt});
+    
+    // Recalculate the amortization schedule
+    return await recalculateLoanSchedule(accountId,dt,extraAmt);
+}
+
+async function recalculateLoanSchedule(accountId,weekStr,extraAmt){
+    try{
+        const acct=accounts.find(a=>a.id===accountId);
+        if(!acct)return;
+        
+        // Get full current schedule
+        const schedule=await supaFetch('finance_loan_schedules','GET',null,
+            `?account_id=eq.${accountId}&order=due_date`);
+        if(!schedule?.length)return;
+        
+        // Find current position
+        let currentIdx=-1;
+        for(let i=schedule.length-1;i>=0;i--){
+            if(schedule[i].due_date<=weekStr){currentIdx=i;break;}
+        }
+        
+        const currentBal=currentIdx>=0?parseFloat(schedule[currentIdx].balance_after):parseFloat(acct.starting_balance);
+        const monthlyRate=(acct.interest_rate||0)/100/12;
+        const monthlyPayment=acct.min_payment;
+        
+        // Apply extra payment to principal
+        let newBal=Math.max(0,currentBal-extraAmt);
+        
+        // Delete all future schedule entries (after current position)
+        const futurePayments=schedule.filter(s=>s.due_date>weekStr);
+        if(futurePayments.length){
+            await supaFetch('finance_loan_schedules','DELETE',null,
+                `?account_id=eq.${accountId}&due_date=gt.${weekStr}`);
+        }
+        
+        // Rebuild future schedule from new balance
+        if(newBal<=0){
+            // Loan is paid off! Update the current entry's balance_after
+            if(currentIdx>=0){
+                await supaFetch('finance_loan_schedules','PATCH',
+                    {balance_after:0},
+                    `?id=eq.${schedule[currentIdx].id}`);
+            }
+            alert(`🎉 Prudential Loan will be paid off with this extra payment!\nSchedule updated.`);
+            return '';
+        }
+        
+        const nextPayNum=(currentIdx>=0?schedule[currentIdx].payment_number:0)+1;
+        const nextDueDate=futurePayments.length?futurePayments[0].due_date:null;
+        
+        if(!nextDueDate)return '';
+        
+        let bal=newBal;
+        const newRows=[];
+        let payNum=nextPayNum;
+        
+        for(let i=0;i<600;i++){  // safety limit
+            if(bal<=0)break;
+            
+            const dt=new Date(nextDueDate+'T00:00:00');
+            dt.setMonth(dt.getMonth()+i);
+            const dateStr=dt.toISOString().split('T')[0];
+            
+            const interest=Math.round(bal*monthlyRate*100)/100;
+            let payAmt=monthlyPayment;
+            let princ=payAmt-interest;
+            
+            if(princ>=bal){
+                princ=bal;
+                payAmt=Math.round((bal+interest)*100)/100;
+            } else {
+                princ=Math.round(princ*100)/100;
+            }
+            
+            const newBalAfter=Math.max(0,Math.round((bal-princ)*100)/100);
+            
+            newRows.push({
+                account_id:accountId,
+                payment_number:payNum,
+                due_date:dateStr,
+                payment_amount:payAmt,
+                interest:interest,
+                principal:princ,
+                balance_after:newBalAfter
+            });
+            
+            bal=newBalAfter;
+            payNum++;
+        }
+        
+        // Insert new schedule in batches
+        for(let i=0;i<newRows.length;i+=50){
+            await supaFetch('finance_loan_schedules','POST',newRows.slice(i,i+50));
+        }
+        
+        const origPayoff=schedule[schedule.length-1].due_date;
+        const newPayoff=newRows.length?newRows[newRows.length-1].due_date:origPayoff;
+        const fmtD=d=>new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+        
+        return `\n\n📊 Prudential schedule recalculated!\nExtra payment: ${fmt(extraAmt)}\nNew payoff: ${fmtD(newPayoff)}\nPayments remaining: ${newRows.length}`;
+        
+    }catch(e){
+        console.error('Recalculate schedule:',e);
+        return '\n\n⚠️ Error recalculating schedule: '+e.message;
+    }
+}
+
+async function loadExtraPayment(){
+    const dt=document.getElementById('entry-date').value;
+    const extraInput=document.getElementById('prudential-extra');
+    if(!dt||!extraInput)return;
+    const accountId=extraInput.dataset.acctId;
+    if(!accountId)return;
+    
+    try{
+        const rows=await supaFetch('finance_extra_payments','GET',null,
+            `?account_id=eq.${accountId}&entry_date=eq.${dt}`);
+        if(rows?.length){
+            extraInput.value=rows[0].amount;
+            previewExtraPayment();
+        } else {
+            extraInput.value='';
+            document.getElementById('extra-pay-impact').style.display='none';
+        }
+    }catch(e){console.error('Load extra payment:',e);}
 }
 
 // ==================== HISTORY ====================
