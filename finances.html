@@ -2031,6 +2031,7 @@ async function importCSVForAccount(file,accountId){
                 body:JSON.stringify(clean)
             });
             const data=await res.json();
+                console.log('IMPORT RESPONSE:', res.status, data);
             const batchImported=Array.isArray(data)?data.length:0;
             imported+=batchImported;
             skipped+=(batch.length-batchImported);
