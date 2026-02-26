@@ -2016,8 +2016,8 @@ async function importCSVForAccount(file,accountId){
     // Step 1: Get all existing hashes for this account
     let existingHashes=new Set();
     try{
-        const hashRes=await fetch(`${SUPA_URL}/rest/v1/finance_transactions?account_id=eq.${accountId}&select=dedup_hash`,{
-            headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`}
+        const hashRes=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?account_id=eq.${accountId}&select=dedup_hash`,{
+            headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
         });
         const hashData=await hashRes.json();
         if(Array.isArray(hashData)) hashData.forEach(r=>existingHashes.add(r.dedup_hash));
@@ -2049,9 +2049,9 @@ async function importCSVForAccount(file,accountId){
                 if(!c.category)c.category='Uncategorized';
                 return c;
             });
-            const res=await fetch(`${SUPA_URL}/rest/v1/finance_transactions`,{
+            const res=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions`,{
                 method:'POST',
-                headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,
+                headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,
                     'Content-Type':'application/json','Prefer':'return=representation'},
                 body:JSON.stringify(clean)
             });
@@ -2188,9 +2188,9 @@ async function editCategory(txnId,description,currentCat){
         const vendor=description.split(/\s{2,}|\d/)[0].trim().toUpperCase();
         if(vendor.length>=3){
             try{
-                await fetch(`${SUPA_URL}/rest/v1/finance_category_rules`,{
+                await fetch(`${SUPABASE_URL}/rest/v1/finance_category_rules`,{
                     method:'POST',
-                    headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,
+                    headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,
                         'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates'},
                     body:JSON.stringify({pattern:vendor,category:newCat})
                 });
