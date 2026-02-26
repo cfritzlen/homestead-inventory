@@ -315,11 +315,7 @@
 
         <div class="card">
             <h2>Active Accounts</h2>
-            <div class="table-scroll">
-                <table class="data-table"><thead><tr>
-                    <th>Name</th><th>Type</th><th>Rate</th><th>Starting Bal</th><th>Min Pay</th><th>Pays From</th><th>Actions</th>
-                </tr></thead><tbody id="accounts-body"></tbody></table>
-            </div>
+            <div id="accounts-grouped"></div>
             <div id="accounts-empty" class="empty-state" style="display:none;"><div class="icon">🏦</div><p>No accounts yet.</p></div>
         </div>
 
@@ -539,17 +535,48 @@ async function loadAccounts() {
 }
 
 function renderAccounts() {
-    const tbody=document.getElementById('accounts-body'), empty=document.getElementById('accounts-empty');
-    if (!accounts.length){tbody.innerHTML='';empty.style.display='block';}
+    const container=document.getElementById('accounts-grouped'), empty=document.getElementById('accounts-empty');
+    const filtered=accounts.filter(a=>a.name.toLowerCase()!=='recurring bills');
+    if (!filtered.length){container.innerHTML='';empty.style.display='block';}
     else {
         empty.style.display='none';
-        tbody.innerHTML=accounts.map(a=>`<tr>
-            <td><strong>${a.name}</strong></td><td>${typeLabel(a.account_type)}</td>
-            <td class="amount">${a.interest_rate}%</td><td class="amount">${fmt(a.starting_balance)}</td>
-            <td class="amount">${fmt(a.min_payment)}</td><td>${a.pays_from||'-'}</td>
-            <td><button class="btn btn-small btn-secondary" onclick="editAccount('${a.id}')">Edit</button>
-            <button class="btn btn-small btn-primary" onclick="openCloseAccount('${a.id}')">Close Out</button></td>
-        </tr>`).join('');
+        const typeOrder=['credit_card','loan','tax_debt','bank','other'];
+        const typeLabels={credit_card:'💳 Credit Cards',loan:'🏦 Loans',tax_debt:'🏛️ Tax Debt',bank:'🏧 Bank Accounts',other:'📁 Other'};
+        const groups={};
+        filtered.forEach(a=>{
+            const t=a.account_type||'other';
+            if(!groups[t])groups[t]=[];
+            groups[t].push(a);
+        });
+        let html='';
+        let grandTotal=0;
+        typeOrder.forEach(type=>{
+            if(!groups[type])return;
+            const accs=groups[type];
+            const subtotal=accs.reduce((s,a)=>s+(parseFloat(a.min_payment)||0),0);
+            grandTotal+=subtotal;
+            html+=`<div style="margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--sage-100);border-radius:8px;margin-bottom:8px;">
+                    <strong style="color:var(--sage-700);font-size:0.95rem;">${typeLabels[type]||type}</strong>
+                    <span style="color:var(--sage-600);font-size:0.85rem;">Min Pay Total: <strong>${fmt(subtotal)}</strong></span>
+                </div>
+                <div class="table-scroll"><table class="data-table"><thead><tr>
+                    <th>Name</th><th>Rate</th><th>Starting Bal</th><th>Min Pay</th><th>Pays From</th><th>Actions</th>
+                </tr></thead><tbody>`;
+            accs.forEach(a=>{
+                html+=`<tr>
+                    <td><strong>${a.name}</strong></td>
+                    <td class="amount">${a.interest_rate}%</td><td class="amount">${fmt(a.starting_balance)}</td>
+                    <td class="amount">${fmt(a.min_payment)}</td><td>${a.pays_from||'-'}</td>
+                    <td><button class="btn btn-small btn-secondary" onclick="editAccount('${a.id}')">Edit</button>
+                    <button class="btn btn-small btn-primary" onclick="openCloseAccount('${a.id}')">Close Out</button></td>
+                </tr>`;
+            });
+            html+=`</tbody></table></div></div>`;
+        });
+        html+=`<div style="text-align:right;padding:10px 12px;border-top:2px solid var(--sage-300);margin-top:8px;">
+            <strong style="color:var(--sage-700);">Total Min Payments: ${fmt(grandTotal)}</strong></div>`;
+        container.innerHTML=html;
     }
     const cc=document.getElementById('closed-card'), cb=document.getElementById('closed-body');
     if (closedAccounts.length){
