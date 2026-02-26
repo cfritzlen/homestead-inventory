@@ -2824,10 +2824,8 @@ async function initTransactions(){
 
 async function loadCategoryFilter(){
     try{
-        const cats=await supaFetch('finance_transactions','GET',null,'?select=category&order=category');
-        const unique=[...new Set(cats.map(c=>c.category).filter(Boolean))].sort();
         const sel=document.getElementById('txn-filter-category');
-        sel.innerHTML='<option value="">All Categories</option>'+unique.map(c=>`<option value="${c}">${c}</option>`).join('');
+        sel.innerHTML='<option value="">All Categories</option>'+getCatOptions().map(c=>`<option value="${c}">${c}</option>`).join('');
     }catch(e){}
 }
 
