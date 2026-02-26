@@ -1366,7 +1366,7 @@ function buildWeeklyForm(){
             if(a.name.toLowerCase().includes('prudential')){
                 h+=`<div style="display:grid;grid-template-columns:1fr 120px 120px 120px;gap:8px;align-items:center;padding:2px 0 8px;margin-left:8px;" id="extra-pay-row">
                     <label style="font-size:0.85rem;color:var(--sage-500);font-style:italic;">↳ Extra Payment</label>
-                    <input type="number" step="0.01" placeholder="0.00" id="prudential-extra" data-acct-id="${a.id}" class="we-in" oninput="previewExtraPayment()" style="border:2px dashed var(--sage-400);background:rgba(122,144,97,0.08);">
+                    <input type="number" step="0.01" placeholder="0.00" id="prudential-extra" data-acct-id="${a.id}" class="we-in" oninput="calcWeekly();previewExtraPayment()" style="border:2px dashed var(--sage-400);background:rgba(122,144,97,0.08);">
                     <div></div><div></div>
                 </div>
                 <div id="extra-pay-impact" style="margin:0 0 12px 8px;padding:10px 14px;border-radius:8px;background:rgba(122,144,97,0.1);border:1px solid var(--sage-300);display:none;">
@@ -1528,7 +1528,12 @@ function calcWeekly(){
             return;
         }
 
-        const end=bal-pay;
+        // Include extra payment for Prudential loan
+        let extraForThis=0;
+        if(a.name.toLowerCase().includes('prudential')){
+            extraForThis=parseFloat(document.getElementById('prudential-extra')?.value)||0;
+        }
+        const end=bal-pay-extraForThis;
         eD.textContent=fmt(end); eD.className=`calc ${end<0?'negative':''}`;
 
         if(a.is_debt){totalDebt+=bal; totalDebtPay+=pay;}
@@ -1545,7 +1550,8 @@ function calcWeekly(){
     // PNC: subtract expenses, add rental income
     if(pncAcc){
         const otherPNC=getOtherPNCTotal();
-        const totalOut=pncAutoPayTotal+billsTotal+otherPNC;
+        const extraPay=parseFloat(document.getElementById('prudential-extra')?.value)||0;
+        const totalOut=pncAutoPayTotal+billsTotal+otherPNC+extraPay;
         const pncPayInput=document.querySelector(`input[data-id="${pncAcc.id}"][data-f="pay"]`);
         const pncEndDiv=document.querySelector(`div[data-id="${pncAcc.id}"][data-f="end"]`);
         const netOut=totalOut+rentalIncome;
@@ -1599,7 +1605,11 @@ async function saveWeeklyEntries(){
         if(!bI)return;
         const bal=parseFloat(bI.value)||0, pay=parseFloat(pI.value)||0;
         const isRental=rentalAcc&&a.id===rentalAcc.id;
-        const ending=isRental?bal+pay:bal-pay;
+        let extraForLoan=0;
+        if(a.name.toLowerCase().includes('prudential')){
+            extraForLoan=parseFloat(document.getElementById('prudential-extra')?.value)||0;
+        }
+        const ending=isRental?bal+pay:bal-pay-extraForLoan;
         if(bal!==0||pay!==0) entries.push({entry_date:dt,account_id:a.id,starting_balance:bal,payment:isRental?pay:-pay,ending_balance:ending});
     });
     if(!entries.length)return alert('Enter at least one balance.');
