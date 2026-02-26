@@ -2197,7 +2197,7 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
             txn.address=(cols[3]||'').trim();
             txn.amount=parseFloat(cols[4])||0;
             txn.reference_number=cols[1]||'';
-            txn.category=guessCategory(txn.description);
+            txn.category='Girls';
             txn.dedup_hash=hashTxn(null,null,null,txn.reference_number);
         } else if(format==='pnc'){
             txn.transaction_date=parseDate(cols[0]);
@@ -2288,10 +2288,7 @@ async function undoImport(entryId){
         for(let i=0;i<lastImport.ids.length;i+=50){
             const batch=lastImport.ids.slice(i,i+50);
             const idList=batch.map(id=>`"${id}"`).join(',');
-            await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?id=in.(${idList})`,{
-                method:'DELETE',
-                headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
-            });
+            await supaFetch('finance_transactions','DELETE',null,`?id=in.(${idList})`);
         }
         const entry=document.getElementById(entryId||lastImport.entryId);
         if(entry){
@@ -2408,7 +2405,7 @@ function renderTransactions(){
 }
 
 async function editCategory(txnId,description,currentCat){
-    const cats=['Groceries','Food & Drink','Gas','Home','Shopping','Health','Automotive',
+    const cats=['Girls','Groceries','Food & Drink','Gas','Home','Shopping','Health','Automotive',
         'Subscriptions','Electric','Insurance','Tax Payment','Loan Payment','CC Payment',
         'Investment','Income','Childcare','Pets','Solar','Entertainment','Travel','Uncategorized'];
     
@@ -2421,12 +2418,7 @@ async function editCategory(txnId,description,currentCat){
         const vendor=description.split(/\s{2,}|\d/)[0].trim().toUpperCase();
         if(vendor.length>=3){
             try{
-                await fetch(`${SUPABASE_URL}/rest/v1/finance_category_rules`,{
-                    method:'POST',
-                    headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,
-                        'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates'},
-                    body:JSON.stringify({pattern:vendor,category:newCat})
-                });
+                await supaFetch('finance_category_rules','POST',{pattern:vendor,category:newCat});
                 categoryRules=await supaFetch('finance_category_rules','GET',null,'?order=pattern');
             }catch(e){}
         }
