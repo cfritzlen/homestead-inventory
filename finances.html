@@ -2262,8 +2262,6 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
             const data=await supaFetch('finance_transactions','POST',clean);
             if(Array.isArray(data)){imported+=data.length;importedIds.push(...data.map(d=>d.id));}
         }catch(e){console.error('Batch error:',e);statusEl.innerHTML=`❌ Error: ${e.message}`;statusEl.style.color='#c44';return;}
-            else{imported+=data.length;importedIds.push(...data.map(d=>d.id));}
-        }catch(e){console.error('Batch error:',e);}
     }
     
     lastImport={ids:importedIds,accountId,count:imported,entryId};
