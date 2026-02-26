@@ -231,8 +231,15 @@
     <div id="tab-import" class="tab-panel">
         <div class="card">
             <h2>📥 Import Transactions</h2>
-            <p style="color:var(--sage-500);font-size:0.85rem;margin-bottom:16px;">Drag & drop a CSV export onto the matching account. Duplicates are automatically skipped.</p>
-            <div id="import-zones" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"></div>
+            <p style="color:var(--sage-500);font-size:0.85rem;margin-bottom:16px;">Drop any bank CSV below — the app will detect which account it belongs to.</p>
+            <div id="import-drop" class="drop-zone" style="min-height:160px;padding:32px 24px;text-align:center;"
+                 ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDropSingle(event)">
+                <div style="font-size:2.5rem;margin-bottom:8px;">📄</div>
+                <div class="drop-zone-hint" style="font-size:1rem;">Drop CSV here or click to browse</div>
+                <div style="color:var(--sage-400);font-size:0.8rem;margin-top:8px;">Supports: Chase, BOA, PNC</div>
+                <input type="file" accept=".csv" multiple onchange="dzFileSelectSingle(event)">
+            </div>
+            <div id="import-log" style="margin-top:16px;"></div>
         </div>
     </div>
 
@@ -305,6 +312,7 @@
             </div>
             <div class="form-row">
                 <div class="form-group"><label>Pays From</label><input type="text" id="acc-paysfrom" placeholder="e.g. PNC Checking"></div>
+                <div class="form-group"><label>Last 4 Digits</label><input type="text" id="acc-last4" maxlength="4" placeholder="e.g. 8683"></div>
                 <div class="form-group"><label>Notes</label><input type="text" id="acc-notes" placeholder="Optional"></div>
             </div>
             <div class="form-row" id="loan-fields" style="display:none;background:var(--sage-50);padding:12px;border-radius:8px;border:1px dashed var(--sage-300);">
@@ -608,6 +616,7 @@ async function saveAccount() {
         min_payment:parseFloat(document.getElementById('acc-minpay').value)||0,
         is_debt:document.getElementById('acc-isdebt').value==='true',
         pays_from:document.getElementById('acc-paysfrom').value.trim()||null,
+        last_4:document.getElementById('acc-last4').value.trim()||null,
         notes:document.getElementById('acc-notes').value.trim()||null
     };
     if(!data.name)return alert('Enter a name.');
@@ -688,13 +697,14 @@ function editAccount(id){
     document.getElementById('acc-minpay').value=a.min_payment;
     document.getElementById('acc-isdebt').value=String(a.is_debt);
     document.getElementById('acc-paysfrom').value=a.pays_from||'';
+    document.getElementById('acc-last4').value=a.last_4||'';
     document.getElementById('acc-notes').value=a.notes||'';
     document.getElementById('btn-cancel-edit').style.display='inline-block';
     toggleLoanFields();
     window.scrollTo({top:0,behavior:'smooth'});
 }
 function cancelEditAccount(){editingAccountId=null;document.getElementById('btn-cancel-edit').style.display='none';clearAccForm();}
-function clearAccForm(){['acc-name','acc-rate','acc-starting','acc-minpay','acc-paysfrom','acc-notes','acc-loan-term','acc-loan-start'].forEach(id=>document.getElementById(id).value='');document.getElementById('acc-type').value='credit_card';document.getElementById('acc-isdebt').value='true';document.getElementById('acc-loan-bill').value='true';document.getElementById('loan-fields').style.display='none';}
+function clearAccForm(){['acc-name','acc-rate','acc-starting','acc-minpay','acc-paysfrom','acc-last4','acc-notes','acc-loan-term','acc-loan-start'].forEach(id=>document.getElementById(id).value='');document.getElementById('acc-type').value='credit_card';document.getElementById('acc-isdebt').value='true';document.getElementById('acc-loan-bill').value='true';document.getElementById('loan-fields').style.display='none';}
 function openCloseAccount(id){closingAccountId=id;document.getElementById('modal-close-date').value=new Date().toISOString().split('T')[0];document.getElementById('modal-close-account').classList.add('active');}
 async function confirmCloseAccount(){
     const d=document.getElementById('modal-close-date').value,r=document.getElementById('modal-close-reason').value;
@@ -1989,10 +1999,25 @@ function renderLineChart(containerId,data){
 function detectCSVFormat(headers){
     const h=headers.map(c=>c.trim().toLowerCase());
     if(h.includes('reference number')&&h.includes('payee')) return 'boa';
+    if(h.includes('details')&&h.includes('posting date')&&h.includes('type')) return 'chase_checking';
     if(h.includes('category')&&h.includes('post date')) return 'chase';
     if(h.includes('transaction description')&&h.includes('balance')) return 'pnc';
     if(h[0]==='date'&&h[1]==='description'&&h[2]==='amount'&&h[3]&&h[3].includes('running')) return 'boa_checking';
     return 'unknown';
+}
+
+// Map accounts to expected CSV formats
+const accountFormatMap={};
+function buildAccountFormatMap(){
+    const allAcc=[...accounts,...closedAccounts];
+    allAcc.forEach(a=>{
+        const n=a.name.toLowerCase();
+        if(n.includes('family cc')||n.includes('prime')||n.includes('chase cc')) accountFormatMap[a.id]='chase';
+        else if(n==='boa cc') accountFormatMap[a.id]='boa';
+        else if(n.includes('pnc')) accountFormatMap[a.id]='pnc';
+        else if(n==='boa checking') accountFormatMap[a.id]='boa_checking';
+        else if(n.includes('rental')) accountFormatMap[a.id]='chase_checking';
+    });
 }
 
 function parseCSVLine(line){
@@ -2046,57 +2071,41 @@ function hashTxn(date,desc,amount,ref){
 // ==================== IMPORT TAB ====================
 let categoryRules=[];
 let txnData=[];
+let lastImport=null;
 
 function initImportTab(){
-    const importNames=['family cc','prime','chase cc','boa cc','pnc checking','rental account','pnc 1407','boa checking'];
-    const allAcc=[...accounts,...closedAccounts].filter(a=>importNames.includes(a.name.toLowerCase()));
-    const container=document.getElementById('import-zones');
-    const typeIcons={credit_card:'💳',loan:'🏦',bank:'🏧',tax_debt:'🏛️',other:'📁'};
-    const typeLabels={credit_card:'Credit Card',loan:'Loan',bank:'Bank Account',tax_debt:'Tax Debt',other:'Other'};
-    
-    container.innerHTML=allAcc.map(a=>`
-        <div class="drop-zone" id="dz-${a.id}" 
-             ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event,'${a.id}')">
-            <div class="drop-zone-icon">${typeIcons[a.account_type]||'📁'}</div>
-            <div class="drop-zone-name">${a.name}</div>
-            <div class="drop-zone-type">${typeLabels[a.account_type]||a.account_type}</div>
-            <div class="drop-zone-hint">Drop CSV here or click to browse</div>
-            <div class="drop-zone-status" id="dz-status-${a.id}"></div>
-            <input type="file" accept=".csv" onchange="dzFileSelect(event,'${a.id}')">
-        </div>
-    `).join('');
+    buildAccountFormatMap();
 }
 
-function dzOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
-function dzLeave(e){e.currentTarget.classList.remove('drag-over');}
-function dzDrop(e,accountId){
+function dzDropSingle(e){
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
-    const file=e.dataTransfer.files[0];
-    if(file) importCSVForAccount(file,accountId);
+    const files=e.dataTransfer.files;
+    for(const file of files) autoDetectAndImport(file);
 }
-function dzFileSelect(e,accountId){
-    const file=e.target.files[0];
-    if(file) importCSVForAccount(file,accountId);
+function dzFileSelectSingle(e){
+    const files=e.target.files;
+    for(const file of files) autoDetectAndImport(file);
     e.target.value='';
 }
 
-async function importCSVForAccount(file,accountId){
-    const zone=document.getElementById(`dz-${accountId}`);
-    const status=document.getElementById(`dz-status-${accountId}`);
-    zone.classList.remove('success','error');
-    status.style.color='var(--sage-600)';
-    status.textContent='Reading...';
+async function autoDetectAndImport(file){
+    const log=document.getElementById('import-log');
+    const entryId='imp-'+Date.now();
+    log.insertAdjacentHTML('afterbegin',`<div id="${entryId}" style="padding:12px;margin-bottom:8px;border-radius:8px;background:var(--sage-50);border:1px solid var(--sage-200);">
+        <strong>${file.name}</strong> — <span class="imp-status">Reading...</span></div>`);
+    const statusEl=document.querySelector(`#${entryId} .imp-status`);
     
-    if(!categoryRules.length){
-        try{categoryRules=await supaFetch('finance_category_rules','GET',null,'?order=pattern');}catch(e){categoryRules=[];}
-    }
+    buildAccountFormatMap();
+    const importAccounts=[...accounts,...closedAccounts];
+    const importNames=['family cc','prime','chase cc','boa cc','pnc checking','rental account','pnc 1407','boa checking'];
+    const eligible=importAccounts.filter(a=>importNames.includes(a.name.toLowerCase()));
     
     const text=await file.text();
     const lines=text.split('\n').filter(l=>l.trim());
-    if(lines.length<2){status.textContent='File appears empty.';zone.classList.add('error');return;}
+    if(lines.length<2){statusEl.textContent='File appears empty.';statusEl.style.color='#c44';return;}
     
-    // Find the real header row (BOA checking has summary rows first)
+    // Find header row
     let headerIdx=0;
     for(let i=0;i<Math.min(lines.length,15);i++){
         const test=parseCSVLine(lines[i]).map(c=>c.trim().toLowerCase());
@@ -2104,18 +2113,68 @@ async function importCSVForAccount(file,accountId){
             headerIdx=i;break;
         }
     }
-    
     const headers=parseCSVLine(lines[headerIdx]);
-    const format=detectCSVFormat(headers);
+    const detectedFormat=detectCSVFormat(headers);
     
-    if(format==='unknown'){
-        status.textContent="Can't detect format";
-        status.style.color='#c44';
-        zone.classList.add('error');
-        return;
+    if(detectedFormat==='unknown'){
+        statusEl.innerHTML='❌ Unrecognized CSV format';statusEl.style.color='#c44';return;
     }
     
-    status.textContent=`${format.toUpperCase()} · Parsing rows...`;
+    // Find matching accounts by format
+    const formatMatches=eligible.filter(a=>accountFormatMap[a.id]===detectedFormat);
+    
+    if(!formatMatches.length){
+        statusEl.innerHTML=`❌ No account set up for this format (${detectedFormat})`;statusEl.style.color='#c44';return;
+    }
+    
+    // Narrow down by last 4 digits in filename or file content
+    let match=null;
+    if(formatMatches.length===1){
+        match=formatMatches[0];
+    } else {
+        // Check last 4 in filename first, then file content
+        for(const a of formatMatches){
+            if(a.last_4&&file.name.includes(a.last_4)){match=a;break;}
+        }
+        if(!match){
+            for(const a of formatMatches){
+                if(a.last_4&&text.includes(a.last_4)){match=a;break;}
+            }
+        }
+        if(!match){
+            // Can't determine — ask user
+            const names=formatMatches.map(a=>`${a.name}${a.last_4?' (••'+a.last_4+')':''}`).join('\n');
+            const pick=prompt(`Multiple accounts match this format.\nWhich account is "${file.name}" for?\n\n${names}\n\nType the account name:`);
+            if(!pick){statusEl.innerHTML='⏭ Skipped';statusEl.style.color='var(--sage-400)';return;}
+            match=formatMatches.find(a=>a.name.toLowerCase().includes(pick.toLowerCase()));
+            if(!match){statusEl.innerHTML='❌ No matching account found';statusEl.style.color='#c44';return;}
+        }
+    }
+    
+    statusEl.innerHTML=`Matched → <strong>${match.name}</strong>${match.last_4?' (••'+match.last_4+')':''} · Importing...`;
+    statusEl.style.color='var(--sage-600)';
+    
+    // Run the import
+    await importCSVForAccountSingle(file,match.id,entryId,statusEl);
+}
+
+async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
+    if(!categoryRules.length){
+        try{categoryRules=await supaFetch('finance_category_rules','GET',null,'?order=pattern');}catch(e){categoryRules=[];}
+    }
+    
+    const text=await file.text();
+    const lines=text.split('\n').filter(l=>l.trim());
+    
+    let headerIdx=0;
+    for(let i=0;i<Math.min(lines.length,15);i++){
+        const test=parseCSVLine(lines[i]).map(c=>c.trim().toLowerCase());
+        if(test[0]==='date'&&test[1]==='description'&&test[2]==='amount'&&test[3]&&test[3].includes('running')){
+            headerIdx=i;break;
+        }
+    }
+    const headers=parseCSVLine(lines[headerIdx]);
+    const format=detectCSVFormat(headers);
     
     const txns=[];
     for(let i=headerIdx+1;i<lines.length;i++){
@@ -2157,6 +2216,14 @@ async function importCSVForAccount(file,accountId){
             txn.raw_balance=cols[3]||'';
             txn.category=guessCategory(txn.description);
             txn.dedup_hash=hashTxn(txn.transaction_date,txn.description,txn.amount);
+        } else if(format==='chase_checking'){
+            txn.transaction_date=parseDate(cols[1]);
+            if(!txn.transaction_date)continue;
+            txn.description=(cols[2]||'').trim();
+            txn.amount=parsePNCAmount(cols[3]);
+            txn.raw_balance=cols[5]||'';
+            txn.category=guessCategory(txn.description);
+            txn.dedup_hash=hashTxn(txn.transaction_date,txn.description,txn.amount);
         }
         
         if(!txn.transaction_date)continue;
@@ -2164,9 +2231,7 @@ async function importCSVForAccount(file,accountId){
         txns.push(txn);
     }
     
-    status.textContent=`Checking for duplicates...`;
-    
-    // Step 1: Get all existing hashes for this account
+    // Check for duplicates
     let existingHashes=new Set();
     try{
         const hashRes=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?account_id=eq.${accountId}&select=dedup_hash`,{
@@ -2176,22 +2241,17 @@ async function importCSVForAccount(file,accountId){
         if(Array.isArray(hashData)) hashData.forEach(r=>existingHashes.add(r.dedup_hash));
     }catch(e){console.error('Hash fetch error:',e);}
     
-    // Step 2: Filter out duplicates
     const newTxns=txns.filter(t=>!existingHashes.has(t.dedup_hash));
     const skipped=txns.length-newTxns.length;
     let imported=0;
+    const importedIds=[];
     
     if(newTxns.length===0){
-        status.style.color='var(--sage-600)';
-        status.innerHTML=`✅ <strong>0</strong> new · <strong>${skipped}</strong> skipped`;
-        zone.classList.add('success');
-        setTimeout(()=>{zone.classList.remove('success');status.textContent='';},8000);
+        statusEl.innerHTML=`✅ <strong>0</strong> new · <strong>${skipped}</strong> skipped`;
+        statusEl.style.color='#2e7d32';
         return;
     }
     
-    status.textContent=`Importing ${newTxns.length} transactions...`;
-    
-    // Step 3: Insert new transactions in batches
     const batchSize=50;
     for(let i=0;i<newTxns.length;i+=batchSize){
         const batch=newTxns.slice(i,i+batchSize);
@@ -2209,18 +2269,44 @@ async function importCSVForAccount(file,accountId){
                 body:JSON.stringify(clean)
             });
             const data=await res.json();
-            if(!Array.isArray(data)){console.error('Import error:',res.status,data);} 
-            else{imported+=data.length;}
+            if(!Array.isArray(data)){console.error('Import error:',res.status,data);}
+            else{imported+=data.length;importedIds.push(...data.map(d=>d.id));}
         }catch(e){console.error('Batch error:',e);}
     }
     
-    zone.classList.add('success');
-    status.style.color='#2e7d32';
-    status.innerHTML=`✅ <strong>${imported}</strong> new · <strong>${skipped}</strong> skipped`;
-    setTimeout(()=>{zone.classList.remove('success');status.textContent='';},8000);
+    lastImport={ids:importedIds,accountId,count:imported,entryId};
+    
+    const allAcc=[...accounts,...closedAccounts];
+    const acc=allAcc.find(a=>a.id===accountId);
+    statusEl.innerHTML=`✅ → <strong>${acc?.name||'Account'}</strong> · <strong>${imported}</strong> new · <strong>${skipped}</strong> skipped <button onclick="undoImport('${entryId}')" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid #c44;background:white;color:#c44;cursor:pointer;font-size:0.8rem;">↩ Undo</button>`;
+    statusEl.style.color='#2e7d32';
 }
 
+function dzOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function dzLeave(e){e.currentTarget.classList.remove('drag-over');}
+
 // ==================== TRANSACTIONS TAB ====================
+
+async function undoImport(entryId){
+    if(!lastImport||!lastImport.ids.length)return;
+    if(!confirm(`Undo import of ${lastImport.count} transactions?`))return;
+    try{
+        for(let i=0;i<lastImport.ids.length;i+=50){
+            const batch=lastImport.ids.slice(i,i+50);
+            const idList=batch.map(id=>`"${id}"`).join(',');
+            await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?id=in.(${idList})`,{
+                method:'DELETE',
+                headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
+            });
+        }
+        const entry=document.getElementById(entryId||lastImport.entryId);
+        if(entry){
+            const st=entry.querySelector('.imp-status');
+            if(st){st.style.color='#c44';st.innerHTML=`↩ <strong>${lastImport.count}</strong> transactions removed`;}
+        }
+        lastImport=null;
+    }catch(e){alert('Undo failed: '+e.message);}
+}
 
 async function initTransactions(){
     const allAcc=[...accounts,...closedAccounts];
