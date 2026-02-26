@@ -2234,10 +2234,7 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
     // Check for duplicates
     let existingHashes=new Set();
     try{
-        const hashRes=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?account_id=eq.${accountId}&select=dedup_hash`,{
-            headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
-        });
-        const hashData=await hashRes.json();
+        const hashData=await supaFetch('finance_transactions','GET',null,`?account_id=eq.${accountId}&select=dedup_hash`);
         if(Array.isArray(hashData)) hashData.forEach(r=>existingHashes.add(r.dedup_hash));
     }catch(e){console.error('Hash fetch error:',e);}
     
@@ -2262,14 +2259,9 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
                 if(!c.category)c.category='Uncategorized';
                 return c;
             });
-            const res=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions`,{
-                method:'POST',
-                headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,
-                    'Content-Type':'application/json','Prefer':'return=representation'},
-                body:JSON.stringify(clean)
-            });
-            const data=await res.json();
-            if(!Array.isArray(data)){console.error('Import error:',res.status,data);}
+            const data=await supaFetch('finance_transactions','POST',clean);
+            if(Array.isArray(data)){imported+=data.length;importedIds.push(...data.map(d=>d.id));}
+        }catch(e){console.error('Batch error:',e);statusEl.innerHTML=`❌ Error: ${e.message}`;statusEl.style.color='#c44';return;}
             else{imported+=data.length;importedIds.push(...data.map(d=>d.id));}
         }catch(e){console.error('Batch error:',e);}
     }
