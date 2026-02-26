@@ -2011,12 +2011,37 @@ async function importCSVForAccount(file,accountId){
         txns.push(txn);
     }
     
-    status.textContent=`Importing ${txns.length} transactions...`;
+    status.textContent=`Checking for duplicates...`;
     
-    let imported=0,skipped=0;
+    // Step 1: Get all existing hashes for this account
+    let existingHashes=new Set();
+    try{
+        const hashRes=await fetch(`${SUPA_URL}/rest/v1/finance_transactions?account_id=eq.${accountId}&select=dedup_hash`,{
+            headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`}
+        });
+        const hashData=await hashRes.json();
+        if(Array.isArray(hashData)) hashData.forEach(r=>existingHashes.add(r.dedup_hash));
+    }catch(e){console.error('Hash fetch error:',e);}
+    
+    // Step 2: Filter out duplicates
+    const newTxns=txns.filter(t=>!existingHashes.has(t.dedup_hash));
+    const skipped=txns.length-newTxns.length;
+    let imported=0;
+    
+    if(newTxns.length===0){
+        status.style.color='var(--sage-600)';
+        status.innerHTML=`✅ <strong>0</strong> new · <strong>${skipped}</strong> skipped`;
+        zone.classList.add('success');
+        setTimeout(()=>{zone.classList.remove('success');status.textContent='';},8000);
+        return;
+    }
+    
+    status.textContent=`Importing ${newTxns.length} transactions...`;
+    
+    // Step 3: Insert new transactions in batches
     const batchSize=50;
-    for(let i=0;i<txns.length;i+=batchSize){
-        const batch=txns.slice(i,i+batchSize);
+    for(let i=0;i<newTxns.length;i+=batchSize){
+        const batch=newTxns.slice(i,i+batchSize);
         try{
             const clean=batch.map(t=>{
                 const c={...t};
@@ -2024,18 +2049,16 @@ async function importCSVForAccount(file,accountId){
                 if(!c.category)c.category='Uncategorized';
                 return c;
             });
-            const res=await fetch(`${SUPA_URL}/rest/v1/finance_transactions?on_conflict=dedup_hash`,{
+            const res=await fetch(`${SUPA_URL}/rest/v1/finance_transactions`,{
                 method:'POST',
                 headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,
-                    'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=representation'},
+                    'Content-Type':'application/json','Prefer':'return=representation'},
                 body:JSON.stringify(clean)
             });
             const data=await res.json();
-            if(!Array.isArray(data)){console.error('Import error:',data);}
-            const batchImported=Array.isArray(data)?data.length:0;
-            imported+=batchImported;
-            skipped+=(batch.length-batchImported);
-        }catch(e){skipped+=batch.length;}
+            if(!Array.isArray(data)){console.error('Import error:',res.status,data);} 
+            else{imported+=data.length;}
+        }catch(e){console.error('Batch error:',e);}
     }
     
     zone.classList.add('success');
