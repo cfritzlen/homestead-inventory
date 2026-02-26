@@ -352,7 +352,7 @@
             <div class="form-row">
                 <div class="form-group"><label>Pays From</label><input type="text" id="bill-pays-from" placeholder="PNC Checking"></div>
                 <div class="form-group"><label>Category</label>
-                    <select id="bill-category"><option value="electric">Electric</option><option value="mortgage">Mortgage</option><option value="insurance">Insurance</option><option value="phone">Phone</option><option value="internet">Internet</option><option value="subscription">Subscription</option><option value="vehicle">Vehicle</option><option value="other">Other</option></select>
+                    <select id="bill-category"><option value="loan">Loan</option><option value="electric">Electric</option><option value="insurance">Insurance</option><option value="tax">Tax</option><option value="mortgage">Mortgage</option><option value="phone">Phone</option><option value="internet">Internet</option><option value="subscription">Subscription</option><option value="vehicle">Vehicle</option><option value="other">Other</option></select>
                 </div>
                 <div class="form-group"><label>Notes</label><input type="text" id="bill-notes" placeholder="Optional"></div>
             </div>
@@ -369,11 +369,7 @@
                 <span class="current-month" id="bill-month-display"></span>
                 <button onclick="changeMonth(1)">▶</button>
             </div>
-            <div class="table-scroll">
-                <table class="data-table"><thead><tr>
-                    <th>Paid</th><th>Bill</th><th>Due</th><th>Expected</th><th>Actual</th><th>Auto</th><th>Actions</th>
-                </tr></thead><tbody id="bills-body"></tbody></table>
-            </div>
+            <div id="bills-grouped"></div>
             <div id="bills-empty" class="empty-state" style="display:none;"><div class="icon">📋</div><p>No bills yet.</p></div>
         </div>
     </div>
@@ -642,22 +638,52 @@ async function loadBillPayments(){
     renderBills();
 }
 function renderBills(){
-    const tbody=document.getElementById('bills-body'),empty=document.getElementById('bills-empty');
+    const container=document.getElementById('bills-grouped'),empty=document.getElementById('bills-empty');
     document.getElementById('bill-month-display').textContent=monthDisplay(currentBillMonth);
-    if(!bills.length){tbody.innerHTML='';empty.style.display='block';return;}
+    if(!bills.length){container.innerHTML='';empty.style.display='block';return;}
     empty.style.display='none';
-    tbody.innerHTML=bills.map(b=>{
-        const p=billPayments.find(x=>x.bill_id===b.id);
-        return`<tr>
-            <td><input type="checkbox" class="check-paid" ${p?.is_paid?'checked':''} ${b.is_auto_pay?'disabled title="Auto"':''} onchange="toggleBillPaid('${b.id}',this.checked)"></td>
-            <td><strong>${b.name}</strong>${b.is_variable_amount?'<br><span class="badge badge-variable">Variable</span>':''}</td>
-            <td>${b.is_variable_date?'Varies':(b.due_day||'-')}</td>
-            <td class="amount">${b.is_variable_amount?'~':''}${fmt(b.expected_amount)}</td>
-            <td class="amount">${p?.actual_amount!=null?fmt(p.actual_amount):'-'}${b.is_variable_amount?`<br><button class="btn btn-small btn-secondary" onclick="openAmountModal('${b.id}')">Enter</button>`:''}</td>
-            <td>${b.is_auto_pay?'<span class="badge badge-auto">Auto</span>':''}</td>
-            <td><button class="btn btn-small btn-secondary" onclick="editBill('${b.id}')">Edit</button><button class="btn btn-small btn-danger" onclick="deleteBill('${b.id}')">Del</button></td>
-        </tr>`;
-    }).join('');
+    
+    const catOrder=['loan','electric','insurance','tax','mortgage','phone','internet','subscription','vehicle','other'];
+    const catLabels={loan:'🏦 Loans',electric:'⚡ Electric',insurance:'🛡️ Insurance',tax:'🏛️ Taxes',mortgage:'🏠 Mortgage',phone:'📱 Phone',internet:'🌐 Internet',subscription:'📺 Subscriptions',vehicle:'🚗 Vehicle',other:'📁 Other'};
+    const groups={};
+    bills.forEach(b=>{
+        const c=b.category||'other';
+        if(!groups[c])groups[c]=[];
+        groups[c].push(b);
+    });
+    
+    let html='';
+    let grandTotal=0;
+    catOrder.forEach(cat=>{
+        if(!groups[cat])return;
+        const catBills=groups[cat];
+        const subtotal=catBills.reduce((s,b)=>s+(parseFloat(b.expected_amount)||0),0);
+        grandTotal+=subtotal;
+        html+=`<div style="margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--sage-100);border-radius:8px;margin-bottom:8px;">
+                <strong style="color:var(--sage-700);font-size:0.95rem;">${catLabels[cat]||cat}</strong>
+                <span style="color:var(--sage-600);font-size:0.85rem;">Subtotal: <strong>${fmt(subtotal)}</strong></span>
+            </div>
+            <div class="table-scroll"><table class="data-table"><thead><tr>
+                <th>Paid</th><th>Bill</th><th>Due</th><th>Expected</th><th>Actual</th><th>Auto</th><th>Actions</th>
+            </tr></thead><tbody>`;
+        catBills.forEach(b=>{
+            const p=billPayments.find(x=>x.bill_id===b.id);
+            html+=`<tr>
+                <td><input type="checkbox" class="check-paid" ${p?.is_paid?'checked':''} ${b.is_auto_pay?'disabled title="Auto"':''} onchange="toggleBillPaid('${b.id}',this.checked)"></td>
+                <td><strong>${b.name}</strong>${b.is_variable_amount?'<br><span class="badge badge-variable">Variable</span>':''}</td>
+                <td>${b.is_variable_date?'Varies':(b.due_day||'-')}</td>
+                <td class="amount">${b.is_variable_amount?'~':''}${fmt(b.expected_amount)}</td>
+                <td class="amount">${p?.actual_amount!=null?fmt(p.actual_amount):'-'}${b.is_variable_amount?`<br><button class="btn btn-small btn-secondary" onclick="openAmountModal('${b.id}')">Enter</button>`:''}</td>
+                <td>${b.is_auto_pay?'<span class="badge badge-auto">Auto</span>':''}</td>
+                <td><button class="btn btn-small btn-secondary" onclick="editBill('${b.id}')">Edit</button><button class="btn btn-small btn-danger" onclick="deleteBill('${b.id}')">Del</button></td>
+            </tr>`;
+        });
+        html+=`</tbody></table></div></div>`;
+    });
+    html+=`<div style="text-align:right;padding:10px 12px;border-top:2px solid var(--sage-300);margin-top:8px;">
+        <strong style="color:var(--sage-700);">Total Monthly Bills: ${fmt(grandTotal)}</strong></div>`;
+    container.innerHTML=html;
 }
 function changeMonth(d){currentBillMonth.setMonth(currentBillMonth.getMonth()+d);loadBillPayments();}
 async function toggleBillPaid(billId,isPaid){
