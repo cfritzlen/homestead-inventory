@@ -197,6 +197,52 @@
 </head>
 <body>
 
+<div id="lock-screen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--charcoal);z-index:9999;display:flex;align-items:center;justify-content:center;">
+    <div style="text-align:center;background:white;padding:40px 32px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-width:320px;width:90%;">
+        <div style="font-size:2rem;margin-bottom:12px;">🔒</div>
+        <h2 style="font-family:'Crimson Pro',serif;color:var(--sage-700);margin-bottom:20px;">Finances</h2>
+        <div id="pin-dots" style="display:flex;justify-content:center;gap:12px;margin-bottom:24px;">
+            <div class="pin-dot" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--sage-300);"></div>
+            <div class="pin-dot" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--sage-300);"></div>
+            <div class="pin-dot" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--sage-300);"></div>
+            <div class="pin-dot" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--sage-300);"></div>
+        </div>
+        <div id="pin-pad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto;">
+            <button onclick="pinPress('1')" style="padding:16px;font-size:1.3rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;">1</button>
+            <button onclick="pinPress('2')" style="padding:16px;font-size:1.3rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;">2</button>
+            <button onclick="pinPress('3')" style="padding:16px;font-size:1.3rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;">3</button>
+            <button onclick="pinPress('4')" style="padding:16px;font-size:1.3rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;">4</button>
+            <button onclick="pinPress('5')" style="padding:16px;font-size:1.3rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;">5</button>
+            <button onclick="pinPress('6')" style="padding:16px;font-size:1.3rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;">6</button>
+            <button onclick="pinPress('7')" style="padding:16px;font-size:1.3rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;">7</button>
+            <button onclick="pinPress('8')" style="padding:16px;font-size:1.3rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;">8</button>
+            <button onclick="pinPress('9')" style="padding:16px;font-size:1.3rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;">9</button>
+            <div></div>
+            <button onclick="pinPress('0')" style="padding:16px;font-size:1.3rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;">0</button>
+            <button onclick="pinClear()" style="padding:16px;font-size:0.9rem;border:1px solid var(--sage-200);border-radius:10px;background:white;cursor:pointer;font-family:'Karla',sans-serif;color:var(--sage-500);">⌫</button>
+        </div>
+        <p id="pin-error" style="color:#c44;font-size:0.85rem;margin-top:12px;min-height:1.2em;"></p>
+    </div>
+</div>
+<script>
+let pinCode='';
+function pinPress(n){
+    if(pinCode.length>=4)return;
+    pinCode+=n;
+    const dots=document.querySelectorAll('.pin-dot');
+    dots.forEach((d,i)=>d.style.background=i<pinCode.length?'var(--sage-500)':'transparent');
+    if(pinCode.length===4){
+        if(pinCode==='0323'){
+            document.getElementById('lock-screen').style.display='none';
+        } else {
+            document.getElementById('pin-error').textContent='Wrong code';
+            setTimeout(()=>{pinCode='';dots.forEach(d=>d.style.background='transparent');document.getElementById('pin-error').textContent='';},800);
+        }
+    }
+}
+function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelectorAll('.pin-dot');dots.forEach((d,i)=>d.style.background=i<pinCode.length?'var(--sage-500)':'transparent');}
+</script>
+
 <div class="top-bar">
     <a href="index.html">← Back to Hub</a>
     <h1>📊 Finances</h1>
