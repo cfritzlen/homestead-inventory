@@ -630,27 +630,43 @@ async function uploadReceipts(expenseId, files) {
         const safeName = `${expenseId}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`;
         const contentType = file.type || 'application/octet-stream';
 
-        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${safeName}`, {
-            method: 'POST',
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Content-Type': contentType,
-                'x-upsert': 'true'
-            },
-            body: file
-        });
+        try {
+            const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${safeName}`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': contentType,
+                    'x-upsert': 'true'
+                },
+                body: file
+            });
 
-        if (uploadRes.ok) {
+            if (!uploadRes.ok) {
+                const errText = await uploadRes.text();
+                console.error('Storage upload failed:', uploadRes.status, errText);
+                showToast(`Receipt upload failed: ${uploadRes.status}`, true);
+                continue;
+            }
+
             const receiptRes = await fetch(`${SUPABASE_URL}/rest/v1/home_expense_receipts`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ expense_id: expenseId, file_name: file.name, storage_path: safeName, file_type: contentType })
             });
-            if (receiptRes.ok) {
-                const [rec] = await receiptRes.json();
-                results.push(rec);
+
+            if (!receiptRes.ok) {
+                const errText = await receiptRes.text();
+                console.error('Receipt record save failed:', receiptRes.status, errText);
+                showToast(`Receipt record failed: ${receiptRes.status}`, true);
+                continue;
             }
+
+            const [rec] = await receiptRes.json();
+            results.push(rec);
+        } catch (err) {
+            console.error('Receipt upload error:', err);
+            showToast('Receipt upload error - check console', true);
         }
     }
     return results;
@@ -728,9 +744,16 @@ async function addExpense(e) {
         if (pendingFiles.length > 0) {
             const uploaded = await uploadReceipts(newExp.id, pendingFiles);
             receiptMap[newExp.id] = uploaded;
+            if (uploaded.length > 0) {
+                showToast(`Expense saved with ${uploaded.length} receipt(s)! ✅`);
+            } else {
+                showToast('Expense saved but receipts failed — check storage policies', true);
+            }
             pendingFiles = [];
             document.getElementById('addReceiptPreviews').innerHTML = '';
             document.getElementById('addReceiptInput').value = '';
+        } else {
+            showToast('Expense saved! ✅');
         }
 
         allExpenses.unshift(newExp);
@@ -741,8 +764,6 @@ async function addExpense(e) {
         document.getElementById('expVendor').value = '';
         document.getElementById('expDescription').value = '';
         document.getElementById('expNotes').value = '';
-
-        showToast('Expense saved! ✅');
     } catch (err) {
         showToast('Error saving expense', true);
         console.error(err);
