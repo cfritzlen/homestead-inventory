@@ -627,7 +627,13 @@ async function uploadReceipts(expenseId, files) {
     const results = [];
     for (const file of files) {
         const ext = file.name.split('.').pop().toLowerCase();
-        const safeName = `${expenseId}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`;
+        // Build a readable filename: date_vendor_category_originalname.ext
+        const dateStr = document.getElementById('expDate')?.value || document.getElementById('editDate')?.value || new Date().toISOString().split('T')[0];
+        const vendor = (document.getElementById('expVendor')?.value || document.getElementById('editVendor')?.value || 'unknown').trim();
+        const category = (document.getElementById('expCategory')?.value || document.getElementById('editCategory')?.value || 'other').trim();
+        const cleanName = (str) => str.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').toLowerCase().slice(0, 30);
+        const baseName = file.name.replace(/\.[^.]+$/, '');
+        const safeName = `${dateStr}_${cleanName(vendor)}_${cleanName(category)}_${cleanName(baseName)}_${Math.random().toString(36).slice(2,5)}.${ext}`;
         const contentType = file.type || 'application/octet-stream';
 
         try {
