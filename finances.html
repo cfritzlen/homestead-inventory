@@ -2319,7 +2319,6 @@ async function loadDashboard(){
         const debtDiff=thisWeekDebt-priorWeekDebt;
 
         // === 4. Overall totals (from most recent data) ===
-        let totalDebt=thisWeekDebt;
         let totalTax=0;
         let ccDebt=0;
         let loanDebt=thisWeekLoans;
@@ -2345,12 +2344,16 @@ async function loadDashboard(){
             }
         }
 
-        // === 5. Charges over $200 from transactions (exclude payments/credits) ===
+        const totalDebt=ccDebt+loanDebt+totalTax;
+
+        // === 5. Charges over $200 (exclude payments, Internal Transfer, Girls, CC Payment) ===
         const bigCharges=await supaFetch('finance_transactions','GET',null,
             `?transaction_date=gt.${week.start}&transaction_date=lte.${week.end}&order=transaction_date.desc`);
+        const excludeCats=['internal transfer','girls','cc payment','cc payments'];
         const over200=(bigCharges||[]).filter(t=>{
             const amt=parseFloat(t.amount)||0;
-            return amt<0 && Math.abs(amt)>=200;
+            const cat=(t.category||'').toLowerCase().trim();
+            return amt<0 && Math.abs(amt)>=200 && !excludeCats.includes(cat);
         });
 
         // === BUILD CARDS ===
