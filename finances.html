@@ -2244,16 +2244,34 @@ async function loadDashboard(){
         const taxAccs=allAcc.filter(a=>a.account_type==='tax_debt');
         const loanAccs=accounts.filter(a=>a.account_type==='loan');
 
-        // === 1. BOA Girls spending from transactions ===
-        let boaGirlsSpent=0;
+        // === 1. BOA spending from weekly entries (start - prior end) ===
+        let boaSpent=0;
+        if(boaAcc){
+            // Get entries within this 2-week window
+            const rows=await supaFetch('finance_weekly_entries','GET',null,
+                `?account_id=eq.${boaAcc.id}&entry_date=gt.${week.start}&entry_date=lte.${week.end}&order=entry_date`);
+            if(rows?.length){
+                // Get the ending balance from the week before the window
+                const prior=await supaFetch('finance_weekly_entries','GET',null,
+                    `?account_id=eq.${boaAcc.id}&entry_date=lte.${week.start}&order=entry_date.desc&limit=1`);
+                const prevEnd=prior?.length?parseFloat(prior[0].ending_balance)||0:0;
+                // Sum up spending across all weeks in window
+                let lastEnd=prevEnd;
+                rows.forEach(r=>{
+                    const thisStart=parseFloat(r.starting_balance)||0;
+                    const spent=Math.max(0,thisStart-lastEnd);
+                    boaSpent+=spent;
+                    lastEnd=parseFloat(r.ending_balance)||0;
+                });
+            }
+        }
+
+        // === 1b. BOA Girls transactions (for the table only) ===
         let boaGirlsTxns=[];
         if(boaAcc){
             const txns=await supaFetch('finance_transactions','GET',null,
                 `?account_id=eq.${boaAcc.id}&category=eq.Girls&transaction_date=gt.${week.start}&transaction_date=lte.${week.end}&amount=lt.0&order=transaction_date.desc`);
-            if(txns?.length){
-                boaGirlsTxns=txns;
-                boaGirlsSpent=txns.reduce((s,t)=>s+Math.abs(parseFloat(t.amount)||0),0);
-            }
+            if(txns?.length) boaGirlsTxns=txns;
         }
 
         // === 2. All other CC spending (from weekly entries: start - prior end) ===
@@ -2261,17 +2279,18 @@ async function loadDashboard(){
         for(const cc of ccAccs){
             if(boaAcc && cc.id===boaAcc.id) continue;
             const rows=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${cc.id}&entry_date=gte.${week.start}&entry_date=lte.${week.end}&order=entry_date.desc&limit=1`);
+                `?account_id=eq.${cc.id}&entry_date=gt.${week.start}&entry_date=lte.${week.end}&order=entry_date`);
             if(rows?.length){
-                const thisStart=parseFloat(rows[0].starting_balance)||0;
-                // Get prior week ending
                 const prior=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${cc.id}&entry_date=lt.${week.start}&order=entry_date.desc&limit=1`);
-                if(prior?.length){
-                    const prevEnd=parseFloat(prior[0].ending_balance)||0;
-                    const spent=Math.max(0,thisStart-prevEnd);
+                    `?account_id=eq.${cc.id}&entry_date=lte.${week.start}&order=entry_date.desc&limit=1`);
+                const prevEnd=prior?.length?parseFloat(prior[0].ending_balance)||0:0;
+                let lastEnd=prevEnd;
+                rows.forEach(r=>{
+                    const thisStart=parseFloat(r.starting_balance)||0;
+                    const spent=Math.max(0,thisStart-lastEnd);
                     otherCCSpent+=spent;
-                }
+                    lastEnd=parseFloat(r.ending_balance)||0;
+                });
             }
         }
 
@@ -2368,7 +2387,7 @@ async function loadDashboard(){
         const diffIcon=debtDiff>0?'🔴':'🟢';
 
         document.getElementById('dash-cards').innerHTML=
-            card('BOA Girls Spent',fmt(boaGirlsSpent),'👧')+
+            card('BOA Spent',fmt(boaSpent),'👧')+
             card('Other CC Spent',fmt(otherCCSpent),'💳')+
             card('Debt Change',diffSign+fmt(Math.abs(debtDiff)),diffIcon,diffColor);
 
