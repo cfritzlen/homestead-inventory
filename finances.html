@@ -2329,67 +2329,39 @@ async function loadDashboard(){
             }
         }
 
-        // === 3. Debt difference: this week vs prior week ===
-        // Use same accounts as tiles: CC + Tax + Loans
-        let thisWeekDebt=0, priorWeekDebt=0;
-
-        // Helper: get total debt as of a date
-        async function calcDebtAsOf(asOfDate){
-            let total=0;
-            // CC debt
-            for(const cc of ccAccs){
+        // === 3. All debt from weekly entries for this week and prior week ===
+        // Helper: get debt breakdown from weekly entries as of a date
+        async function getDebtFromEntries(asOfDate){
+            let cc=0, tax=0, loan=0;
+            for(const a of ccAccs){
                 const rows=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${cc.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
-                if(rows?.length) total+=parseFloat(rows[0].ending_balance)||0;
+                    `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
+                if(rows?.length) cc+=parseFloat(rows[0].ending_balance)||0;
             }
-            // Tax debt
-            for(const t of taxAccs){
+            for(const a of taxAccs){
                 const rows=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${t.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
-                if(rows?.length) total+=parseFloat(rows[0].ending_balance)||0;
+                    `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
+                if(rows?.length) tax+=parseFloat(rows[0].ending_balance)||0;
             }
-            // Loan debt
             for(const a of loanAccs){
                 const loanStart=(a.created_at||'').substring(0,10);
                 if(loanStart && asOfDate<loanStart) continue;
-                const r=await supaFetch('finance_loan_schedules','GET',null,
-                    `?account_id=eq.${a.id}&due_date=lte.${asOfDate}&order=due_date.desc&limit=1`);
-                if(r?.length) total+=parseFloat(r[0].balance_after)||0;
-                else if(!loanStart || asOfDate>=loanStart) total+=parseFloat(a.starting_balance)||0;
+                const rows=await supaFetch('finance_weekly_entries','GET',null,
+                    `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
+                if(rows?.length) loan+=parseFloat(rows[0].ending_balance)||0;
             }
-            return total;
+            return {cc, tax, loan, total: cc+tax+loan};
         }
 
-        thisWeekDebt=await calcDebtAsOf(week.end);
-        priorWeekDebt=await calcDebtAsOf(week.start);
-        const debtDiff=thisWeekDebt-priorWeekDebt;
+        const thisWeek=await getDebtFromEntries(week.end);
+        const priorWeek=await getDebtFromEntries(week.start);
+        const debtDiff=thisWeek.total-priorWeek.total;
 
-        // === 4. Overall totals (from latest entries) ===
-        let totalTax=0;
-        let ccDebt=0;
-        let loanDebt=0;
-
-        for(const cc of ccAccs){
-            const rows=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${cc.id}&order=entry_date.desc&limit=1`);
-            if(rows?.length) ccDebt+=parseFloat(rows[0].ending_balance)||0;
-        }
-        for(const t of taxAccs){
-            const rows=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${t.id}&order=entry_date.desc&limit=1`);
-            if(rows?.length) totalTax+=parseFloat(rows[0].ending_balance)||0;
-        }
-        for(const a of loanAccs){
-            const loanStart=(a.created_at||'').substring(0,10);
-            const today=new Date().toISOString().split('T')[0];
-            if(loanStart && today<loanStart) continue;
-            const r=await supaFetch('finance_loan_schedules','GET',null,
-                `?account_id=eq.${a.id}&due_date=lte.${today}&order=due_date.desc&limit=1`);
-            if(r?.length) loanDebt+=parseFloat(r[0].balance_after)||0;
-            else loanDebt+=parseFloat(a.starting_balance)||0;
-        }
-
-        const totalDebt=ccDebt+loanDebt+totalTax;
+        // Tiles use this week's values
+        const ccDebt=thisWeek.cc;
+        const totalTax=thisWeek.tax;
+        const loanDebt=thisWeek.loan;
+        const totalDebt=thisWeek.total;
 
         // === 5. Charges over $200 - last 2 weeks (exclude payments, Internal Transfer, Girls, CC Payment) ===
         const bigCharges=await supaFetch('finance_transactions','GET',null,
