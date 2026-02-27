@@ -168,17 +168,10 @@
             .data-table { font-size: 0.8rem; }
             .data-table th, .data-table td { padding: 8px 6px; }
 
-            /* Dashboard cards - 2 column on phone */
+            /* Dashboard cards */
             #dash-cards { grid-template-columns: 1fr 1fr 1fr !important; gap: 10px !important; }
-            .dash-card { padding: 14px 10px !important; }
-            .dash-card div:first-child { font-size: 0.6rem !important; }
-            .dash-card div:last-child { font-size: 1.3rem !important; }
             #dash-big-charges .data-table, #dash-boa-girls .data-table { font-size: 0.78rem; }
             #dash-big-charges td, #dash-boa-girls td { padding: 8px 6px; }
-
-            /* Chart taller on mobile */
-            #dash-debt-chart { height: 260px !important; }
-            #dash-chart-title { font-size: 1rem !important; }
 
             /* Transactions & Import mobile */
             #tab-transactions .card > div[style*="grid-template-columns"] { grid-template-columns: 1fr 1fr !important; }
@@ -275,17 +268,25 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                 <span id="dash-week-label" style="font-family:'Crimson Pro',serif;font-size:1.2rem;color:var(--sage-700);min-width:200px;text-align:center;"></span>
                 <button class="btn btn-secondary btn-small" onclick="shiftDashWeek(1)" style="padding:8px 12px;font-size:1.1rem;">▶</button>
             </div>
-            <div id="dash-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:0 0 24px;"></div>
+            <div id="dash-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:0 0 16px;"></div>
 
             <!-- Overall totals -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
-                <div style="background:var(--sage-700);border-radius:12px;padding:18px;text-align:center;">
-                    <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:6px;">📊 Total Debt</div>
-                    <div id="dash-total-debt" style="font-size:1.8rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+                <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
+                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">📊 Total Debt</div>
+                    <div id="dash-total-debt" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
                 </div>
-                <div style="background:var(--sage-700);border-radius:12px;padding:18px;text-align:center;">
-                    <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:6px;">🏛️ Total Tax</div>
-                    <div id="dash-total-tax" style="font-size:1.8rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
+                <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
+                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">💳 CC Debt</div>
+                    <div id="dash-cc-debt" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
+                </div>
+                <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
+                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">🏦 Loan Debt</div>
+                    <div id="dash-loan-debt" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
+                </div>
+                <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
+                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">🏛️ Total Tax</div>
+                    <div id="dash-total-tax" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
                 </div>
             </div>
 
@@ -294,12 +295,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
 
             <!-- BOA Girls charges table -->
             <div id="dash-boa-girls" style="margin-bottom:24px;"></div>
-
-            <!-- Chart -->
-            <div class="card" style="padding:16px;margin:0;background:white;border:1px solid var(--sage-200);">
-                <h3 id="dash-chart-title" onclick="switchChart('debt')" style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:12px;cursor:pointer;" title="Click to show total debt">📉 Total Debt (Last Year)</h3>
-                <div id="dash-debt-chart" style="height:220px;position:relative;"></div>
-            </div>
         </div>
     </div>
 
@@ -1115,8 +1110,6 @@ async function autoFillFromPrior(){
 let calculatedBillTotal=0;
 let priorCCEndings={}; // account_id -> ending balance from prior week
 let loanDueDates={}; // account_id -> next due date string
-let dashCharts={}; // key -> {title, data, type}
-let activeChart='debt';
 
 async function autoFillLoans(weekStr, hasSavedData){
     if(!weekStr)return;
@@ -2228,10 +2221,10 @@ function getDashWeekRange(offset=0){
     const thisWed=new Date(today);
     thisWed.setDate(today.getDate()+diff);
     thisWed.setDate(thisWed.getDate()+(offset*7));
-    const prevWed=new Date(thisWed);
-    prevWed.setDate(prevWed.getDate()-7);
+    const twoWeeksAgo=new Date(thisWed);
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate()-14);
     const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    return {start:fmt(prevWed), end:fmt(thisWed), label:prevWed.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+thisWed.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+    return {start:fmt(twoWeeksAgo), end:fmt(thisWed), label:twoWeeksAgo.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+thisWed.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
 }
 
 function shiftDashWeek(dir){
@@ -2250,14 +2243,13 @@ async function loadDashboard(){
         const boaAcc=ccAccs.find(a=>a.name?.toLowerCase().includes('boa'));
         const taxAccs=allAcc.filter(a=>a.account_type==='tax_debt');
         const loanAccs=accounts.filter(a=>a.account_type==='loan');
-        const elecBills=bills.filter(b=>b.name?.toLowerCase().includes('electric'));
 
         // === 1. BOA Girls spending from transactions ===
         let boaGirlsSpent=0;
         let boaGirlsTxns=[];
         if(boaAcc){
             const txns=await supaFetch('finance_transactions','GET',null,
-                `?account_id=eq.${boaAcc.id}&category=eq.Girls&transaction_date=gt.${week.start}&transaction_date=lte.${week.end}&order=transaction_date.desc`);
+                `?account_id=eq.${boaAcc.id}&category=eq.Girls&transaction_date=gt.${week.start}&transaction_date=lte.${week.end}&amount=lt.0&order=transaction_date.desc`);
             if(txns?.length){
                 boaGirlsTxns=txns;
                 boaGirlsSpent=txns.reduce((s,t)=>s+Math.abs(parseFloat(t.amount)||0),0);
@@ -2329,6 +2321,16 @@ async function loadDashboard(){
         // === 4. Overall totals (from most recent data) ===
         let totalDebt=thisWeekDebt;
         let totalTax=0;
+        let ccDebt=0;
+        let loanDebt=thisWeekLoans;
+
+        // CC debt from latest entries
+        for(const cc of ccAccs){
+            const rows=await supaFetch('finance_weekly_entries','GET',null,
+                `?account_id=eq.${cc.id}&order=entry_date.desc&limit=1`);
+            if(rows?.length) ccDebt+=parseFloat(rows[0].ending_balance)||0;
+        }
+
         if(thisEntries?.length){
             thisEntries.forEach(e=>{
                 const a=accMap[e.account_id];
@@ -2343,10 +2345,13 @@ async function loadDashboard(){
             }
         }
 
-        // === 5. Charges over $200 from transactions this week ===
+        // === 5. Charges over $200 from transactions (exclude payments/credits) ===
         const bigCharges=await supaFetch('finance_transactions','GET',null,
             `?transaction_date=gt.${week.start}&transaction_date=lte.${week.end}&order=transaction_date.desc`);
-        const over200=(bigCharges||[]).filter(t=>Math.abs(parseFloat(t.amount)||0)>=200);
+        const over200=(bigCharges||[]).filter(t=>{
+            const amt=parseFloat(t.amount)||0;
+            return amt<0 && Math.abs(amt)>=200;
+        });
 
         // === BUILD CARDS ===
         const card=(label,value,icon,extraClass='')=>`
@@ -2357,13 +2362,16 @@ async function loadDashboard(){
 
         const diffSign=debtDiff>0?'+':'';
         const diffColor=debtDiff>0?'color:#c0392b;':'color:#27ae60;';
+        const diffIcon=debtDiff>0?'🔴':'🟢';
 
         document.getElementById('dash-cards').innerHTML=
             card('BOA Girls Spent',fmt(boaGirlsSpent),'👧')+
             card('Other CC Spent',fmt(otherCCSpent),'💳')+
-            card('Debt Change',diffSign+fmt(Math.abs(debtDiff)),'📊',diffColor);
+            card('Debt Change',diffSign+fmt(Math.abs(debtDiff)),diffIcon,diffColor);
 
         document.getElementById('dash-total-debt').textContent=fmt(totalDebt);
+        document.getElementById('dash-cc-debt').textContent=fmt(ccDebt);
+        document.getElementById('dash-loan-debt').textContent=fmt(loanDebt);
         document.getElementById('dash-total-tax').textContent=fmt(totalTax);
 
         // === BUILD $200+ TABLE ===
@@ -2415,221 +2423,7 @@ async function loadDashboard(){
             boaEl.innerHTML='';
         }
 
-        // ===== BUILD ALL TREND DATA (same as before) =====
-        const allEntries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date');
-        const byDate={};
-        allEntries.forEach(e=>{
-            if(!byDate[e.entry_date])byDate[e.entry_date]=[];
-            byDate[e.entry_date].push(e);
-        });
-        const dates=Object.keys(byDate).sort();
-        const oneYearAgo=new Date();oneYearAgo.setFullYear(oneYearAgo.getFullYear()-1);
-        const yearStr=oneYearAgo.toISOString().split('T')[0];
-        const recentDates=dates.filter(d=>d>=yearStr);
-
-        // Pre-fetch loan schedules
-        const loanSchedules={};
-        for(const a of loanAccs){
-            const sched=await supaFetch('finance_loan_schedules','GET',null,
-                `?account_id=eq.${a.id}&order=due_date`);
-            if(sched?.length) loanSchedules[a.id]=sched;
-        }
-
-        // Compute all trends
-        const tDebt=[],tCCSpend=[],tBOASpend=[],tCCBal=[],tTax=[],tLoans=[];
-        for(let i=0;i<recentDates.length;i++){
-            const d=recentDates[i];
-            const prevD=i>0?recentDates[i-1]:null;
-            let debt=0,ccB=0,taxB=0,loanB=0,ccS=0,boaS=0;
-
-            // CC + tax from saved entries
-            byDate[d].forEach(e=>{
-                const a=accMap[e.account_id];if(!a)return;
-                if(a.account_type==='credit_card'){
-                    ccB+=parseFloat(e.ending_balance)||0;
-                    // Spend calc - only if prior week exists for this account
-                    if(prevD){
-                        const prevEntry=byDate[prevD]?.find(p=>p.account_id===e.account_id);
-                        if(prevEntry){
-                            const thisStart=parseFloat(e.starting_balance)||0;
-                            const prevEnd=parseFloat(prevEntry.ending_balance)||0;
-                            const spent=Math.max(0,thisStart-prevEnd);
-                            if(a.name?.toLowerCase().includes('boa')) boaS+=spent;
-                            else ccS+=spent;
-                        }
-                    }
-                }
-                if(a.account_type==='tax_debt') taxB+=parseFloat(e.ending_balance)||0;
-            });
-
-            // Loans from schedule
-            for(const a of loanAccs){
-                const sched=loanSchedules[a.id];
-                const createdDate=(a.created_at||'').substring(0,10);
-                // Skip this loan for dates before it existed
-                if(createdDate && d<createdDate) continue;
-                if(!sched||!sched.length){loanB+=parseFloat(a.starting_balance)||0;continue;}
-                // If date is before first payment, use starting balance
-                if(d<sched[0].due_date){loanB+=parseFloat(a.starting_balance)||0;continue;}
-                let bal=0;
-                for(let j=sched.length-1;j>=0;j--){
-                    if(sched[j].due_date<=d){bal=parseFloat(sched[j].balance_after)||0;break;}
-                }
-                loanB+=bal;
-            }
-
-            debt=ccB+taxB+loanB;
-            tDebt.push({date:d,value:debt});
-            tCCSpend.push({date:d,value:ccS});
-            tBOASpend.push({date:d,value:boaS});
-            tCCBal.push({date:d,value:ccB});
-            tTax.push({date:d,value:taxB});
-            tLoans.push({date:d,value:loanB});
-        }
-
-        // Electric trend from bill payments
-        const tElectric=[];
-        const elecPayments=[];
-        for(const b of elecBills){
-            const pays=await supaFetch('finance_bill_payments','GET',null,
-                `?bill_id=eq.${b.id}&order=bill_month`);
-            if(pays?.length) elecPayments.push(...pays);
-        }
-        // Group by month
-        const elecByMonth={};
-        elecPayments.forEach(p=>{
-            const m=p.bill_month?.substring(0,7)||'';
-            if(!elecByMonth[m]) elecByMonth[m]=0;
-            elecByMonth[m]+=parseFloat(p.actual_amount)||0;
-        });
-        Object.keys(elecByMonth).sort().forEach(m=>{
-            if(m>=yearStr.substring(0,7)) tElectric.push({date:m+'-15',value:elecByMonth[m]});
-        });
-
-        // Store all chart data
-        dashCharts={
-            debt:{title:'📉 Total Debt',data:tDebt},
-            ccspend:{title:'💳 CC Spending Per Week (excl BOA)',data:tCCSpend},
-            boaspend:{title:'💳 BOA Spending Per Week',data:tBOASpend},
-            ccbal:{title:'💳 CC Balance Over Time',data:tCCBal},
-            tax:{title:'🏛️ Tax Balance Over Time',data:tTax},
-            loans:{title:'🏦 Loan Balance Over Time',data:tLoans},
-            electric:{title:'⚡ Electric Bills Over Time',data:tElectric}
-        };
-
-        activeChart='debt';
-        switchChart('debt');
-
     }catch(e){console.error('Dashboard:',e);}
-}
-
-function switchChart(key){
-    const chart=dashCharts[key];
-    if(!chart)return;
-    activeChart=key;
-    document.getElementById('dash-chart-title').textContent=chart.title+' (Last Year)';
-    renderLineChart('dash-debt-chart',chart.data);
-    // Highlight active card (none highlighted for 'debt' default)
-    document.querySelectorAll('.dash-card').forEach(c=>{
-        if(c.dataset.chart===key){
-            c.style.borderColor='var(--sage-500)';
-            c.style.background='var(--sage-50)';
-            c.style.boxShadow='0 0 0 1px var(--sage-400)';
-        }else{
-            c.style.borderColor='var(--sage-200)';
-            c.style.background='white';
-            c.style.boxShadow='none';
-        }
-    });
-}
-
-function monthsDiff(d1,d2){
-    return Math.max(0,Math.round((d2-d1)/(1000*60*60*24*30.44)));
-}
-
-function renderLineChart(containerId,data){
-    const el=document.getElementById(containerId);
-    if(!data.length){el.innerHTML='<p style="color:var(--sage-400);">No data yet</p>';return;}
-    const vals=data.map(d=>d.value);
-    const max=Math.max(...vals);
-    const min=Math.min(...vals);
-    const range=max-min||1;
-    const w=620,h=220,pad=55;
-    const pw=w-pad-15, ph=h-40;
-    const isSpend=activeChart==='ccspend'||activeChart==='boaspend';
-
-    // Gridlines
-    const gridLines=5;
-    let gridSvg='';
-    for(let i=0;i<=gridLines;i++){
-        const y=(h-30)-((i/gridLines)*ph);
-        const val=min+((i/gridLines)*range);
-        const fmtV=val>=1000?'$'+(val/1000).toFixed(1)+'k':'$'+Math.round(val);
-        gridSvg+=`<line x1="${pad}" y1="${y}" x2="${pad+pw}" y2="${y}" stroke="var(--sage-100)" stroke-width="1"/>`;
-        gridSvg+=`<text x="${pad-6}" y="${y+4}" font-size="9" fill="var(--sage-400)" text-anchor="end" font-family="Karla,sans-serif">${fmtV}</text>`;
-    }
-
-    // Data line + fill
-    let points='';
-    let fillPoints=`${pad},${h-30} `;
-    data.forEach((d,i)=>{
-        const x=pad+(i/(data.length-1||1))*pw;
-        const y=(h-30)-((d.value-min)/range)*ph;
-        points+=`${x},${y} `;
-        fillPoints+=`${x},${y} `;
-    });
-    fillPoints+=`${pad+pw},${h-30}`;
-
-    // Date labels (~5 evenly spaced)
-    const labelCount=Math.min(5,data.length);
-    let dateLabelsSvg='';
-    for(let i=0;i<labelCount;i++){
-        const idx=Math.round(i*(data.length-1)/(labelCount-1||1));
-        const d=data[idx];
-        const x=pad+(idx/(data.length-1||1))*pw;
-        const dt=new Date(d.date+'T12:00:00');
-        const label=`${dt.getMonth()+1}/${dt.getDate()}`;
-        const anchor=i===0?'start':i===labelCount-1?'end':'middle';
-        dateLabelsSvg+=`<text x="${x}" y="${h-8}" font-size="9" fill="var(--sage-400)" text-anchor="${anchor}" font-family="Karla,sans-serif">${label}</text>`;
-    }
-
-    let svg=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;" preserveAspectRatio="xMidYMid meet">`;
-    svg+=gridSvg;
-    svg+=`<polygon points="${fillPoints}" fill="var(--sage-100)" opacity="0.5"/>`;
-    svg+=`<polyline points="${points}" fill="none" stroke="var(--sage-500)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
-
-    // Dots (every nth)
-    const dotEvery=Math.max(1,Math.floor(data.length/12));
-    data.forEach((d,i)=>{
-        if(i%dotEvery===0||i===data.length-1){
-            const x=pad+(i/(data.length-1||1))*pw;
-            const y=(h-30)-((d.value-min)/range)*ph;
-            svg+=`<circle cx="${x}" cy="${y}" r="3" fill="var(--sage-500)" stroke="white" stroke-width="1.5"/>`;
-        }
-    });
-
-    svg+=dateLabelsSvg;
-
-    // Stats overlay
-    if(isSpend){
-        const avg=vals.reduce((s,v)=>s+v,0)/vals.length;
-        const avgY=(h-30)-((avg-min)/range)*ph;
-        svg+=`<line x1="${pad}" y1="${avgY}" x2="${pad+pw}" y2="${avgY}" stroke="var(--sage-600)" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.7"/>`;
-        const avgLabel=avg>=1000?'$'+(avg/1000).toFixed(1)+'k':'$'+Math.round(avg);
-        svg+=`<rect x="${pad+pw-72}" y="${avgY-19}" width="74" height="17" rx="4" fill="var(--sage-600)" opacity="0.85"/>`;
-        svg+=`<text x="${pad+pw-35}" y="${avgY-7}" font-size="10" fill="white" text-anchor="middle" font-weight="600" font-family="Karla,sans-serif">avg ${avgLabel}</text>`;
-    } else {
-        const startVal=vals[0], endVal=vals[vals.length-1];
-        const diff=endVal-startVal;
-        const absDiff=Math.abs(diff);
-        const diffLabel=(diff<=0?'↓ ':'↑ ')+(absDiff>=1000?'$'+(absDiff/1000).toFixed(1)+'k':'$'+absDiff.toFixed(0));
-        const diffColor=diff<=0?'#4a7c3f':'#c44';
-        svg+=`<rect x="${pad+pw-108}" y="6" width="110" height="22" rx="6" fill="${diffColor}" opacity="0.9"/>`;
-        svg+=`<text x="${pad+pw-53}" y="21" font-size="11" fill="white" text-anchor="middle" font-weight="700" font-family="Karla,sans-serif">${diffLabel}</text>`;
-    }
-
-    svg+=`</svg>`;
-    el.innerHTML=svg;
 }
 
 // ==================== CSV PARSING HELPERS ====================
