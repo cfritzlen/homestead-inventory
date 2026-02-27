@@ -324,9 +324,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
             <!-- BOA Girls charges table -->
             <div id="dash-boa-girls" style="margin-bottom:24px;"></div>
 
-            <!-- Loans table -->
-            <div id="dash-loans-table" style="margin-bottom:24px;"></div>
-
             <!-- PNC & Rental balances -->
             <div id="dash-accounts-table" style="margin-bottom:24px;"></div>
         </div>
@@ -1491,14 +1488,6 @@ function buildWeeklyForm(){
         <button class="btn btn-small btn-secondary" onclick="resetBillTotal()" title="Reset to calculated total">↻</button>
     </div>`;
 
-    if(other.length){
-        const filtered=other.filter(a=>!a.name.toLowerCase().includes('recurring'));
-        if(filtered.length){
-            h+=`<div class="section-divider">Other</div>`;
-            filtered.forEach(a=>{h+=entryRow(a,false);});
-        }
-    }
-
     c.innerHTML=h;
 }
 
@@ -2340,18 +2329,20 @@ async function loadDashboard(){
             }
         }
 
-        // === 3. Debt difference from last week ===
-        // Get total debt for this week and prior week
+        // === 3. Debt difference: this week vs prior week ===
+        // Get total debt per account using latest entry up to each date
         let thisWeekDebt=0, priorWeekDebt=0;
+        const debtAccs=allAcc.filter(a=>a.is_debt);
 
-        // This week entries
-        const thisEntries=await supaFetch('finance_weekly_entries','GET',null,
-            `?entry_date=eq.${week.end}&order=entry_date.desc`);
-        if(thisEntries?.length){
-            thisEntries.forEach(e=>{
-                const a=accMap[e.account_id];
-                if(a&&a.is_debt) thisWeekDebt+=parseFloat(e.ending_balance)||0;
-            });
+        // This week: latest entry per debt account as of week.end
+        const thisEntries=[];
+        for(const a of debtAccs){
+            const rows=await supaFetch('finance_weekly_entries','GET',null,
+                `?account_id=eq.${a.id}&entry_date=lte.${week.end}&order=entry_date.desc&limit=1`);
+            if(rows?.length){
+                thisWeekDebt+=parseFloat(rows[0].ending_balance)||0;
+                thisEntries.push(rows[0]);
+            }
         }
         // Add loans from schedule for this week (skip loans that didn't exist yet)
         let thisWeekLoans=0;
@@ -2365,14 +2356,11 @@ async function loadDashboard(){
         }
         thisWeekDebt+=thisWeekLoans;
 
-        // Prior week entries
-        const priorEntries=await supaFetch('finance_weekly_entries','GET',null,
-            `?entry_date=eq.${week.start}&order=entry_date.desc`);
-        if(priorEntries?.length){
-            priorEntries.forEach(e=>{
-                const a=accMap[e.account_id];
-                if(a&&a.is_debt) priorWeekDebt+=parseFloat(e.ending_balance)||0;
-            });
+        // Prior week: latest entry per debt account as of week.start
+        for(const a of debtAccs){
+            const rows=await supaFetch('finance_weekly_entries','GET',null,
+                `?account_id=eq.${a.id}&entry_date=lte.${week.start}&order=entry_date.desc&limit=1`);
+            if(rows?.length) priorWeekDebt+=parseFloat(rows[0].ending_balance)||0;
         }
         let priorWeekLoans=0;
         for(const a of loanAccs){
@@ -2423,7 +2411,7 @@ async function loadDashboard(){
             const amt=parseFloat(t.amount)||0;
             const cat=(t.category||'').toLowerCase().trim();
             return amt<0 && Math.abs(amt)>=200 && !excludeCats.includes(cat);
-        });
+        }).sort((a,b)=>Math.abs(parseFloat(b.amount)||0)-Math.abs(parseFloat(a.amount)||0));
 
         // === BUILD CARDS ===
         const card=(label,value,icon,extraClass='')=>`
@@ -2474,73 +2462,32 @@ async function loadDashboard(){
         if(boaGirlsTxns.length){
             let tbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">👧 BOA Girls Charges <span style="font-size:0.8rem;font-weight:400;color:var(--sage-400);">(last 2 weeks)</span></h3>
                 <div class="table-scroll"><table class="data-table"><thead><tr>
-                    <th>Date</th><th>Description</th><th style="text-align:right;">Amount</th>
+                    <th>Description</th><th style="text-align:right;">Amount</th><th class="dash-hide-sm">Date</th>
                 </tr></thead><tbody>`;
             let girlsTotal=0;
             boaGirlsTxns.forEach(t=>{
                 const amt=Math.abs(parseFloat(t.amount)||0);
                 girlsTotal+=amt;
                 tbl+=`<tr>
-                    <td style="white-space:nowrap;">${t.transaction_date}</td>
                     <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.description||'').replace(/"/g,'&quot;')}">${t.description||''}</td>
                     <td style="text-align:right;font-weight:600;">${fmt(amt)}</td>
+                    <td class="dash-hide-sm" style="white-space:nowrap;">${t.transaction_date}</td>
                 </tr>`;
             });
             tbl+=`<tr style="font-weight:700;border-top:2px solid var(--sage-500);">
-                <td colspan="2" style="text-align:right;">Total</td>
+                <td style="text-align:right;">Total</td>
                 <td style="text-align:right;">${fmt(girlsTotal)}</td>
+                <td class="dash-hide-sm"></td>
             </tr></tbody></table></div>`;
             boaEl.innerHTML=tbl;
         }else{
             boaEl.innerHTML='';
         }
 
-        // === BUILD LOANS TABLE ===
-        const loansEl=document.getElementById('dash-loans-table');
-        if(loanAccs.length){
-            let ltbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">🏦 Loans</h3>
-                <div class="table-scroll"><table class="data-table"><thead><tr>
-                    <th>Loan</th><th style="text-align:right;">Balance</th><th>Payoff Date</th><th style="text-align:right;">Rate</th>
-                </tr></thead><tbody>`;
-            for(const a of loanAccs){
-                // Get current balance from latest weekly entry
-                let bal=0;
-                const entry=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&order=entry_date.desc&limit=1`);
-                if(entry?.length){
-                    bal=parseFloat(entry[0].ending_balance)||0;
-                }else{
-                    // Fallback to loan schedule
-                    const today=new Date().toISOString().split('T')[0];
-                    const sched=await supaFetch('finance_loan_schedules','GET',null,
-                        `?account_id=eq.${a.id}&due_date=lte.${today}&order=due_date.desc&limit=1`);
-                    bal=sched?.length?parseFloat(sched[0].balance_after)||0:parseFloat(a.starting_balance)||0;
-                }
-                // Get payoff date (last schedule entry with balance > 0 or balance_after = 0)
-                let payoff='—';
-                const lastPay=await supaFetch('finance_loan_schedules','GET',null,
-                    `?account_id=eq.${a.id}&order=due_date.desc&limit=1`);
-                if(lastPay?.length){
-                    const dt=new Date(lastPay[0].due_date+'T12:00:00');
-                    payoff=dt.toLocaleDateString('en-US',{month:'short',year:'numeric'});
-                }
-                ltbl+=`<tr>
-                    <td style="font-weight:500;">${a.name}</td>
-                    <td style="text-align:right;font-weight:600;">${fmt(bal)}</td>
-                    <td>${payoff}</td>
-                    <td style="text-align:right;">${a.interest_rate||0}%</td>
-                </tr>`;
-            }
-            ltbl+=`</tbody></table></div>`;
-            loansEl.innerHTML=ltbl;
-        }else{
-            loansEl.innerHTML='';
-        }
-
-        // === BUILD PNC & RENTAL TABLE ===
+        // === BUILD ACCOUNT BALANCES TABLE (PNC Checking & Rental) ===
         const acctEl=document.getElementById('dash-accounts-table');
-        const trackNames=['pnc','rental'];
-        const trackAccts=allAcc.filter(a=>a.is_active!==false && trackNames.some(n=>a.name.toLowerCase().includes(n)));
+        const trackNames=['pnc checking','rental account'];
+        const trackAccts=allAcc.filter(a=>trackNames.some(n=>a.name.toLowerCase()===n));
         if(trackAccts.length){
             let atbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">💰 Account Balances</h3>
                 <div class="table-scroll"><table class="data-table"><thead><tr>
