@@ -312,6 +312,12 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
             </div>
             <div id="import-log" style="margin-top:16px;"></div>
         </div>
+
+        <div class="card">
+            <h2>📋 Weekly Import Checklist</h2>
+            <p style="color:var(--sage-500);font-size:0.85rem;margin-bottom:12px;">Accounts to import each week — checked when data exists for this period.</p>
+            <div id="import-checklist" style="font-size:0.9rem;"></div>
+        </div>
     </div>
 
     <!-- ==================== TRANSACTIONS ==================== -->
@@ -2399,7 +2405,7 @@ async function loadDashboard(){
         // === BUILD $200+ TABLE ===
         const bigEl=document.getElementById('dash-big-charges');
         if(over200.length){
-            let tbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">🔴 Charges Over $200</h3>
+            let tbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">🔴 Charges Over $200 <span style="font-size:0.8rem;font-weight:400;color:var(--sage-400);">(last 2 weeks)</span></h3>
                 <div class="table-scroll"><table class="data-table"><thead><tr>
                     <th>Date</th><th>Account</th><th>Description</th><th>Category</th><th style="text-align:right;">Amount</th>
                 </tr></thead><tbody>`;
@@ -2422,7 +2428,7 @@ async function loadDashboard(){
         // === BUILD BOA GIRLS TABLE ===
         const boaEl=document.getElementById('dash-boa-girls');
         if(boaGirlsTxns.length){
-            let tbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">👧 BOA Girls Charges</h3>
+            let tbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">👧 BOA Girls Charges <span style="font-size:0.8rem;font-weight:400;color:var(--sage-400);">(last 2 weeks)</span></h3>
                 <div class="table-scroll"><table class="data-table"><thead><tr>
                     <th>Date</th><th>Description</th><th style="text-align:right;">Amount</th>
                 </tr></thead><tbody>`;
@@ -2538,6 +2544,68 @@ async function loadFinanceCategories(){
 
 function initImportTab(){
     buildAccountFormatMap();
+    loadImportChecklist();
+}
+
+const weeklyImportAccounts=['BOA CC','BOA Checking','PNC Checking','PNC 1407','Family CC','Chase CC','Prime'];
+
+async function loadImportChecklist(){
+    const el=document.getElementById('import-checklist');
+    if(!el)return;
+    el.innerHTML='<p style="color:var(--sage-400);">Checking...</p>';
+
+    // Get current week range (Wed to Wed)
+    const today=new Date();
+    const dayOfWeek=today.getDay();
+    const diff=dayOfWeek<=3?3-dayOfWeek:10-dayOfWeek;
+    const thisWed=new Date(today);
+    thisWed.setDate(today.getDate()+diff);
+    const prevWed=new Date(thisWed);
+    prevWed.setDate(prevWed.getDate()-7);
+    const fmtD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const start=fmtD(prevWed);
+    const end=fmtD(thisWed);
+    const weekLabel=prevWed.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+thisWed.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+
+    const allAcc=[...accounts,...closedAccounts];
+    let html=`<div style="font-size:0.8rem;color:var(--sage-400);margin-bottom:10px;">Week of ${weekLabel}</div>`;
+    let doneCount=0;
+
+    for(const name of weeklyImportAccounts){
+        const acc=allAcc.find(a=>a.name.toLowerCase()===name.toLowerCase());
+        let done=false;
+        let latestDate='';
+        if(acc){
+            try{
+                const txns=await supaFetch('finance_transactions','GET',null,
+                    `?account_id=eq.${acc.id}&transaction_date=gt.${start}&transaction_date=lte.${end}&limit=1`);
+                if(txns?.length){
+                    done=true;
+                    // Get the most recent txn date for this account overall
+                    const latest=await supaFetch('finance_transactions','GET',null,
+                        `?account_id=eq.${acc.id}&order=transaction_date.desc&limit=1`);
+                    if(latest?.length) latestDate=latest[0].transaction_date;
+                }
+            }catch(e){}
+        }
+        if(done) doneCount++;
+        const icon=done?'✅':'⬜';
+        const dateHint=latestDate&&done?`<span style="color:var(--sage-400);font-size:0.75rem;margin-left:8px;">latest: ${latestDate}</span>`
+            :!done&&latestDate?`<span style="color:var(--dusty-rose);font-size:0.75rem;margin-left:8px;">latest: ${latestDate}</span>`:'';
+        const nameStyle=done?'color:var(--sage-400);text-decoration:line-through;':'color:var(--charcoal);font-weight:500;';
+        html+=`<div style="padding:8px 12px;border-bottom:1px solid var(--sage-100);display:flex;align-items:center;gap:10px;">
+            <span style="font-size:1.1rem;">${icon}</span>
+            <span style="${nameStyle}">${name}</span>
+            ${dateHint}
+        </div>`;
+    }
+
+    const allDone=doneCount===weeklyImportAccounts.length;
+    const summary=allDone
+        ?`<div style="padding:12px;margin-top:12px;background:rgba(39,174,96,0.1);border-radius:8px;color:var(--green-soft);font-weight:600;text-align:center;">🎉 All imports done for this week!</div>`
+        :`<div style="padding:10px;margin-top:12px;background:rgba(192,57,43,0.08);border-radius:8px;color:var(--dusty-rose);font-size:0.85rem;text-align:center;">${weeklyImportAccounts.length-doneCount} remaining</div>`;
+
+    el.innerHTML=html+summary;
 }
 
 function dzDropSingle(e){
@@ -2753,6 +2821,7 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
     const acc=allAcc.find(a=>a.id===accountId);
     statusEl.innerHTML=`✅ → <strong>${acc?.name||'Account'}</strong> · <strong>${imported}</strong> new · <strong>${skipped}</strong> skipped <button onclick="undoImport('${entryId}')" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid #c44;background:white;color:#c44;cursor:pointer;font-size:0.8rem;">↩ Undo</button>`;
     statusEl.style.color='#2e7d32';
+    loadImportChecklist();
 }
 
 function dzOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
