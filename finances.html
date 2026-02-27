@@ -168,10 +168,23 @@
             .data-table { font-size: 0.8rem; }
             .data-table th, .data-table td { padding: 8px 6px; }
 
-            /* Dashboard cards */
-            #dash-cards { grid-template-columns: 1fr 1fr 1fr !important; gap: 10px !important; }
-            #dash-big-charges .data-table, #dash-boa-girls .data-table { font-size: 0.78rem; }
-            #dash-big-charges td, #dash-boa-girls td { padding: 8px 6px; }
+            /* Dashboard - top 3 spend cards */
+            #dash-cards { gap: 8px !important; }
+            #dash-cards > div { padding: 14px 8px !important; }
+            #dash-cards > div > div:first-child { font-size: 0.6rem !important; }
+            #dash-cards > div > div:last-child { font-size: 1.2rem !important; }
+
+            /* Dashboard - 4 debt tiles → 2x2 */
+            #tab-dashboard .card > div[style*="repeat(4"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+            /* Dashboard tables */
+            #dash-big-charges .data-table, #dash-boa-girls .data-table,
+            #dash-loans-table .data-table, #dash-accounts-table .data-table { font-size: 0.78rem; }
+            #dash-big-charges td, #dash-boa-girls td,
+            #dash-loans-table td, #dash-accounts-table td { padding: 8px 6px; }
+
+            /* Hide Account & Date columns on small screens */
+            .dash-hide-sm { display: none !important; }
 
             /* Transactions & Import mobile */
             #tab-transactions .card > div[style*="grid-template-columns"] { grid-template-columns: 1fr 1fr !important; }
@@ -183,13 +196,28 @@
         }
 
         @media (max-width: 420px) {
-            /* Small phones - stack cards */
-            #dash-cards { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
-            .dash-card div:last-child { font-size: 1.15rem !important; }
+            /* Small phones */
+            #dash-cards { grid-template-columns: 1fr 1fr 1fr !important; gap: 6px !important; }
+            #dash-cards > div { padding: 10px 6px !important; }
+            #dash-cards > div > div:first-child { font-size: 0.5rem !important; }
+            #dash-cards > div > div:last-child { font-size: 1rem !important; }
+
+            /* Debt tiles smaller text */
+            #tab-dashboard .card > div[style*="repeat(4"] > div { padding: 10px 6px !important; }
+            #tab-dashboard .card > div[style*="repeat(4"] > div > div:first-child { font-size: 0.55rem !important; }
+            #tab-dashboard .card > div[style*="repeat(4"] > div > div:last-child { font-size: 1.15rem !important; }
 
             /* Top bar compact */
             .top-bar h1 { font-size: 1.2rem; }
             .top-bar a { font-size: 0.75rem; }
+
+            /* Week nav */
+            #tab-dashboard .card > div:first-child { gap: 6px !important; }
+            #dash-week-label { font-size: 0.95rem !important; min-width: 140px !important; }
+
+            /* Description column tighter */
+            #dash-big-charges td:first-child,
+            #dash-boa-girls td:first-child { max-width: 120px !important; }
         }
     </style>
 </head>
@@ -273,10 +301,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
             <!-- Overall totals -->
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
                 <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
-                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">📊 Total Debt</div>
-                    <div id="dash-total-debt" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
-                </div>
-                <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
                     <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">💳 CC Debt</div>
                     <div id="dash-cc-debt" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
                 </div>
@@ -288,6 +312,10 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                     <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">🏛️ Total Tax</div>
                     <div id="dash-total-tax" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
                 </div>
+                <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
+                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">📊 Total Debt</div>
+                    <div id="dash-total-debt" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
+                </div>
             </div>
 
             <!-- Charges over $200 table -->
@@ -295,6 +323,12 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
 
             <!-- BOA Girls charges table -->
             <div id="dash-boa-girls" style="margin-bottom:24px;"></div>
+
+            <!-- Loans table -->
+            <div id="dash-loans-table" style="margin-bottom:24px;"></div>
+
+            <!-- PNC & Rental balances -->
+            <div id="dash-accounts-table" style="margin-bottom:24px;"></div>
         </div>
     </div>
 
@@ -2094,7 +2128,7 @@ async function aiCategorize(){
                 return `ID:${t.id} | Account:${acctName} | ${t.transaction_date} | ${t.description} | ${t.amount<0?'-':''}$${Math.abs(t.amount).toFixed(2)} | Current:${t.category||'Uncategorized'}`;
             }).join('\n');
             
-            const prompt=`You are categorizing bank transactions. Assign each transaction one category from this list ONLY:\n${cats.join(', ')}\n\nRules:\n- ALL transactions from "BOA CC" account must be "Girls"\n- DraftKings = "Draftkings"\n- Zelle with Colette or Martin = "Internal Transfer"\n- Grocery stores (ShopRite, Walmart, Aldi) = "Groceries"\n- Gas stations (Wawa, Sheetz, Sunoco) = "Auto"\n- Zaritza = "Rent Payment"\n- Use your best judgment for the rest based on the description\n\nTransactions:\n${txnList}\n\nRespond with ONLY a JSON array of objects, no markdown, no backticks. Each object: {"id": number, "category": "string"}\nExample: [{"id":123,"category":"Groceries"},{"id":456,"category":"Auto"}]`;
+            const prompt=`You are categorizing bank transactions. Assign each transaction one category from this list ONLY:\n${cats.join(', ')}\n\nRules:\n- ALL transactions from "BOA CC" account must be "Girls"\n- DraftKings = "Draftkings"\n- Zelle with Colette or Martin = "Internal Transfer"\n- Online Transfer / Online Banking Transfer = "Internal Transfer"\n- FID BKG SVC LLC or Fidelity = "Kids Retirement"\n- Grocery stores (ShopRite, Walmart, Aldi) = "Groceries"\n- Gas stations (Wawa, Sheetz, Sunoco) = "Auto"\n- Zaritza = "Rent Payment"\n- Use your best judgment for the rest based on the description\n\nTransactions:\n${txnList}\n\nRespond with ONLY a JSON array of objects, no markdown, no backticks. Each object: {"id": number, "category": "string"}\nExample: [{"id":123,"category":"Groceries"},{"id":456,"category":"Auto"}]`;
             
             const response=await fetch('https://api.anthropic.com/v1/messages',{
                 method:'POST',
@@ -2227,10 +2261,16 @@ function getDashWeekRange(offset=0){
     const thisWed=new Date(today);
     thisWed.setDate(today.getDate()+diff);
     thisWed.setDate(thisWed.getDate()+(offset*7));
+    const prevWed=new Date(thisWed);
+    prevWed.setDate(prevWed.getDate()-7);
     const twoWeeksAgo=new Date(thisWed);
     twoWeeksAgo.setDate(twoWeeksAgo.getDate()-14);
-    const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    return {start:fmt(twoWeeksAgo), end:fmt(thisWed), label:twoWeeksAgo.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+thisWed.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+    const f=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return {
+        start:f(prevWed), end:f(thisWed),
+        twoWkStart:f(twoWeeksAgo),
+        label:prevWed.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+thisWed.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+    };
 }
 
 function shiftDashWeek(dir){
@@ -2272,11 +2312,11 @@ async function loadDashboard(){
             }
         }
 
-        // === 1b. BOA Girls transactions (for the table only) ===
+        // === 1b. BOA Girls transactions (for the table - last 2 weeks) ===
         let boaGirlsTxns=[];
         if(boaAcc){
             const txns=await supaFetch('finance_transactions','GET',null,
-                `?account_id=eq.${boaAcc.id}&category=eq.Girls&transaction_date=gt.${week.start}&transaction_date=lte.${week.end}&amount=lt.0&order=transaction_date.desc`);
+                `?account_id=eq.${boaAcc.id}&category=eq.Girls&transaction_date=gt.${week.twoWkStart}&transaction_date=lte.${week.end}&amount=lt.0&order=transaction_date.desc`);
             if(txns?.length) boaGirlsTxns=txns;
         }
 
@@ -2313,13 +2353,15 @@ async function loadDashboard(){
                 if(a&&a.is_debt) thisWeekDebt+=parseFloat(e.ending_balance)||0;
             });
         }
-        // Add loans from schedule for this week
+        // Add loans from schedule for this week (skip loans that didn't exist yet)
         let thisWeekLoans=0;
         for(const a of loanAccs){
+            const loanStart=(a.created_at||'').substring(0,10);
+            if(loanStart && week.end<loanStart) continue;
             const r=await supaFetch('finance_loan_schedules','GET',null,
                 `?account_id=eq.${a.id}&due_date=lte.${week.end}&order=due_date.desc&limit=1`);
             if(r?.length) thisWeekLoans+=parseFloat(r[0].balance_after)||0;
-            else thisWeekLoans+=parseFloat(a.starting_balance)||0;
+            else if(!loanStart || week.end>=loanStart) thisWeekLoans+=parseFloat(a.starting_balance)||0;
         }
         thisWeekDebt+=thisWeekLoans;
 
@@ -2334,10 +2376,12 @@ async function loadDashboard(){
         }
         let priorWeekLoans=0;
         for(const a of loanAccs){
+            const loanStart=(a.created_at||'').substring(0,10);
+            if(loanStart && week.start<loanStart) continue;
             const r=await supaFetch('finance_loan_schedules','GET',null,
                 `?account_id=eq.${a.id}&due_date=lte.${week.start}&order=due_date.desc&limit=1`);
             if(r?.length) priorWeekLoans+=parseFloat(r[0].balance_after)||0;
-            else priorWeekLoans+=parseFloat(a.starting_balance)||0;
+            else if(!loanStart || week.start>=loanStart) priorWeekLoans+=parseFloat(a.starting_balance)||0;
         }
         priorWeekDebt+=priorWeekLoans;
 
@@ -2371,9 +2415,9 @@ async function loadDashboard(){
 
         const totalDebt=ccDebt+loanDebt+totalTax;
 
-        // === 5. Charges over $200 (exclude payments, Internal Transfer, Girls, CC Payment) ===
+        // === 5. Charges over $200 - last 2 weeks (exclude payments, Internal Transfer, Girls, CC Payment) ===
         const bigCharges=await supaFetch('finance_transactions','GET',null,
-            `?transaction_date=gt.${week.start}&transaction_date=lte.${week.end}&order=transaction_date.desc`);
+            `?transaction_date=gt.${week.twoWkStart}&transaction_date=lte.${week.end}&order=transaction_date.desc`);
         const excludeCats=['internal transfer','girls','cc payment','cc payments'];
         const over200=(bigCharges||[]).filter(t=>{
             const amt=parseFloat(t.amount)||0;
@@ -2407,16 +2451,16 @@ async function loadDashboard(){
         if(over200.length){
             let tbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">🔴 Charges Over $200 <span style="font-size:0.8rem;font-weight:400;color:var(--sage-400);">(last 2 weeks)</span></h3>
                 <div class="table-scroll"><table class="data-table"><thead><tr>
-                    <th>Date</th><th>Account</th><th>Description</th><th>Category</th><th style="text-align:right;">Amount</th>
+                    <th>Description</th><th>Category</th><th style="text-align:right;">Amount</th><th class="dash-hide-sm">Account</th><th class="dash-hide-sm">Date</th>
                 </tr></thead><tbody>`;
             over200.forEach(t=>{
                 const acctName=accMap[t.account_id]?.name||'?';
                 tbl+=`<tr>
-                    <td style="white-space:nowrap;">${t.transaction_date}</td>
-                    <td style="font-size:0.8rem;">${acctName}</td>
                     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.description||'').replace(/"/g,'&quot;')}">${t.description||''}</td>
                     <td><span class="badge" style="background:var(--sage-100);color:var(--sage-600);">${t.category||'—'}</span></td>
                     <td style="text-align:right;font-weight:600;">${fmt(Math.abs(parseFloat(t.amount)||0))}</td>
+                    <td class="dash-hide-sm" style="font-size:0.8rem;">${acctName}</td>
+                    <td class="dash-hide-sm" style="white-space:nowrap;">${t.transaction_date}</td>
                 </tr>`;
             });
             tbl+=`</tbody></table></div>`;
@@ -2449,6 +2493,78 @@ async function loadDashboard(){
             boaEl.innerHTML=tbl;
         }else{
             boaEl.innerHTML='';
+        }
+
+        // === BUILD LOANS TABLE ===
+        const loansEl=document.getElementById('dash-loans-table');
+        if(loanAccs.length){
+            let ltbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">🏦 Loans</h3>
+                <div class="table-scroll"><table class="data-table"><thead><tr>
+                    <th>Loan</th><th style="text-align:right;">Balance</th><th>Payoff Date</th><th style="text-align:right;">Rate</th>
+                </tr></thead><tbody>`;
+            for(const a of loanAccs){
+                // Get current balance from latest weekly entry
+                let bal=0;
+                const entry=await supaFetch('finance_weekly_entries','GET',null,
+                    `?account_id=eq.${a.id}&order=entry_date.desc&limit=1`);
+                if(entry?.length){
+                    bal=parseFloat(entry[0].ending_balance)||0;
+                }else{
+                    // Fallback to loan schedule
+                    const today=new Date().toISOString().split('T')[0];
+                    const sched=await supaFetch('finance_loan_schedules','GET',null,
+                        `?account_id=eq.${a.id}&due_date=lte.${today}&order=due_date.desc&limit=1`);
+                    bal=sched?.length?parseFloat(sched[0].balance_after)||0:parseFloat(a.starting_balance)||0;
+                }
+                // Get payoff date (last schedule entry with balance > 0 or balance_after = 0)
+                let payoff='—';
+                const lastPay=await supaFetch('finance_loan_schedules','GET',null,
+                    `?account_id=eq.${a.id}&order=due_date.desc&limit=1`);
+                if(lastPay?.length){
+                    const dt=new Date(lastPay[0].due_date+'T12:00:00');
+                    payoff=dt.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+                }
+                ltbl+=`<tr>
+                    <td style="font-weight:500;">${a.name}</td>
+                    <td style="text-align:right;font-weight:600;">${fmt(bal)}</td>
+                    <td>${payoff}</td>
+                    <td style="text-align:right;">${a.interest_rate||0}%</td>
+                </tr>`;
+            }
+            ltbl+=`</tbody></table></div>`;
+            loansEl.innerHTML=ltbl;
+        }else{
+            loansEl.innerHTML='';
+        }
+
+        // === BUILD PNC & RENTAL TABLE ===
+        const acctEl=document.getElementById('dash-accounts-table');
+        const trackNames=['pnc','rental'];
+        const trackAccts=allAcc.filter(a=>a.is_active!==false && trackNames.some(n=>a.name.toLowerCase().includes(n)));
+        if(trackAccts.length){
+            let atbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">💰 Account Balances</h3>
+                <div class="table-scroll"><table class="data-table"><thead><tr>
+                    <th>Account</th><th style="text-align:right;">Balance</th><th>As Of</th>
+                </tr></thead><tbody>`;
+            for(const a of trackAccts){
+                const entry=await supaFetch('finance_weekly_entries','GET',null,
+                    `?account_id=eq.${a.id}&order=entry_date.desc&limit=1`);
+                let bal=0, asOf='—';
+                if(entry?.length){
+                    bal=parseFloat(entry[0].ending_balance)||0;
+                    const dt=new Date(entry[0].entry_date+'T12:00:00');
+                    asOf=dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+                }
+                atbl+=`<tr>
+                    <td style="font-weight:500;">${a.name}</td>
+                    <td style="text-align:right;font-weight:600;color:${bal>=0?'var(--green-soft)':'var(--red-soft)'};">${fmt(bal)}</td>
+                    <td style="color:var(--sage-400);font-size:0.85rem;">${asOf}</td>
+                </tr>`;
+            }
+            atbl+=`</tbody></table></div>`;
+            acctEl.innerHTML=atbl;
+        }else{
+            acctEl.innerHTML='';
         }
 
     }catch(e){console.error('Dashboard:',e);}
@@ -2515,6 +2631,8 @@ function parseDate(str){
 function guessCategory(desc){
     if(!desc)return 'Uncategorized';
     const upper=desc.toUpperCase();
+    if(upper.includes('ONLINE TRANSFER')||upper.includes('ONLINE BANKING TRANSFER')) return 'Internal Transfer';
+    if(upper.includes('FID BKG SVC LLC')||upper.includes('FIDELITY')) return 'Kids Retirement';
     for(const rule of categoryRules){
         if(upper.includes(rule.pattern.toUpperCase())) return rule.category;
     }
