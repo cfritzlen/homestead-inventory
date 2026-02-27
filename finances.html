@@ -169,10 +169,12 @@
             .data-table th, .data-table td { padding: 8px 6px; }
 
             /* Dashboard cards - 2 column on phone */
-            #dash-cards { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+            #dash-cards { grid-template-columns: 1fr 1fr 1fr !important; gap: 10px !important; }
             .dash-card { padding: 14px 10px !important; }
             .dash-card div:first-child { font-size: 0.6rem !important; }
             .dash-card div:last-child { font-size: 1.3rem !important; }
+            #dash-big-charges .data-table, #dash-boa-girls .data-table { font-size: 0.78rem; }
+            #dash-big-charges td, #dash-boa-girls td { padding: 8px 6px; }
 
             /* Chart taller on mobile */
             #dash-debt-chart { height: 260px !important; }
@@ -267,8 +269,33 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
     <!-- ==================== DASHBOARD ==================== -->
     <div id="tab-dashboard" class="tab-panel active">
         <div class="card">
-            <h2>📊 Dashboard</h2>
-            <div id="dash-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:16px 0 28px;"></div>
+            <h2>📊 Weekly Snapshot</h2>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <button class="btn btn-secondary btn-small" onclick="shiftDashWeek(-1)" style="padding:8px 12px;font-size:1.1rem;">◀</button>
+                <span id="dash-week-label" style="font-family:'Crimson Pro',serif;font-size:1.2rem;color:var(--sage-700);min-width:200px;text-align:center;"></span>
+                <button class="btn btn-secondary btn-small" onclick="shiftDashWeek(1)" style="padding:8px 12px;font-size:1.1rem;">▶</button>
+            </div>
+            <div id="dash-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:0 0 24px;"></div>
+
+            <!-- Overall totals -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+                <div style="background:var(--sage-700);border-radius:12px;padding:18px;text-align:center;">
+                    <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:6px;">📊 Total Debt</div>
+                    <div id="dash-total-debt" style="font-size:1.8rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
+                </div>
+                <div style="background:var(--sage-700);border-radius:12px;padding:18px;text-align:center;">
+                    <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:6px;">🏛️ Total Tax</div>
+                    <div id="dash-total-tax" style="font-size:1.8rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
+                </div>
+            </div>
+
+            <!-- Charges over $200 table -->
+            <div id="dash-big-charges" style="margin-bottom:24px;"></div>
+
+            <!-- BOA Girls charges table -->
+            <div id="dash-boa-girls" style="margin-bottom:24px;"></div>
+
+            <!-- Chart -->
             <div class="card" style="padding:16px;margin:0;background:white;border:1px solid var(--sage-200);">
                 <h3 id="dash-chart-title" onclick="switchChart('debt')" style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:12px;cursor:pointer;" title="Click to show total debt">📉 Total Debt (Last Year)</h3>
                 <div id="dash-debt-chart" style="height:220px;position:relative;"></div>
@@ -2192,91 +2219,203 @@ async function applyAISuggestions(){
 
 // ==================== INIT ====================
 // ==================== DASHBOARD ====================
+let dashWeekOffset=0;
+
+function getDashWeekRange(offset=0){
+    const today=new Date();
+    const dayOfWeek=today.getDay();
+    const diff=dayOfWeek<=3?3-dayOfWeek:10-dayOfWeek;
+    const thisWed=new Date(today);
+    thisWed.setDate(today.getDate()+diff);
+    thisWed.setDate(thisWed.getDate()+(offset*7));
+    const prevWed=new Date(thisWed);
+    prevWed.setDate(prevWed.getDate()-7);
+    const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return {start:fmt(prevWed), end:fmt(thisWed), label:prevWed.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+thisWed.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+}
+
+function shiftDashWeek(dir){
+    dashWeekOffset+=dir;
+    loadDashboard();
+}
+
 async function loadDashboard(){
     try{
+        const week=getDashWeekRange(dashWeekOffset);
+        document.getElementById('dash-week-label').textContent=week.label;
+
         const allAcc=[...accounts,...closedAccounts];
         const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
-
-        // Get the 2 most recent entries PER account (for spend calc)
-        let ccTotal=0, loanTotal=0, taxTotal=0, ccSpent=0, boaSpent=0;
-
         const ccAccs=allAcc.filter(a=>a.account_type==='credit_card');
         const boaAcc=ccAccs.find(a=>a.name?.toLowerCase().includes('boa'));
         const taxAccs=allAcc.filter(a=>a.account_type==='tax_debt');
         const loanAccs=accounts.filter(a=>a.account_type==='loan');
+        const elecBills=bills.filter(b=>b.name?.toLowerCase().includes('electric'));
 
-        // CC balances + spend
+        // === 1. BOA Girls spending from transactions ===
+        let boaGirlsSpent=0;
+        let boaGirlsTxns=[];
+        if(boaAcc){
+            const txns=await supaFetch('finance_transactions','GET',null,
+                `?account_id=eq.${boaAcc.id}&category=eq.Girls&transaction_date=gt.${week.start}&transaction_date=lte.${week.end}&order=transaction_date.desc`);
+            if(txns?.length){
+                boaGirlsTxns=txns;
+                boaGirlsSpent=txns.reduce((s,t)=>s+Math.abs(parseFloat(t.amount)||0),0);
+            }
+        }
+
+        // === 2. All other CC spending (from weekly entries: start - prior end) ===
+        let otherCCSpent=0;
         for(const cc of ccAccs){
+            if(boaAcc && cc.id===boaAcc.id) continue;
             const rows=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${cc.id}&order=entry_date.desc&limit=2`);
+                `?account_id=eq.${cc.id}&entry_date=gte.${week.start}&entry_date=lte.${week.end}&order=entry_date.desc&limit=1`);
             if(rows?.length){
-                const latest=rows[0];
-                const bal=parseFloat(latest.ending_balance)||0;
-                ccTotal+=bal;
-                // Spend = this week start - last week end
-                if(rows.length>=2){
-                    const thisStart=parseFloat(latest.starting_balance)||0;
-                    const prevEnd=parseFloat(rows[1].ending_balance)||0;
+                const thisStart=parseFloat(rows[0].starting_balance)||0;
+                // Get prior week ending
+                const prior=await supaFetch('finance_weekly_entries','GET',null,
+                    `?account_id=eq.${cc.id}&entry_date=lt.${week.start}&order=entry_date.desc&limit=1`);
+                if(prior?.length){
+                    const prevEnd=parseFloat(prior[0].ending_balance)||0;
                     const spent=Math.max(0,thisStart-prevEnd);
-                    if(cc.id===boaAcc?.id) boaSpent=spent;
-                    else ccSpent+=spent;
+                    otherCCSpent+=spent;
                 }
             }
         }
 
-        // Tax totals
-        for(const t of taxAccs){
-            const rows=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${t.id}&order=entry_date.desc&limit=1`);
-            if(rows?.length) taxTotal+=parseFloat(rows[0].ending_balance)||0;
-        }
+        // === 3. Debt difference from last week ===
+        // Get total debt for this week and prior week
+        let thisWeekDebt=0, priorWeekDebt=0;
 
-        // Loan totals from schedule
-        let schedLoanTotal=0;
-        const today=new Date().toISOString().split('T')[0];
+        // This week entries
+        const thisEntries=await supaFetch('finance_weekly_entries','GET',null,
+            `?entry_date=eq.${week.end}&order=entry_date.desc`);
+        if(thisEntries?.length){
+            thisEntries.forEach(e=>{
+                const a=accMap[e.account_id];
+                if(a&&a.is_debt) thisWeekDebt+=parseFloat(e.ending_balance)||0;
+            });
+        }
+        // Add loans from schedule for this week
+        let thisWeekLoans=0;
         for(const a of loanAccs){
             const r=await supaFetch('finance_loan_schedules','GET',null,
-                `?account_id=eq.${a.id}&due_date=lte.${today}&order=due_date.desc&limit=1`);
-            if(r?.length) schedLoanTotal+=parseFloat(r[0].balance_after)||0;
-            else schedLoanTotal+=parseFloat(a.starting_balance)||0;
+                `?account_id=eq.${a.id}&due_date=lte.${week.end}&order=due_date.desc&limit=1`);
+            if(r?.length) thisWeekLoans+=parseFloat(r[0].balance_after)||0;
+            else thisWeekLoans+=parseFloat(a.starting_balance)||0;
         }
-        // Fallback to saved entries if no schedule
-        if(!schedLoanTotal){
-            for(const a of loanAccs){
+        thisWeekDebt+=thisWeekLoans;
+
+        // Prior week entries
+        const priorEntries=await supaFetch('finance_weekly_entries','GET',null,
+            `?entry_date=eq.${week.start}&order=entry_date.desc`);
+        if(priorEntries?.length){
+            priorEntries.forEach(e=>{
+                const a=accMap[e.account_id];
+                if(a&&a.is_debt) priorWeekDebt+=parseFloat(e.ending_balance)||0;
+            });
+        }
+        let priorWeekLoans=0;
+        for(const a of loanAccs){
+            const r=await supaFetch('finance_loan_schedules','GET',null,
+                `?account_id=eq.${a.id}&due_date=lte.${week.start}&order=due_date.desc&limit=1`);
+            if(r?.length) priorWeekLoans+=parseFloat(r[0].balance_after)||0;
+            else priorWeekLoans+=parseFloat(a.starting_balance)||0;
+        }
+        priorWeekDebt+=priorWeekLoans;
+
+        const debtDiff=thisWeekDebt-priorWeekDebt;
+
+        // === 4. Overall totals (from most recent data) ===
+        let totalDebt=thisWeekDebt;
+        let totalTax=0;
+        if(thisEntries?.length){
+            thisEntries.forEach(e=>{
+                const a=accMap[e.account_id];
+                if(a&&a.account_type==='tax_debt') totalTax+=parseFloat(e.ending_balance)||0;
+            });
+        }else{
+            // Fallback to latest entries for any week
+            for(const t of taxAccs){
                 const rows=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&order=entry_date.desc&limit=1`);
-                if(rows?.length) loanTotal+=parseFloat(rows[0].ending_balance)||0;
+                    `?account_id=eq.${t.id}&order=entry_date.desc&limit=1`);
+                if(rows?.length) totalTax+=parseFloat(rows[0].ending_balance)||0;
             }
         }
-        const loanDisplay=schedLoanTotal||loanTotal;
 
-        // Electric bills
-        let electricTotal=0;
-        const elecBills=bills.filter(b=>b.name?.toLowerCase().includes('electric'));
-        for(const b of elecBills){
-            const payments=await supaFetch('finance_bill_payments','GET',null,
-                `?bill_id=eq.${b.id}&order=bill_month.desc&limit=1`);
-            if(payments?.length) electricTotal+=parseFloat(payments[0].actual_amount)||b.expected_amount||0;
-            else electricTotal+=b.expected_amount||0;
-        }
+        // === 5. Charges over $200 from transactions this week ===
+        const bigCharges=await supaFetch('finance_transactions','GET',null,
+            `?transaction_date=gt.${week.start}&transaction_date=lte.${week.end}&order=transaction_date.desc`);
+        const over200=(bigCharges||[]).filter(t=>Math.abs(parseFloat(t.amount)||0)>=200);
 
-        // Build clickable cards
-        const card=(key,label,value,icon)=>`
-            <div class="dash-card" data-chart="${key}" onclick="switchChart('${key}')" 
-                 style="background:white;padding:20px;border-radius:12px;text-align:center;border:2px solid var(--sage-200);cursor:pointer;transition:all 0.2s;">
+        // === BUILD CARDS ===
+        const card=(label,value,icon,extraClass='')=>`
+            <div style="background:white;padding:20px;border-radius:12px;text-align:center;border:2px solid var(--sage-200);">
                 <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-500);">${icon} ${label}</div>
-                <div style="font-size:1.6rem;font-weight:700;font-family:'Crimson Pro',serif;margin-top:6px;color:var(--sage-700);">${fmt(value)}</div>
+                <div style="font-size:1.6rem;font-weight:700;font-family:'Crimson Pro',serif;margin-top:6px;color:var(--sage-700);${extraClass}">${value}</div>
             </div>`;
 
-        document.getElementById('dash-cards').innerHTML=
-            card('ccspend','CC Spent This Week',ccSpent,'💳')+
-            card('boaspend','BOA Spent This Week',boaSpent,'💳')+
-            card('ccbal','Total CC Balance',ccTotal,'💳')+
-            card('tax','Tax Owed',taxTotal,'🏛️')+
-            card('loans','Loan Balance',loanDisplay,'🏦')+
-            card('electric','Electric Bills',electricTotal,'⚡');
+        const diffSign=debtDiff>0?'+':'';
+        const diffColor=debtDiff>0?'color:#c0392b;':'color:#27ae60;';
 
-        // ===== BUILD ALL TREND DATA =====
+        document.getElementById('dash-cards').innerHTML=
+            card('BOA Girls Spent',fmt(boaGirlsSpent),'👧')+
+            card('Other CC Spent',fmt(otherCCSpent),'💳')+
+            card('Debt Change',diffSign+fmt(Math.abs(debtDiff)),'📊',diffColor);
+
+        document.getElementById('dash-total-debt').textContent=fmt(totalDebt);
+        document.getElementById('dash-total-tax').textContent=fmt(totalTax);
+
+        // === BUILD $200+ TABLE ===
+        const bigEl=document.getElementById('dash-big-charges');
+        if(over200.length){
+            let tbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">🔴 Charges Over $200</h3>
+                <div class="table-scroll"><table class="data-table"><thead><tr>
+                    <th>Date</th><th>Account</th><th>Description</th><th>Category</th><th style="text-align:right;">Amount</th>
+                </tr></thead><tbody>`;
+            over200.forEach(t=>{
+                const acctName=accMap[t.account_id]?.name||'?';
+                tbl+=`<tr>
+                    <td style="white-space:nowrap;">${t.transaction_date}</td>
+                    <td style="font-size:0.8rem;">${acctName}</td>
+                    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.description||'').replace(/"/g,'&quot;')}">${t.description||''}</td>
+                    <td><span class="badge" style="background:var(--sage-100);color:var(--sage-600);">${t.category||'—'}</span></td>
+                    <td style="text-align:right;font-weight:600;">${fmt(Math.abs(parseFloat(t.amount)||0))}</td>
+                </tr>`;
+            });
+            tbl+=`</tbody></table></div>`;
+            bigEl.innerHTML=tbl;
+        }else{
+            bigEl.innerHTML='';
+        }
+
+        // === BUILD BOA GIRLS TABLE ===
+        const boaEl=document.getElementById('dash-boa-girls');
+        if(boaGirlsTxns.length){
+            let tbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">👧 BOA Girls Charges</h3>
+                <div class="table-scroll"><table class="data-table"><thead><tr>
+                    <th>Date</th><th>Description</th><th style="text-align:right;">Amount</th>
+                </tr></thead><tbody>`;
+            let girlsTotal=0;
+            boaGirlsTxns.forEach(t=>{
+                const amt=Math.abs(parseFloat(t.amount)||0);
+                girlsTotal+=amt;
+                tbl+=`<tr>
+                    <td style="white-space:nowrap;">${t.transaction_date}</td>
+                    <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.description||'').replace(/"/g,'&quot;')}">${t.description||''}</td>
+                    <td style="text-align:right;font-weight:600;">${fmt(amt)}</td>
+                </tr>`;
+            });
+            tbl+=`<tr style="font-weight:700;border-top:2px solid var(--sage-500);">
+                <td colspan="2" style="text-align:right;">Total</td>
+                <td style="text-align:right;">${fmt(girlsTotal)}</td>
+            </tr></tbody></table></div>`;
+            boaEl.innerHTML=tbl;
+        }else{
+            boaEl.innerHTML='';
+        }
+
+        // ===== BUILD ALL TREND DATA (same as before) =====
         const allEntries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date');
         const byDate={};
         allEntries.forEach(e=>{
