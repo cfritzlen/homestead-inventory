@@ -149,6 +149,11 @@
             margin-top: 8px;
         }
 
+        /* Special accent for Open Brain card */
+        .dashboard-card.brain-card::before {
+            background: linear-gradient(90deg, var(--sage-500), var(--dusty-sage), var(--mauve));
+        }
+
         @media (max-width: 768px) {
             .pond-banner {
                 height: 180px;
@@ -192,6 +197,12 @@
         </header>
 
         <div class="dashboard-grid">
+            <a href="open-brain.html" class="dashboard-card brain-card">
+                <div class="card-icon">🧠</div>
+                <h2 class="card-title">Open Brain</h2>
+                <p class="card-description">Capture thoughts, scan documents, upload files — searchable by meaning</p>
+            </a>
+
             <a href="inventory.html" class="dashboard-card">
                 <div class="card-icon">🫙</div>
                 <h2 class="card-title">Inventory</h2>
