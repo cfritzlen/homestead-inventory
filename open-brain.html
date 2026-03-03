@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Brain — Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --sage-50: #f6f7f3;
+            --sage-100: #e8ebe0;
+            --sage-200: #d4dac5;
+            --sage-300: #b8c5a3;
+            --sage-400: #98ab7e;
+            --sage-500: #7a9061;
+            --sage-600: #5f734c;
+            --sage-700: #4a5a3b;
+            --sage-800: #3d4a32;
+            --cream: #ece8dd;
+            --taupe: #c4b5a4;
+            --dusty-sage: #a4ac95;
+            --mauve: #a88479;
+            --charcoal: #4a4d47;
+            --dusty-rose: #9b7269;
+        }
+
+        body {
+            font-family: 'Karla', sans-serif;
+            background: var(--charcoal);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            color: var(--cream);
+        }
+
+        /* ── Top bar ── */
+        .top-bar {
+            background: rgba(61, 74, 50, 0.6);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(164, 172, 149, 0.2);
+        }
+        .top-bar a {
+            color: var(--taupe);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .top-bar a:hover { color: var(--cream); }
+        .top-bar span { color: var(--dusty-sage); font-size: 0.8rem; }
+
+        /* ── Main layout ── */
+        .main-content {
+            padding: 30px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 2.4rem;
+            font-weight: 300;
+            color: var(--cream);
+            letter-spacing: 1px;
+        }
+        .subtitle {
+            font-size: 0.95rem;
+            color: var(--taupe);
+            margin-top: 6px;
+        }
+
+        /* ── Mode tabs ── */
+        .mode-tabs {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .mode-tab {
+            background: rgba(236, 232, 221, 0.1);
+            border: 1px solid rgba(164, 172, 149, 0.3);
+            border-radius: 10px;
+            padding: 10px 18px;
+            color: var(--taupe);
+            cursor: pointer;
+            font-family: 'Karla', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .mode-tab:hover {
+            background: rgba(236, 232, 221, 0.15);
+            color: var(--cream);
+        }
+        .mode-tab.active {
+            background: var(--sage-700);
+            border-color: var(--sage-500);
+            color: var(--cream);
+        }
+        .mode-tab .tab-icon { font-size: 1.1rem; }
+
+        /* ── Capture card ── */
+        .capture-card {
+            background: rgba(236, 232, 221, 0.95);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(196, 181, 164, 0.3);
+            color: var(--charcoal);
+            position: relative;
+        }
+        .capture-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--sage-500), var(--dusty-sage), var(--mauve));
+            border-radius: 16px 16px 0 0;
+        }
+
+        /* ── Capture modes ── */
+        .capture-mode { display: none; }
+        .capture-mode.active { display: block; }
+
+        /* Thought mode */
+        .thought-input {
+            width: 100%;
+            min-height: 120px;
+            border: 1px solid var(--sage-200);
+            border-radius: 10px;
+            padding: 14px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            resize: vertical;
+            background: var(--sage-50);
+            color: var(--charcoal);
+            line-height: 1.6;
+        }
+        .thought-input:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.15);
+        }
+        .thought-input::placeholder { color: var(--taupe); }
+
+        /* File upload mode */
+        .drop-zone {
+            border: 2px dashed var(--sage-300);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--sage-50);
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--sage-500);
+            background: var(--sage-100);
+        }
+        .drop-zone-icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .drop-zone-text { color: var(--sage-600); font-size: 0.95rem; }
+        .drop-zone-hint { color: var(--taupe); font-size: 0.8rem; margin-top: 6px; }
+        .drop-zone input[type="file"] { display: none; }
+
+        .file-preview {
+            display: none;
+            margin-top: 14px;
+            padding: 12px;
+            background: var(--sage-50);
+            border-radius: 8px;
+            border: 1px solid var(--sage-200);
+        }
+        .file-preview.has-file { display: flex; align-items: center; gap: 10px; }
+        .file-preview-icon { font-size: 1.5rem; }
+        .file-preview-name {
+            flex: 1;
+            font-size: 0.9rem;
+            color: var(--sage-700);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .file-preview-remove {
+            background: none;
+            border: none;
+            color: var(--dusty-rose);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 4px;
+        }
+
+        /* Camera scan mode */
+        .scan-area {
+            text-align: center;
+        }
+        .scan-pages {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+            min-height: 40px;
+        }
+        .scan-page-thumb {
+            width: 80px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 2px solid var(--sage-200);
+            position: relative;
+        }
+        .scan-page-container {
+            position: relative;
+            display: inline-block;
+        }
+        .scan-page-remove {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--dusty-rose);
+            color: white;
+            border: none;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .scan-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 24px;
+            background: var(--sage-600);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .scan-btn:hover { background: var(--sage-700); }
+        .scan-btn .btn-icon { font-size: 1.3rem; }
+        .scan-hint { color: var(--taupe); font-size: 0.8rem; margin-top: 10px; }
+        .scan-count { color: var(--sage-600); font-size: 0.85rem; margin-top: 8px; font-weight: 500; }
+
+        /* Hidden camera input */
+        #cameraInput { display: none; }
+
+        /* Voice mode */
+        .voice-area { text-align: center; }
+        .voice-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--sage-600);
+            border: 4px solid var(--sage-300);
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .voice-btn:hover { background: var(--sage-700); }
+        .voice-btn.recording {
+            background: var(--dusty-rose);
+            border-color: var(--mauve);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(155, 114, 105, 0.4); }
+            50% { box-shadow: 0 0 0 15px rgba(155, 114, 105, 0); }
+        }
+        .voice-status {
+            margin-top: 12px;
+            font-size: 0.9rem;
+            color: var(--sage-600);
+        }
+        .voice-transcript {
+            width: 100%;
+            min-height: 80px;
+            margin-top: 14px;
+            border: 1px solid var(--sage-200);
+            border-radius: 10px;
+            padding: 14px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            background: var(--sage-50);
+            color: var(--charcoal);
+            resize: vertical;
+            display: none;
+        }
+        .voice-transcript.has-text { display: block; }
+
+        /* ── Common fields ── */
+        .fields-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--sage-200);
+        }
+        .fields-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .field-group { display: flex; flex-direction: column; gap: 4px; }
+        .field-group.full-width { grid-column: 1 / -1; }
+        .field-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--sage-700);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .field-input, .field-select {
+            padding: 10px 12px;
+            border: 1px solid var(--sage-200);
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 0.9rem;
+            background: var(--sage-50);
+            color: var(--charcoal);
+        }
+        .field-input:focus, .field-select:focus {
+            outline: none;
+            border-color: var(--sage-500);
+            box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.15);
+        }
+        .tags-input-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 6px 10px;
+            border: 1px solid var(--sage-200);
+            border-radius: 8px;
+            background: var(--sage-50);
+            min-height: 38px;
+            align-items: center;
+            cursor: text;
+        }
+        .tags-input-wrapper:focus-within {
+            border-color: var(--sage-500);
+            box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.15);
+        }
+        .tag-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--sage-200);
+            color: var(--sage-700);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .tag-pill button {
+            background: none;
+            border: none;
+            color: var(--sage-600);
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 0;
+            line-height: 1;
+        }
+        .tags-text-input {
+            border: none;
+            outline: none;
+            background: transparent;
+            font-family: 'Karla', sans-serif;
+            font-size: 0.9rem;
+            color: var(--charcoal);
+            flex: 1;
+            min-width: 80px;
+        }
+        .tags-text-input::placeholder { color: var(--taupe); }
+
+        /* ── Save button ── */
+        .save-section { margin-top: 20px; display: flex; gap: 12px; align-items: center; }
+        .save-btn {
+            flex: 1;
+            padding: 14px;
+            background: var(--sage-600);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .save-btn:hover { background: var(--sage-700); }
+        .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .save-btn.saving { background: var(--taupe); }
+
+        /* ── Toast notification ── */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--sage-700);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.error { background: var(--dusty-rose); }
+
+        /* ── Recent captures ── */
+        .recent-section {
+            margin-top: 30px;
+        }
+        .recent-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.4rem;
+            font-weight: 400;
+            color: var(--cream);
+            margin-bottom: 14px;
+        }
+        .recent-list { display: flex; flex-direction: column; gap: 10px; }
+        .recent-item {
+            background: rgba(236, 232, 221, 0.08);
+            border: 1px solid rgba(164, 172, 149, 0.15);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+        .recent-item-content {
+            color: var(--cream);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .recent-item-meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 0.75rem;
+            color: var(--taupe);
+        }
+        .recent-item-meta .tag {
+            background: rgba(122, 144, 97, 0.2);
+            padding: 2px 8px;
+            border-radius: 8px;
+            color: var(--dusty-sage);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: var(--taupe);
+            font-size: 0.95rem;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .main-content { padding: 20px 15px; }
+            h1 { font-size: 1.8rem; }
+            .capture-card { padding: 20px; }
+            .fields-grid { grid-template-columns: 1fr; }
+            .mode-tabs { gap: 6px; }
+            .mode-tab { padding: 8px 14px; font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <a href="index.html">← Homestead Hub</a>
+        <span>|</span>
+        <span style="color: var(--dusty-sage);">🧠 Open Brain</span>
+    </div>
+
+    <div class="main-content">
+        <header>
+            <h1>🧠 Open Brain</h1>
+            <p class="subtitle">Capture thoughts, scan documents, upload files</p>
+        </header>
+
+        <!-- Mode tabs -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" data-mode="thought">
+                <span class="tab-icon">💭</span> Thought
+            </button>
+            <button class="mode-tab" data-mode="upload">
+                <span class="tab-icon">📎</span> Upload
+            </button>
+            <button class="mode-tab" data-mode="scan">
+                <span class="tab-icon">📷</span> Scan
+            </button>
+            <button class="mode-tab" data-mode="voice">
+                <span class="tab-icon">🎙️</span> Voice
+            </button>
+        </div>
+
+        <!-- Capture card -->
+        <div class="capture-card">
+
+            <!-- Thought mode -->
+            <div class="capture-mode active" id="mode-thought">
+                <textarea class="thought-input" id="thoughtText" placeholder="What's on your mind? A decision, something you noticed, an idea..."></textarea>
+            </div>
+
+            <!-- Upload mode -->
+            <div class="capture-mode" id="mode-upload">
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-icon">📁</div>
+                    <div class="drop-zone-text">Drop a file here or tap to browse</div>
+                    <div class="drop-zone-hint">PDFs, images, spreadsheets, anything</div>
+                    <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.csv,.xlsx,.xls,.doc,.docx,.txt">
+                </div>
+                <div class="file-preview" id="filePreview">
+                    <span class="file-preview-icon" id="fileIcon">📄</span>
+                    <span class="file-preview-name" id="fileName"></span>
+                    <button class="file-preview-remove" id="fileRemove" title="Remove">✕</button>
+                </div>
+                <textarea class="thought-input" id="uploadNote" placeholder="Add a note about this file (optional)..." style="margin-top: 14px; min-height: 60px;"></textarea>
+            </div>
+
+            <!-- Scan mode -->
+            <div class="capture-mode" id="mode-scan">
+                <div class="scan-area">
+                    <button class="scan-btn" id="scanBtn">
+                        <span class="btn-icon">📷</span> Take Photo
+                    </button>
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment">
+                    <p class="scan-hint">Take one or more photos — they'll be combined into a PDF</p>
+                    <div class="scan-count" id="scanCount"></div>
+                    <div class="scan-pages" id="scanPages"></div>
+                </div>
+                <textarea class="thought-input" id="scanNote" placeholder="Add a note about this scan (optional)..." style="margin-top: 14px; min-height: 60px;"></textarea>
+            </div>
+
+            <!-- Voice mode -->
+            <div class="capture-mode" id="mode-voice">
+                <div class="voice-area">
+                    <button class="voice-btn" id="voiceBtn">🎙️</button>
+                    <p class="voice-status" id="voiceStatus">Tap to start talking</p>
+                    <textarea class="voice-transcript" id="voiceTranscript" placeholder="Your words will appear here..."></textarea>
+                </div>
+            </div>
+
+            <!-- Common fields -->
+            <div class="fields-section">
+                <div class="fields-grid">
+                    <div class="field-group">
+                        <label class="field-label">Source</label>
+                        <select class="field-select" id="sourceField">
+                            <option value="personal">Personal</option>
+                            <option value="homestead">Homestead</option>
+                            <option value="work">Work</option>
+                            <option value="rental">Rental</option>
+                            <option value="school">School</option>
+                            <option value="email">Email</option>
+                            <option value="financial">Financial</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Event Date</label>
+                        <input type="date" class="field-input" id="eventDate">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Related Person</label>
+                        <input type="text" class="field-input" id="relatedPerson" placeholder="Who is this about?">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Tags</label>
+                        <div class="tags-input-wrapper" id="tagsWrapper">
+                            <input type="text" class="tags-text-input" id="tagsInput" placeholder="Type and press Enter">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save -->
+            <div class="save-section">
+                <button class="save-btn" id="saveBtn">Save to Brain 🧠</button>
+            </div>
+        </div>
+
+        <!-- Recent captures -->
+        <div class="recent-section">
+            <h2 class="recent-title">Recent Captures</h2>
+            <div class="recent-list" id="recentList">
+                <div class="empty-state">Your captured thoughts will appear here</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+    // ═══════════════════════════════════════════
+    // ⚙️  CONFIGURATION — UPDATE THESE TWO LINES
+    // ═══════════════════════════════════════════
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';       // e.g. https://abcdefg.supabase.co
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';  // from Settings → API
+
+    // Initialize Supabase
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ═══════════════════════════════════════════
+    // State
+    // ═══════════════════════════════════════════
+    let currentMode = 'thought';
+    let selectedFile = null;
+    let scannedPages = [];
+    let tags = [];
+    let isRecording = false;
+    let recognition = null;
+
+    // ═══════════════════════════════════════════
+    // Mode Switching
+    // ═══════════════════════════════════════════
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            currentMode = tab.dataset.mode;
+            document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            document.querySelectorAll('.capture-mode').forEach(m => m.classList.remove('active'));
+            document.getElementById(`mode-${currentMode}`).classList.add('active');
+        });
+    });
+
+    // ═══════════════════════════════════════════
+    // Tags Input
+    // ═══════════════════════════════════════════
+    const tagsInput = document.getElementById('tagsInput');
+    const tagsWrapper = document.getElementById('tagsWrapper');
+
+    tagsWrapper.addEventListener('click', () => tagsInput.focus());
+
+    tagsInput.addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ',') && tagsInput.value.trim()) {
+            e.preventDefault();
+            addTag(tagsInput.value.trim().toLowerCase());
+            tagsInput.value = '';
+        }
+        if (e.key === 'Backspace' && !tagsInput.value && tags.length > 0) {
+            removeTag(tags.length - 1);
+        }
+    });
+
+    function addTag(text) {
+        if (tags.includes(text)) return;
+        tags.push(text);
+        renderTags();
+    }
+
+    function removeTag(index) {
+        tags.splice(index, 1);
+        renderTags();
+    }
+
+    function renderTags() {
+        tagsWrapper.querySelectorAll('.tag-pill').forEach(p => p.remove());
+        tags.forEach((tag, i) => {
+            const pill = document.createElement('span');
+            pill.className = 'tag-pill';
+            pill.innerHTML = `${tag} <button onclick="removeTag(${i})">&times;</button>`;
+            tagsWrapper.insertBefore(pill, tagsInput);
+        });
+    }
+
+    // ═══════════════════════════════════════════
+    // File Upload
+    // ═══════════════════════════════════════════
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const filePreview = document.getElementById('filePreview');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) handleFile(fileInput.files[0]);
+    });
+
+    function handleFile(file) {
+        selectedFile = file;
+        const ext = file.name.split('.').pop().toLowerCase();
+        const icons = { pdf: '📕', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', csv: '📊', xlsx: '📊', xls: '📊', doc: '📝', docx: '📝', txt: '📝' };
+        document.getElementById('fileIcon').textContent = icons[ext] || '📄';
+        document.getElementById('fileName').textContent = `${file.name} (${formatBytes(file.size)})`;
+        filePreview.classList.add('has-file');
+        dropZone.style.display = 'none';
+    }
+
+    document.getElementById('fileRemove').addEventListener('click', () => {
+        selectedFile = null;
+        fileInput.value = '';
+        filePreview.classList.remove('has-file');
+        dropZone.style.display = '';
+    });
+
+    function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    // ═══════════════════════════════════════════
+    // Camera Scan
+    // ═══════════════════════════════════════════
+    const cameraInput = document.getElementById('cameraInput');
+    const scanBtn = document.getElementById('scanBtn');
+
+    scanBtn.addEventListener('click', () => cameraInput.click());
+
+    cameraInput.addEventListener('change', () => {
+        if (cameraInput.files.length) {
+            const file = cameraInput.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                scannedPages.push(e.target.result);
+                renderScanPages();
+            };
+            reader.readAsDataURL(file);
+            cameraInput.value = '';
+        }
+    });
+
+    function renderScanPages() {
+        const container = document.getElementById('scanPages');
+        container.innerHTML = '';
+        scannedPages.forEach((src, i) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'scan-page-container';
+            wrapper.innerHTML = `
+                <img src="${src}" class="scan-page-thumb" alt="Page ${i + 1}">
+                <button class="scan-page-remove" onclick="removeScanPage(${i})">✕</button>
+            `;
+            container.appendChild(wrapper);
+        });
+        document.getElementById('scanCount').textContent =
+            scannedPages.length ? `${scannedPages.length} page${scannedPages.length > 1 ? 's' : ''} captured` : '';
+    }
+
+    function removeScanPage(index) {
+        scannedPages.splice(index, 1);
+        renderScanPages();
+    }
+
+    async function buildPdfFromScans() {
+        const { jsPDF } = window.jspdf;
+
+        // Load first image to get aspect ratio
+        const img = new Image();
+        img.src = scannedPages[0];
+        await new Promise(resolve => img.onload = resolve);
+
+        const pdf = new jsPDF({
+            orientation: img.width > img.height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [img.width, img.height]
+        });
+
+        for (let i = 0; i < scannedPages.length; i++) {
+            if (i > 0) {
+                const nextImg = new Image();
+                nextImg.src = scannedPages[i];
+                await new Promise(resolve => nextImg.onload = resolve);
+                pdf.addPage([nextImg.width, nextImg.height],
+                    nextImg.width > nextImg.height ? 'landscape' : 'portrait');
+            }
+            pdf.addImage(scannedPages[i], 'JPEG', 0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
+        }
+
+        return pdf.output('blob');
+    }
+
+    // ═══════════════════════════════════════════
+    // Voice Capture
+    // ═══════════════════════════════════════════
+    const voiceBtn = document.getElementById('voiceBtn');
+    const voiceStatus = document.getElementById('voiceStatus');
+    const voiceTranscript = document.getElementById('voiceTranscript');
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event) => {
+            let text = '';
+            for (let i = 0; i < event.results.length; i++) {
+                text += event.results[i][0].transcript;
+            }
+            voiceTranscript.value = text;
+            voiceTranscript.classList.add('has-text');
+        };
+
+        recognition.onerror = (event) => {
+            voiceStatus.textContent = 'Error: ' + event.error;
+            stopRecording();
+        };
+
+        recognition.onend = () => {
+            if (isRecording) {
+                // Restart if still supposed to be recording
+                try { recognition.start(); } catch(e) {}
+            }
+        };
+    }
+
+    voiceBtn.addEventListener('click', () => {
+        if (!recognition) {
+            showToast('Voice capture not supported in this browser', true);
+            return;
+        }
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    });
+
+    function startRecording() {
+        isRecording = true;
+        voiceBtn.classList.add('recording');
+        voiceBtn.textContent = '⏹️';
+        voiceStatus.textContent = 'Listening... tap to stop';
+        try { recognition.start(); } catch(e) {}
+    }
+
+    function stopRecording() {
+        isRecording = false;
+        voiceBtn.classList.remove('recording');
+        voiceBtn.textContent = '🎙️';
+        voiceStatus.textContent = 'Tap to start talking';
+        try { recognition.stop(); } catch(e) {}
+    }
+
+    // ═══════════════════════════════════════════
+    // Save
+    // ═══════════════════════════════════════════
+    const saveBtn = document.getElementById('saveBtn');
+
+    saveBtn.addEventListener('click', async () => {
+        saveBtn.disabled = true;
+        saveBtn.classList.add('saving');
+        saveBtn.textContent = 'Saving...';
+
+        try {
+            let content = '';
+            let documentId = null;
+
+            // Get content based on mode
+            if (currentMode === 'thought') {
+                content = document.getElementById('thoughtText').value.trim();
+                if (!content) throw new Error('Write something first!');
+            }
+            else if (currentMode === 'upload') {
+                if (!selectedFile) throw new Error('Select a file first!');
+                documentId = await uploadDocument(selectedFile, document.getElementById('uploadNote').value.trim());
+                content = document.getElementById('uploadNote').value.trim() || `Uploaded: ${selectedFile.name}`;
+            }
+            else if (currentMode === 'scan') {
+                if (scannedPages.length === 0) throw new Error('Take at least one photo!');
+                const pdfBlob = await buildPdfFromScans();
+                const fileName = `scan-${Date.now()}.pdf`;
+                const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                documentId = await uploadDocument(pdfFile, document.getElementById('scanNote').value.trim());
+                content = document.getElementById('scanNote').value.trim() || `Scanned document: ${scannedPages.length} page(s)`;
+            }
+            else if (currentMode === 'voice') {
+                content = voiceTranscript.value.trim();
+                if (!content) throw new Error('Say something first!');
+            }
+
+            // Save memory
+            const memory = {
+                content: content,
+                source: document.getElementById('sourceField').value,
+                tags: tags.length > 0 ? tags : [],
+                related_person: document.getElementById('relatedPerson').value.trim() || null,
+                event_date: document.getElementById('eventDate').value || null,
+                document_id: documentId,
+                metadata: {}
+            };
+
+            const { error } = await supabase.from('memories').insert([memory]);
+            if (error) throw error;
+
+            showToast('Saved to your brain! 🧠');
+            resetForm();
+            loadRecent();
+
+        } catch (err) {
+            showToast(err.message || 'Something went wrong', true);
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.classList.remove('saving');
+            saveBtn.textContent = 'Save to Brain 🧠';
+        }
+    });
+
+    async function uploadDocument(file, note) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        const path = `${Date.now()}-${file.name}`;
+
+        // Upload to storage
+        const { error: storageError } = await supabase.storage
+            .from('brain-files')
+            .upload(path, file);
+        if (storageError) throw storageError;
+
+        // Determine file type category
+        const typeMap = {
+            pdf: 'pdf', png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image',
+            csv: 'spreadsheet', xlsx: 'spreadsheet', xls: 'spreadsheet',
+            doc: 'document', docx: 'document', txt: 'text'
+        };
+
+        // Save document record
+        const { data, error } = await supabase.from('documents').insert([{
+            file_name: file.name,
+            file_type: typeMap[ext] || 'other',
+            file_path: path,
+            file_size_bytes: file.size,
+            source: document.getElementById('sourceField').value,
+            tags: tags.length > 0 ? tags : [],
+            related_person: document.getElementById('relatedPerson').value.trim() || null,
+            event_date: document.getElementById('eventDate').value || null,
+            metadata: note ? { note: note } : {}
+        }]).select('id').single();
+
+        if (error) throw error;
+        return data.id;
+    }
+
+    function resetForm() {
+        // Clear thought
+        document.getElementById('thoughtText').value = '';
+        // Clear upload
+        selectedFile = null;
+        document.getElementById('fileInput').value = '';
+        document.getElementById('filePreview').classList.remove('has-file');
+        document.getElementById('dropZone').style.display = '';
+        document.getElementById('uploadNote').value = '';
+        // Clear scan
+        scannedPages = [];
+        renderScanPages();
+        document.getElementById('scanNote').value = '';
+        // Clear voice
+        voiceTranscript.value = '';
+        voiceTranscript.classList.remove('has-text');
+        stopRecording();
+        // Clear fields
+        tags = [];
+        renderTags();
+        document.getElementById('relatedPerson').value = '';
+        document.getElementById('eventDate').value = '';
+        document.getElementById('sourceField').value = 'personal';
+    }
+
+    // ═══════════════════════════════════════════
+    // Recent Captures
+    // ═══════════════════════════════════════════
+    async function loadRecent() {
+        const { data, error } = await supabase
+            .from('memories')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        const list = document.getElementById('recentList');
+
+        if (error || !data || data.length === 0) {
+            list.innerHTML = '<div class="empty-state">Your captured thoughts will appear here</div>';
+            return;
+        }
+
+        list.innerHTML = data.map(m => `
+            <div class="recent-item">
+                <div class="recent-item-content">${escapeHtml(m.content)}</div>
+                <div class="recent-item-meta">
+                    <span>${m.source}</span>
+                    ${m.related_person ? `<span>👤 ${escapeHtml(m.related_person)}</span>` : ''}
+                    ${m.event_date ? `<span>📅 ${m.event_date}</span>` : ''}
+                    ${(m.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
+                    <span>${timeAgo(m.created_at)}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function timeAgo(dateStr) {
+        const seconds = Math.floor((new Date() - new Date(dateStr)) / 1000);
+        if (seconds < 60) return 'just now';
+        if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+        if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+        return Math.floor(seconds / 86400) + 'd ago';
+    }
+
+    // ═══════════════════════════════════════════
+    // Toast
+    // ═══════════════════════════════════════════
+    function showToast(message, isError = false) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'toast show' + (isError ? ' error' : '');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ═══════════════════════════════════════════
+    // Set today's date as default
+    // ═══════════════════════════════════════════
+    document.getElementById('eventDate').valueAsDate = new Date();
+
+    // Load recent on page load
+    loadRecent();
+    </script>
+</body>
+</html>
