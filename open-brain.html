@@ -940,7 +940,8 @@
 
     async function uploadDocument(file, note) {
         const ext = file.name.split('.').pop().toLowerCase();
-        const path = `${Date.now()}-${file.name}`;
+        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_').toLowerCase();
+        const path = `${Date.now()}-${safeName}`;
 
         // Upload to storage
         const { error: storageError } = await sb.storage
