@@ -625,7 +625,7 @@
     const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';  // from Settings → API
 
     // Initialize Supabase
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ═══════════════════════════════════════════
     // State
@@ -922,7 +922,7 @@
                 metadata: {}
             };
 
-            const { error } = await supabase.from('memories').insert([memory]);
+            const { error } = await sb.from('memories').insert([memory]);
             if (error) throw error;
 
             showToast('Saved to your brain! 🧠');
@@ -943,7 +943,7 @@
         const path = `${Date.now()}-${file.name}`;
 
         // Upload to storage
-        const { error: storageError } = await supabase.storage
+        const { error: storageError } = await sb.storage
             .from('brain-files')
             .upload(path, file);
         if (storageError) throw storageError;
@@ -956,7 +956,7 @@
         };
 
         // Save document record
-        const { data, error } = await supabase.from('documents').insert([{
+        const { data, error } = await sb.from('documents').insert([{
             file_name: file.name,
             file_type: typeMap[ext] || 'other',
             file_path: path,
@@ -1001,7 +1001,7 @@
     // Recent Captures
     // ═══════════════════════════════════════════
     async function loadRecent() {
-        const { data, error } = await supabase
+        const { data, error } = await sb
             .from('memories')
             .select('*')
             .order('created_at', { ascending: false })
