@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +6,7 @@
     <title>Open Brain — Homestead Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://unpkg.com/@nicktomlin/msgreader@2.2.1/dist/MsgReader.js" onerror="console.error('MSGReader failed to load from CDN')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cfb@1.2.2/dist/cfb.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -898,18 +897,17 @@
             else if (currentMode === 'upload') {
                 if (!selectedFile) throw new Error('Select a file first!');
                 const uploadNote = document.getElementById('uploadNote').value.trim();
-                
-                // Extract text BEFORE uploading (so we know if it worked)
+
+                // Extract text BEFORE uploading
                 const extractedText = await extractFileText(selectedFile);
-                
+
                 documentId = await uploadDocument(selectedFile, uploadNote);
 
                 if (extractedText) {
-                    showToast('📧 Extracted text from ' + selectedFile.name.split('.').pop().toUpperCase());
+                    showToast('📧 Extracted text from ' + selectedFile.name.split('.').pop().toUpperCase() + '!');
                     content = uploadNote
                         ? uploadNote + '\n\n' + extractedText
                         : extractedText;
-                    // Trim to 50k chars to stay within reason
                     if (content.length > 50000) content = content.substring(0, 50000) + '\n...(truncated)';
                 } else {
                     content = uploadNote || `Uploaded: ${selectedFile.name}`;
@@ -960,20 +958,17 @@
         const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_').toLowerCase();
         const path = `${Date.now()}-${safeName}`;
 
-        // Upload to storage
         const { error: storageError } = await sb.storage
             .from('brain-files')
             .upload(path, file);
         if (storageError) throw storageError;
 
-        // Determine file type category
         const typeMap = {
             pdf: 'pdf', png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image',
             csv: 'spreadsheet', xlsx: 'spreadsheet', xls: 'spreadsheet',
             doc: 'document', docx: 'document', txt: 'text', msg: 'email', eml: 'email'
         };
 
-        // Save document record
         const { data, error } = await sb.from('documents').insert([{
             file_name: file.name,
             file_type: typeMap[ext] || 'other',
@@ -990,76 +985,73 @@
         return data.id;
     }
 
-    // ── Extract text from uploaded files ──
+    // ── Parse .msg files using CFB (OLE2 compound document parser) ──
+    function readMsgStream(cfbFile, propId) {
+        // .msg stores properties as streams like __substg1.0_XXXX001F (Unicode) or 001E (ASCII)
+        const unicodePath = '__substg1.0_' + propId + '001F';
+        const asciiPath = '__substg1.0_' + propId + '001E';
+
+        let entry = CFB.find(cfbFile, '/' + unicodePath);
+        if (entry && entry.content && entry.content.length > 0) {
+            // Unicode UTF-16LE
+            const buf = entry.content;
+            let str = '';
+            for (let i = 0; i < buf.length - 1; i += 2) {
+                str += String.fromCharCode(buf[i] | (buf[i + 1] << 8));
+            }
+            return str.replace(/\0+$/, '');
+        }
+
+        entry = CFB.find(cfbFile, '/' + asciiPath);
+        if (entry && entry.content && entry.content.length > 0) {
+            return new TextDecoder('utf-8').decode(entry.content).replace(/\0+$/, '');
+        }
+        return '';
+    }
+
     async function extractFileText(file) {
         const ext = file.name.split('.').pop().toLowerCase();
 
         if (ext === 'msg') {
-            // Try to find the MSGReader global (could be MSGReader or MsgReader)
-            const ReaderClass = window.MSGReader || window.MsgReader;
-            if (!ReaderClass) {
-                console.error('MSGReader library not loaded — cannot extract .msg text');
-                showToast('⚠️ MSG parser not available — saving filename only', true);
+            if (typeof CFB === 'undefined') {
+                console.error('CFB library not loaded');
+                showToast('⚠️ MSG parser not available', true);
                 return null;
             }
             try {
                 const arrayBuffer = await file.arrayBuffer();
-                const msgReader = new ReaderClass(arrayBuffer);
-                const msgData = msgReader.getFileData();
-                console.log('MSG parsed:', JSON.stringify(Object.keys(msgData)));
+                const cfbFile = CFB.read(arrayBuffer, { type: 'array' });
+
+                const subject = readMsgStream(cfbFile, '0037');
+                const senderName = readMsgStream(cfbFile, '0C1A');
+                const senderEmail = readMsgStream(cfbFile, '0065');
+                const displayTo = readMsgStream(cfbFile, '0E04');
+                const body = readMsgStream(cfbFile, '1000');
 
                 let parts = [];
-                if (msgData.subject) parts.push('Subject: ' + msgData.subject);
-                if (msgData.senderName) parts.push('From: ' + msgData.senderName);
-                if (msgData.senderEmail) parts.push('From Email: ' + msgData.senderEmail);
-                if (msgData.recipients && msgData.recipients.length > 0) {
-                    parts.push('To: ' + msgData.recipients.map(r => r.name || r.email || '').join(', '));
-                }
-                if (msgData.headers) {
-                    const dateMatch = msgData.headers.match(/Date:\s*(.+)/i);
-                    if (dateMatch) parts.push('Date: ' + dateMatch[1].trim());
-                }
-                if (msgData.body) {
-                    parts.push('\n--- Body ---');
-                    parts.push(msgData.body);
-                }
-
-                // Check for embedded .msg attachments (email chains)
-                if (msgData.attachments && msgData.attachments.length > 0) {
-                    for (let i = 0; i < msgData.attachments.length; i++) {
-                        const att = msgData.attachments[i];
-                        if (att.fileName && att.fileName.toLowerCase().endsWith('.msg')) {
-                            try {
-                                const attData = msgReader.getAttachment(i);
-                                if (attData && attData.content) {
-                                    const innerReader = new ReaderClass(attData.content.buffer || attData.content);
-                                    const innerMsg = innerReader.getFileData();
-                                    parts.push('\n\n═══ Earlier Email ═══');
-                                    if (innerMsg.subject) parts.push('Subject: ' + innerMsg.subject);
-                                    if (innerMsg.senderName) parts.push('From: ' + innerMsg.senderName);
-                                    if (innerMsg.body) {
-                                        parts.push('---');
-                                        parts.push(innerMsg.body);
-                                    }
-                                }
-                            } catch (e) {
-                                console.warn('Could not parse attached msg:', att.fileName, e);
-                            }
-                        }
-                    }
+                if (subject) parts.push('Subject: ' + subject);
+                if (senderName) parts.push('From: ' + senderName + (senderEmail ? ' <' + senderEmail + '>' : ''));
+                if (displayTo) parts.push('To: ' + displayTo);
+                if (body) {
+                    parts.push('---');
+                    parts.push(body);
                 }
 
                 const extracted = parts.join('\n');
-                console.log('Extracted text length:', extracted.length);
-                return extracted.length > 0 ? extracted : null;
+                console.log('MSG extracted, length:', extracted.length);
+                return extracted.length > 10 ? extracted : null;
             } catch (e) {
                 console.error('MSG parse error:', e);
-                showToast('⚠️ Could not parse .msg file: ' + e.message, true);
+                showToast('⚠️ Could not read .msg: ' + e.message, true);
                 return null;
             }
         }
 
         if (ext === 'txt' || ext === 'csv') {
+            try { return await file.text(); } catch (e) { return null; }
+        }
+
+        if (ext === 'eml') {
             try { return await file.text(); } catch (e) { return null; }
         }
 
