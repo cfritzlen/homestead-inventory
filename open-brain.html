@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +7,7 @@
     <title>Open Brain — Homestead Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@nicktomlin/msgreader@2.2.1/dist/MsgReader.js"></script>
+    <script src="https://unpkg.com/@nicktomlin/msgreader@2.2.1/dist/MsgReader.js" onerror="console.error('MSGReader failed to load from CDN')"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -897,10 +898,12 @@
             else if (currentMode === 'upload') {
                 if (!selectedFile) throw new Error('Select a file first!');
                 const uploadNote = document.getElementById('uploadNote').value.trim();
+                
+                // Extract text BEFORE uploading (so we know if it worked)
+                const extractedText = await extractFileText(selectedFile);
+                
                 documentId = await uploadDocument(selectedFile, uploadNote);
 
-                // Try to extract text content from the file
-                const extractedText = await extractFileText(selectedFile);
                 if (extractedText) {
                     showToast('📧 Extracted text from ' + selectedFile.name.split('.').pop().toUpperCase());
                     content = uploadNote
@@ -967,7 +970,7 @@
         const typeMap = {
             pdf: 'pdf', png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image',
             csv: 'spreadsheet', xlsx: 'spreadsheet', xls: 'spreadsheet',
-            doc: 'document', docx: 'document', txt: 'text', msg: 'email'
+            doc: 'document', docx: 'document', txt: 'text', msg: 'email', eml: 'email'
         };
 
         // Save document record
@@ -987,41 +990,51 @@
         return data.id;
     }
 
-    // Extract readable text from supported file types
+    // ── Extract text from uploaded files ──
     async function extractFileText(file) {
         const ext = file.name.split('.').pop().toLowerCase();
 
         if (ext === 'msg') {
+            // Try to find the MSGReader global (could be MSGReader or MsgReader)
+            const ReaderClass = window.MSGReader || window.MsgReader;
+            if (!ReaderClass) {
+                console.error('MSGReader library not loaded — cannot extract .msg text');
+                showToast('⚠️ MSG parser not available — saving filename only', true);
+                return null;
+            }
             try {
                 const arrayBuffer = await file.arrayBuffer();
-                const msgReader = new MSGReader(arrayBuffer);
+                const msgReader = new ReaderClass(arrayBuffer);
                 const msgData = msgReader.getFileData();
+                console.log('MSG parsed:', JSON.stringify(Object.keys(msgData)));
 
                 let parts = [];
                 if (msgData.subject) parts.push('Subject: ' + msgData.subject);
                 if (msgData.senderName) parts.push('From: ' + msgData.senderName);
+                if (msgData.senderEmail) parts.push('From Email: ' + msgData.senderEmail);
                 if (msgData.recipients && msgData.recipients.length > 0) {
-                    parts.push('To: ' + msgData.recipients.map(r => r.name || r.email).join(', '));
+                    parts.push('To: ' + msgData.recipients.map(r => r.name || r.email || '').join(', '));
                 }
                 if (msgData.headers) {
                     const dateMatch = msgData.headers.match(/Date:\s*(.+)/i);
                     if (dateMatch) parts.push('Date: ' + dateMatch[1].trim());
                 }
                 if (msgData.body) {
-                    parts.push('---');
+                    parts.push('\n--- Body ---');
                     parts.push(msgData.body);
                 }
 
-                // Check for attached .msg files (email chain)
+                // Check for embedded .msg attachments (email chains)
                 if (msgData.attachments && msgData.attachments.length > 0) {
-                    for (const att of msgData.attachments) {
+                    for (let i = 0; i < msgData.attachments.length; i++) {
+                        const att = msgData.attachments[i];
                         if (att.fileName && att.fileName.toLowerCase().endsWith('.msg')) {
                             try {
-                                const attData = msgReader.getAttachment(att);
+                                const attData = msgReader.getAttachment(i);
                                 if (attData && attData.content) {
-                                    const innerReader = new MSGReader(attData.content);
+                                    const innerReader = new ReaderClass(attData.content.buffer || attData.content);
                                     const innerMsg = innerReader.getFileData();
-                                    parts.push('\n--- Earlier email ---');
+                                    parts.push('\n\n═══ Earlier Email ═══');
                                     if (innerMsg.subject) parts.push('Subject: ' + innerMsg.subject);
                                     if (innerMsg.senderName) parts.push('From: ' + innerMsg.senderName);
                                     if (innerMsg.body) {
@@ -1037,19 +1050,17 @@
                 }
 
                 const extracted = parts.join('\n');
+                console.log('Extracted text length:', extracted.length);
                 return extracted.length > 0 ? extracted : null;
             } catch (e) {
-                console.warn('MSG parsing failed:', e);
+                console.error('MSG parse error:', e);
+                showToast('⚠️ Could not parse .msg file: ' + e.message, true);
                 return null;
             }
         }
 
         if (ext === 'txt' || ext === 'csv') {
-            try {
-                return await file.text();
-            } catch (e) {
-                return null;
-            }
+            try { return await file.text(); } catch (e) { return null; }
         }
 
         return null;
