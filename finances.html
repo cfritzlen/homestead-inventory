@@ -2274,9 +2274,9 @@ async function loadDashboard(){
 
         const allAcc=[...accounts,...closedAccounts];
         const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
-        const ccAccs=allAcc.filter(a=>a.account_type==='credit_card');
+        const ccAccs=accounts.filter(a=>a.account_type==='credit_card');
         const boaAcc=ccAccs.find(a=>a.name?.toLowerCase().includes('boa'));
-        const taxAccs=allAcc.filter(a=>a.account_type==='tax_debt');
+        const taxAccs=accounts.filter(a=>a.account_type==='tax_debt');
         const loanAccs=accounts.filter(a=>a.account_type==='loan');
 
         // === 1. BOA spending from weekly entries (start - prior end) ===
