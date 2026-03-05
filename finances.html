@@ -2275,6 +2275,7 @@ async function loadDashboard(){
         const allAcc=[...accounts,...closedAccounts];
         const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
         const ccAccs=accounts.filter(a=>a.account_type==='credit_card');
+        console.log('CC accounts:', ccAccs.map(a=>a.name+' ('+a.id+')'));
         const boaAcc=ccAccs.find(a=>a.name?.toLowerCase().includes('boa'));
         const taxAccs=accounts.filter(a=>a.account_type==='tax_debt');
         const loanAccs=accounts.filter(a=>a.account_type==='loan');
@@ -2333,28 +2334,35 @@ async function loadDashboard(){
         // Helper: get debt breakdown from weekly entries as of a date
         async function getDebtFromEntries(asOfDate){
             let cc=0, tax=0, loan=0;
+            console.log('=== getDebtFromEntries for', asOfDate, '===');
             for(const a of ccAccs){
-                // Try exact match first, then fall back to latest before date
                 let rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
                 if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
-                if(rows?.length) cc+=parseFloat(rows[0].ending_balance)||0;
+                const val=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
+                console.log('CC:', a.name, 'entry_date:', rows?.[0]?.entry_date, 'ending:', val);
+                cc+=val;
             }
             for(const a of taxAccs){
                 let rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
                 if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
-                if(rows?.length) tax+=parseFloat(rows[0].ending_balance)||0;
+                const val=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
+                console.log('Tax:', a.name, 'entry_date:', rows?.[0]?.entry_date, 'ending:', val);
+                tax+=val;
             }
             for(const a of loanAccs){
                 let rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
                 if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
-                if(rows?.length) loan+=parseFloat(rows[0].ending_balance)||0;
+                const val=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
+                console.log('Loan:', a.name, 'entry_date:', rows?.[0]?.entry_date, 'ending:', val);
+                loan+=val;
             }
+            console.log('TOTALS - CC:', cc, 'Tax:', tax, 'Loan:', loan, 'Total:', cc+tax+loan);
             return {cc, tax, loan, total: cc+tax+loan};
         }
 
