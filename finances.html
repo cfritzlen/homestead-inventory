@@ -298,19 +298,19 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
             </div>
             <div id="dash-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:0 0 16px;"></div>
 
-            <!-- Overall totals -->
+            <!-- Debt tiles: CC, Prudential, Tax & Toys, Total -->
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
                 <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
                     <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">💳 CC Debt</div>
                     <div id="dash-cc-debt" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
                 </div>
                 <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
-                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">🏦 Loan Debt</div>
-                    <div id="dash-loan-debt" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
+                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">🎯 Prudential</div>
+                    <div id="dash-prud-debt" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
                 </div>
                 <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
-                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">🏛️ Total Tax</div>
-                    <div id="dash-total-tax" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
+                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">🏛️ Tax & Toys</div>
+                    <div id="dash-taxtoys-debt" style="font-size:1.5rem;font-weight:700;font-family:'Crimson Pro',serif;color:#e88;">$0</div>
                 </div>
                 <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
                     <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">📊 Total Debt</div>
@@ -318,15 +318,7 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                 </div>
             </div>
 
-            <!-- Prudential Payoff Focus -->
-            <div id="dash-prudential" style="margin-bottom:24px;background:linear-gradient(135deg,var(--sage-700),var(--sage-600));border-radius:12px;padding:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
-                <div>
-                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--sage-200);margin-bottom:4px;">🎯 Prudential Loan</div>
-                    <div id="dash-prud-bal" style="font-size:2rem;font-weight:700;font-family:'Crimson Pro',serif;color:#fff;">$0</div>
-                </div>
-                <div id="dash-prud-change" style="text-align:right;">
-                </div>
-            </div>
+            <!-- Week-over-week changes rendered inside tiles via JS -->
 
             <!-- Charges over $200 table -->
             <div id="dash-big-charges" style="margin-bottom:24px;"></div>
@@ -2340,24 +2332,22 @@ async function loadDashboard(){
         }
 
         // === 3. All debt from weekly entries for this week and prior week ===
-        // Helper: get debt breakdown from weekly entries as of a date
+        const toyNames=['kubota','side by side'];
         async function getDebtFromEntries(asOfDate){
-            let cc=0, tax=0, loan=0;
+            let cc=0, tax=0, prud=0, toys=0;
             for(const a of ccAccs){
                 let rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
                 if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
-                const val=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
-                cc+=val;
+                cc+=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
             }
             for(const a of taxAccs){
                 let rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
                 if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
-                const val=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
-                tax+=val;
+                tax+=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
             }
             for(const a of loanAccs){
                 let rows=await supaFetch('finance_weekly_entries','GET',null,
@@ -2365,32 +2355,37 @@ async function loadDashboard(){
                 if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
                 const val=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
-                loan+=val;
+                const n=a.name?.toLowerCase()||'';
+                if(n.includes('prudential')) prud+=val;
+                else if(toyNames.some(t=>n.includes(t))) toys+=val;
+                else prud+=val; // default other loans to prudential bucket
             }
-            return {cc, tax, loan, total: cc+tax+loan};
+            return {cc, tax, prud, toys, total: cc+tax+prud+toys};
         }
 
         const thisWeek=await getDebtFromEntries(week.end);
         const priorWeek=await getDebtFromEntries(week.start);
         const debtDiff=thisWeek.total-priorWeek.total;
 
-        // Tiles use this week's values
-        const ccDebt=thisWeek.cc;
-        const totalTax=thisWeek.tax;
-        const loanDebt=thisWeek.loan;
-        const totalDebt=thisWeek.total;
+        // Populate tiles with inline changes
+        function setTileWithChange(elId, thisVal, priorVal){
+            const el=document.getElementById(elId);
+            const diff=thisVal-priorVal;
+            let changeHtml='';
+            if(diff!==0){
+                const color=diff<0?'#69db7c':'#ff8787';
+                const arrow=diff<0?'▼':'▲';
+                const sign=diff>0?'+':'';
+                changeHtml=`<div style="font-size:0.7rem;margin-top:4px;color:${color};font-weight:600;">${arrow} ${sign}${fmt(Math.abs(diff))}</div>`;
+            }
+            el.innerHTML=`${fmt(thisVal)}${changeHtml}`;
+        }
+        setTileWithChange('dash-cc-debt',thisWeek.cc,priorWeek.cc);
+        setTileWithChange('dash-prud-debt',thisWeek.prud,priorWeek.prud);
+        setTileWithChange('dash-taxtoys-debt',thisWeek.tax+thisWeek.toys,priorWeek.tax+priorWeek.toys);
+        setTileWithChange('dash-total-debt',thisWeek.total,priorWeek.total);
 
-        // === 5. Charges over $200 - last 2 weeks (exclude payments, Internal Transfer, Girls, CC Payment) ===
-        const bigCharges=await supaFetch('finance_transactions','GET',null,
-            `?transaction_date=gt.${week.twoWkStart}&transaction_date=lte.${week.end}&order=transaction_date.desc`);
-        const excludeCats=['internal transfer','girls','cc payment','cc payments'];
-        const over200=(bigCharges||[]).filter(t=>{
-            const amt=parseFloat(t.amount)||0;
-            const cat=(t.category||'').toLowerCase().trim();
-            return amt<0 && Math.abs(amt)>=200 && !excludeCats.includes(cat);
-        }).sort((a,b)=>Math.abs(parseFloat(b.amount)||0)-Math.abs(parseFloat(a.amount)||0));
-
-        // === BUILD CARDS ===
+        // === Spend cards ===
         const card=(label,value,icon,extraClass='')=>`
             <div style="background:white;padding:20px;border-radius:12px;text-align:center;border:2px solid var(--sage-200);">
                 <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-500);">${icon} ${label}</div>
@@ -2406,43 +2401,15 @@ async function loadDashboard(){
             card('Other CC Spent',fmt(otherCCSpent),'💳')+
             card('Debt Change',diffSign+fmt(Math.abs(debtDiff)),diffIcon,diffColor);
 
-        document.getElementById('dash-total-debt').textContent=fmt(totalDebt);
-        document.getElementById('dash-cc-debt').textContent=fmt(ccDebt);
-        document.getElementById('dash-loan-debt').textContent=fmt(loanDebt);
-        document.getElementById('dash-total-tax').textContent=fmt(totalTax);
-
-        // === PRUDENTIAL FOCUS ===
-        const prudAcc=loanAccs.find(a=>a.name?.toLowerCase().includes('prudential'));
-        const prudEl=document.getElementById('dash-prudential');
-        if(prudAcc){
-            // This week balance
-            let prudRows=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${prudAcc.id}&entry_date=eq.${week.end}`);
-            if(!prudRows?.length) prudRows=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${prudAcc.id}&entry_date=lte.${week.end}&order=entry_date.desc&limit=1`);
-            const prudBal=prudRows?.length?parseFloat(prudRows[0].ending_balance)||0:0;
-
-            // Prior week balance
-            let prudPrior=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${prudAcc.id}&entry_date=eq.${week.start}`);
-            if(!prudPrior?.length) prudPrior=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${prudAcc.id}&entry_date=lte.${week.start}&order=entry_date.desc&limit=1`);
-            const prudPriorBal=prudPrior?.length?parseFloat(prudPrior[0].ending_balance)||0:0;
-
-            const prudDiff=prudBal-prudPriorBal;
-            const prudSign=prudDiff>0?'+':'';
-            const prudColor=prudDiff>0?'#ff6b6b':'#69db7c';
-            const prudArrow=prudDiff>0?'▲':prudDiff<0?'▼':'—';
-
-            document.getElementById('dash-prud-bal').textContent=fmt(prudBal);
-            document.getElementById('dash-prud-change').innerHTML=prudDiff!==0?
-                `<div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">This Week</div>
-                 <div style="font-size:1.3rem;font-weight:700;font-family:'Crimson Pro',serif;color:${prudColor};">${prudArrow} ${prudSign}${fmt(Math.abs(prudDiff))}</div>`
-                :`<div style="font-size:0.85rem;color:var(--sage-300);">No change</div>`;
-            prudEl.style.display='flex';
-        }else{
-            prudEl.style.display='none';
-        }
+        // === 5. Charges over $200 - last 2 weeks ===
+        const bigCharges=await supaFetch('finance_transactions','GET',null,
+            `?transaction_date=gt.${week.twoWkStart}&transaction_date=lte.${week.end}&order=transaction_date.desc`);
+        const excludeCats=['internal transfer','girls','cc payment','cc payments'];
+        const over200=(bigCharges||[]).filter(t=>{
+            const amt=parseFloat(t.amount)||0;
+            const cat=(t.category||'').toLowerCase().trim();
+            return amt<0 && Math.abs(amt)>=200 && !excludeCats.includes(cat);
+        }).sort((a,b)=>Math.abs(parseFloat(b.amount)||0)-Math.abs(parseFloat(a.amount)||0));
 
         // === BUILD $200+ TABLE ===
         const bigEl=document.getElementById('dash-big-charges');
