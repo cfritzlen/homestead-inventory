@@ -1624,7 +1624,7 @@ function calcWeekly(){
         const end=bal-pay-extraForThis;
         eD.textContent=fmt(end); eD.className=`calc ${end<0?'negative':''}`;
 
-        if(a.is_debt){totalDebt+=bal; totalDebtPay+=pay;}
+        if(a.is_debt){totalDebt+=end; totalDebtPay+=pay;}
 
         if(a.pays_from && a.pays_from.toLowerCase().includes('pnc') && pay>0){
             pncAutoPayTotal+=pay;
@@ -2344,8 +2344,6 @@ async function loadDashboard(){
                 if(rows?.length) tax+=parseFloat(rows[0].ending_balance)||0;
             }
             for(const a of loanAccs){
-                const loanStart=(a.created_at||'').substring(0,10);
-                if(loanStart && asOfDate<loanStart) continue;
                 const rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
                 if(rows?.length) loan+=parseFloat(rows[0].ending_balance)||0;
@@ -2577,6 +2575,7 @@ const weeklyImportAccounts=['BOA CC','BOA Checking','PNC Checking','PNC 1407','F
 async function loadImportChecklist(){
     const el=document.getElementById('import-checklist');
     if(!el)return;
+    if(!accounts.length){el.innerHTML='<p style="color:var(--sage-400);">Loading accounts...</p>';return;}
     el.innerHTML='<p style="color:var(--sage-400);">Checking...</p>';
 
     // Get current week range (Wed to Wed)
@@ -2602,21 +2601,20 @@ async function loadImportChecklist(){
         let latestDate='';
         if(acc){
             try{
+                // Always get latest transaction date for this account
+                const latest=await supaFetch('finance_transactions','GET',null,
+                    `?account_id=eq.${acc.id}&order=transaction_date.desc&limit=1`);
+                if(latest?.length) latestDate=latest[0].transaction_date;
+
+                // Check if there are transactions this week
                 const txns=await supaFetch('finance_transactions','GET',null,
                     `?account_id=eq.${acc.id}&transaction_date=gt.${start}&transaction_date=lte.${end}&limit=1`);
-                if(txns?.length){
-                    done=true;
-                    // Get the most recent txn date for this account overall
-                    const latest=await supaFetch('finance_transactions','GET',null,
-                        `?account_id=eq.${acc.id}&order=transaction_date.desc&limit=1`);
-                    if(latest?.length) latestDate=latest[0].transaction_date;
-                }
-            }catch(e){}
+                if(txns?.length) done=true;
+            }catch(e){console.error('Checklist error for',name,e);}
         }
         if(done) doneCount++;
         const icon=done?'✅':'⬜';
-        const dateHint=latestDate&&done?`<span style="color:var(--sage-400);font-size:0.75rem;margin-left:8px;">latest: ${latestDate}</span>`
-            :!done&&latestDate?`<span style="color:var(--dusty-rose);font-size:0.75rem;margin-left:8px;">latest: ${latestDate}</span>`:'';
+        const dateHint=latestDate?`<span style="color:${done?'var(--sage-400)':'var(--dusty-rose)'};font-size:0.75rem;margin-left:auto;">latest: ${latestDate}</span>`:'';
         const nameStyle=done?'color:var(--sage-400);text-decoration:line-through;':'color:var(--charcoal);font-weight:500;';
         html+=`<div style="padding:8px 12px;border-bottom:1px solid var(--sage-100);display:flex;align-items:center;gap:10px;">
             <span style="font-size:1.1rem;">${icon}</span>
@@ -2692,18 +2690,25 @@ async function autoDetectAndImport(file){
         for(const a of formatMatches){
             if(a.last_4&&file.name.includes(a.last_4)){match=a;break;}
         }
-        if(!match){
-            for(const a of formatMatches){
-                if(a.last_4&&text.includes(a.last_4)){match=a;break;}
+        if(!match && formatMatches.length===1){
+            // Only check text content if there's one possible match
+            // (avoids cross-matching between PNC Checking and PNC 1407 via transfer descriptions)
+            if(formatMatches[0].last_4 && text.includes(formatMatches[0].last_4)){
+                match=formatMatches[0];
             }
         }
         if(!match){
-            // Can't determine — ask user
-            const names=formatMatches.map(a=>`${a.name}${a.last_4?' (••'+a.last_4+')':''}`).join('\n');
-            const pick=prompt(`Multiple accounts match this format.\nWhich account is "${file.name}" for?\n\n${names}\n\nType the account name:`);
-            if(!pick){statusEl.innerHTML='⏭ Skipped';statusEl.style.color='var(--sage-400)';return;}
-            match=formatMatches.find(a=>a.name.toLowerCase().includes(pick.toLowerCase()));
-            if(!match){statusEl.innerHTML='❌ No matching account found';statusEl.style.color='#c44';return;}
+            // Can't determine — show clickable account buttons
+            const btns=formatMatches.map(a=>{
+                const label=`${a.name}${a.last_4?' (••'+a.last_4+')':''}`;
+                return `<button onclick="pickImportAccount('${entryId}','${a.id}')" style="padding:8px 16px;margin:4px;border-radius:8px;border:1px solid var(--sage-400);background:white;color:var(--sage-700);cursor:pointer;font-family:'Karla',sans-serif;font-size:0.85rem;">${label}</button>`;
+            }).join('');
+            statusEl.innerHTML=`Which account? ${btns}`;
+            statusEl.style.color='var(--sage-600)';
+            // Store file for later
+            window._pendingImportFile=file;
+            window._pendingImportEntry=entryId;
+            return;
         }
     }
     
@@ -2712,6 +2717,17 @@ async function autoDetectAndImport(file){
     
     // Run the import
     await importCSVForAccountSingle(file,match.id,entryId,statusEl);
+}
+
+async function pickImportAccount(entryId,accountId){
+    const file=window._pendingImportFile;
+    if(!file)return;
+    const statusEl=document.querySelector(`#${entryId} .imp-status`);
+    const allAcc=[...accounts,...closedAccounts];
+    const acc=allAcc.find(a=>a.id===accountId);
+    statusEl.innerHTML=`Matched → <strong>${acc?.name||'Account'}</strong> · Importing...`;
+    statusEl.style.color='var(--sage-600)';
+    await importCSVForAccountSingle(file,accountId,entryId,statusEl);
 }
 
 async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
@@ -2844,7 +2860,7 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
     
     const allAcc=[...accounts,...closedAccounts];
     const acc=allAcc.find(a=>a.id===accountId);
-    statusEl.innerHTML=`✅ → <strong>${acc?.name||'Account'}</strong> · <strong>${imported}</strong> new · <strong>${skipped}</strong> skipped <button onclick="undoImport('${entryId}')" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid #c44;background:white;color:#c44;cursor:pointer;font-size:0.8rem;">↩ Undo</button>`;
+    statusEl.innerHTML=`✅ → <strong>${acc?.name||'Account'}</strong> · <strong>${imported}</strong> new · <strong>${skipped}</strong> skipped <button onclick="undoImport('${entryId}')" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid #c44;background:white;color:#c44;cursor:pointer;font-size:0.8rem;">↩ Undo</button> <button onclick="showReassign('${entryId}')" style="margin-left:4px;padding:4px 10px;border-radius:6px;border:1px solid var(--sage-500);background:white;color:var(--sage-700);cursor:pointer;font-size:0.8rem;">🔀 Move</button>`;
     statusEl.style.color='#2e7d32';
     loadImportChecklist();
 }
@@ -2869,7 +2885,46 @@ async function undoImport(entryId){
             if(st){st.style.color='#c44';st.innerHTML=`↩ <strong>${lastImport.count}</strong> transactions removed`;}
         }
         lastImport=null;
+        loadImportChecklist();
     }catch(e){alert('Undo failed: '+e.message);}
+}
+
+function showReassign(entryId){
+    if(!lastImport||!lastImport.ids.length)return;
+    const allAcc=[...accounts,...closedAccounts];
+    const importNames=['family cc','prime','chase cc','boa cc','pnc checking','pnc 1407','boa checking','rental account'];
+    const eligible=allAcc.filter(a=>importNames.includes(a.name.toLowerCase())&&a.id!==lastImport.accountId);
+    const entry=document.getElementById(entryId);
+    const st=entry?.querySelector('.imp-status');
+    if(!st)return;
+    const btns=eligible.map(a=>
+        `<button onclick="doReassign('${entryId}','${a.id}')" style="padding:6px 12px;margin:3px;border-radius:6px;border:1px solid var(--sage-400);background:white;color:var(--sage-700);cursor:pointer;font-size:0.8rem;">${a.name}</button>`
+    ).join('');
+    st.innerHTML=`Move ${lastImport.count} transactions to:<br>${btns}`;
+    st.style.color='var(--sage-600)';
+}
+
+async function doReassign(entryId,newAccountId){
+    if(!lastImport||!lastImport.ids.length)return;
+    const entry=document.getElementById(entryId);
+    const st=entry?.querySelector('.imp-status');
+    try{
+        for(let i=0;i<lastImport.ids.length;i+=50){
+            const batch=lastImport.ids.slice(i,i+50);
+            const idList=batch.map(id=>`"${id}"`).join(',');
+            await supaFetch('finance_transactions','PATCH',{account_id:newAccountId},`?id=in.(${idList})`);
+        }
+        const allAcc=[...accounts,...closedAccounts];
+        const newAcc=allAcc.find(a=>a.id===newAccountId);
+        lastImport.accountId=newAccountId;
+        if(st){
+            st.style.color='#2e7d32';
+            st.innerHTML=`✅ Moved to <strong>${newAcc?.name||'Account'}</strong> · <strong>${lastImport.count}</strong> transactions`;
+        }
+        loadImportChecklist();
+    }catch(e){
+        if(st){st.style.color='#c44';st.innerHTML=`❌ Move failed: ${e.message}`;}
+    }
 }
 
 async function initTransactions(){
