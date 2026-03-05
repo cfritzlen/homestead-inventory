@@ -318,6 +318,16 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                 </div>
             </div>
 
+            <!-- Prudential Payoff Focus -->
+            <div id="dash-prudential" style="margin-bottom:24px;background:linear-gradient(135deg,var(--sage-700),var(--sage-600));border-radius:12px;padding:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+                <div>
+                    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--sage-200);margin-bottom:4px;">🎯 Prudential Loan</div>
+                    <div id="dash-prud-bal" style="font-size:2rem;font-weight:700;font-family:'Crimson Pro',serif;color:#fff;">$0</div>
+                </div>
+                <div id="dash-prud-change" style="text-align:right;">
+                </div>
+            </div>
+
             <!-- Charges over $200 table -->
             <div id="dash-big-charges" style="margin-bottom:24px;"></div>
 
@@ -2400,6 +2410,39 @@ async function loadDashboard(){
         document.getElementById('dash-cc-debt').textContent=fmt(ccDebt);
         document.getElementById('dash-loan-debt').textContent=fmt(loanDebt);
         document.getElementById('dash-total-tax').textContent=fmt(totalTax);
+
+        // === PRUDENTIAL FOCUS ===
+        const prudAcc=loanAccs.find(a=>a.name?.toLowerCase().includes('prudential'));
+        const prudEl=document.getElementById('dash-prudential');
+        if(prudAcc){
+            // This week balance
+            let prudRows=await supaFetch('finance_weekly_entries','GET',null,
+                `?account_id=eq.${prudAcc.id}&entry_date=eq.${week.end}`);
+            if(!prudRows?.length) prudRows=await supaFetch('finance_weekly_entries','GET',null,
+                `?account_id=eq.${prudAcc.id}&entry_date=lte.${week.end}&order=entry_date.desc&limit=1`);
+            const prudBal=prudRows?.length?parseFloat(prudRows[0].ending_balance)||0:0;
+
+            // Prior week balance
+            let prudPrior=await supaFetch('finance_weekly_entries','GET',null,
+                `?account_id=eq.${prudAcc.id}&entry_date=eq.${week.start}`);
+            if(!prudPrior?.length) prudPrior=await supaFetch('finance_weekly_entries','GET',null,
+                `?account_id=eq.${prudAcc.id}&entry_date=lte.${week.start}&order=entry_date.desc&limit=1`);
+            const prudPriorBal=prudPrior?.length?parseFloat(prudPrior[0].ending_balance)||0:0;
+
+            const prudDiff=prudBal-prudPriorBal;
+            const prudSign=prudDiff>0?'+':'';
+            const prudColor=prudDiff>0?'#ff6b6b':'#69db7c';
+            const prudArrow=prudDiff>0?'▲':prudDiff<0?'▼':'—';
+
+            document.getElementById('dash-prud-bal').textContent=fmt(prudBal);
+            document.getElementById('dash-prud-change').innerHTML=prudDiff!==0?
+                `<div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">This Week</div>
+                 <div style="font-size:1.3rem;font-weight:700;font-family:'Crimson Pro',serif;color:${prudColor};">${prudArrow} ${prudSign}${fmt(Math.abs(prudDiff))}</div>`
+                :`<div style="font-size:0.85rem;color:var(--sage-300);">No change</div>`;
+            prudEl.style.display='flex';
+        }else{
+            prudEl.style.display='none';
+        }
 
         // === BUILD $200+ TABLE ===
         const bigEl=document.getElementById('dash-big-charges');
