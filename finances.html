@@ -2334,17 +2334,24 @@ async function loadDashboard(){
         async function getDebtFromEntries(asOfDate){
             let cc=0, tax=0, loan=0;
             for(const a of ccAccs){
-                const rows=await supaFetch('finance_weekly_entries','GET',null,
+                // Try exact match first, then fall back to latest before date
+                let rows=await supaFetch('finance_weekly_entries','GET',null,
+                    `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
+                if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
                 if(rows?.length) cc+=parseFloat(rows[0].ending_balance)||0;
             }
             for(const a of taxAccs){
-                const rows=await supaFetch('finance_weekly_entries','GET',null,
+                let rows=await supaFetch('finance_weekly_entries','GET',null,
+                    `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
+                if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
                 if(rows?.length) tax+=parseFloat(rows[0].ending_balance)||0;
             }
             for(const a of loanAccs){
-                const rows=await supaFetch('finance_weekly_entries','GET',null,
+                let rows=await supaFetch('finance_weekly_entries','GET',null,
+                    `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
+                if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
                 if(rows?.length) loan+=parseFloat(rows[0].ending_balance)||0;
             }
@@ -2452,7 +2459,9 @@ async function loadDashboard(){
                     <th>Account</th><th style="text-align:right;">Balance</th><th>As Of</th>
                 </tr></thead><tbody>`;
             for(const a of trackAccts){
-                const entry=await supaFetch('finance_weekly_entries','GET',null,
+                let entry=await supaFetch('finance_weekly_entries','GET',null,
+                    `?account_id=eq.${a.id}&entry_date=eq.${week.end}`);
+                if(!entry?.length) entry=await supaFetch('finance_weekly_entries','GET',null,
                     `?account_id=eq.${a.id}&entry_date=lte.${week.end}&order=entry_date.desc&limit=1`);
                 let bal=0, asOf='—';
                 if(entry?.length){
