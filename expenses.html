@@ -189,17 +189,6 @@
 <div class="main-content">
     <h1>💰 Expense Tracker</h1>
 
-    <div style="text-align:center; margin-bottom:12px;">
-        <button class="settings-toggle" onclick="toggleSettings()">⚙️ AI Key Settings</button>
-    </div>
-    <div class="settings-panel hidden" id="settingsPanel">
-        <div style="font-weight:600; color:var(--sage-300); margin-bottom:8px;">🔑 Claude API Key</div>
-        <div style="font-size:0.8rem; color:var(--taupe); margin-bottom:8px;">Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--sage-300)">console.anthropic.com</a></div>
-        <input type="password" class="api-key-input" id="apiKeyInput" placeholder="sk-ant-..." oninput="saveApiKey()">
-        <div id="apiKeyStatus" class="api-key-status missing">No key set</div>
-        <div style="font-size:0.75rem; color:var(--taupe); margin-top:8px;">Stored only on this device. Don't use Incognito mode or it will be erased.</div>
-    </div>
-
     <div class="summary-grid">
         <div class="summary-box">
             <div class="label">This Month</div>
@@ -251,7 +240,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Amount ($)</label>
-                        <input type="number" id="expAmount" step="0.01" min="0" placeholder="0.00" required>
+                        <input type="number" id="expAmount" step="0.01" placeholder="0.00" required>
                     </div>
                     <div class="form-group">
                         <label>Vendor</label>
@@ -380,6 +369,17 @@
             <div id="categoryBreakdown"></div>
         </div>
     </div>
+
+    <div style="text-align:center; margin: 8px 0 12px;">
+        <button class="settings-toggle" onclick="toggleSettings()">⚙️ AI Key Settings</button>
+    </div>
+    <div class="settings-panel hidden" id="settingsPanel">
+        <div style="font-weight:600; color:var(--sage-300); margin-bottom:8px;">🔑 Claude API Key</div>
+        <div style="font-size:0.8rem; color:var(--taupe); margin-bottom:8px;">Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--sage-300)">console.anthropic.com</a></div>
+        <input type="password" class="api-key-input" id="apiKeyInput" placeholder="sk-ant-..." oninput="saveApiKey()">
+        <div id="apiKeyStatus" class="api-key-status missing">No key set</div>
+        <div style="font-size:0.75rem; color:var(--taupe); margin-top:8px;">Stored only on this device. Don't use Incognito mode or it will be erased.</div>
+    </div>
 </div>
 
 <!-- EDIT MODAL -->
@@ -412,7 +412,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Amount ($)</label>
-                    <input type="number" id="editAmount" step="0.01" min="0" required>
+                    <input type="number" id="editAmount" step="0.01" required>
                 </div>
                 <div class="form-group">
                     <label>Vendor</label>
@@ -1184,11 +1184,6 @@ If you cannot read something clearly, use null for that field.`
         if (result.vendor) document.getElementById(`${prefix}Vendor`).value = result.vendor;
         if (result.description) document.getElementById(`${prefix}Description`).value = result.description;
         if (result.notes) document.getElementById(`${prefix}Notes`).value = result.notes;
-        if (result.category) {
-            const sel = document.getElementById(`${prefix}Category`);
-            const match = CATEGORIES.find(c => c.value === result.category);
-            if (match) sel.value = match.value;
-        }
 
         status.textContent = '✅ Fields filled — review and save!';
         showToast('Receipt scanned! 🤖✅');
