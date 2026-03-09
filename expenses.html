@@ -318,6 +318,10 @@
                 </select>
             </div>
             <div class="form-group">
+                <label>Search</label>
+                <input type="text" id="filterSearch" placeholder="Vendor, description, notes..." style="min-width:180px;">
+            </div>
+            <div class="form-group">
                 <button class="export-btn" onclick="exportCSV()">📥 Export CSV</button>
             </div>
         </div>
@@ -508,8 +512,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const now = new Date();
     const y = now.getFullYear(), m = now.getMonth();
-    document.getElementById('filterFrom').value = `${y}-${String(m+1).padStart(2,'0')}-01`;
-    document.getElementById('filterTo').value = `${y}-${String(m+1).padStart(2,'0')}-${new Date(y, m+1, 0).getDate()}`;
+    const today = new Date();
+    const from45 = new Date(today); from45.setDate(today.getDate() - 45);
+    document.getElementById('filterFrom').value = from45.toISOString().split('T')[0];
+    document.getElementById('filterTo').value = today.toISOString().split('T')[0];
 
     const yearSel = document.getElementById('summaryYear');
     for (let yr = y; yr >= y - 3; yr--) yearSel.innerHTML += `<option value="${yr}">${yr}</option>`;
@@ -534,7 +540,7 @@ function setupListeners() {
     document.getElementById('expenseForm').addEventListener('submit', addExpense);
     document.getElementById('editForm').addEventListener('submit', saveEdit);
 
-    ['filterFrom','filterTo','filterCategory','filterVendor'].forEach(id => {
+    ['filterFrom','filterTo','filterCategory','filterVendor','filterSearch'].forEach(id => {
         document.getElementById(id).addEventListener('change', renderTable);
     });
     ['summaryYear','summaryMonth'].forEach(id => {
@@ -962,12 +968,17 @@ function renderTable() {
     const to = document.getElementById('filterTo').value;
     const cat = document.getElementById('filterCategory').value;
     const vendor = document.getElementById('filterVendor').value;
+    const search = (document.getElementById('filterSearch').value || '').toLowerCase().trim();
 
     let filtered = allExpenses.filter(e => {
         if (from && e.expense_date < from) return false;
         if (to && e.expense_date > to) return false;
         if (cat && e.category !== cat) return false;
         if (vendor && e.vendor !== vendor) return false;
+        if (search) {
+            const haystack = `${e.vendor || ''} ${e.description || ''} ${e.notes || ''}`.toLowerCase();
+            if (!haystack.includes(search)) return false;
+        }
         return true;
     });
 
@@ -1162,9 +1173,9 @@ Return this exact JSON format:
   "date": "YYYY-MM-DD or null",
   "amount": 12.34 or null,
   "vendor": "store or company name or null",
-  "description": "brief description of what was purchased",
-  "category": "best matching category from the list or null",
-  "notes": "any other useful details or null"
+  "description": "short 3-5 word summary only (e.g. 'Chicken feed 50lb' or 'Lumber and screws')",
+  "notes": "fuller details — itemized items, quantities, any other useful info from the receipt",
+  "category": "best matching category from the list or null"
 }
 
 If you cannot read something clearly, use null for that field.`
