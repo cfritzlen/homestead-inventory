@@ -111,6 +111,20 @@
         .btn-secondary { background: var(--taupe); color: white; padding: 6px 12px; font-size: 0.85rem; }
         .btn-secondary:hover { background: #b0a191; }
         .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-ai { background: #6b5b95; color: white; padding: 8px 16px; font-size: 0.9rem; }
+        .btn-ai:hover { background: #5a4a80; }
+        .btn-ai:disabled { background: #9b8ec4; cursor: not-allowed; }
+        .ai-scan-wrap { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .ai-status { font-size: 0.85rem; color: var(--sage-600); font-style: italic; }
+        .api-key-input { padding: 8px 12px; border: 1px solid var(--sage-200); border-radius: 8px; font-family: 'Karla', sans-serif; font-size: 0.9rem; width: 100%; }
+        .api-key-input:focus { border-color: var(--sage-500); outline: none; }
+        .api-key-status { margin-top: 6px; font-size: 0.8rem; padding: 4px 10px; border-radius: 6px; display: inline-block; }
+        .api-key-status.ok { background: #d4e8db; color: #3a7d5c; }
+        .api-key-status.missing { background: #fff3e0; color: #d4873c; }
+        .settings-panel { background: rgba(0,0,0,0.15); border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+        .settings-panel.hidden { display: none; }
+        .settings-toggle { background: none; border: 1px solid var(--sage-400); color: var(--sage-200); padding: 6px 14px; border-radius: 8px; cursor: pointer; font-family: 'Karla', sans-serif; font-size: 0.85rem; margin-bottom: 12px; }
+        .settings-toggle:hover { background: rgba(255,255,255,0.05); }
 
         /* Filter bar */
         .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-end; }
@@ -174,6 +188,17 @@
 
 <div class="main-content">
     <h1>💰 Expense Tracker</h1>
+
+    <div style="text-align:center; margin-bottom:12px;">
+        <button class="settings-toggle" onclick="toggleSettings()">⚙️ AI Key Settings</button>
+    </div>
+    <div class="settings-panel hidden" id="settingsPanel">
+        <div style="font-weight:600; color:var(--sage-300); margin-bottom:8px;">🔑 Claude API Key</div>
+        <div style="font-size:0.8rem; color:var(--taupe); margin-bottom:8px;">Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--sage-300)">console.anthropic.com</a></div>
+        <input type="password" class="api-key-input" id="apiKeyInput" placeholder="sk-ant-..." oninput="saveApiKey()">
+        <div id="apiKeyStatus" class="api-key-status missing">No key set</div>
+        <div style="font-size:0.75rem; color:var(--taupe); margin-top:8px;">Stored only on this device. Don't use Incognito mode or it will be erased.</div>
+    </div>
 
     <div class="summary-grid">
         <div class="summary-box">
@@ -257,6 +282,10 @@
                             <p style="font-size:0.75rem; color:var(--taupe); margin-top:4px;">Images & PDFs accepted</p>
                         </div>
                         <div class="receipt-previews" id="addReceiptPreviews"></div>
+                        <div class="ai-scan-wrap" id="addScanWrap" style="display:none;">
+                            <button type="button" class="btn btn-ai" id="addScanBtn" onclick="scanReceiptWithAI('add')">🤖 Scan Receipt</button>
+                            <span class="ai-status" id="addScanStatus"></span>
+                        </div>
                     </div>
                 </div>
                 <div class="btn-row">
@@ -415,6 +444,10 @@
                         <p>📎 Tap to add receipts</p>
                     </div>
                     <div class="receipt-previews" id="editReceiptPreviews"></div>
+                    <div class="ai-scan-wrap" id="editScanWrap" style="display:none;">
+                        <button type="button" class="btn btn-ai" id="editScanBtn" onclick="scanReceiptWithAI('edit')">🤖 Scan Receipt</button>
+                        <span class="ai-status" id="editScanStatus"></span>
+                    </div>
                 </div>
             </div>
             <div class="btn-row">
@@ -605,6 +638,11 @@ function handleNewFiles(fileList, mode) {
         arr.push(f);
     }
     renderPendingPreviews(arr, previewId, mode);
+
+    // Show scan button if there are any image files (not PDFs)
+    const hasImages = arr.some(f => f.type.startsWith('image/'));
+    const scanWrap = document.getElementById(mode === 'add' ? 'addScanWrap' : 'editScanWrap');
+    if (scanWrap) scanWrap.style.display = hasImages ? 'flex' : 'none';
 }
 
 function renderPendingPreviews(arr, containerId, mode) {
@@ -1038,10 +1076,144 @@ function exportCSV() {
 }
 
 // ===================== HELPERS =====================
+// ===================== API KEY =====================
+function getApiKey() {
+    try { return localStorage.getItem('homestead-api-key') || ''; } catch(e) { return ''; }
+}
+function saveApiKey() {
+    const key = document.getElementById('apiKeyInput').value.trim();
+    try { localStorage.setItem('homestead-api-key', key); } catch(e) {}
+    updateApiKeyStatus();
+}
+function updateApiKeyStatus() {
+    const el = document.getElementById('apiKeyStatus');
+    const key = getApiKey();
+    if (key && key.startsWith('sk-')) {
+        el.className = 'api-key-status ok';
+        el.textContent = '✅ Key saved — AI scanning ready';
+    } else {
+        el.className = 'api-key-status missing';
+        el.textContent = key ? 'Key should start with sk-ant-...' : 'No key set';
+    }
+}
+function toggleSettings() {
+    document.getElementById('settingsPanel').classList.toggle('hidden');
+}
+
+// ===================== AI RECEIPT SCAN =====================
+async function scanReceiptWithAI(mode) {
+    const arr = mode === 'add' ? pendingFiles : editPendingFiles;
+    const imageFile = arr.find(f => f.type.startsWith('image/'));
+    if (!imageFile) { showToast('No image to scan', true); return; }
+
+    const apiKey = getApiKey();
+    if (!apiKey || !apiKey.startsWith('sk-')) {
+        showToast('Set your API key first (⚙️ AI Key Settings)', true);
+        document.getElementById('settingsPanel').classList.remove('hidden');
+        return;
+    }
+
+    const btn = document.getElementById(mode === 'add' ? 'addScanBtn' : 'editScanBtn');
+    const status = document.getElementById(mode === 'add' ? 'addScanStatus' : 'editScanStatus');
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Scanning...';
+    status.textContent = 'Reading your receipt...';
+
+    try {
+        const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(imageFile);
+        });
+
+        const categoryList = CATEGORIES.map(c => c.value).join(', ');
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 1000,
+                messages: [{
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'image',
+                            source: { type: 'base64', media_type: imageFile.type, data: base64 }
+                        },
+                        {
+                            type: 'text',
+                            text: `You are reading a receipt or invoice for a homestead expense tracker. Extract the key info and respond ONLY with valid JSON, no extra text.
+
+Categories available: ${categoryList}
+
+Return this exact JSON format:
+{
+  "date": "YYYY-MM-DD or null",
+  "amount": 12.34 or null,
+  "vendor": "store or company name or null",
+  "description": "brief description of what was purchased",
+  "category": "best matching category from the list or null",
+  "notes": "any other useful details or null"
+}
+
+If you cannot read something clearly, use null for that field.`
+                        }
+                    ]
+                }]
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) { throw new Error(data.error?.message || `API error ${response.status}`); }
+
+        const text = data.content?.map(b => b.text || '').join('') || '';
+        const clean = text.replace(/```json|```/g, '').trim();
+        const result = JSON.parse(clean);
+
+        const prefix = mode === 'add' ? 'exp' : 'edit';
+        if (result.date) document.getElementById(`${prefix}Date`).value = result.date;
+        if (result.amount) document.getElementById(`${prefix}Amount`).value = result.amount;
+        if (result.vendor) document.getElementById(`${prefix}Vendor`).value = result.vendor;
+        if (result.description) document.getElementById(`${prefix}Description`).value = result.description;
+        if (result.notes) document.getElementById(`${prefix}Notes`).value = result.notes;
+        if (result.category) {
+            const sel = document.getElementById(`${prefix}Category`);
+            const match = CATEGORIES.find(c => c.value === result.category);
+            if (match) sel.value = match.value;
+        }
+
+        status.textContent = '✅ Fields filled — review and save!';
+        showToast('Receipt scanned! 🤖✅');
+    } catch (err) {
+        console.error('AI scan error:', err);
+        status.textContent = '❌ Scan failed — fill in manually';
+        showToast('Could not read receipt: ' + err.message, true);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🤖 Scan Receipt';
+    }
+}
+
 function fmt(n) { return '$' + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 function sum(arr) { return arr.reduce((s, e) => s + parseFloat(e.amount), 0); }
 function formatDate(d) { const [y, m, day] = d.split('-'); return `${parseInt(m)}/${parseInt(day)}/${y}`; }
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// Init API key
+document.addEventListener('DOMContentLoaded', () => {
+    const saved = getApiKey();
+    if (saved) document.getElementById('apiKeyInput').value = saved;
+    updateApiKeyStatus();
+    if (!saved) document.getElementById('settingsPanel').classList.remove('hidden');
+});
 function showToast(msg, isError = false) {
     const t = document.getElementById('toast');
     t.textContent = msg;
