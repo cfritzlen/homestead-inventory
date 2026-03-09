@@ -639,10 +639,10 @@ function handleNewFiles(fileList, mode) {
     }
     renderPendingPreviews(arr, previewId, mode);
 
-    // Show scan button if there are any image files (not PDFs)
-    const hasImages = arr.some(f => f.type.startsWith('image/'));
+    // Show scan button if there are any image or PDF files
+    const hasScannableFiles = arr.some(f => f.type.startsWith('image/') || f.type === 'application/pdf');
     const scanWrap = document.getElementById(mode === 'add' ? 'addScanWrap' : 'editScanWrap');
-    if (scanWrap) scanWrap.style.display = hasImages ? 'flex' : 'none';
+    if (scanWrap) scanWrap.style.display = hasScannableFiles ? 'flex' : 'none';
 }
 
 function renderPendingPreviews(arr, containerId, mode) {
@@ -1104,7 +1104,9 @@ function toggleSettings() {
 async function scanReceiptWithAI(mode) {
     const arr = mode === 'add' ? pendingFiles : editPendingFiles;
     const imageFile = arr.find(f => f.type.startsWith('image/'));
-    if (!imageFile) { showToast('No image to scan', true); return; }
+    const pdfFile = arr.find(f => f.type === 'application/pdf');
+    const fileToScan = imageFile || pdfFile;
+    if (!fileToScan) { showToast('No file to scan', true); return; }
 
     const apiKey = getApiKey();
     if (!apiKey || !apiKey.startsWith('sk-')) {
@@ -1125,10 +1127,14 @@ async function scanReceiptWithAI(mode) {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result.split(',')[1]);
             reader.onerror = reject;
-            reader.readAsDataURL(imageFile);
+            reader.readAsDataURL(fileToScan);
         });
 
         const categoryList = CATEGORIES.map(c => c.value).join(', ');
+
+        const fileContent = fileToScan.type === 'application/pdf'
+            ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
+            : { type: 'image', source: { type: 'base64', media_type: fileToScan.type, data: base64 } };
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -1144,10 +1150,7 @@ async function scanReceiptWithAI(mode) {
                 messages: [{
                     role: 'user',
                     content: [
-                        {
-                            type: 'image',
-                            source: { type: 'base64', media_type: imageFile.type, data: base64 }
-                        },
+                        fileContent,
                         {
                             type: 'text',
                             text: `You are reading a receipt or invoice for a homestead expense tracker. Extract the key info and respond ONLY with valid JSON, no extra text.
