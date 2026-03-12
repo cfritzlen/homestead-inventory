@@ -2243,7 +2243,7 @@ async function applyAISuggestions(){
 
 // ==================== INIT ====================
 // ==================== DASHBOARD ====================
-let dashWeekOffset=-1;
+let dashWeekOffset=new Date().getDay()===3?0:-1;
 
 function getDashWeekRange(offset=0){
     const today=new Date();
