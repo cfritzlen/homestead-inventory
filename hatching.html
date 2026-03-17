@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hatching Tracker - Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --sage-50: #f6f7f3;
+            --sage-100: #e8ebe0;
+            --sage-200: #d4dac5;
+            --sage-300: #b8c5a3;
+            --sage-400: #98ab7e;
+            --sage-500: #7a9061;
+            --sage-600: #5f734c;
+            --sage-700: #4a5a3b;
+            --sage-800: #3d4a32;
+            --earth-warm: #d4a373;
+            --earth-cream: #faf8f3;
+            --earth-brown: #8b7355;
+            --cream: #ece8dd;
+            --taupe: #c4b5a4;
+            --charcoal: #4a4d47;
+            --dusty-rose: #9b7269;
+            --warning-red: #c74440;
+        }
+
+        body {
+            font-family: 'Karla', sans-serif;
+            background: linear-gradient(135deg, var(--sage-50) 0%, var(--earth-cream) 100%);
+            min-height: 100vh;
+            color: var(--sage-800);
+        }
+
+        /* Navigation */
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            background: rgba(122, 144, 97, 0.1);
+            color: var(--sage-700);
+            text-decoration: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: var(--sage-500);
+            color: white;
+        }
+
+        /* Main container */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 2rem;
+            font-weight: 300;
+            color: var(--sage-700);
+            margin: 20px 0 8px;
+        }
+
+        .subtitle {
+            color: var(--taupe);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        /* Year filter */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .year-select {
+            padding: 8px 16px;
+            border: 1px solid var(--sage-300);
+            border-radius: 8px;
+            background: white;
+            font-family: 'Karla', sans-serif;
+            font-size: 14px;
+            color: var(--sage-800);
+        }
+
+        /* Summary cards */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .summary-card .label {
+            font-size: 12px;
+            color: var(--taupe);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-card .value {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--sage-600);
+            margin-top: 4px;
+        }
+
+        .summary-card .detail {
+            font-size: 12px;
+            color: var(--sage-400);
+            margin-top: 2px;
+        }
+
+        /* Add batch button */
+        .btn-add {
+            padding: 10px 24px;
+            background: var(--sage-500);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-add:hover {
+            background: var(--sage-600);
+        }
+
+        /* Batch table (desktop) */
+        .batch-table {
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-collapse: collapse;
+        }
+
+        .batch-table th {
+            background: var(--sage-100);
+            padding: 12px 14px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--sage-600);
+            font-weight: 600;
+        }
+
+        .batch-table td {
+            padding: 12px 14px;
+            border-top: 1px solid var(--sage-100);
+            font-size: 14px;
+            color: var(--sage-800);
+        }
+
+        .batch-table tr:hover {
+            background: var(--sage-50);
+        }
+
+        .batch-table .hatch-rate {
+            font-weight: 700;
+            color: var(--sage-600);
+        }
+
+        .batch-table .hatch-rate.low {
+            color: var(--warning-red);
+        }
+
+        .batch-table .hatch-rate.good {
+            color: var(--sage-500);
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .type-badge.chickens { background: #fef3c7; color: #92400e; }
+        .type-badge.ducks { background: #dbeafe; color: #1e40af; }
+        .type-badge.geese { background: #e0e7ff; color: #3730a3; }
+        .type-badge.default { background: var(--sage-100); color: var(--sage-700); }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .status-dot.incubating { background: #f59e0b; }
+        .status-dot.hatched { background: #10b981; }
+        .status-dot.brooder { background: #3b82f6; }
+        .status-dot.complete { background: var(--sage-500); }
+
+        .actions-cell {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .btn-edit {
+            background: var(--sage-100);
+            color: var(--sage-600);
+        }
+
+        .btn-edit:hover { background: var(--sage-200); }
+
+        .btn-delete {
+            background: #fde8e8;
+            color: var(--warning-red);
+        }
+
+        .btn-delete:hover { background: #fbd5d5; }
+
+        /* Mobile card view */
+        .batch-cards {
+            display: none;
+        }
+
+        .batch-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .batch-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .batch-card-header h3 {
+            font-family: 'Crimson Pro', serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--sage-700);
+        }
+
+        .batch-card-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .batch-card-grid .field-label {
+            color: var(--taupe);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .batch-card-grid .field-value {
+            color: var(--sage-800);
+            font-weight: 500;
+        }
+
+        .batch-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--sage-100);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .modal h2 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: var(--sage-700);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--sage-600);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--sage-200);
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 14px;
+            color: var(--sage-800);
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--sage-500);
+        }
+
+        .form-group textarea {
+            height: 60px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-section-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1rem;
+            color: var(--taupe);
+            margin: 16px 0 8px;
+            padding-top: 12px;
+            border-top: 1px solid var(--sage-100);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-save {
+            flex: 1;
+            padding: 12px;
+            background: var(--sage-500);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-save:hover { background: var(--sage-600); }
+
+        .btn-cancel {
+            padding: 12px 20px;
+            background: var(--sage-100);
+            color: var(--sage-700);
+            border: none;
+            border-radius: 8px;
+            font-family: 'Karla', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-cancel:hover { background: var(--sage-200); }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--taupe);
+        }
+
+        .empty-state .emoji {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        /* Bird type input with datalist styling */
+        .type-input-wrapper {
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .batch-table { display: none; }
+            .batch-cards { display: block; }
+            .summary-row { grid-template-columns: 1fr 1fr; }
+            h1 { font-size: 1.6rem; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-link">Dashboard</a>
+            <a href="inventory.html" class="nav-link">Inventory</a>
+            <a href="shopping.html" class="nav-link">Shopping</a>
+            <a href="recipes.html" class="nav-link">Recipes</a>
+            <a href="meal-plan.html" class="nav-link">Meals</a>
+            <a href="calendar.html" class="nav-link">Calendar</a>
+            <a href="expenses.html" class="nav-link">Expenses</a>
+            <a href="hatching.html" class="nav-link active">Hatching</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>🥚 Hatching Tracker</h1>
+        <p class="subtitle">Track your poultry batches from incubator to table</p>
+
+        <!-- Summary Cards -->
+        <div class="summary-row" id="summaryRow"></div>
+
+        <!-- Top bar -->
+        <div class="top-bar">
+            <select class="year-select" id="yearFilter" onchange="loadBatches()">
+                <option value="2026">2026</option>
+                <option value="2025">2025</option>
+            </select>
+            <button class="btn-add" onclick="openModal()">+ New Batch</button>
+        </div>
+
+        <!-- Desktop table -->
+        <table class="batch-table" id="batchTable">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Set Date</th>
+                    <th>Eggs Set</th>
+                    <th>Hatched</th>
+                    <th>Brooder Exit</th>
+                    <th>Harvested</th>
+                    <th>Hatch Rate</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="batchTableBody"></tbody>
+        </table>
+
+        <!-- Mobile cards -->
+        <div class="batch-cards" id="batchCards"></div>
+
+        <!-- Empty state -->
+        <div class="empty-state" id="emptyState" style="display:none;">
+            <div class="emoji">🐣</div>
+            <p>No batches yet — start your first hatch!</p>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <h2 id="modalTitle">New Batch</h2>
+            <input type="hidden" id="editId">
+
+            <div class="form-group">
+                <label>Bird Type</label>
+                <div class="type-input-wrapper">
+                    <input type="text" id="birdType" list="birdTypes" placeholder="e.g. Chickens, Ducks, Geese...">
+                    <datalist id="birdTypes"></datalist>
+                </div>
+            </div>
+
+            <div class="form-section-title">Setting Eggs</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Set Date</label>
+                    <input type="date" id="setDate">
+                </div>
+                <div class="form-group">
+                    <label>Qty Set</label>
+                    <input type="number" id="qtySet" min="0" placeholder="0">
+                </div>
+            </div>
+
+            <div class="form-section-title">Hatch</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Hatch Date</label>
+                    <input type="date" id="hatchDate">
+                </div>
+                <div class="form-group">
+                    <label>Qty Hatched</label>
+                    <input type="number" id="qtyHatched" min="0" placeholder="0">
+                </div>
+            </div>
+
+            <div class="form-section-title">Brooder Exit</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Exit Date</label>
+                    <input type="date" id="brooderExitDate">
+                </div>
+                <div class="form-group">
+                    <label>Qty Survived</label>
+                    <input type="number" id="qtyBrooderExit" min="0" placeholder="0">
+                </div>
+            </div>
+
+            <div class="form-section-title">Harvest</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Harvest Date</label>
+                    <input type="date" id="harvestDate">
+                </div>
+                <div class="form-group">
+                    <label>Qty Harvested</label>
+                    <input type="number" id="qtyHarvested" min="0" placeholder="0">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="notes" placeholder="Breed details, observations..."></textarea>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-save" onclick="saveBatch()">Save Batch</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase setup
+        const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let allBatches = [];
+
+        // ---- Load & Render ----
+        async function loadBatches() {
+            const year = document.getElementById('yearFilter').value;
+            const { data, error } = await supabase
+                .from('hatching_batches')
+                .select('*')
+                .eq('year', parseInt(year))
+                .order('set_date', { ascending: true, nullsFirst: false });
+
+            if (error) {
+                console.error('Error loading batches:', error);
+                return;
+            }
+
+            allBatches = data || [];
+            renderSummary();
+            renderTable();
+            renderCards();
+            loadBirdTypes();
+        }
+
+        function getStatus(b) {
+            if (b.harvest_date) return { label: 'Complete', cls: 'complete' };
+            if (b.brooder_exit_date) return { label: 'Brooder Exit', cls: 'brooder' };
+            if (b.hatch_date) return { label: 'Hatched', cls: 'hatched' };
+            return { label: 'Incubating', cls: 'incubating' };
+        }
+
+        function getTypeBadgeClass(type) {
+            const t = (type || '').toLowerCase();
+            if (t.includes('chicken')) return 'chickens';
+            if (t.includes('duck')) return 'ducks';
+            if (t.includes('goose') || t.includes('geese')) return 'geese';
+            return 'default';
+        }
+
+        function hatchRate(b) {
+            if (!b.qty_set || !b.qty_hatched) return null;
+            return Math.round((b.qty_hatched / b.qty_set) * 100);
+        }
+
+        function formatDate(d) {
+            if (!d) return '—';
+            return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function renderSummary() {
+            // Group by bird type
+            const byType = {};
+            allBatches.forEach(b => {
+                const type = b.bird_type || 'Unknown';
+                if (!byType[type]) byType[type] = { set: 0, hatched: 0, projected: 0, brooderExit: 0, harvested: 0, batches: 0 };
+                const t = byType[type];
+                t.batches++;
+                t.set += (b.qty_set || 0);
+                // If hatched, use actual number; if not hatched yet, assume 100%
+                const hatchedOrProjected = b.qty_hatched ? b.qty_hatched : (b.qty_set || 0);
+                t.hatched += (b.qty_hatched || 0);
+                t.projected += hatchedOrProjected;
+                t.brooderExit += (b.qty_brooder_exit || 0);
+                t.harvested += (b.qty_harvested || 0);
+            });
+
+            const types = Object.keys(byType).sort();
+
+            if (types.length === 0) {
+                document.getElementById('summaryRow').innerHTML = '';
+                return;
+            }
+
+            // Grand totals
+            const grandSet = allBatches.reduce((s, b) => s + (b.qty_set || 0), 0);
+            const grandProjected = Object.values(byType).reduce((s, t) => s + t.projected, 0);
+
+            let html = types.map(type => {
+                const t = byType[type];
+                const badgeClass = getTypeBadgeClass(type);
+                const rate = t.set > 0 && t.hatched > 0 ? Math.round((t.hatched / t.set) * 100) : null;
+                const rateText = rate !== null ? `${rate}% hatch rate` : 'projected 100%';
+                return `<div class="summary-card">
+                    <div class="label"><span class="type-badge ${badgeClass}">${type}</span></div>
+                    <div class="value">${t.projected}</div>
+                    <div class="detail">${t.set} set · ${t.batches} batch${t.batches !== 1 ? 'es' : ''}</div>
+                    <div class="detail">${rateText}</div>
+                </div>`;
+            }).join('');
+
+            // Add grand total card
+            html += `<div class="summary-card" style="border-left: 3px solid var(--sage-500);">
+                <div class="label">Total Birds</div>
+                <div class="value">${grandProjected}</div>
+                <div class="detail">${grandSet} eggs set</div>
+                <div class="detail">${allBatches.length} batches</div>
+            </div>`;
+
+            document.getElementById('summaryRow').innerHTML = html;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('batchTableBody');
+            const empty = document.getElementById('emptyState');
+
+            if (allBatches.length === 0) {
+                tbody.innerHTML = '';
+                empty.style.display = 'block';
+                document.getElementById('batchTable').style.display = 'none';
+                return;
+            }
+
+            empty.style.display = 'none';
+            document.getElementById('batchTable').style.display = '';
+
+            tbody.innerHTML = allBatches.map(b => {
+                const status = getStatus(b);
+                const rate = hatchRate(b);
+                const rateClass = rate === null ? '' : rate >= 70 ? 'good' : rate < 50 ? 'low' : '';
+
+                return `<tr>
+                    <td><span class="type-badge ${getTypeBadgeClass(b.bird_type)}">${b.bird_type}</span></td>
+                    <td><span class="status-dot ${status.cls}"></span>${status.label}</td>
+                    <td>${formatDate(b.set_date)}</td>
+                    <td>${b.qty_set || '—'}</td>
+                    <td>${b.qty_hatched || '—'}</td>
+                    <td>${b.qty_brooder_exit || '—'}</td>
+                    <td>${b.qty_harvested || '—'}</td>
+                    <td><span class="hatch-rate ${rateClass}">${rate !== null ? rate + '%' : '—'}</span></td>
+                    <td>
+                        <div class="actions-cell">
+                            <button class="btn-icon btn-edit" onclick="editBatch('${b.id}')" title="Edit">✏️</button>
+                            <button class="btn-icon btn-delete" onclick="deleteBatch('${b.id}')" title="Delete">🗑️</button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderCards() {
+            const container = document.getElementById('batchCards');
+
+            container.innerHTML = allBatches.map(b => {
+                const status = getStatus(b);
+                const rate = hatchRate(b);
+
+                return `<div class="batch-card">
+                    <div class="batch-card-header">
+                        <h3><span class="type-badge ${getTypeBadgeClass(b.bird_type)}">${b.bird_type}</span></h3>
+                        <span><span class="status-dot ${status.cls}"></span>${status.label}</span>
+                    </div>
+                    <div class="batch-card-grid">
+                        <div>
+                            <div class="field-label">Set Date</div>
+                            <div class="field-value">${formatDate(b.set_date)}</div>
+                        </div>
+                        <div>
+                            <div class="field-label">Eggs Set</div>
+                            <div class="field-value">${b.qty_set || '—'}</div>
+                        </div>
+                        <div>
+                            <div class="field-label">Hatch Date</div>
+                            <div class="field-value">${formatDate(b.hatch_date)}</div>
+                        </div>
+                        <div>
+                            <div class="field-label">Hatched</div>
+                            <div class="field-value">${b.qty_hatched || '—'}${rate !== null ? ` (${rate}%)` : ''}</div>
+                        </div>
+                        <div>
+                            <div class="field-label">Brooder Exit</div>
+                            <div class="field-value">${formatDate(b.brooder_exit_date)} — ${b.qty_brooder_exit || '—'}</div>
+                        </div>
+                        <div>
+                            <div class="field-label">Harvested</div>
+                            <div class="field-value">${formatDate(b.harvest_date)} — ${b.qty_harvested || '—'}</div>
+                        </div>
+                    </div>
+                    ${b.notes ? `<div style="margin-top:10px;font-size:13px;color:var(--taupe);font-style:italic;">${b.notes}</div>` : ''}
+                    <div class="batch-card-actions">
+                        <button class="btn-icon btn-edit" onclick="editBatch('${b.id}')">✏️ Edit</button>
+                        <button class="btn-icon btn-delete" onclick="deleteBatch('${b.id}')">🗑️ Delete</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ---- Bird type suggestions ----
+        async function loadBirdTypes() {
+            const { data } = await supabase
+                .from('hatching_batches')
+                .select('bird_type');
+
+            const types = [...new Set((data || []).map(d => d.bird_type))];
+            // Add defaults if not present
+            ['Chickens', 'Ducks', 'Geese'].forEach(t => {
+                if (!types.includes(t)) types.push(t);
+            });
+
+            const datalist = document.getElementById('birdTypes');
+            datalist.innerHTML = types.sort().map(t => `<option value="${t}">`).join('');
+        }
+
+        // ---- Modal ----
+        function openModal(batch = null) {
+            document.getElementById('modalTitle').textContent = batch ? 'Edit Batch' : 'New Batch';
+            document.getElementById('editId').value = batch ? batch.id : '';
+            document.getElementById('birdType').value = batch ? batch.bird_type : '';
+            document.getElementById('setDate').value = batch ? batch.set_date || '' : '';
+            document.getElementById('qtySet').value = batch ? batch.qty_set || '' : '';
+            document.getElementById('hatchDate').value = batch ? batch.hatch_date || '' : '';
+            document.getElementById('qtyHatched').value = batch ? batch.qty_hatched || '' : '';
+            document.getElementById('brooderExitDate').value = batch ? batch.brooder_exit_date || '' : '';
+            document.getElementById('qtyBrooderExit').value = batch ? batch.qty_brooder_exit || '' : '';
+            document.getElementById('harvestDate').value = batch ? batch.harvest_date || '' : '';
+            document.getElementById('qtyHarvested').value = batch ? batch.qty_harvested || '' : '';
+            document.getElementById('notes').value = batch ? batch.notes || '' : '';
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function closeModal(e) {
+            if (e && e.target !== e.currentTarget) return;
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        function editBatch(id) {
+            const batch = allBatches.find(b => b.id === id);
+            if (batch) openModal(batch);
+        }
+
+        async function saveBatch() {
+            const id = document.getElementById('editId').value;
+            const birdType = document.getElementById('birdType').value.trim();
+
+            if (!birdType) {
+                alert('Please enter a bird type');
+                return;
+            }
+
+            const record = {
+                bird_type: birdType,
+                set_date: document.getElementById('setDate').value || null,
+                qty_set: parseInt(document.getElementById('qtySet').value) || 0,
+                hatch_date: document.getElementById('hatchDate').value || null,
+                qty_hatched: parseInt(document.getElementById('qtyHatched').value) || 0,
+                brooder_exit_date: document.getElementById('brooderExitDate').value || null,
+                qty_brooder_exit: parseInt(document.getElementById('qtyBrooderExit').value) || 0,
+                harvest_date: document.getElementById('harvestDate').value || null,
+                qty_harvested: parseInt(document.getElementById('qtyHarvested').value) || 0,
+                notes: document.getElementById('notes').value.trim() || null,
+                year: parseInt(document.getElementById('yearFilter').value)
+            };
+
+            let error;
+            if (id) {
+                ({ error } = await supabase.from('hatching_batches').update(record).eq('id', id));
+            } else {
+                ({ error } = await supabase.from('hatching_batches').insert([record]));
+            }
+
+            if (error) {
+                console.error('Save error:', error);
+                alert('Error saving batch — check console');
+                return;
+            }
+
+            closeModal();
+            loadBatches();
+        }
+
+        async function deleteBatch(id) {
+            if (!confirm('Delete this batch?')) return;
+            const { error } = await supabase.from('hatching_batches').delete().eq('id', id);
+            if (error) {
+                console.error('Delete error:', error);
+                return;
+            }
+            loadBatches();
+        }
+
+        // ---- Init ----
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set year filter to current year
+            const currentYear = new Date().getFullYear();
+            const yearSelect = document.getElementById('yearFilter');
+            if ([...yearSelect.options].some(o => o.value === String(currentYear))) {
+                yearSelect.value = currentYear;
+            }
+            loadBatches();
+        });
+    </script>
+</body>
+</html>
