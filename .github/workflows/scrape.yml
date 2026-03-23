@@ -1,0 +1,43 @@
+
+
+name: SolArk Data Scraper
+
+on:
+  # Run every 15 minutes during daylight hours (6am-9pm EST = 11:00-02:00 UTC)
+  schedule:
+    - cron: '*/15 11-23,0-2 * * *'  # Every 15 min, 6am-9pm EST (approx)
+    - cron: '0 3-10 * * *'           # Once per hour overnight
+
+  # Also allow manual runs from the GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      days_back:
+        description: 'Number of days to backfill'
+        required: false
+        default: '2'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run scraper
+        env:
+          SOLARK_USERNAME: ${{ secrets.SOLARK_USERNAME }}
+          SOLARK_PASSWORD: ${{ secrets.SOLARK_PASSWORD }}
+          SOLARK_PLANT_ID: ${{ secrets.SOLARK_PLANT_ID }}
+          SOLARK_INVERTER_SN: ${{ secrets.SOLARK_INVERTER_SN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scraper.py ${{ github.event.inputs.days_back || '2' }}
