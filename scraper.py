@@ -105,9 +105,10 @@ def fetch_daily_flow(token, date_str):
 
 
 def fetch_realtime(token):
-    """Fetch realtime inverter data."""
-    log("Fetching realtime data...")
-    data = solark_get(token, f"/api/v1/plant/energy/{SOLARK_PLANT_ID}/realtime?id={SOLARK_PLANT_ID}")
+    """Fetch realtime inverter data from the flow endpoint (today's snapshot)."""
+    log("Fetching realtime data via flow endpoint...")
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    data = solark_get(token, f"/api/v1/plant/energy/{SOLARK_PLANT_ID}/flow?date={date_str}")
     return data
 
 
@@ -126,79 +127,70 @@ def process_day_data(date_str, day_data):
         log(f"  No day data for {date_str}")
         return rows
 
-    # The API typically returns data as arrays of values with timestamps
-    # Structure varies but commonly has: pvPower, batteryPower, gridPower, loadPower, batterySoc
-    infos = day_data if isinstance(day_data, list) else day_data.get("infos", [])
+    infos = day_data.get("infos", [])
 
-    if isinstance(day_data, dict):
-        # Try to extract time-series data from various possible formats
-        pv = day_data.get("pvPower", day_data.get("pv", []))
-        battery = day_data.get("batteryPower", day_data.get("battery", []))
-        grid = day_data.get("gridPower", day_data.get("grid", []))
-        load = day_data.get("loadPower", day_data.get("load", []))
-        soc = day_data.get("batterySoc", day_data.get("soc", []))
+    # Debug: log the first info entry to understand the structure
+    if infos and len(infos) > 0:
+        log(f"  First info entry keys: {list(infos[0].keys()) if isinstance(infos[0], dict) else type(infos[0])}")
+        log(f"  First info entry sample: {json.dumps(infos[0])[:300]}")
 
-        # If data comes as list of {time, value} objects
-        if pv and isinstance(pv, list) and len(pv) > 0:
-            if isinstance(pv[0], dict):
-                for i, entry in enumerate(pv):
-                    time_val = entry.get("time", entry.get("x", ""))
-                    row = {
-                        "reading_date": date_str,
-                        "reading_time": time_val,
-                        "pv_watts": entry.get("value", entry.get("y", 0)) or 0,
-                        "battery_watts": _get_val(battery, i),
-                        "battery_soc": _get_val(soc, i),
-                        "grid_watts": _get_val(grid, i),
-                        "load_watts": _get_val(load, i),
-                    }
-                    rows.append(row)
+    for entry in infos:
+        if not isinstance(entry, dict):
+            continue
+
+        # Extract time - try multiple possible field names
+        time_val = (
+            entry.get("time", "") or
+            entry.get("dateTime", "") or
+            entry.get("dataTime", "") or
+            entry.get("hourTime", "") or
+            ""
+        )
+
+        # Convert datetime string to just time if needed
+        if "T" in str(time_val):
+            time_val = str(time_val).split("T")[1][:8]
+
+        # Skip entries with no valid time
+        if not time_val or time_val.strip() == "":
+            # Try to construct time from other fields
+            hour = entry.get("hour", entry.get("h", None))
+            minute = entry.get("minute", entry.get("m", entry.get("min", None)))
+            if hour is not None:
+                minute = minute if minute is not None else 0
+                time_val = f"{int(hour):02d}:{int(minute):02d}:00"
             else:
-                # Data might be simple arrays matched by index
-                log(f"  Data format: simple arrays (len={len(pv)})")
+                continue  # Skip if we truly can't determine the time
 
-    # If we got infos as a list of complete records
-    if not rows and infos and isinstance(infos, list):
-        for entry in infos:
-            if isinstance(entry, dict):
-                time_val = entry.get("time", entry.get("dateTime", ""))
-                if "T" in str(time_val):
-                    time_val = str(time_val).split("T")[1][:5]
-                rows.append({
-                    "reading_date": date_str,
-                    "reading_time": time_val,
-                    "pv_watts": entry.get("pvPower", entry.get("pv", 0)) or 0,
-                    "battery_watts": entry.get("batteryPower", entry.get("battery", 0)) or 0,
-                    "battery_soc": entry.get("batterySoc", entry.get("soc", 0)) or 0,
-                    "grid_watts": entry.get("gridPower", entry.get("grid", 0)) or 0,
-                    "load_watts": entry.get("loadPower", entry.get("load", 0)) or 0,
-                })
+        # Ensure time has seconds
+        if len(time_val) == 5:  # HH:MM
+            time_val = time_val + ":00"
+
+        rows.append({
+            "reading_date": date_str,
+            "reading_time": time_val,
+            "pv_watts": float(entry.get("pvPower", entry.get("pv", entry.get("pvW", 0))) or 0),
+            "battery_watts": float(entry.get("batteryPower", entry.get("battPower", entry.get("battery", 0))) or 0),
+            "battery_soc": float(entry.get("batterySoc", entry.get("soc", entry.get("battSoc", 0))) or 0),
+            "grid_watts": float(entry.get("gridPower", entry.get("gridOrMeterPower", entry.get("grid", 0))) or 0),
+            "load_watts": float(entry.get("loadPower", entry.get("loadOrEpsPower", entry.get("load", 0))) or 0),
+        })
 
     log(f"  Processed {len(rows)} readings for {date_str}")
     return rows
 
 
-def _get_val(data_list, index):
-    """Safely get a value from a list at a given index."""
-    if not data_list or index >= len(data_list):
-        return 0
-    item = data_list[index]
-    if isinstance(item, dict):
-        return item.get("value", item.get("y", 0)) or 0
-    return item or 0
-
-
 def process_realtime(realtime_data):
-    """Process realtime data into a row for solar_realtime table."""
+    """Process realtime/flow data into a row for solar_realtime table."""
     if not realtime_data or not isinstance(realtime_data, dict):
         return None
 
     return {
-        "pv_watts": realtime_data.get("pac", realtime_data.get("pvPower", 0)) or 0,
-        "battery_watts": realtime_data.get("batteryPower", 0) or 0,
-        "battery_soc": realtime_data.get("batterySoc", realtime_data.get("soc", 0)) or 0,
-        "grid_watts": realtime_data.get("gridOrMeterPower", realtime_data.get("gridPower", 0)) or 0,
-        "load_watts": realtime_data.get("loadOrEpsPower", realtime_data.get("loadPower", 0)) or 0,
+        "pv_watts": float(realtime_data.get("pvPower", realtime_data.get("pv", 0)) or 0),
+        "battery_watts": float(realtime_data.get("battPower", realtime_data.get("batteryPower", 0)) or 0),
+        "battery_soc": float(realtime_data.get("soc", realtime_data.get("batterySoc", 0)) or 0),
+        "grid_watts": float(realtime_data.get("gridOrMeterPower", realtime_data.get("gridPower", 0)) or 0),
+        "load_watts": float(realtime_data.get("loadOrEpsPower", realtime_data.get("loadPower", 0)) or 0),
         "inverter_status": realtime_data.get("status", None),
         "raw_data": json.dumps(realtime_data),
     }
@@ -231,6 +223,44 @@ def compute_daily_summary(date_str, readings):
     }
 
 
+def compute_summary_from_flow(date_str, flow_data):
+    """
+    Compute daily summary directly from the flow endpoint data.
+    The flow endpoint returns cumulative totals, not intervals.
+    """
+    if not flow_data or not isinstance(flow_data, dict):
+        return None
+
+    # The flow endpoint often has cumulative energy values
+    # Look for fields like etoday, etodayFrom, etodayTo, etc.
+    log(f"  Flow data all keys: {list(flow_data.keys())}")
+
+    # Try to extract daily totals directly
+    pv_kwh = float(flow_data.get("pvToday", flow_data.get("pvEtoday", flow_data.get("etoday", 0))) or 0)
+    load_kwh = float(flow_data.get("loadToday", flow_data.get("useEtoday", 0)) or 0)
+    grid_import = float(flow_data.get("gridImportToday", flow_data.get("buyToday", flow_data.get("toBuyToday", 0))) or 0)
+    grid_export = float(flow_data.get("gridExportToday", flow_data.get("sellToday", flow_data.get("toSellToday", 0))) or 0)
+    batt_charge = float(flow_data.get("batteryChargeToday", flow_data.get("chgToday", 0)) or 0)
+    batt_discharge = float(flow_data.get("batteryDischargeToday", flow_data.get("dischgToday", 0)) or 0)
+
+    # If we got any non-zero values, return a summary
+    if any([pv_kwh, load_kwh, grid_import, grid_export, batt_charge, batt_discharge]):
+        log(f"  Flow summary: pv={pv_kwh}, load={load_kwh}, import={grid_import}, export={grid_export}")
+        return {
+            "summary_date": date_str,
+            "pv_kwh": round(pv_kwh, 2),
+            "battery_charge_kwh": round(batt_charge, 2),
+            "battery_discharge_kwh": round(batt_discharge, 2),
+            "grid_import_kwh": round(grid_import, 2),
+            "grid_export_kwh": round(grid_export, 2),
+            "load_kwh": round(load_kwh, 2),
+            "peak_pv_watts": 0,
+            "peak_load_watts": 0,
+        }
+
+    return None
+
+
 def run_scraper(days_back=1):
     """Main scraper logic."""
     log("=" * 50)
@@ -255,7 +285,7 @@ def run_scraper(days_back=1):
     # Step 1: Login
     token = solark_login()
 
-    # Step 2: Fetch and store realtime data
+    # Step 2: Fetch and store realtime data via flow endpoint
     try:
         realtime = fetch_realtime(token)
         realtime_row = process_realtime(realtime)
@@ -271,39 +301,41 @@ def run_scraper(days_back=1):
         date_str = target_date.strftime("%Y-%m-%d")
 
         try:
+            # Try the day energy endpoint first (detailed interval data)
             day_data = fetch_day_energy(token, date_str)
 
-            # Debug: log the raw structure so we can see what the API returns
             if day_data:
                 if isinstance(day_data, dict):
                     log(f"  Day data keys: {list(day_data.keys())[:10]}")
-                elif isinstance(day_data, list):
-                    log(f"  Day data: list with {len(day_data)} items")
 
             readings = process_day_data(date_str, day_data)
 
             if readings:
                 supabase_upsert("solar_readings", readings)
-
                 summary = compute_daily_summary(date_str, readings)
                 if summary:
                     supabase_upsert("solar_daily_summary", [summary])
+            else:
+                log(f"  No interval readings, trying flow endpoint for daily totals...")
+
+            # Also try the flow endpoint for daily totals
+            try:
+                flow_data = fetch_daily_flow(token, date_str)
+                if flow_data:
+                    flow_summary = compute_summary_from_flow(date_str, flow_data)
+                    if flow_summary:
+                        supabase_upsert("solar_daily_summary", [flow_summary])
+                    
+                    # Store as realtime snapshot too (for today only)
+                    if i == 0:
+                        flow_row = process_realtime(flow_data)
+                        if flow_row:
+                            supabase_upsert("solar_realtime", [flow_row])
+            except Exception as e:
+                log(f"  Warning: Flow endpoint failed for {date_str}: {e}")
 
         except Exception as e:
             log(f"Warning: Could not fetch data for {date_str}: {e}")
-
-    # Step 4: Also try the flow endpoint for today
-    try:
-        date_str = today.strftime("%Y-%m-%d")
-        flow_data = fetch_daily_flow(token, date_str)
-        if flow_data:
-            log(f"  Flow data keys: {list(flow_data.keys())[:10] if isinstance(flow_data, dict) else 'not a dict'}")
-            # Store raw flow data as a realtime snapshot too
-            flow_row = process_realtime(flow_data)
-            if flow_row:
-                supabase_upsert("solar_realtime", [flow_row])
-    except Exception as e:
-        log(f"Warning: Could not fetch flow data: {e}")
 
     log("=" * 50)
     log("Scraper complete!")
