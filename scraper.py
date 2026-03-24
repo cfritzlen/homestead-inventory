@@ -50,7 +50,18 @@ def solark_get(token, endpoint):
 def supabase_upsert(table, rows):
     if not rows:
         return
-    resp = requests.post(f"{SUPABASE_URL}/rest/v1/{table}", json=rows, headers={
+    # Set the conflict columns for each table so upsert overwrites existing data
+    conflict_col = ""
+    if table == "solar_readings":
+        conflict_col = "reading_date,reading_time"
+    elif table == "solar_daily_summary":
+        conflict_col = "summary_date"
+
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    if conflict_col:
+        url += f"?on_conflict={conflict_col}"
+
+    resp = requests.post(url, json=rows, headers={
         "apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates"})
     if resp.status_code not in (200, 201):
