@@ -146,7 +146,7 @@
         <div class="stats-grid">
             <div class="stat-card pv"><div class="stat-icon">☀️</div><div class="stat-label">Solar</div><div class="stat-value"><span id="pvKwh">0</span> <span class="stat-unit">kWh</span></div><div class="stat-sub" id="pvPeak"></div></div>
             <div class="stat-card load-c"><div class="stat-icon">🏠</div><div class="stat-label">Home Usage</div><div class="stat-value"><span id="loadKwh">0</span> <span class="stat-unit">kWh</span></div><div class="stat-sub" id="loadPeak"></div></div>
-            <div class="stat-card grid-c"><div class="stat-icon">⚡</div><div class="stat-label">Grid Import</div><div class="stat-value"><span id="gridKwh">0</span> <span class="stat-unit">kWh</span></div><div class="stat-sub" id="gridExportSub"></div></div>
+            <div class="stat-card grid-c"><div class="stat-icon">⚡</div><div class="stat-label">Grid Import</div><div class="stat-value"><span id="gridKwh">0</span> <span class="stat-unit">kWh</span></div></div>
             <div class="stat-card batt"><div class="stat-icon">🔋</div><div class="stat-label">Battery</div><div class="stat-value"><span id="battSoc">—</span><span class="stat-unit">%</span></div><div class="stat-sub" id="battSub"></div></div>
             <div class="stat-card sav"><div class="stat-icon">💵</div><div class="stat-label">Net Savings</div><div class="stat-value">$<span id="savingsTop">0</span></div><div class="stat-sub" id="savingsSub"></div></div>
         </div>
@@ -161,16 +161,14 @@
                 <div class="detail-row"><span class="detail-label">☀️ Solar Generated</span><span class="detail-value pos" id="dPv">0 kWh</span></div>
                 <div class="detail-row"><span class="detail-label">🏠 Home Consumed</span><span class="detail-value" id="dLoad">0 kWh</span></div>
                 <div class="detail-row"><span class="detail-label">⬇️ Grid Imported</span><span class="detail-value neg" id="dGridIn">0 kWh</span></div>
-                <div class="detail-row"><span class="detail-label">⬆️ Grid Exported</span><span class="detail-value pos" id="dGridOut">0 kWh</span></div>
                 <div class="detail-row"><span class="detail-label">🔋 Battery Charged</span><span class="detail-value" id="dBattC">0 kWh</span></div>
                 <div class="detail-row"><span class="detail-label">🔋 Battery Used</span><span class="detail-value" id="dBattD">0 kWh</span></div>
             </div>
             <div class="card">
                 <h3>💰 Cost Breakdown</h3>
-                <div class="detail-row"><span class="detail-label">Utility Rate</span><span class="detail-value">$0.197/kWh</span></div>
+                <div class="detail-row"><span class="detail-label">Utility Rate</span><span class="detail-value">$<input type="number" id="rateInput" value="0.197264" step="0.001" style="width:70px;border:1px solid var(--sage-300);border-radius:4px;padding:2px 4px;font-family:Crimson Pro;font-size:0.95rem;font-weight:700;color:var(--sage-800);background:var(--sage-50);text-align:right;">/kWh</span></div>
                 <div class="detail-row"><span class="detail-label">Solar Offset Value</span><span class="detail-value pos" id="cOffset">$0.00</span></div>
                 <div class="detail-row"><span class="detail-label">Grid Cost</span><span class="detail-value neg" id="cGrid">$0.00</span></div>
-                <div class="detail-row"><span class="detail-label">Export Credit</span><span class="detail-value pos" id="cExport">$0.00</span></div>
                 <div class="detail-row" style="border-top:2px solid var(--sage-300); margin-top:4px; padding-top:12px;">
                     <span class="detail-label" style="font-weight:700;">Net Savings</span>
                     <span class="detail-value pos" id="cNet" style="font-size:1.15rem;">$0.00</span>
@@ -212,7 +210,7 @@
 // =============================================
 const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
-const RATE = 0.197264;
+let RATE = 0.197264;
 const PANEL_COST = 4845.30;
 const INVERTER_COST = 5168.93;
 const LAT = 40.96; // Stroudsburg PA area
@@ -476,7 +474,6 @@ async function loadDashboard() {
         document.getElementById('loadKwh').textContent=fmt(t.load);
         document.getElementById('loadPeak').textContent=t.peakLoad>0?`Peak: ${fmt(t.peakLoad/1000)} kW`:'';
         document.getElementById('gridKwh').textContent=fmt(t.gridIn);
-        document.getElementById('gridExportSub').textContent=t.gridOut>0?`Exported: ${fmt(t.gridOut)} kWh`:'';
         document.getElementById('savingsTop').textContent=fmtMoney(net);
         const periodNames={day:'today',week:'this week',month:'this month'};
         document.getElementById('savingsSub').textContent=periodNames[currentPeriod];
@@ -485,12 +482,10 @@ async function loadDashboard() {
         document.getElementById('dPv').textContent=`${fmt(t.pv)} kWh`;
         document.getElementById('dLoad').textContent=`${fmt(t.load)} kWh`;
         document.getElementById('dGridIn').textContent=`${fmt(t.gridIn)} kWh`;
-        document.getElementById('dGridOut').textContent=`${fmt(t.gridOut)} kWh`;
         document.getElementById('dBattC').textContent=`${fmt(t.battC)} kWh`;
         document.getElementById('dBattD').textContent=`${fmt(t.battD)} kWh`;
         document.getElementById('cOffset').textContent=`$${fmtMoney(offsetVal)}`;
         document.getElementById('cGrid').textContent=`$${fmtMoney(gridCost)}`;
-        document.getElementById('cExport').textContent=`$${fmtMoney(exportCredit)}`;
         document.getElementById('cNet').textContent=`$${fmtMoney(net)}`;
 
         buildChart(readings);
@@ -545,7 +540,7 @@ async function loadExpenses() {
         allS.forEach(s => { totalSaved+=(Math.max(0,(s.pv_kwh||0)-(s.grid_export_kwh||0))+(s.grid_export_kwh||0))*RATE; });
         document.getElementById('totalSaved').textContent=`$${fmtMoney(totalSaved)}`;
         const remaining=Math.max(0,totalInvested-totalSaved);
-        document.getElementById('remaining').textContent=`$${fmtMoney(remaining)}`;
+        document.getElementById('remaining').textContent=`$${remaining.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
         const pct=totalInvested>0?Math.min(100,(totalSaved/totalInvested)*100):0;
         const bar=document.getElementById('paybackBar');
         bar.style.width=Math.max(1,pct)+'%'; bar.textContent=fmt(pct,1)+'%';
@@ -570,6 +565,13 @@ function setPeriod(p) {
     loadWeather();
     loadDashboard();
 }
+
+// Rate input handler
+document.getElementById('rateInput').addEventListener('change', function() {
+    RATE = parseFloat(this.value) || 0.197264;
+    loadDashboard();
+    loadExpenses();
+});
 
 // Init
 updateDayLabel();
