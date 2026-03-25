@@ -2479,9 +2479,7 @@ async function loadDashboard(){
                 </tr></thead><tbody>`;
             for(const a of trackAccts){
                 let entry=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&entry_date=eq.${week.end}`);
-                if(!entry?.length) entry=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&entry_date=lte.${week.end}&order=entry_date.desc&limit=1`);
+                    `?account_id=eq.${a.id}&order=entry_date.desc&limit=1`);
                 let bal=0, asOf='—';
                 if(entry?.length){
                     bal=parseFloat(entry[0].ending_balance)||0;
