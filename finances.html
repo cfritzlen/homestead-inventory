@@ -2834,8 +2834,13 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
     // Check for duplicates
     let existingHashes=new Set();
     try{
-        const hashData=await supaFetch('finance_transactions','GET',null,`?account_id=eq.${accountId}&select=dedup_hash`);
-        if(Array.isArray(hashData)) hashData.forEach(r=>existingHashes.add(r.dedup_hash));
+        const hashList=txns.map(t=>t.dedup_hash).filter(Boolean);
+        const batchSize2=100;
+        for(let i=0;i<hashList.length;i+=batchSize2){
+            const batch=hashList.slice(i,i+batchSize2);
+            const hashData=await supaFetch('finance_transactions','GET',null,`?dedup_hash=in.(${batch.map(h=>'"'+h+'"').join(',')})&select=dedup_hash`);
+            if(Array.isArray(hashData)) hashData.forEach(r=>existingHashes.add(r.dedup_hash));
+        }
     }catch(e){console.error('Hash fetch error:',e);}
     
     const newTxns=txns.filter(t=>!existingHashes.has(t.dedup_hash));
@@ -2870,7 +2875,7 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
             const allKeys=new Set();
             clean.forEach(c=>Object.keys(c).forEach(k=>allKeys.add(k)));
             clean.forEach(c=>allKeys.forEach(k=>{if(!(k in c))c[k]=null;}));
-            const resp=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?on_conflict=account_id,dedup_hash`,{
+            const resp=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?on_conflict=dedup_hash`,{
                 method:'POST',
                 headers:{
                     'apikey':SUPABASE_KEY,
