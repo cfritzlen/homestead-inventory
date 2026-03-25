@@ -1118,7 +1118,11 @@ async function loadWeekData(){
             const bI=document.querySelector(`input[data-id="${e.account_id}"][data-f="bal"]`);
             const pI=document.querySelector(`input[data-id="${e.account_id}"][data-f="pay"]`);
             if(bI) bI.value=e.starting_balance||0;
-            if(pI&&!pI.readOnly) pI.value=Math.abs(e.payment)||0;
+            if(pI&&!pI.readOnly){
+                const rentalAcc=accounts.find(a=>a.name.toLowerCase().includes('rental'));
+                const isRental=rentalAcc&&e.account_id===rentalAcc.id;
+                pI.value=isRental?(e.payment||0):Math.abs(e.payment)||0;
+            }
         });
         calcWeekly();
         return true;
@@ -2866,7 +2870,7 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
             const allKeys=new Set();
             clean.forEach(c=>Object.keys(c).forEach(k=>allKeys.add(k)));
             clean.forEach(c=>allKeys.forEach(k=>{if(!(k in c))c[k]=null;}));
-            const data=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?on_conflict=account_id,dedup_hash`,{
+            const resp=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?on_conflict=account_id,dedup_hash`,{
                 method:'POST',
                 headers:{
                     'apikey':SUPABASE_KEY,
@@ -2875,7 +2879,9 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
                     'Prefer':'return=representation,resolution=ignore-duplicates'
                 },
                 body:JSON.stringify(clean)
-            }).then(r=>{if(!r.ok)throw new Error(r.statusText);return r.json();});
+            });
+            if(!resp.ok){const errBody=await resp.text();throw new Error(errBody||resp.statusText||`HTTP ${resp.status}`);}
+            const data=await resp.json();
             if(Array.isArray(data)){imported+=data.length;importedIds.push(...data.map(d=>d.id));}
         }catch(e){console.error('Batch error:',e);statusEl.innerHTML=`❌ Error: ${e.message}`;statusEl.style.color='#c44';return;}
     }
