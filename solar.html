@@ -608,6 +608,7 @@ document.getElementById('rateInput').addEventListener('change',function(){RATE=p
 let allBills=[],billChart=null,activeMeterFilter='all';
 let pendingBills=[],currentBillData=null; // for modal review
 const METER_LABELS=['Landlord','101','202/3C','201'];
+const ACCT_MAP={'100156002667':'Landlord','100156008516':'101','100156008532':'202/3C','100156014092':'201'};
 
 // Meter number → label mapping (learned from user)
 function getMeterMap(){try{return JSON.parse(localStorage.getItem('solar-meter-map')||'{}');}catch(e){return {};}}
@@ -693,9 +694,9 @@ function reviewNextBill(){
     }
     currentBillData=pendingBills.shift();
     const b=currentBillData;
-    // Auto-map meter number to label
-    const map=getMeterMap();
-    const autoLabel=map[b.meter_number]||'';
+    // Auto-map by account number (strip spaces), fallback to meter number map
+    const acctClean=(b.account_number||'').replace(/\s/g,'');
+    const autoLabel=ACCT_MAP[acctClean]||getMeterMap()[b.meter_number]||'';
     document.getElementById('mFileName').textContent=b._fileName||'';
     document.getElementById('mLabel').value=autoLabel||METER_LABELS[0];
     document.getElementById('mMeterNum').value=b.meter_number||'';
