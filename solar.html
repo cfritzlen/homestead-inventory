@@ -206,32 +206,6 @@
             <div class="detail-row"><span class="detail-label">Est. payback (6 panels)</span><span class="detail-value" id="paybackEst">—</span></div>
         </div>
 
-        <!-- What-If Calculator -->
-        <div class="calc-card">
-            <h3>🔮 What-If Calculator</h3>
-            <p style="font-size:0.85rem;color:var(--sage-500);margin-bottom:16px;">Estimate payback with more panels installed</p>
-            <div class="slider-row">
-                <label>Panels installed</label>
-                <input type="range" id="calcPanels" min="1" max="31" value="6" oninput="updateCalc()">
-                <span class="slider-val" id="calcPanelsVal">6</span>
-            </div>
-            <div class="slider-row">
-                <label>Utility rate</label>
-                <span style="color:var(--sage-600);">$</span>
-                <input type="number" id="calcRate" value="0.197264" step="0.001" class="rate-input" oninput="updateCalc()">
-                <span style="font-size:0.85rem;color:var(--sage-600);">/kWh</span>
-            </div>
-            <div style="border-top:1px solid rgba(196,181,164,0.3);padding-top:14px;margin-top:8px;">
-                <div class="detail-row"><span class="detail-label">System size</span><span class="detail-value" id="calcSize">3.48 kW</span></div>
-                <div class="detail-row"><span class="detail-label">Est. daily production</span><span class="detail-value" id="calcDaily">—</span></div>
-                <div class="detail-row"><span class="detail-label">Est. monthly savings</span><span class="detail-value pos" id="calcMonthly">—</span></div>
-                <div class="detail-row"><span class="detail-label">Est. annual savings</span><span class="detail-value pos" id="calcAnnual">—</span></div>
-            </div>
-            <div style="border-top:2px solid var(--sage-300);padding-top:14px;margin-top:8px;">
-                <div class="detail-row"><span class="detail-label" style="font-weight:700;">Est. payback</span><span class="detail-value pos" id="calcPayback" style="font-size:1.2rem;">—</span></div>
-            </div>
-        </div>
-
         <!-- Electric Bills -->
         <h2 class="section-title" style="cursor:pointer;" onclick="toggleBillUpload()">💡 Electric Bills <span id="billToggleHint" style="font-size:0.8rem;color:var(--taupe);">▶ click to add bills</span></h2>
 
@@ -259,27 +233,55 @@
 
         <!-- Bill history -->
         <div class="card">
-            <h3>📊 Usage History</h3>
-            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-                <button class="meter-filter-btn active" onclick="filterMeter('all')">All Meters</button>
-                <span id="meterFilterBtns"></span>
+            <h3 style="cursor:pointer;" onclick="document.getElementById('billTableInner').style.display=document.getElementById('billTableInner').style.display==='none'?'block':'none';">📊 Usage History <span style="font-size:0.8rem;color:var(--sage-400);">▼</span></h3>
+            <div id="billTableInner">
+                <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                    <button class="meter-filter-btn active" onclick="filterMeter('all')">All Meters</button>
+                    <span id="meterFilterBtns"></span>
+                </div>
+                <div style="height:300px;margin-bottom:20px;background:rgba(246,247,243,0.97);border-radius:10px;padding:12px;"><canvas id="billsCanvas"></canvas></div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                        <thead><tr style="border-bottom:2px solid var(--sage-300);text-align:left;">
+                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;">Period</th>
+                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;">Meter</th>
+                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">kWh</th>
+                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">Energy</th>
+                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">Fees</th>
+                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">Total</th>
+                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">$/kWh</th>
+                        </tr></thead>
+                        <tbody id="billsBody"></tbody>
+                    </table>
+                </div>
+                <div id="billsSummary" style="margin-top:16px;padding-top:14px;border-top:2px solid var(--sage-300);"></div>
             </div>
-            <div style="height:300px;margin-bottom:20px;background:rgba(246,247,243,0.97);border-radius:10px;padding:12px;"><canvas id="billsCanvas"></canvas></div>
-            <div style="overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
-                    <thead><tr style="border-bottom:2px solid var(--sage-300);text-align:left;">
-                        <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;">Period</th>
-                        <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;">Meter</th>
-                        <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">kWh</th>
-                        <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">Energy</th>
-                        <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">Fees</th>
-                        <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">Total</th>
-                        <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">$/kWh</th>
-                    </tr></thead>
-                    <tbody id="billsBody"></tbody>
-                </table>
+        </div>
+
+        <!-- What-If Calculator -->
+        <div class="calc-card">
+            <h3>🔮 What-If Calculator</h3>
+            <p style="font-size:0.85rem;color:var(--sage-500);margin-bottom:16px;">Estimate payback with more panels installed</p>
+            <div class="slider-row">
+                <label>Panels installed</label>
+                <input type="range" id="calcPanels" min="1" max="31" value="6" oninput="updateCalc()">
+                <span class="slider-val" id="calcPanelsVal">6</span>
             </div>
-            <div id="billsSummary" style="margin-top:16px;padding-top:14px;border-top:2px solid var(--sage-300);"></div>
+            <div class="slider-row">
+                <label>Utility rate</label>
+                <span style="color:var(--sage-600);">$</span>
+                <input type="number" id="calcRate" value="0.197264" step="0.001" class="rate-input" oninput="updateCalc()">
+                <span style="font-size:0.85rem;color:var(--sage-600);">/kWh</span>
+            </div>
+            <div style="border-top:1px solid rgba(196,181,164,0.3);padding-top:14px;margin-top:8px;">
+                <div class="detail-row"><span class="detail-label">System size</span><span class="detail-value" id="calcSize">3.48 kW</span></div>
+                <div class="detail-row"><span class="detail-label">Est. daily production</span><span class="detail-value" id="calcDaily">—</span></div>
+                <div class="detail-row"><span class="detail-label">Est. monthly savings</span><span class="detail-value pos" id="calcMonthly">—</span></div>
+                <div class="detail-row"><span class="detail-label">Est. annual savings</span><span class="detail-value pos" id="calcAnnual">—</span></div>
+            </div>
+            <div style="border-top:2px solid var(--sage-300);padding-top:14px;margin-top:8px;">
+                <div class="detail-row"><span class="detail-label" style="font-weight:700;">Est. payback</span><span class="detail-value pos" id="calcPayback" style="font-size:1.2rem;">—</span></div>
+            </div>
         </div>
 
     </div>
@@ -407,11 +409,11 @@ function buildChart(readings){
 
     const yLbl=isDay?'Watts (W)':'Energy (kWh)';
     const datasets=[
-        {label:'PV',data:pvD,borderColor:'#66BB6A',backgroundColor:'rgba(102,187,106,0.10)',borderWidth:isDay?2:0,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:2},
-        {label:'Battery',data:battD,borderColor:'#AB47BC',backgroundColor:'rgba(171,71,188,0.10)',borderWidth:isDay?2:0,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:3},
-        {label:'SOC %',data:socD,borderColor:'#4DD0E1',backgroundColor:'transparent',borderWidth:2,borderDash:[5,3],fill:false,type:'line',yAxisID:'y1',order:1,pointRadius:isDay?0:3},
-        {label:'Grid',data:gridD,borderColor:'#FFA726',backgroundColor:'rgba(255,167,38,0.10)',borderWidth:isDay?2:0,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:4},
-        {label:'Load',data:loadD,borderColor:'#EF5350',backgroundColor:'rgba(239,83,80,0.08)',borderWidth:isDay?2:0,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:5},
+        {label:'PV',data:pvD,borderColor:'#66BB6A',backgroundColor:isDay?'rgba(102,187,106,0.10)':'rgba(102,187,106,0.75)',borderWidth:isDay?2:1,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:2,borderRadius:isDay?0:4},
+        {label:'Battery',data:battD,borderColor:'#AB47BC',backgroundColor:isDay?'rgba(171,71,188,0.10)':'rgba(171,71,188,0.70)',borderWidth:isDay?2:1,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:3,borderRadius:isDay?0:4},
+        {label:'SOC %',data:socD,borderColor:'#4DD0E1',backgroundColor:'transparent',borderWidth:2,borderDash:[5,3],fill:false,type:'line',yAxisID:'y1',order:1,pointRadius:isDay?0:4},
+        {label:'Grid',data:gridD,borderColor:'#FFA726',backgroundColor:isDay?'rgba(255,167,38,0.10)':'rgba(255,167,38,0.75)',borderWidth:isDay?2:1,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:4,borderRadius:isDay?0:4},
+        {label:'Load',data:loadD,borderColor:'#EF5350',backgroundColor:isDay?'rgba(239,83,80,0.08)':'rgba(239,83,80,0.65)',borderWidth:isDay?2:1,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:5,borderRadius:isDay?0:4},
     ];
 
     energyChart=new Chart(ctx,{
@@ -590,6 +592,8 @@ function updateCalc(){
         const yrs=invested/annualSavings;
         document.getElementById('calcPayback').textContent=yrs>1?`~${fmt(yrs,1)} years`:`~${Math.round(yrs*365)} days`;
     }else{document.getElementById('calcPayback').textContent='—';}
+    // Refresh bill chart solar line
+    if(allBills.length>0)renderBillsChart();
 }
 
 // Period toggle
@@ -787,6 +791,12 @@ function filterMeter(m){
 
 function getFilteredBills(){return activeMeterFilter==='all'?allBills:allBills.filter(b=>b.meter_label===activeMeterFilter);}
 
+function getCalcMonthlyKwh(){
+    const numPanels=parseInt(document.getElementById('calcPanels')?.value)||6;
+    const dailyPerPanel=avgKwhPerPanel>0?avgKwhPerPanel:(PANEL_WATT*4.5/1000);
+    return dailyPerPanel*numPanels*30;
+}
+
 function renderBillsTable(){
     const bills=getFilteredBills(),tbody=document.getElementById('billsBody');
     if(bills.length===0){
@@ -833,12 +843,14 @@ function renderBillsChart(){
     });
     const months=Object.keys(byMonth).sort();
     const labels=months.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleDateString('en-US',{month:'short',year:'2-digit'});});
+    const solarMonthlyKwh=getCalcMonthlyKwh();
     billChart=new Chart(ctx,{
         type:'bar',
         data:{labels,datasets:[
             {label:'Energy Cost',data:months.map(m=>byMonth[m].energy),backgroundColor:'rgba(255,167,38,0.6)',borderRadius:4,stack:'cost'},
             {label:'Fees & Taxes',data:months.map(m=>byMonth[m].fees),backgroundColor:'rgba(196,181,164,0.5)',borderRadius:4,stack:'cost'},
-            {label:'kWh',data:months.map(m=>byMonth[m].kwh),type:'line',borderColor:'#EF5350',backgroundColor:'transparent',borderWidth:2,yAxisID:'y1',pointRadius:4,tension:0.3}
+            {label:'kWh',data:months.map(m=>byMonth[m].kwh),type:'line',borderColor:'#EF5350',backgroundColor:'transparent',borderWidth:2,yAxisID:'y1',pointRadius:4,tension:0.3},
+            {label:'Solar production',data:months.map(()=>solarMonthlyKwh),type:'line',borderColor:'#66BB6A',backgroundColor:'rgba(102,187,106,0.08)',borderWidth:2.5,borderDash:[8,4],fill:true,yAxisID:'y1',pointRadius:0}
         ]},
         options:{
             responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
