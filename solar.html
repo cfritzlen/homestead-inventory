@@ -239,6 +239,14 @@
         <div class="card" id="billUploadCard">
             <h3>📄 Scan Bills</h3>
             <p style="font-size:0.85rem;color:var(--sage-500);margin-bottom:14px;">Upload Met-Ed PDF bills — AI will extract meter, usage, and cost data</p>
+            <div style="margin-bottom:14px;">
+                <label style="font-size:0.8rem;color:var(--sage-600);font-weight:600;">Claude API Key</label>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+                    <input type="password" id="billApiKey" placeholder="sk-ant-..." style="flex:1;border:1px solid var(--sage-300);border-radius:6px;padding:6px 10px;font-size:0.85rem;font-family:'Karla';background:var(--sage-50);color:var(--sage-800);" oninput="saveBillApiKey()">
+                    <span id="billKeyStatus" style="font-size:0.75rem;color:var(--sage-400);">No key</span>
+                </div>
+                <div style="font-size:0.72rem;color:var(--sage-400);margin-top:4px;">Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--sage-500);">console.anthropic.com</a></div>
+            </div>
             <div id="dropZone" style="border:2px dashed var(--sage-300);border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--sage-50);" onclick="document.getElementById('billFiles').click()">
                 <div style="font-size:2rem;margin-bottom:8px;">📎</div>
                 <div style="color:var(--sage-600);font-weight:500;">Drop PDFs here or click to browse</div>
@@ -605,6 +613,26 @@ document.getElementById('rateInput').addEventListener('change',function(){RATE=p
 // =============================================
 let allBills=[],billChart=null,activeMeterFilter='all';
 
+// Bill API key management (uses same key as other pages)
+function getBillApiKey(){try{return localStorage.getItem('homestead-api-key')||'';}catch(e){return '';}}
+function saveBillApiKey(){
+    const key=document.getElementById('billApiKey').value.trim();
+    try{localStorage.setItem('homestead-api-key',key);}catch(e){}
+    const el=document.getElementById('billKeyStatus');
+    if(key&&key.startsWith('sk-')){el.textContent='Key saved';el.style.color='#3d8b37';}
+    else if(key){el.textContent='Invalid key';el.style.color='var(--dusty-rose)';}
+    else{el.textContent='No key';el.style.color='var(--sage-400)';}
+}
+// Load saved key on page load
+(function(){
+    const saved=getBillApiKey();
+    if(saved){
+        document.getElementById('billApiKey').value=saved;
+        const el=document.getElementById('billKeyStatus');
+        el.textContent='Key saved';el.style.color='#3d8b37';
+    }
+})();
+
 const dz=document.getElementById('dropZone');
 if(dz){
     dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
@@ -632,9 +660,11 @@ async function handleBillUpload(files){
 }
 
 async function scanBillWithAI(file){
+    const apiKey=getBillApiKey();
+    if(!apiKey||!apiKey.startsWith('sk-')){throw new Error('Please enter your Claude API key above');}
     const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('Read failed'));r.readAsDataURL(file);});
     const response=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',headers:{'Content-Type':'application/json'},
+        method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({
             model:'claude-sonnet-4-20250514',max_tokens:1000,
             messages:[{role:'user',content:[
