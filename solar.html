@@ -233,29 +233,13 @@
 
         <!-- Bill history -->
         <div class="card">
-            <h3 style="cursor:pointer;" onclick="document.getElementById('billTableInner').style.display=document.getElementById('billTableInner').style.display==='none'?'block':'none';">📊 Usage History <span style="font-size:0.8rem;color:var(--sage-400);">▼</span></h3>
-            <div id="billTableInner">
-                <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-                    <button class="meter-filter-btn active" onclick="filterMeter('all')">All Meters</button>
-                    <span id="meterFilterBtns"></span>
-                </div>
-                <div style="height:300px;margin-bottom:20px;background:rgba(246,247,243,0.97);border-radius:10px;padding:12px;"><canvas id="billsCanvas"></canvas></div>
-                <div style="overflow-x:auto;">
-                    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
-                        <thead><tr style="border-bottom:2px solid var(--sage-300);text-align:left;">
-                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;">Period</th>
-                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;">Meter</th>
-                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">kWh</th>
-                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">Energy</th>
-                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">Fees</th>
-                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">Total</th>
-                            <th style="padding:8px 6px;color:var(--sage-600);font-weight:700;text-align:right;">$/kWh</th>
-                        </tr></thead>
-                        <tbody id="billsBody"></tbody>
-                    </table>
-                </div>
-                <div id="billsSummary" style="margin-top:16px;padding-top:14px;border-top:2px solid var(--sage-300);"></div>
+            <h3>📊 Usage History</h3>
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                <button class="meter-filter-btn active" onclick="filterMeter('all')">All Meters</button>
+                <span id="meterFilterBtns"></span>
             </div>
+            <div style="height:300px;margin-bottom:20px;background:rgba(246,247,243,0.97);border-radius:10px;padding:12px;"><canvas id="billsCanvas"></canvas></div>
+            <div id="billsSummary" style="padding-top:14px;border-top:2px solid var(--sage-300);"></div>
         </div>
 
         <!-- What-If Calculator -->
@@ -850,7 +834,7 @@ function renderBillsChart(){
             {label:'Energy Cost',data:months.map(m=>byMonth[m].energy),backgroundColor:'rgba(255,167,38,0.6)',borderRadius:4,stack:'cost'},
             {label:'Fees & Taxes',data:months.map(m=>byMonth[m].fees),backgroundColor:'rgba(196,181,164,0.5)',borderRadius:4,stack:'cost'},
             {label:'kWh',data:months.map(m=>byMonth[m].kwh),type:'line',borderColor:'#EF5350',backgroundColor:'transparent',borderWidth:2,yAxisID:'y1',pointRadius:4,tension:0.3},
-            {label:'Solar production',data:months.map(()=>solarMonthlyKwh),type:'line',borderColor:'#66BB6A',backgroundColor:'rgba(102,187,106,0.08)',borderWidth:2.5,borderDash:[8,4],fill:true,yAxisID:'y1',pointRadius:0}
+            {label:`Potential solar (${parseInt(document.getElementById('calcPanels')?.value)||6} panels)`,data:months.map(()=>solarMonthlyKwh),type:'line',borderColor:'#66BB6A',backgroundColor:'rgba(102,187,106,0.08)',borderWidth:2.5,borderDash:[8,4],fill:true,yAxisID:'y1',pointRadius:0}
         ]},
         options:{
             responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
