@@ -826,9 +826,10 @@ function renderBillsChart(){
     bills.forEach(b=>{
         const d=new Date(b.billing_period_end+'T12:00:00');
         const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        if(!byMonth[key])byMonth[key]={kwh:0,cost:0,energy:0,fees:0};
+        if(!byMonth[key])byMonth[key]={kwh:0,cost:0,energy:0,fees:0,days:0};
         byMonth[key].kwh+=b.kwh_used||0;byMonth[key].cost+=b.total_charges||0;
         byMonth[key].energy+=b.energy_cost||0;byMonth[key].fees+=b.fees_total||0;
+        byMonth[key].days=Math.max(byMonth[key].days,b.billing_days||30);
     });
     const months=Object.keys(byMonth).sort();
     const labels=months.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleDateString('en-US',{month:'short',year:'2-digit'});});
@@ -843,7 +844,12 @@ function renderBillsChart(){
             responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
             plugins:{
                 legend:{position:'bottom',labels:{color:'#5f734c',usePointStyle:true,padding:12,font:{family:'Karla',size:12}}},
-                tooltip:{backgroundColor:'rgba(74,77,71,0.95)',titleColor:'#ece8dd',bodyColor:'#c4b5a4',callbacks:{label:c=>{if(c.dataset.yAxisID==='y1')return `${c.dataset.label}: ${c.parsed.y.toLocaleString()} kWh`;return `${c.dataset.label}: $${c.parsed.y.toFixed(2)}`;}}}
+                tooltip:{backgroundColor:'rgba(74,77,71,0.95)',titleColor:'#ece8dd',bodyColor:'#c4b5a4',
+                    callbacks:{
+                        label:c=>{if(c.dataset.yAxisID==='y1')return `${c.dataset.label}: ${c.parsed.y.toLocaleString()} kWh`;return `${c.dataset.label}: $${c.parsed.y.toFixed(2)}`;},
+                        afterBody:ctx=>{const m=months[ctx[0].dataIndex];const d=byMonth[m];const avg=d.days>0?(d.kwh/d.days).toFixed(1):'?';return [`Avg daily: ${avg} kWh (${d.days} days)`];}
+                    }
+                }
             },
             scales:{
                 x:{ticks:{color:'#7a9061',font:{size:11}},grid:{color:'rgba(74,77,71,0.06)'}},
