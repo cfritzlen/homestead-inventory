@@ -188,7 +188,7 @@
 
         <!-- Investment Section -->
         <h2 class="section-title">🔧 Solar Investment</h2>
-        <div class="specs-note"><strong>System Specs:</strong> SolArk 15K Inverter · 31× 580W panels (17.98 kW system, <strong>12 installed</strong>) · 4 batteries (60.5 kWh total) · Rate: $0.197/kWh</div>
+        <div class="specs-note"><strong>System Specs:</strong> SolArk 15K Inverter · 31× 580W panels (17.98 kW system, <strong id="installedCount">—</strong> installed) · 4 batteries (60.5 kWh total) · Rate: $0.197/kWh</div>
         <div class="invest-grid">
             <div class="invest-card"><div class="cat-icon">🔋</div><div class="cat-label">Batteries</div><div class="cat-amount" id="expBatt">$0</div><div class="cat-detail">4× · 60.5 kWh</div></div>
             <div class="invest-card"><div class="cat-icon">🔆</div><div class="cat-label">Panels</div><div class="cat-amount" id="expPanel">$0</div><div class="cat-detail">31× 580W</div></div>
@@ -199,11 +199,11 @@
         <!-- Payback Tracker -->
         <div class="card">
             <h3>📊 Payback Tracker</h3>
-            <div class="detail-row"><span class="detail-label">Total Invested</span><span class="detail-value" id="totalInvested">$0</span></div>
+            <div class="detail-row"><span class="detail-label">Total Invested <a href="expenses.html" style="font-size:0.7rem;background:var(--sage-500);color:white;padding:2px 8px;border-radius:6px;text-decoration:none;font-weight:600;margin-left:6px;">View ↗</a></span><span class="detail-value" id="totalInvested">$0</span></div>
             <div class="detail-row"><span class="detail-label">Total Saved (all time)</span><span class="detail-value pos" id="totalSaved">$0.00</span></div>
             <div class="detail-row"><span class="detail-label">Remaining</span><span class="detail-value" id="remaining">$0</span></div>
             <div class="payback-bar-bg"><div class="payback-bar-fill" id="paybackBar" style="width:1%;">0%</div></div>
-            <div class="detail-row"><span class="detail-label">Est. payback (12 panels)</span><span class="detail-value" id="paybackEst">—</span></div>
+            <div class="detail-row"><span class="detail-label">Est. payback (<span id="paybackPanelCount">—</span> panels)</span><span class="detail-value" id="paybackEst">—</span></div>
         </div>
 
         <!-- Electric Bills -->
@@ -278,6 +278,19 @@ let RATE=0.197264;
 const PANEL_COST=4845.30,INVERTER_COST=5168.93;
 const LAT=40.96,LON=-75.18;
 const PANEL_WATT=580,TOTAL_PANELS=31;
+
+// Panel installation history — add new entries as panels are installed
+const PANEL_HISTORY=[
+    {date:'2025-01-01',count:6},  // initial 6 panels
+    {date:'2026-03-28',count:12}  // expanded to 12
+];
+function panelsOnDate(d){
+    const ds=typeof d==='string'?d:isoDate(d);
+    let count=0;
+    for(const h of PANEL_HISTORY){if(ds>=h.date)count=h.count;}
+    return count||PANEL_HISTORY[0].count;
+}
+function currentPanelCount(){return panelsOnDate(new Date());}
 
 let currentPeriod='day',selectedDate=new Date(),energyChart=null;
 let activeFilter=null; // null = show all, 'pv'/'load'/'grid'/'battery' = isolate
@@ -484,11 +497,22 @@ async function loadDashboard(){
 
         buildChart(readings);
 
-        // Calculate avg kWh per panel per day for the what-if calculator
+        // Calculate avg kWh per panel per day for the what-if calculator (exclude today's partial data)
         if(t.pv>0){
-            const numDays=currentPeriod==='day'?1:summaries.length||1;
-            avgKwhPerPanel=(t.pv/numDays)/12; // 12 panels currently installed
-            updateCalc();
+            const todayISO=isoDate(new Date());
+            const completeDays=summaries.filter(s=>s.summary_date!==todayISO);
+            if(currentPeriod==='day'&&isoDate(selectedDate)===todayISO){
+                // Viewing today only — don't update avg, keep previous value
+            }else if(completeDays.length>0){
+                // Weight each day by its actual panel count
+                let totalPerPanel=0;
+                completeDays.forEach(s=>{totalPerPanel+=(s.pv_kwh||0)/panelsOnDate(s.summary_date);});
+                avgKwhPerPanel=totalPerPanel/completeDays.length;
+                updateCalc();
+            }else{
+                avgKwhPerPanel=(t.pv/(summaries.length||1))/currentPanelCount();
+                updateCalc();
+            }
         }
 
         // Daily breakdown
@@ -531,7 +555,7 @@ async function loadExpenses(){
         document.getElementById('expMisc').textContent=`$${misc.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
 
         const totalInvested=batteries+panels+inverter+misc;
-        document.getElementById('totalInvested').textContent=`$${fmtComma(totalInvested)}`;
+        document.getElementById('totalInvested').innerHTML=`$${fmtComma(totalInvested)} <a href="expenses.html?category=Solar" title="View solar expenses" style="font-size:0.7rem;background:var(--sage-500);color:white;padding:2px 8px;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">View ↗</a>`;
 
         const allS=await sbGet('solar_daily_summary','order=summary_date.asc');
         let totalSaved=0;
@@ -544,8 +568,12 @@ async function loadExpenses(){
         bar.style.width=Math.max(1,pct)+'%';bar.textContent=fmt(pct,1)+'%';
         if(totalSaved>0&&allS.length>1){
             const first=new Date(allS[0].summary_date);
-            const days=Math.max(1,(Date.now()-first)/86400000);
-            const dLeft=remaining/(totalSaved/days);
+            const last=new Date(allS[allS.length-1].summary_date);
+            const today=new Date();today.setHours(0,0,0,0);
+            const useDate=last.toISOString().slice(0,10)===today.toISOString().slice(0,10)?new Date(allS.length>2?allS[allS.length-2].summary_date:last):last;
+            const days=Math.max(1,(useDate-first)/86400000);
+            const savedExclToday=allS.filter(s=>new Date(s.summary_date).toISOString().slice(0,10)!==today.toISOString().slice(0,10)).reduce((a,s)=>a+(s.pv_kwh||0)*RATE,0)||totalSaved;
+            const dLeft=remaining/(savedExclToday/days);
             const yrs=dLeft/365;
             document.getElementById('paybackEst').textContent=yrs>1?`~${fmt(yrs,1)} years`:`~${Math.round(dLeft)} days`;
         }else{document.getElementById('paybackEst').textContent='Collecting data...';}
@@ -558,7 +586,7 @@ async function loadExpenses(){
 
 // What-If Calculator
 function updateCalc(){
-    const numPanels=parseInt(document.getElementById('calcPanels').value)||12;
+    const numPanels=parseInt(document.getElementById('calcPanels').value)||currentPanelCount();
     const rate=parseFloat(document.getElementById('calcRate').value)||0.197264;
     document.getElementById('calcPanelsVal').textContent=numPanels;
     const sizeKw=(numPanels*PANEL_WATT)/1000;
@@ -776,7 +804,7 @@ function filterMeter(m){
 function getFilteredBills(){return activeMeterFilter==='all'?allBills:allBills.filter(b=>b.meter_label===activeMeterFilter);}
 
 function getCalcMonthlyKwh(){
-    const numPanels=parseInt(document.getElementById('calcPanels')?.value)||6;
+    const numPanels=parseInt(document.getElementById('calcPanels')?.value)||currentPanelCount();
     const dailyPerPanel=avgKwhPerPanel>0?avgKwhPerPanel:(PANEL_WATT*4.5/1000);
     return dailyPerPanel*numPanels*30;
 }
@@ -834,7 +862,7 @@ function renderBillsChart(){
             {label:'Energy Cost',data:months.map(m=>byMonth[m].energy),backgroundColor:'rgba(255,167,38,0.6)',borderRadius:4,stack:'cost'},
             {label:'Fees & Taxes',data:months.map(m=>byMonth[m].fees),backgroundColor:'rgba(196,181,164,0.5)',borderRadius:4,stack:'cost'},
             {label:'kWh',data:months.map(m=>byMonth[m].kwh),type:'line',borderColor:'#EF5350',backgroundColor:'transparent',borderWidth:2,yAxisID:'y1',pointRadius:4,tension:0.3},
-            {label:`Potential solar (${parseInt(document.getElementById('calcPanels')?.value)||6} panels)`,data:months.map(()=>solarMonthlyKwh),type:'line',borderColor:'#66BB6A',backgroundColor:'rgba(102,187,106,0.08)',borderWidth:2.5,borderDash:[8,4],fill:true,yAxisID:'y1',pointRadius:0}
+            {label:`Potential solar (${parseInt(document.getElementById('calcPanels')?.value)||currentPanelCount()} panels)`,data:months.map(()=>solarMonthlyKwh),type:'line',borderColor:'#66BB6A',backgroundColor:'rgba(102,187,106,0.08)',borderWidth:2.5,borderDash:[8,4],fill:true,yAxisID:'y1',pointRadius:0}
         ]},
         options:{
             responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
@@ -857,6 +885,10 @@ function renderBillsChart(){
 }
 
 // Init
+document.getElementById('installedCount').textContent=currentPanelCount()+' installed';
+document.getElementById('paybackPanelCount').textContent=currentPanelCount();
+document.getElementById('calcPanels').value=currentPanelCount();
+document.getElementById('calcPanelsVal').textContent=currentPanelCount();
 updateDayLabel();loadWeather();loadDashboard();loadExpenses();loadBillHistory();
 setInterval(()=>{if(currentPeriod==='day'&&isToday(selectedDate))loadDashboard();},120000);
 </script>
