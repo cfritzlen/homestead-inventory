@@ -123,7 +123,11 @@
             padding: 16px;
             text-align: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: all 0.2s;
         }
+        .summary-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+        .summary-card.active-filter { outline: 2.5px solid var(--sage-500); background: var(--sage-50); }
 
         .summary-card .label { font-size: 12px; color: var(--taupe); text-transform: uppercase; letter-spacing: 0.5px; }
         .summary-card .value { font-family: 'Crimson Pro', serif; font-size: 1.8rem; font-weight: 600; color: var(--sage-600); margin-top: 4px; }
@@ -273,6 +277,9 @@
             font-weight: 600;
             gap: 8px;
         }
+        .batch-header div { cursor: pointer; user-select: none; }
+        .batch-header div:hover { color: var(--sage-800); }
+        .sort-arrow { font-size: 10px; margin-left: 2px; }
 
         /* Modal */
         .modal-overlay {
@@ -459,12 +466,12 @@
         </div>
 
         <div class="batch-header" id="batchHeader" style="display:none;">
-            <div>Type</div>
-            <div>Status</div>
-            <div>Set Date</div>
-            <div>Eggs</div>
-            <div>Hatched</div>
-            <div>Hatch</div>
+            <div onclick="sortBy('bird_type')">Type<span class="sort-arrow" id="sort-bird_type"></span></div>
+            <div onclick="sortBy('status')">Status<span class="sort-arrow" id="sort-status"></span></div>
+            <div onclick="sortBy('set_date')">Set Date<span class="sort-arrow" id="sort-set_date"></span></div>
+            <div onclick="sortBy('qty_set')">Eggs<span class="sort-arrow" id="sort-qty_set"></span></div>
+            <div onclick="sortBy('qty_hatched')">Hatched<span class="sort-arrow" id="sort-qty_hatched"></span></div>
+            <div onclick="sortBy('hatch_days')">Hatch<span class="sort-arrow" id="sort-hatch_days"></span></div>
             <div></div>
         </div>
 
@@ -553,6 +560,8 @@
         var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         var allBatches = [];
+        var sortCol = 'set_date', sortAsc = true;
+        var filterType = null; // null = show all, 'Chickens'/'Ducks'/'Geese' = filtered
 
         // Bird type config
         var BIRD_CONFIG = {
@@ -658,8 +667,55 @@
             }
 
             allBatches = result.data || [];
+            // Set initial sort arrow
+            var arrow = document.getElementById('sort-' + sortCol);
+            if (arrow) arrow.textContent = sortAsc ? ' ▲' : ' ▼';
             renderSummary();
             renderList();
+        }
+
+        function sortBy(col) {
+            if (sortCol === col) { sortAsc = !sortAsc; }
+            else { sortCol = col; sortAsc = true; }
+            // Update arrows
+            document.querySelectorAll('.sort-arrow').forEach(function(el) { el.textContent = ''; });
+            var arrow = document.getElementById('sort-' + col);
+            if (arrow) arrow.textContent = sortAsc ? ' ▲' : ' ▼';
+            renderList();
+        }
+
+        function filterByType(type) {
+            filterType = filterType === type ? null : type;
+            renderSummary();
+            renderList();
+        }
+
+        function getFilteredBatches() {
+            return filterType ? allBatches.filter(function(b) { return b.bird_type === filterType; }) : allBatches;
+        }
+
+        function getSortedBatches() {
+            var batches = getFilteredBatches().slice();
+            batches.sort(function(a, b) {
+                var va, vb;
+                if (sortCol === 'bird_type') { va = (a.bird_type || ''); vb = (b.bird_type || ''); }
+                else if (sortCol === 'status') { va = getStatus(a).label; vb = getStatus(b).label; }
+                else if (sortCol === 'set_date') { va = a.set_date || ''; vb = b.set_date || ''; }
+                else if (sortCol === 'qty_set') { va = a.qty_set || 0; vb = b.qty_set || 0; }
+                else if (sortCol === 'qty_hatched') { va = a.qty_hatched || 0; vb = b.qty_hatched || 0; }
+                else if (sortCol === 'hatch_days') {
+                    var da = calcDates(a.bird_type, a.set_date);
+                    var db = calcDates(b.bird_type, b.set_date);
+                    var today = new Date(); today.setHours(0,0,0,0);
+                    va = da && da.hatchDate && !a.qty_hatched ? Math.ceil((new Date(da.hatchDate + 'T00:00:00') - today) / 86400000) : 9999;
+                    vb = db && db.hatchDate && !b.qty_hatched ? Math.ceil((new Date(db.hatchDate + 'T00:00:00') - today) / 86400000) : 9999;
+                }
+                else { va = a[sortCol] || ''; vb = b[sortCol] || ''; }
+                if (va < vb) return sortAsc ? -1 : 1;
+                if (va > vb) return sortAsc ? 1 : -1;
+                return 0;
+            });
+            return batches;
         }
 
         function renderSummary() {
@@ -691,7 +747,8 @@
                 var badgeClass = getTypeBadgeClass(type);
                 var rate = t.set > 0 && t.hatched > 0 ? Math.round((t.hatched / t.set) * 100) : null;
                 var rateText = rate !== null ? rate + '% hatch rate' : 'projected 100%';
-                return '<div class="summary-card">' +
+                var activeClass = filterType === type ? ' active-filter' : '';
+                return '<div class="summary-card' + activeClass + '" onclick="filterByType(\'' + type + '\')">' +
                     '<div class="label"><span class="type-badge ' + badgeClass + '">' + type + '</span></div>' +
                     '<div class="value">' + t.projected + '</div>' +
                     '<div class="detail">' + t.set + ' set · ' + t.batches + ' batch' + (t.batches !== 1 ? 'es' : '') + '</div>' +
@@ -699,7 +756,8 @@
                 '</div>';
             }).join('');
 
-            html += '<div class="summary-card" style="border-left: 3px solid var(--sage-500);">' +
+            var totalActiveClass = filterType === null ? '' : '';
+            html += '<div class="summary-card" style="border-left: 3px solid var(--sage-500);cursor:pointer;" onclick="filterByType(null)">' +
                 '<div class="label">Total Birds</div>' +
                 '<div class="value">' + grandProjected + '</div>' +
                 '<div class="detail">' + grandSet + ' eggs set</div>' +
@@ -714,6 +772,8 @@
             var header = document.getElementById('batchHeader');
             var empty = document.getElementById('emptyState');
 
+            var displayBatches = getSortedBatches();
+
             if (allBatches.length === 0) {
                 container.innerHTML = '';
                 header.style.display = 'none';
@@ -724,7 +784,12 @@
             empty.style.display = 'none';
             header.style.display = '';
 
-            container.innerHTML = allBatches.map(function(b) {
+            if (displayBatches.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--sage-400);">No ' + (filterType || '') + ' batches this year</div>';
+                return;
+            }
+
+            container.innerHTML = displayBatches.map(function(b) {
                 var status = getStatus(b);
                 var dates = calcDates(b.bird_type, b.set_date);
                 var rate = hatchRate(b);
