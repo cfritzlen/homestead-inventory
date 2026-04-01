@@ -327,7 +327,15 @@ async function loadWeather(){
 function updateDayLabel(){
     const el=document.getElementById('dayLabel');
     const opts={weekday:'short',month:'short',day:'numeric',year:'numeric'};
-    el.textContent=isToday(selectedDate)?'Today — '+selectedDate.toLocaleDateString('en-US',opts):selectedDate.toLocaleDateString('en-US',opts);
+    const shortOpts={month:'short',day:'numeric'};
+    if(currentPeriod==='day'){
+        el.textContent=isToday(selectedDate)?'Today — '+selectedDate.toLocaleDateString('en-US',opts):selectedDate.toLocaleDateString('en-US',opts);
+    }else if(currentPeriod==='week'){
+        const s=new Date(selectedDate);s.setDate(s.getDate()-6);
+        el.textContent=s.toLocaleDateString('en-US',shortOpts)+' – '+selectedDate.toLocaleDateString('en-US',shortOpts);
+    }else{
+        el.textContent=selectedDate.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    }
     document.getElementById('nextDay').disabled=isToday(selectedDate);
     document.getElementById('todayBtn').style.display=isToday(selectedDate)?'none':'inline-block';
 }
@@ -335,9 +343,23 @@ function changeDay(d){
     const n=new Date(selectedDate);
     if(currentPeriod==='day')n.setDate(n.getDate()+d);
     else if(currentPeriod==='week')n.setDate(n.getDate()+(d*7));
-    else n.setMonth(n.getMonth()+d);
-    if(n>new Date())return;
-    selectedDate=n;activeFilter=null;updateFilterUI();updateDayLabel();loadWeather();loadDashboard();
+    else{
+        // Month: move to same day in prev/next month, capped to last day of that month
+        const targetMonth=n.getMonth()+d;
+        n.setDate(1); // avoid overflow
+        n.setMonth(targetMonth);
+        const lastDay=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();
+        n.setDate(Math.min(selectedDate.getDate(),lastDay));
+    }
+    const today=new Date();today.setHours(23,59,59,999);
+    if(n>today)return;
+    // For month view, cap to today if landing in current month
+    if(currentPeriod==='month'&&n.getMonth()===new Date().getMonth()&&n.getFullYear()===new Date().getFullYear()){
+        selectedDate=new Date();
+    }else{
+        selectedDate=n;
+    }
+    activeFilter=null;updateFilterUI();updateDayLabel();loadWeather();loadDashboard();
 }
 function goToday(){selectedDate=new Date();activeFilter=null;updateFilterUI();updateDayLabel();loadWeather();loadDashboard();}
 
@@ -451,7 +473,13 @@ async function loadDashboard(){
         let startDate,endDate;
         if(currentPeriod==='day'){startDate=endDate=isoDate(selectedDate);}
         else if(currentPeriod==='week'){const s=new Date(selectedDate);s.setDate(s.getDate()-6);startDate=isoDate(s);endDate=isoDate(selectedDate);}
-        else{startDate=isoDate(new Date(selectedDate.getFullYear(),selectedDate.getMonth(),1));endDate=isoDate(selectedDate);}
+        else{
+            // Full calendar month — 1st to last day, capped at today if current month
+            startDate=isoDate(new Date(selectedDate.getFullYear(),selectedDate.getMonth(),1));
+            const lastDay=new Date(selectedDate.getFullYear(),selectedDate.getMonth()+1,0);
+            const today=new Date();
+            endDate=isoDate(lastDay>today?today:lastDay);
+        }
 
         const readings=await sbGet('solar_readings',`reading_date=gte.${startDate}&reading_date=lte.${endDate}&order=reading_date.asc,reading_time.asc&limit=10000`);
         cachedReadings=readings;
@@ -841,9 +869,15 @@ function renderBillsTable(){
 }
 
 function renderBillsChart(){
-    const bills=getFilteredBills();if(bills.length===0)return;
-    const ctx=document.getElementById('billsCanvas').getContext('2d');
-    if(billChart)billChart.destroy();
+    const bills=getFilteredBills();
+    const container=document.getElementById('billsCanvas').parentNode;
+    // Fully destroy old chart and replace canvas to avoid Chart.js reuse bugs
+    if(billChart){try{billChart.destroy();}catch(e){}billChart=null;}
+    const oldCanvas=document.getElementById('billsCanvas');
+    const newCanvas=document.createElement('canvas');newCanvas.id='billsCanvas';
+    oldCanvas.replaceWith(newCanvas);
+    if(bills.length===0)return;
+    const ctx=newCanvas.getContext('2d');
     const byMonth={};
     bills.forEach(b=>{
         const d=new Date(b.billing_period_end+'T12:00:00');
