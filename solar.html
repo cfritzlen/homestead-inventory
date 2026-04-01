@@ -239,6 +239,20 @@
                 <span id="meterFilterBtns"></span>
             </div>
             <div style="height:300px;margin-bottom:20px;background:rgba(246,247,243,0.97);border-radius:10px;padding:12px;"><canvas id="billsCanvas"></canvas></div>
+            <div style="overflow-x:auto;margin-bottom:16px;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                    <thead><tr style="border-bottom:2px solid var(--sage-300);text-align:left;">
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;">Period</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;">Meter</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;text-align:right;">kWh</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;text-align:right;">Energy</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;text-align:right;">Fees</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;text-align:right;">Total</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;text-align:right;">$/kWh</th>
+                    </tr></thead>
+                    <tbody id="billsBody"></tbody>
+                </table>
+            </div>
             <div id="billsSummary" style="padding-top:14px;border-top:2px solid var(--sage-300);"></div>
         </div>
 
