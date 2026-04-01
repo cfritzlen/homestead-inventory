@@ -187,7 +187,7 @@
 
         .batch-summary {
             display: grid;
-            grid-template-columns: 100px 120px 100px 80px 80px auto;
+            grid-template-columns: 100px 120px 100px 80px 80px 80px auto;
             align-items: center;
             padding: 14px 18px;
             cursor: pointer;
@@ -264,7 +264,7 @@
         /* Column header row */
         .batch-header {
             display: grid;
-            grid-template-columns: 100px 120px 100px 80px 80px auto;
+            grid-template-columns: 100px 120px 100px 80px 80px 80px auto;
             padding: 8px 18px;
             font-size: 11px;
             text-transform: uppercase;
@@ -464,6 +464,7 @@
             <div>Set Date</div>
             <div>Eggs</div>
             <div>Hatched</div>
+            <div>Hatch</div>
             <div></div>
         </div>
 
@@ -745,6 +746,16 @@
                     '</div>';
                 }
 
+                var daysUntilHatch = '';
+                if (dates && dates.hatchDate && !b.qty_hatched && !b.harvest_date_actual) {
+                    var today = new Date(); today.setHours(0,0,0,0);
+                    var hd = new Date(dates.hatchDate + 'T00:00:00');
+                    var diff = Math.ceil((hd - today) / 86400000);
+                    if (diff > 0) daysUntilHatch = '<span style="font-weight:700;color:#b45309;">' + diff + 'd</span>';
+                    else if (diff === 0) daysUntilHatch = '<span style="font-weight:700;color:#ef4444;">Today!</span>';
+                    else daysUntilHatch = '<span style="color:var(--sage-400);">Overdue</span>';
+                }
+
                 return '<div class="batch-row">' +
                     '<div class="batch-summary" onclick="toggleDetail(\'' + b.id + '\')">' +
                         '<div><span class="col-label">Type</span><span class="type-badge ' + getTypeBadgeClass(b.bird_type) + '">' + b.bird_type + '</span></div>' +
@@ -752,6 +763,7 @@
                         '<div><span class="col-label">Set Date</span>' + formatDateShort(b.set_date) + '</div>' +
                         '<div><span class="col-label">Eggs</span>' + (b.qty_set || '—') + '</div>' +
                         '<div><span class="col-label">Hatched</span>' + (b.qty_hatched || '—') + '</div>' +
+                        '<div><span class="col-label">Hatch</span>' + (daysUntilHatch || '—') + '</div>' +
                         '<div class="col-actions">▾</div>' +
                     '</div>' +
                     '<div class="batch-detail" id="detail-' + b.id + '">' +
