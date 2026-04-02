@@ -20,14 +20,10 @@
     content: '';
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: url('duck-gentleman.png') right center / auto 100% no-repeat, #F0EDE6;
+    background: url('duck-gentleman-wide.png') right center / cover no-repeat, #F0EDE6;
+    opacity: 0.85;
     z-index: -1;
     pointer-events: none;
-  }
-  @media (min-width: 1460px) {
-    body::before {
-      background: url('duck-gentleman-wide.png') right center / cover no-repeat, #F0EDE6;
-    }
   }
   .header { text-align: center; padding: 28px 0 12px; }
   .header h1 { font-size: 24px; font-weight: 700; color: #2D5F46; }
@@ -1802,18 +1798,20 @@ async function renderTodayTab() {
   } else {
     medList.innerHTML = scheduledMeds.map(function(m) {
       var taken = isMedLoggedToday(m.id);
-      var bg = taken ? "#D4EDDA" : "#FFF";
-      var border = taken ? "#3A7D5C" : "#EAE7E0";
-      var icon = taken ? "✅" : "⬜";
-      var nameStyle = taken ? "text-decoration:line-through;color:#8A8778;" : "color:#1A1A1A;";
+      var bg = taken ? "linear-gradient(135deg,#3A7D5C,#2D5F46)" : "linear-gradient(135deg,#FFF,#FAFAF7)";
+      var border = taken ? "#2D5F46" : "#DDD9CF";
+      var textColor = taken ? "#FFF" : "#1A1A1A";
+      var subColor = taken ? "rgba(255,255,255,0.7)" : "#8A8778";
+      var icon = taken ? "✅" : "💊";
       var safeName = m.name.replace(/'/g, "").replace(/"/g, "");
-      return '<div onclick="toggleMedToday(\'' + m.id + '\',\'' + safeName + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:' + bg + ';border:1.5px solid ' + border + ';margin-bottom:8px;cursor:pointer;transition:all 0.2s;">' +
-        '<div style="font-size:22px;line-height:1;">' + icon + '</div>' +
+      return '<button onclick="toggleMedToday(\'' + m.id + '\',\'' + safeName + '\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;border-radius:14px;background:' + bg + ';border:2px solid ' + border + ';margin-bottom:10px;cursor:pointer;font-family:inherit;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:all 0.2s;">' +
+        '<div style="font-size:24px;line-height:1;">' + icon + '</div>' +
         '<div style="flex:1;">' +
-          '<div style="font-size:15px;font-weight:600;' + nameStyle + '">' + m.name + '</div>' +
-          (m.dose_times && m.dose_times.length ? '<div style="font-size:11px;color:#8A8778;margin-top:2px;">' + m.dose_times.join(" · ") + '</div>' : '') +
+          '<div style="font-size:16px;font-weight:700;color:' + textColor + ';">' + m.name + '</div>' +
+          (m.dose_times && m.dose_times.length ? '<div style="font-size:11px;color:' + subColor + ';margin-top:2px;">' + m.dose_times.join(" · ") + '</div>' : '') +
         '</div>' +
-      '</div>';
+        (taken ? '<div style="font-size:12px;color:rgba(255,255,255,0.8);font-weight:600;">TAP TO UNDO</div>' : '') +
+      '</button>';
     }).join("");
   }
 
