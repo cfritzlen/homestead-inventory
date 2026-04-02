@@ -4,1021 +4,1894 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Kids Hub">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Kids Hub</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👶</text></svg>">
-<link rel="apple-touch-icon" href="kids-hub-icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="apple-mobile-web-app-title" content="Martin Heath">
+<title>Martin Heath</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-  @keyframes sparkle { 0%{opacity:0;transform:scale(0) rotate(0deg)} 50%{opacity:1;transform:scale(1) rotate(180deg)} 100%{opacity:0;transform:scale(0) rotate(360deg)} }
-  @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
-  @keyframes unicornBounce { 0%{transform:scale(0) rotate(-20deg)} 30%{transform:scale(1.3) rotate(10deg)} 50%{transform:scale(0.9) rotate(-5deg)} 70%{transform:scale(1.1) rotate(3deg)} 100%{transform:scale(1) rotate(0deg)} }
-  @keyframes rainbowSlide { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-  @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes gentlePulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
-  @keyframes buttShake {
-    0% { transform: rotate(0deg) scaleX(-1); }
-    8% { transform: rotate(-12deg) scaleX(-1) translateX(4px); }
-    16% { transform: rotate(12deg) scaleX(-1) translateX(-4px); }
-    24% { transform: rotate(-12deg) scaleX(-1) translateX(4px); }
-    32% { transform: rotate(12deg) scaleX(-1) translateX(-4px); }
-    40% { transform: rotate(-10deg) scaleX(-1) translateX(3px); }
-    48% { transform: rotate(10deg) scaleX(-1) translateX(-3px); }
-    56% { transform: rotate(-8deg) scaleX(-1) translateX(2px); }
-    64% { transform: rotate(8deg) scaleX(-1) translateX(-2px); }
-    72% { transform: rotate(-5deg) scaleX(-1); }
-    80% { transform: rotate(5deg) scaleX(-1); }
-    90% { transform: rotate(-2deg) scaleX(-1); }
-    100% { transform: rotate(0deg) scaleX(-1); }
-  }
-  @keyframes buttShakeLoop {
-    0%,100% { transform: rotate(0deg) scaleX(-1); }
-    10% { transform: rotate(-14deg) scaleX(-1) translateX(5px); }
-    20% { transform: rotate(14deg) scaleX(-1) translateX(-5px); }
-    30% { transform: rotate(-14deg) scaleX(-1) translateX(5px); }
-    40% { transform: rotate(14deg) scaleX(-1) translateX(-5px); }
-    50% { transform: rotate(-10deg) scaleX(-1) translateX(3px); }
-    60% { transform: rotate(10deg) scaleX(-1) translateX(-3px); }
-    70% { transform: rotate(-6deg) scaleX(-1); }
-    80% { transform: rotate(6deg) scaleX(-1); }
-    90% { transform: rotate(0deg) scaleX(-1); }
-  }
-  .butt-shake-unicorn {
-    font-size: 100px;
-    display: inline-block;
-    animation: buttShakeLoop 1.2s ease-in-out infinite;
-    transform-origin: center bottom;
-    margin-bottom: 10px;
-  }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Fredoka', sans-serif;
-    background: linear-gradient(170deg, #F3EAFF 0%, #EDE0FF 30%, #F8F0FF 60%, #FCEAFF 100%);
-    color: #2D1B4E; max-width: 480px; margin: 0 auto; padding: 0 16px 80px; min-height: 100vh;
+    font-family: -apple-system, 'Avenir', 'Nunito', 'Segoe UI', sans-serif;
+    background: #F0EDE6; color: #1A1A1A;
+    max-width: 480px; margin: 0 auto; padding: 0 16px 60px;
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
   }
-  .header { text-align: center; padding: 28px 0 8px; animation: slideUp 0.5s ease-out; }
-  .header h1 { font-size: 26px; font-weight: 700; background: linear-gradient(135deg, #9B59B6, #8E44AD, #7D3C98); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .header-unicorn { font-size: 36px; animation: float 3s ease-in-out infinite; display: inline-block; }
-  .header p { font-size: 13px; color: #A88BC3; margin-top: 2px; font-weight: 500; }
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url('duck-gentleman.png') right center / auto 100% no-repeat, #F0EDE6;
+    z-index: -1;
+    pointer-events: none;
+  }
+  @media (min-width: 1460px) {
+    body::before {
+      background: url('duck-gentleman-wide.png') right center / cover no-repeat, #F0EDE6;
+    }
+  }
+  .header { text-align: center; padding: 28px 0 12px; }
+  .header h1 { font-size: 24px; font-weight: 700; color: #2D5F46; }
+  .header p { font-size: 13px; color: #8A8778; margin-top: 4px; }
   .sync-status { text-align: center; font-size: 11px; padding: 4px 0 8px; font-weight: 600; }
-  .tabs { display: flex; gap: 3px; margin-bottom: 16px; background: #EDE0FF; border-radius: 14px; padding: 4px; }
-  .tab { flex: 1; padding: 10px 0; border: none; background: none; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Fredoka', sans-serif; border-radius: 11px; color: #9B7DB8; transition: all 0.25s; }
-  .tab.active { color: #FFF; background: linear-gradient(135deg, #9B59B6, #8E44AD); box-shadow: 0 2px 8px rgba(142,68,173,0.3); }
-  .card { background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); border-radius: 18px; padding: 20px; margin-bottom: 14px; border: 1.5px solid #E8D5F5; box-shadow: 0 2px 12px rgba(142,68,173,0.08); animation: slideUp 0.4s ease-out; }
-  .sec-title { font-size: 14px; font-weight: 700; color: #7D3C98; letter-spacing: 0.5px; margin-bottom: 14px; }
-  .label { display: block; font-size: 11px; font-weight: 700; color: #A88BC3; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
-  input, textarea, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #E0CCF0; font-size: 16px; font-family: 'Fredoka', sans-serif; color: #2D1B4E; background: #FDF8FF; outline: none; transition: border-color 0.2s; }
-  input:focus, textarea:focus, select:focus { border-color: #9B59B6; box-shadow: 0 0 0 3px rgba(155,89,182,0.15); }
-  textarea { font-size: 14px; resize: vertical; min-height: 56px; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 24px; border-radius: 12px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; font-family: 'Fredoka', sans-serif; transition: all 0.2s; }
-  .btn-pri { background: linear-gradient(135deg, #9B59B6, #8E44AD); color: #FFF; box-shadow: 0 3px 12px rgba(142,68,173,0.25); }
-  .btn-pri:active { transform: scale(0.97); }
-  .btn-pri:disabled { opacity: 0.4; cursor: default; }
-  .btn-out { background: transparent; color: #9B59B6; border: 1.5px solid #9B59B6; }
-  .btns { display: flex; gap: 10px; }
+  .tabs { display: flex; border-bottom: 2px solid #EAE7E0; margin-bottom: 16px; background: rgba(240,237,230,0.9); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 12px 12px 0 0; }
+  .tab {
+    flex: 1; padding: 10px 0; border: none; background: none;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit; border-bottom: 2.5px solid transparent;
+    color: #8A8778; transition: all 0.2s;
+  }
+  .tab.active { color: #3A7D5C; border-bottom-color: #3A7D5C; }
+  .card {
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-radius: 16px; padding: 20px;
+    margin-bottom: 14px; border: 1px solid rgba(234,231,224,0.8);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .sec-title {
+    font-size: 13px; font-weight: 700; color: #2D5F46;
+    text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px;
+  }
+  .scan-area {
+    border: 2px dashed #DDD9CF; border-radius: 12px;
+    padding: 24px 16px; text-align: center; cursor: pointer;
+    background: #FAFAF7; transition: all 0.2s;
+  }
+  .scan-area:active { background: #D4E8DB; border-color: #3A7D5C; }
+  .scan-icon { font-size: 32px; margin-bottom: 6px; }
+  .scan-title { font-size: 15px; font-weight: 600; color: #2D5F46; }
+  .scan-sub { font-size: 12px; color: #8A8778; margin-top: 4px; }
+  .scan-msg {
+    margin-top: 10px; padding: 8px 12px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; word-break: break-word;
+  }
+  .scan-msg.success { background: #D4E8DB; color: #3A7D5C; }
+  .scan-msg.error { background: #FFF3E0; color: #D4873C; }
+  .scan-msg.scanning { background: #D4E8DB; color: #3A7D5C; }
   .row { display: flex; gap: 10px; margin-bottom: 12px; }
   .field { flex: 1; }
-  .med-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; margin-bottom: 8px; transition: all 0.3s; border: 1.5px solid #E8D5F5; }
-  .med-card-pending { background: #FDF8FF; }
-  .med-card-done { background: linear-gradient(135deg, #E8D5F5, #F3EAFF); border-color: #9B59B6; }
-  .med-icon { font-size: 28px; line-height: 1; }
-  .med-info { flex: 1; }
-  .med-name { font-size: 16px; font-weight: 700; color: #2D1B4E; }
-  .med-sub { font-size: 12px; color: #A88BC3; margin-top: 2px; font-weight: 500; }
-  .med-log-btn { background: linear-gradient(135deg, #9B59B6, #8E44AD); color: #FFF; border: none; border-radius: 10px; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Fredoka', sans-serif; box-shadow: 0 2px 8px rgba(142,68,173,0.2); transition: all 0.2s; white-space: nowrap; }
-  .med-log-btn:active { transform: scale(0.95); }
-  .med-done-badge { background: #D7B4F0; color: #5B2D8E; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
-  .note-card { padding: 14px 16px; border-radius: 14px; background: #FDF8FF; border: 1.5px solid #E8D5F5; margin-bottom: 8px; }
-  .note-type-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-  .badge-doctor { background: #F0D4FF; color: #7D3C98; }
-  .badge-general { background: #D4E8FF; color: #2D5FA0; }
-  .badge-symptom { background: #FFE0D4; color: #B85C3A; }
-  .note-title { font-size: 15px; font-weight: 700; color: #2D1B4E; margin-top: 6px; }
-  .note-content { font-size: 13px; color: #5B4A6E; margin-top: 4px; line-height: 1.5; }
-  .note-date { font-size: 11px; color: #A88BC3; font-weight: 600; margin-top: 6px; }
-  .note-del { background: none; border: none; cursor: pointer; color: #C0A3D6; font-size: 18px; padding: 4px; }
-  .log-entry { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 10px; background: #FDF8FF; border: 1px solid #E8D5F5; margin-bottom: 6px; }
-  .empty { text-align: center; padding: 30px 0; color: #A88BC3; }
-  .empty-icon { font-size: 40px; margin-bottom: 8px; }
+  .label {
+    display: block; font-size: 11px; font-weight: 700; color: #8A8778;
+    text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;
+  }
+  input, textarea {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1.5px solid #DDD9CF; font-size: 16px; font-family: inherit;
+    color: #1A1A1A; background: #FFF; outline: none;
+  }
+  input:focus, textarea:focus { border-color: #3A7D5C; }
+  textarea { font-size: 14px; resize: vertical; min-height: 56px; }
+  .preview {
+    padding: 8px 14px; border-radius: 10px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .preview-num { font-size: 22px; font-weight: 700; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+  }
+  .btns { display: flex; gap: 10px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 12px 24px; border-radius: 10px; border: none;
+    font-weight: 600; font-size: 15px; cursor: pointer; font-family: inherit;
+  }
+  .btn-pri { background: #3A7D5C; color: #FFF; flex: 1; }
+  .btn-pri:disabled { opacity: 0.4; cursor: default; }
+  .btn-out { background: transparent; color: #3A7D5C; border: 1.5px solid #3A7D5C; }
+  .reading {
+    padding: 14px 16px; border-radius: 12px; background: #FAFAF7;
+    border: 1px solid #EAE7E0; margin-bottom: 10px;
+  }
+  .reading-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .reading-date { font-size: 12px; color: #8A8778; font-weight: 600; }
+  .reading-vals { display: flex; gap: 16px; align-items: baseline; }
+  .reading-bp { font-size: 26px; font-weight: 700; }
+  .reading-slash { font-size: 14px; color: #8A8778; }
+  .reading-unit { font-size: 12px; color: #8A8778; margin-left: 4px; }
+  .reading-pulse { font-size: 20px; font-weight: 700; color: #D4A03C; }
+  .reading-del {
+    margin-left: auto; background: none; border: none;
+    cursor: pointer; color: #8A8778; font-size: 18px; padding: 4px;
+  }
+  .reading-notes {
+    font-size: 13px; color: #555549; line-height: 1.4;
+    border-top: 1px solid #EAE7E0; padding-top: 8px; margin-top: 8px;
+  }
+  .empty { text-align: center; padding: 30px 0; color: #8A8778; }
+  .empty-icon { font-size: 36px; margin-bottom: 8px; }
+  .chart-wrap { margin-bottom: 24px; }
+  .chart-label {
+    font-size: 12px; font-weight: 700; color: #8A8778;
+    text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px;
+  }
+  .footer {
+    text-align: center; padding: 16px 0; font-size: 11px;
+    color: #8A8778; line-height: 1.6;
+  }
+  .settings-toggle { text-align: center; margin-bottom: 10px; }
+  .settings-toggle button {
+    background: none; border: none; color: #8A8778; font-size: 13px;
+    cursor: pointer; font-family: inherit; text-decoration: underline;
+  }
+  .api-key-input {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1.5px solid #DDD9CF; font-size: 14px; font-family: monospace;
+    color: #1A1A1A; background: #FFF; outline: none;
+  }
+  .api-key-input:focus { border-color: #3A7D5C; }
+  .api-status {
+    margin-top: 8px; font-size: 12px; font-weight: 600;
+    padding: 6px 10px; border-radius: 6px;
+  }
+  .api-status.ok { background: #D4E8DB; color: #3A7D5C; }
+  .api-status.missing { background: #FFF3E0; color: #D4873C; }
+  .progress-bar {
+    height: 4px; background: #EAE7E0; border-radius: 2px;
+    margin-top: 10px; overflow: hidden;
+  }
+  .stat-section { margin-bottom: 18px; }
+  .stat-section:last-child { margin-bottom: 0; }
+  .stat-label {
+    font-size: 11px; font-weight: 700; color: #8A8778;
+    text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;
+  }
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; border-radius: 8px; margin-bottom: 4px;
+    background: #FAFAF7;
+  }
+  .stat-name { font-size: 13px; color: #555549; }
+  .stat-val { font-size: 15px; font-weight: 700; }
+  .stat-sub { font-size: 11px; color: #8A8778; margin-left: 4px; font-weight: 400; }
+  .cat-bar-wrap { margin-bottom: 6px; }
+  .cat-bar-label {
+    display: flex; justify-content: space-between; font-size: 12px;
+    margin-bottom: 3px; font-weight: 600;
+  }
+  .cat-bar {
+    height: 8px; border-radius: 4px; background: #EAE7E0; overflow: hidden;
+  }
+  .cat-bar-fill {
+    height: 100%; border-radius: 4px; transition: width 0.4s;
+  }
+  .stat-divider {
+    height: 1px; background: #EAE7E0; margin: 14px 0;
+  }
+  .progress-fill {
+    height: 100%; background: #3A7D5C; border-radius: 2px;
+    transition: width 0.3s;
+  }
   .hidden { display: none; }
-  .footer { text-align: center; padding: 20px 0; font-size: 11px; color: #C0A3D6; line-height: 1.6; }
-  .banner { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #9B59B6, #8E44AD); color: #FFF; padding: 12px 24px; border-radius: 14px; font-size: 15px; font-weight: 600; z-index: 9999; box-shadow: 0 4px 20px rgba(142,68,173,0.35); animation: slideUp 0.3s ease-out; font-family: 'Fredoka', sans-serif; }
-  .celebration-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998; overflow: hidden; }
-  .confetti-piece { position: absolute; width: 10px; height: 10px; border-radius: 2px; animation: confettiFall 2.5s ease-in forwards; }
-  .celebration-emoji { position: absolute; font-size: 48px; animation: unicornBounce 1s ease-out forwards; }
-  .sparkle-star { position: absolute; font-size: 24px; animation: sparkle 1.2s ease-out forwards; }
-  .rainbow-bar { position: fixed; top: 0; left: 0; width: 100%; height: 6px; background: linear-gradient(90deg, #FF6B6B, #FFA94D, #FFD93D, #6BCB77, #4D96FF, #9B59B6, #FF6B9D); background-size: 300% 100%; animation: rainbowSlide 1.5s ease-in-out; z-index: 9999; }
-  .all-done { text-align: center; padding: 20px 0 10px; animation: gentlePulse 2s ease-in-out infinite; }
-  .thankyou-page { position: fixed; inset: 0; z-index: 10000; background: linear-gradient(170deg, #F3EAFF, #EDE0FF, #FCEAFF); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px; font-family: 'Fredoka', sans-serif; }
-  .thankyou-unicorn { font-size: 80px; animation: float 2s ease-in-out infinite; margin-bottom: 20px; }
-  .past-med-date { font-size: 12px; font-weight: 700; color: #9B59B6; padding: 8px 0 4px; border-bottom: 1px solid #E8D5F5; margin-bottom: 6px; }
-  .scan-area { border: 2px dashed #D7B4F0; border-radius: 14px; padding: 24px 16px; text-align: center; cursor: pointer; background: #FDF8FF; transition: all 0.2s; }
-  .scan-area:active { background: #E8D5F5; border-color: #9B59B6; }
-  .scan-icon { font-size: 32px; margin-bottom: 6px; }
-  .scan-title { font-size: 15px; font-weight: 600; color: #7D3C98; }
-  .scan-sub { font-size: 12px; color: #A88BC3; margin-top: 4px; }
-  .scan-msg { margin-top: 10px; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; }
-  .scan-msg.success { background: #E8D5F5; color: #7D3C98; }
-  .scan-msg.error { background: #FFE0D4; color: #B85C3A; }
-  .scan-msg.scanning { background: #E8D5F5; color: #7D3C98; }
-  .progress-bar { height: 4px; background: #E8D5F5; border-radius: 2px; margin-top: 10px; overflow: hidden; }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, #9B59B6, #E74C9B); border-radius: 2px; transition: width 0.3s; }
-  .vital-reading { padding: 14px 16px; border-radius: 14px; background: #FDF8FF; border: 1.5px solid #E8D5F5; margin-bottom: 8px; }
-  .vital-vals { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
-  .vital-num { font-size: 24px; font-weight: 700; }
-  .vital-unit { font-size: 12px; color: #A88BC3; margin-left: 2px; }
-  .vital-label { font-size: 11px; color: #A88BC3; font-weight: 600; }
-  .puff-input { width: 60px !important; text-align: center; display: inline-block; }
-  .puff-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-  .puff-label { font-size: 12px; color: #A88BC3; font-weight: 600; white-space: nowrap; }
-  .settings-toggle { text-align: center; margin-top: 4px; }
-  .settings-toggle button { background: none; border: none; color: #C0A3D6; font-size: 12px; cursor: pointer; font-family: 'Fredoka', sans-serif; text-decoration: underline; }
-  #file-input { display: none; }
+  .sleep-entry {
+    padding: 14px 16px; border-radius: 12px; background: #FAFAF7;
+    border: 1px solid #EAE7E0; margin-bottom: 10px;
+  }
+  .sleep-date { font-size: 12px; color: #8A8778; font-weight: 600; margin-bottom: 6px; }
+  .sleep-total { font-size: 24px; font-weight: 700; color: #2D5F46; }
+  .sleep-stages { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .sleep-stage {
+    font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600;
+  }
+  .stage-awake { background: #FDEEEE; color: #D4573B; }
+  .stage-rem { background: #E0F5F5; color: #0EA5A5; }
+  .stage-core { background: #DDEEFF; color: #3A7DC0; }
+  .stage-deep { background: #E8E0F5; color: #6B4FA0; }
+  #file-input, #sleep-file-input { display: none; }
+  .med-status-card { padding:12px; border-radius:10px; background:#FAFAF7; border:1px solid #EAE7E0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .med-log-btn { background:#3A7D5C; color:#FFF; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0; }
+  .med-done-badge { background:#D4E8DB; color:#3A7D5C; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700; flex-shrink:0; }
+  .qr-box { margin-bottom:14px; padding:14px; border:1px solid #EAE7E0; border-radius:12px; background:#FAFAF7; }
+  .twilio-code { width:100%; font-family:monospace; font-size:11px; padding:10px; border-radius:8px; border:1px solid #DDD9CF; background:#F5F5F0; margin-top:8px; resize:none; color:#333; line-height:1.5; }
+  select { width:100%; padding:10px 12px; border-radius:8px; border:1.5px solid #DDD9CF; font-size:16px; font-family:inherit; color:#1A1A1A; background:#FFF; outline:none; }
+  select:focus { border-color:#3A7D5C; }
 </style>
 </head>
 <body>
 
-<div class="header" style="position:relative;">
-  <a href="index.html" style="position:absolute;left:0;top:20px;padding:6px 12px;border-radius:8px;border:1.5px solid #E0CCF0;background:rgba(255,255,255,0.7);color:#9B59B6;font-size:12px;font-weight:600;text-decoration:none;font-family:'Fredoka',sans-serif;">← Hub</a>
-  <div class="header-unicorn">&#129412;</div>
-  <h1>Kids Hub</h1>
-  <p>&#10024; Keeping the kids healthy &amp; happy &#10024;</p>
+<div class="header" style="position:relative;text-align:center;padding:20px 0 12px;">
+  <a href="index.html" style="position:absolute;left:0;top:20px;padding:6px 12px;border-radius:8px;border:1.5px solid #DDD9CF;background:rgba(255,255,255,0.7);color:#3A7D5C;font-size:12px;font-weight:600;text-decoration:none;font-family:inherit;">← Hub</a>
+  <h1>💪 Martin Heath</h1>
 </div>
-<div id="sync-status" class="sync-status" style="color:#A88BC3">Loading...</div>
 
 <div class="tabs">
-  <button class="tab active" onclick="showTab('meds')">&#128138; Meds</button>
-  <button class="tab" onclick="showTab('vitals')">&#127777; Vitals</button>
-  <button class="tab" onclick="showTab('notes')">&#128221; Notes</button>
-  <button class="tab" onclick="showTab('admin')" style="font-size:15px">&#9881;</button>
+  <button class="tab active" onclick="showTab('today')">Today</button>
+  <button class="tab" onclick="showTab('add')">&#xFF0B; New BP</button>
+  <button class="tab" onclick="showTab('history')">History</button>
+  <button class="tab" onclick="showTab('sleep')">Sleep</button>
+  <button class="tab" onclick="showTab('charts')">Charts</button>
+  <button class="tab" onclick="showTab('admin')" style="color:#B07030;font-size:16px">&#9881;</button>
 </div>
 
-<!-- ═══ MEDS TAB ═══ -->
-<div id="tab-meds">
+<!-- ═══ TODAY TAB ═══ -->
+<div id="tab-today">
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div class="sec-title">&#129412; Today's Meds</div>
-      <span id="meds-date" style="font-size:12px;color:#A88BC3;font-weight:600"></span>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="sec-title" style="margin-bottom:0;">Today's Meds</div>
+      <div id="today-meds-status" style="font-size:12px;font-weight:600;"></div>
     </div>
-    <div id="meds-today"></div>
+    <div id="today-med-list"></div>
   </div>
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div class="sec-title">&#128338; Today's Log</div>
-      <span id="med-log-count" style="font-size:12px;color:#A88BC3;font-weight:600"></span>
-    </div>
-    <div id="med-log-list"></div>
-  </div>
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <div class="sec-title">&#128197; Past Logs</div>
-      <select id="past-days-select" onchange="renderPastLogs()" style="width:auto;padding:6px 10px;font-size:12px;border-radius:8px">
-        <option value="7">7 days</option>
-        <option value="14">14 days</option>
-        <option value="30">30 days</option>
-      </select>
-    </div>
-    <div id="past-log-list"></div>
+    <div class="sec-title">Last 5 Days</div>
+    <div id="five-day-grid"></div>
+    <div id="bp-reminder" style="display:none;margin-top:14px;padding:12px 16px;border-radius:10px;background:#FFF3CD;border:1.5px solid #E0D4A0;font-size:13px;font-weight:600;color:#856404;"></div>
   </div>
 </div>
 
-<!-- ═══ VITALS TAB ═══ -->
-<div id="tab-vitals" class="hidden">
+<div id="tab-add" class="hidden">
   <div class="card">
-    <div class="sec-title">&#128248; Scan Reading</div>
+    <div class="sec-title">&#128247; Scan Monitor</div>
     <div class="scan-area" onclick="document.getElementById('file-input').click()">
       <div class="scan-icon">&#128248;</div>
       <div class="scan-title">Tap to take a photo</div>
-      <div class="scan-sub">Point at thermometer or pulse ox screen</div>
+      <div class="scan-sub">Point at your BP monitor screen</div>
     </div>
     <div id="scan-key-status" style="margin-top:8px;font-size:12px;text-align:center"></div>
-    <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleVitalPhoto(this)">
-    <div id="vital-scan-msg" class="scan-msg hidden"></div>
-    <div id="vital-progress" class="progress-bar hidden"><div id="vital-progress-fill" class="progress-fill" style="width:0%"></div></div>
+    <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handlePhoto(this)">
+    <div id="scan-msg" class="scan-msg hidden"></div>
+    <div id="progress" class="progress-bar hidden"><div id="progress-fill" class="progress-fill" style="width:0%"></div></div>
   </div>
+
   <div class="card">
-    <div class="sec-title">&#127777; Readings</div>
+    <div class="sec-title">Readings</div>
     <div class="row">
       <div class="field">
-        <label class="label">Temp (&deg;F)</label>
-        <input type="number" inputmode="decimal" step="0.1" id="vital-temp" placeholder="98.6">
+        <label class="label">Systolic</label>
+        <input type="number" inputmode="numeric" id="systolic" placeholder="120" oninput="updatePreview()">
       </div>
       <div class="field">
-        <label class="label">Pulse Ox (%)</label>
-        <input type="number" inputmode="numeric" id="vital-ox" placeholder="98">
+        <label class="label">Diastolic</label>
+        <input type="number" inputmode="numeric" id="diastolic" placeholder="80" oninput="updatePreview()">
       </div>
       <div class="field">
         <label class="label">Pulse</label>
-        <input type="number" inputmode="numeric" id="vital-pulse" placeholder="80">
+        <input type="number" inputmode="numeric" id="pulse" placeholder="72">
       </div>
+    </div>
+    <div id="preview" class="preview hidden">
+      <span id="preview-num" class="preview-num"></span>
+      <span id="preview-badge" class="badge"></span>
     </div>
     <div style="margin-bottom:12px">
       <label class="label">Date &amp; Time</label>
-      <input type="datetime-local" id="vital-datetime">
-    </div>
-    <div style="margin-bottom:12px">
-      <label class="label">Symptoms</label>
-      <input type="text" id="vital-symptoms" placeholder="e.g. cough, runny nose, fever">
+      <input type="datetime-local" id="datetime">
     </div>
     <div style="margin-bottom:16px">
       <label class="label">Notes (optional)</label>
-      <textarea id="vital-notes" rows="2" placeholder="e.g. after Tylenol, before bed..."></textarea>
+      <textarea id="notes" placeholder="e.g. after coffee, felt dizzy, took meds..." rows="2"></textarea>
     </div>
     <div class="btns">
-      <button class="btn btn-pri" style="flex:1" id="vital-save-btn" onclick="saveVital()">Save Reading</button>
-      <button class="btn btn-out" onclick="clearVitalForm()">Clear</button>
+      <button class="btn btn-pri" id="save-btn" disabled onclick="saveReading()">Save Reading</button>
+      <button class="btn btn-out" onclick="clearForm()">Clear</button>
     </div>
-  </div>
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div class="sec-title">&#128203; History</div>
-      <span id="vital-count" style="font-size:12px;color:#A88BC3;font-weight:600"></span>
-    </div>
-    <div id="vital-list"></div>
   </div>
 </div>
 
-<!-- ═══ NOTES TAB ═══ -->
-<div id="tab-notes" class="hidden">
+<div id="tab-history" class="hidden">
   <div class="card">
-    <div class="sec-title">&#10133; New Note</div>
-    <div style="margin-bottom:12px">
-      <label class="label">Type</label>
-      <select id="note-type">
-        <option value="doctor">&#129657; Doctor Visit</option>
-        <option value="general">&#128221; General Note</option>
-        <option value="symptom">&#9888;&#65039; Symptom / Reaction</option>
-      </select>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="sec-title">All Readings</div>
+      <span id="total-count" style="font-size:12px;color:#8A8778"></span>
     </div>
+    <div id="readings-list"></div>
+  </div>
+</div>
+
+<div id="tab-sleep" class="hidden">
+  <div class="card">
+    <div class="sec-title">&#128247; Scan Sleep Data</div>
+    <div class="scan-area" onclick="document.getElementById('sleep-file-input').click()">
+      <div class="scan-icon">&#127769;</div>
+      <div class="scan-title">Screenshot your Health app</div>
+      <div class="scan-sub">Health &rarr; Sleep &rarr; Stages view</div>
+    </div>
+    <input type="file" id="sleep-file-input" accept="image/*" style="display:none" onchange="handleSleepPhoto(this)">
+    <div id="sleep-scan-msg" class="scan-msg hidden"></div>
+    <div id="sleep-progress" class="progress-bar hidden"><div id="sleep-progress-fill" class="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="sec-title">Sleep Entry</div>
     <div style="margin-bottom:12px">
       <label class="label">Date</label>
-      <input type="date" id="note-date">
+      <input type="date" id="sleep-date">
     </div>
-    <div style="margin-bottom:12px">
-      <label class="label">Title</label>
-      <input type="text" id="note-title" placeholder="e.g. Dr. Smith follow-up">
+    <div class="row">
+      <div class="field">
+        <label class="label">Total Asleep</label>
+        <div class="row" style="margin-bottom:0">
+          <div class="field"><input type="number" inputmode="numeric" id="sleep-hrs" placeholder="8" style="text-align:center"><div style="font-size:10px;color:#8A8778;text-align:center;margin-top:2px">hrs</div></div>
+          <div class="field"><input type="number" inputmode="numeric" id="sleep-min" placeholder="36" style="text-align:center"><div style="font-size:10px;color:#8A8778;text-align:center;margin-top:2px">min</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label class="label">Awake</label>
+        <input type="number" inputmode="numeric" id="sleep-awake" placeholder="57 min">
+      </div>
+      <div class="field">
+        <label class="label">REM</label>
+        <input type="number" inputmode="numeric" id="sleep-rem" placeholder="162 min">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label class="label">Core</label>
+        <input type="number" inputmode="numeric" id="sleep-core" placeholder="295 min">
+      </div>
+      <div class="field">
+        <label class="label">Deep</label>
+        <input type="number" inputmode="numeric" id="sleep-deep" placeholder="59 min">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label class="label">Bedtime</label>
+        <input type="text" id="sleep-bedtime" placeholder="e.g. 9:30 PM">
+      </div>
+      <div class="field">
+        <label class="label">Wake Time</label>
+        <input type="text" id="sleep-waketime" placeholder="e.g. 6:00 AM">
+      </div>
     </div>
     <div style="margin-bottom:16px">
-      <label class="label">Details</label>
-      <textarea id="note-content" rows="3" placeholder="What happened, changes, next steps..."></textarea>
+      <label class="label">Notes (optional)</label>
+      <textarea id="sleep-notes" placeholder="e.g. restless, snoring, woke up at 3am..." rows="2"></textarea>
     </div>
     <div class="btns">
-      <button class="btn btn-pri" style="flex:1" onclick="saveNote()">Save Note</button>
-      <button class="btn btn-out" onclick="clearNoteForm()">Clear</button>
+      <button class="btn btn-pri" id="sleep-save-btn" onclick="saveSleep()">Save Sleep</button>
+      <button class="btn btn-out" onclick="clearSleepForm()">Clear</button>
     </div>
   </div>
+
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div class="sec-title">&#128197; All Notes</div>
-      <span id="notes-count" style="font-size:12px;color:#A88BC3;font-weight:600"></span>
+      <div class="sec-title">Sleep History</div>
+      <span id="sleep-total" style="font-size:12px;color:#8A8778"></span>
     </div>
-    <div id="notes-list"></div>
+    <div id="sleep-list"></div>
   </div>
 </div>
 
-<!-- ═══ ADMIN TAB ═══ -->
-<div id="tab-admin" class="hidden">
+<div id="tab-meds" class="hidden">
+
   <div class="card">
-    <div class="sec-title">&#128424; QR Codes</div>
-    <p style="font-size:13px;color:#5B4A6E;margin-bottom:14px;line-height:1.5">Print &amp; stick on bottles. Scan to log!</p>
-    <div id="meds-qr-list"></div>
-    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid #E8D5F5">
-      <div style="font-size:14px;font-weight:700;color:#7D3C98;margin-bottom:8px">&#127979; Daycare QR (logs + thank you)</div>
-      <p style="font-size:12px;color:#5B4A6E;margin-bottom:10px;line-height:1.5">Logs med + shows "Thank You" &mdash; no health data shown.</p>
-      <div id="daycare-qr-list"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="sec-title">&#128138; Today's Meds</div>
+      <span id="meds-date" style="font-size:12px;color:#8A8778"></span>
     </div>
+    <div id="meds-today"></div>
   </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="sec-title">Today's Log</div>
+      <span id="med-log-count" style="font-size:12px;color:#8A8778"></span>
+    </div>
+    <div id="med-log-list"></div>
+  </div>
+
+</div>
+
+<div id="tab-admin" class="hidden">
+
+  <div class="card">
+    <div class="sec-title">&#128247; Bottle QR Codes</div>
+    <p style="font-size:13px;color:#555549;margin-bottom:14px;line-height:1.5">Print &amp; stick on each bottle. iPhone Camera scan → dose logged!</p>
+    <div id="meds-qr-list"></div>
+  </div>
+
   <div class="card">
     <div class="sec-title">&#10133; Add / Edit Med</div>
     <div style="margin-bottom:12px">
       <label class="label">Med Name &amp; Dose</label>
-      <input type="text" id="med-name" placeholder="e.g. Amoxicillin 250mg">
+      <input type="text" id="med-name" placeholder="e.g. Lisinopril 10mg">
     </div>
-    <div style="margin-bottom:12px">
-      <label class="label">Type</label>
-      <select id="med-type" onchange="toggleMedTypeFields()">
-        <option value="maintenance">Maintenance</option>
-        <option value="as_needed">As Needed</option>
-        <option value="short_course">Short Course (e.g. 5 days)</option>
-        <option value="seasonal">Seasonal</option>
-        <option value="prn">Rescue</option>
-      </select>
-    </div>
-    <div id="med-schedule-section" style="margin-bottom:12px">
-      <label class="label">Schedule</label>
-      <div style="display:flex;gap:16px;padding:10px 0">
-        <label style="display:flex;align-items:center;gap:8px;font-size:15px;color:#5B4A6E;cursor:pointer">
-          <input type="checkbox" id="med-morning" style="width:20px;height:20px;accent-color:#9B59B6"> &#9728;&#65039; Morning
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:15px;color:#5B4A6E;cursor:pointer">
-          <input type="checkbox" id="med-night" style="width:20px;height:20px;accent-color:#9B59B6"> &#127769; Night
-        </label>
-      </div>
-    </div>
-    <div id="med-times-section" class="hidden">
-      <div style="margin-bottom:12px">
-        <label class="label">Dose Time(s)</label>
-        <div id="med-times-list"></div>
-        <button onclick="addDoseTimeField('')" style="margin-top:8px;padding:7px 16px;border-radius:10px;border:1.5px solid #9B59B6;color:#9B59B6;background:none;font-size:13px;font-weight:600;cursor:pointer;font-family:'Fredoka',sans-serif">+ Add Time</button>
-      </div>
-    </div>
-    <div id="med-date-section" style="margin-bottom:12px">
-      <label class="label">Start / End Date (optional)</label>
-      <div class="row">
-        <div class="field">
-          <input type="date" id="med-start-date">
-        </div>
-        <div class="field">
-          <input type="date" id="med-end-date">
-        </div>
-      </div>
-    </div>
-    <div id="med-puffs-section" class="hidden" style="margin-bottom:12px">
-      <label class="label">Default Puffs</label>
-      <input type="number" inputmode="numeric" id="med-default-puffs" placeholder="e.g. 2" style="width:100px">
+    <div style="margin-bottom:16px">
+      <label class="label">Dose Time(s)</label>
+      <div id="med-times-list"></div>
+      <button onclick="addDoseTimeField('')" style="margin-top:8px;padding:7px 16px;border-radius:8px;border:1.5px solid #3A7D5C;color:#3A7D5C;background:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Add Time</button>
     </div>
     <input type="hidden" id="med-edit-id">
     <div class="btns">
-      <button class="btn btn-pri" style="flex:1" onclick="saveMed()">Save Med</button>
+      <button class="btn btn-pri" onclick="saveMed()">Save Med</button>
       <button class="btn btn-out" onclick="clearMedForm()">Clear</button>
     </div>
   </div>
+
   <div class="card">
-    <div class="sec-title">&#128138; All Meds</div>
-    <div id="meds-admin-list"></div>
+    <div class="sec-title">&#128242; Reminders</div>
+    <div style="background:#FAFAF7;border:1px solid #EAE7E0;border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#2D5F46;margin-bottom:8px">&#128197; Schedule (fires only if meds outstanding)</div>
+      <div style="font-size:12px;color:#555549;margin-bottom:6px">&#128188; <strong>Weekdays</strong> — 4:00 AM &middot; 4:30 PM &middot; 6:00 PM &middot; 8:00 PM</div>
+      <div style="font-size:12px;color:#555549">&#127774; <strong>Weekends</strong> — 9:30 AM &middot; 12:30 PM &middot; 3:30 PM &middot; 6:30 PM &middot; 9:00 PM</div>
+    </div>
+    <div id="twilio-window-status" style="font-size:12px;font-weight:600;padding:4px 0 10px"></div>
+    <div class="btns">
+      <button class="btn btn-out" onclick="sendTestReminder()" style="font-size:13px">&#9993; Send Test Text</button>
+      <button class="btn btn-out" onclick="checkAndSendReminders(false)" style="font-size:13px">Check Now</button>
+    </div>
+    <div id="twilio-status" style="margin-top:8px;font-size:12px;font-weight:600"></div>
   </div>
-  <div class="settings-toggle">
-    <button onclick="document.getElementById('api-panel').classList.toggle('hidden')">&#128273; API Key Settings</button>
+
+</div>
+
+<div id="tab-charts" class="hidden">
+  <div class="card" id="stats-card" style="display:none">
+    <div class="sec-title">Summary</div>
+    <div id="stats-content"></div>
   </div>
-  <div id="api-panel" class="card hidden">
-    <div class="sec-title">&#128273; Claude API Key</div>
-    <p style="font-size:13px;color:#5B4A6E;margin-bottom:10px;line-height:1.4">Needed for camera scanning. Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#9B59B6">console.anthropic.com</a></p>
-    <input type="password" id="api-key" placeholder="sk-ant-..." oninput="saveApiKey()" style="font-family:monospace;font-size:14px">
-    <div id="api-status" style="margin-top:8px;font-size:12px;font-weight:600"></div>
-    <div style="margin-top:6px;font-size:11px;color:#A88BC3;line-height:1.4">Key stored only on this device.</div>
+  <div class="card">
+    <div class="sec-title">Trends</div>
+    <div id="charts-empty" class="empty">Need at least 2 readings for charts</div>
+    <div id="charts-content" class="hidden">
+      <div class="chart-wrap">
+        <div class="chart-label">Blood Pressure</div>
+        <canvas id="bp-chart"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-label">Pulse</div>
+        <canvas id="pulse-chart"></canvas>
+      </div>
+    </div>
   </div>
 </div>
 
-<div class="footer">&#129412; Kids Hub &middot; Made with love &#128156;</div>
-
-<!-- ═══════════════════════ PUFF MODAL ═══════════════════════ -->
-<div id="puff-modal" style="display:none;position:fixed;inset:0;z-index:9990;background:rgba(45,27,78,0.5);align-items:center;justify-content:center;padding:20px">
-  <div style="background:#FDF8FF;border-radius:18px;padding:24px;max-width:320px;width:100%;border:2px solid #E8D5F5;box-shadow:0 8px 30px rgba(142,68,173,0.25);text-align:center">
-    <div style="font-size:36px;margin-bottom:8px">&#128138;</div>
-    <div id="puff-modal-name" style="font-size:18px;font-weight:700;color:#7D3C98;margin-bottom:16px"></div>
-    <div style="font-size:14px;color:#5B4A6E;margin-bottom:8px">How many puffs?</div>
-    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:20px">
-      <button onclick="adjustPuffs(-1)" style="width:40px;height:40px;border-radius:50%;border:2px solid #9B59B6;background:none;color:#9B59B6;font-size:20px;font-weight:700;cursor:pointer;font-family:'Fredoka'">−</button>
-      <input type="number" id="puff-count" value="2" min="1" max="20" style="width:60px;text-align:center;font-size:24px;font-weight:700;border-radius:10px;padding:8px">
-      <button onclick="adjustPuffs(1)" style="width:40px;height:40px;border-radius:50%;border:2px solid #9B59B6;background:none;color:#9B59B6;font-size:20px;font-weight:700;cursor:pointer;font-family:'Fredoka'">+</button>
-    </div>
-    <div class="btns" style="justify-content:center">
-      <button class="btn btn-pri" onclick="confirmPuffLog()">&#10003; Log It</button>
-      <button class="btn btn-out" onclick="closePuffModal()">Cancel</button>
-    </div>
-  </div>
+<div class="footer">
+  Normal: &lt;120/80 &middot; Elevated: 120-129/&lt;80<br>
+  High Stage 1: 130-139/80-89 &middot; Stage 2: &ge;140/&ge;90
 </div>
 
-<!-- ═══ EDIT LOG MODAL ═══ -->
-<div id="edit-log-modal" style="display:none;position:fixed;inset:0;z-index:9990;background:rgba(45,27,78,0.5);align-items:center;justify-content:center;padding:20px">
-  <div style="background:#FDF8FF;border-radius:18px;padding:24px;max-width:340px;width:100%;border:2px solid #E8D5F5;box-shadow:0 8px 30px rgba(142,68,173,0.25)">
-    <div style="font-size:16px;font-weight:700;color:#7D3C98;margin-bottom:16px;text-align:center">Edit Log Entry</div>
-    <div style="margin-bottom:12px">
-      <label class="label">Med Name</label>
-      <input type="text" id="edit-log-name">
-    </div>
-    <div style="margin-bottom:12px">
-      <label class="label">Date &amp; Time</label>
-      <input type="datetime-local" id="edit-log-datetime">
-    </div>
-    <div style="margin-bottom:16px">
-      <label class="label">Puffs (optional)</label>
-      <input type="number" inputmode="numeric" id="edit-log-puffs" placeholder="Leave blank if N/A" style="width:120px">
-    </div>
-    <input type="hidden" id="edit-log-id">
-    <div class="btns" style="justify-content:center">
-      <button class="btn btn-pri" onclick="saveLogEdit()">Save</button>
-      <button class="btn btn-out" onclick="closeEditLogModal()">Cancel</button>
-    </div>
+<div class="settings-toggle">
+  <button onclick="toggleSettings()">&#9881;&#65039; API Key Settings</button>
+</div>
+
+<div id="settings-panel" class="card hidden">
+  <div class="sec-title">&#128273; Claude API Key</div>
+  <p style="font-size:13px;color:#555549;margin-bottom:10px;line-height:1.4">
+    Needed for camera scanning. Get one at
+    <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#3A7D5C">console.anthropic.com</a>
+  </p>
+  <input type="password" class="api-key-input" id="api-key" placeholder="sk-ant-..." oninput="saveApiKey()">
+  <div id="api-status"></div>
+  <div style="margin-top:8px;font-size:11px;color:#8A8778;line-height:1.4">
+    Your key is stored only on this device.<br>
+    Do NOT use Private/Incognito mode or the key will be erased.
   </div>
 </div>
 
 <script>
 var SUPA_URL = "https://jzpipxvxrtdhmsdkveog.supabase.co";
 var SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o";
-var SUPA_HEADERS = { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json", "Prefer": "return=representation" };
-var PERSON = "tina";
+var SUPA_HEADERS = {
+  "apikey": SUPA_KEY,
+  "Authorization": "Bearer " + SUPA_KEY,
+  "Content-Type": "application/json",
+  "Prefer": "return=representation"
+};
 
-// ── Helpers ──
-function todayStr() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
-function fmtDate(iso) { return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
-function fmtTime(iso) { return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); }
-function fmtShort(iso) { return new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }); }
-function localNow() { var n = new Date(); return new Date(n.getTime() - n.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
-function setSyncStatus(t, c) { var el = document.getElementById("sync-status"); el.textContent = t; el.style.color = c || "#A88BC3"; }
+var readings = [];
 
-function showTab(name) {
-  ["meds","vitals","notes","admin"].forEach(function(t) { document.getElementById("tab-" + t).classList.toggle("hidden", t !== name); });
-  document.querySelectorAll(".tab").forEach(function(t, i) { t.classList.toggle("active", ["meds","vitals","notes","admin"][i] === name); });
-  if (name === "meds") { fetchMedLogs().then(function() { refreshMedsTab(); }); }
-  if (name === "vitals") { loadVitals(); updateScanStatus(); }
-  if (name === "notes") { loadNotes(); }
-  if (name === "admin") { fetchMedLogs().then(function() { generateQRCodes(); clearMedForm(); renderAdminMedList(); }); }
+async function fetchReadings() {
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/bp_readings?person=eq.martin&order=reading_datetime.desc", { headers: SUPA_HEADERS });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } catch (e) {
+    setSyncStatus("Offline - could not load", "#D4873C");
+    return [];
+  }
 }
 
+async function insertReading(entry) {
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/bp_readings", {
+      method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry)
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } catch (e) {
+    setSyncStatus("Could not save: " + e.message, "#D4873C");
+    return null;
+  }
+}
+
+async function deleteReadingDB(id) {
+  try {
+    await fetch(SUPA_URL + "/rest/v1/bp_readings?id=eq." + id, {
+      method: "DELETE", headers: SUPA_HEADERS
+    });
+  } catch (e) { console.error(e); }
+}
+
+function setSyncStatus(text, color) {
+  var el = document.getElementById("sync-status");
+  el.textContent = text;
+  el.style.color = color || "#8A8778";
+}
+
+async function loadReadings() {
+  setSyncStatus("Syncing...", "#8A8778");
+  readings = await fetchReadings();
+  setSyncStatus("Synced - " + readings.length + " readings", "#3A7D5C");
+}
+
+function classify(sys, dia) {
+  var s = +sys, d = +dia;
+  if (!s || !d) return { label: "-", color: "#8A8778", bg: "#8A877818" };
+  if (s < 120 && d < 80) return { label: "Normal", color: "#3A7D5C", bg: "#3A7D5C18" };
+  if (s < 130 && d < 80) return { label: "Elevated", color: "#D4873C", bg: "#D4873C18" };
+  if (s < 140 || d < 90) return { label: "High - Stage 1", color: "#D4573B", bg: "#D4573B18" };
+  return { label: "High - Stage 2", color: "#C42B2B", bg: "#C42B2B18" };
+}
+
+function fmtDate(iso) { return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
+function fmtTime(iso) { return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); }
+function fmtShort(iso) { return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
+function localNow() {
+  var n = new Date();
+  return new Date(n.getTime() - n.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function showTab(name) {
+  var tabNames = ["today","add","history","sleep","charts","admin"];
+  document.querySelectorAll(".tab").forEach(function(t, i) {
+    t.classList.toggle("active", tabNames[i] === name);
+  });
+  tabNames.concat(["meds"]).forEach(function(t) {
+    var el = document.getElementById("tab-" + t);
+    if (el) el.classList.toggle("hidden", t !== name);
+  });
+  if (name === "today") { loadTodayTab(); }
+  if (name === "history") { loadReadings().then(renderHistory); }
+  if (name === "meds") { fetchMedLogs().then(function() { refreshMedsTab(); }); }
+  if (name === "admin") { fetchMedLogs().then(function() { generateQRCodes(); clearMedForm(); updateWindowStatus(); }); }
+  if (name === "sleep") { loadSleepEntries().then(renderSleepHistory); }
+  if (name === "charts") { loadReadings().then(function() { loadSleepEntries().then(function() { renderStats(); renderCharts(); }); }); }
+}
+
+function updatePreview() {
+  var sys = document.getElementById("systolic").value;
+  var dia = document.getElementById("diastolic").value;
+  var preview = document.getElementById("preview");
+  var btn = document.getElementById("save-btn");
+  if (sys && dia) {
+    var c = classify(sys, dia);
+    document.getElementById("preview-num").textContent = sys + "/" + dia;
+    document.getElementById("preview-num").style.color = c.color;
+    document.getElementById("preview-badge").textContent = c.label;
+    document.getElementById("preview-badge").style.color = c.color;
+    document.getElementById("preview-badge").style.background = c.bg;
+    preview.style.background = c.bg;
+    preview.style.border = "1px solid " + c.color + "30";
+    preview.classList.remove("hidden");
+    btn.disabled = false;
+  } else {
+    preview.classList.add("hidden");
+    btn.disabled = true;
+  }
+}
+
+function clearForm() {
+  document.getElementById("systolic").value = "";
+  document.getElementById("diastolic").value = "";
+  document.getElementById("pulse").value = "";
+  document.getElementById("datetime").value = localNow();
+  document.getElementById("notes").value = "";
+  document.getElementById("scan-msg").classList.add("hidden");
+  document.getElementById("progress").classList.add("hidden");
+  updatePreview();
+}
+
+async function saveReading() {
+  var sys = document.getElementById("systolic").value;
+  var dia = document.getElementById("diastolic").value;
+  if (!sys || !dia) return;
+  var btn = document.getElementById("save-btn");
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+  var dt = document.getElementById("datetime").value;
+  var entry = {
+    person: "martin",
+    systolic: parseInt(sys),
+    diastolic: parseInt(dia),
+    pulse: document.getElementById("pulse").value ? parseInt(document.getElementById("pulse").value) : null,
+    reading_datetime: new Date(dt).toISOString(),
+    notes: document.getElementById("notes").value || null
+  };
+  var result = await insertReading(entry);
+  if (result) {
+    await loadReadings();
+    clearForm();
+    showTab("history");
+  }
+  btn.disabled = false;
+  btn.textContent = "Save Reading";
+}
+
+function showScanMsg(text, type) {
+  var el = document.getElementById("scan-msg");
+  el.textContent = text;
+  el.className = "scan-msg " + type;
+  el.classList.remove("hidden");
+}
+
+function showProgress(pct) {
+  var bar = document.getElementById("progress");
+  bar.classList.remove("hidden");
+  document.getElementById("progress-fill").style.width = pct + "%";
+}
+
+function getApiKey() {
+  try { return localStorage.getItem("bp-api-key") || ""; } catch(e) { return ""; }
+}
+function saveApiKey() {
+  var key = document.getElementById("api-key").value.trim();
+  try { localStorage.setItem("bp-api-key", key); } catch(e) {}
+  updateApiStatus();
+}
+function updateApiStatus() {
+  var el = document.getElementById("api-status");
+  var scan = document.getElementById("scan-key-status");
+  var key = getApiKey();
+  if (key && key.startsWith("sk-")) {
+    el.className = "api-status ok";
+    el.textContent = "Key saved - camera ready";
+    scan.innerHTML = '<span style="color:#3A7D5C;font-weight:600">Ready to scan</span>';
+  } else {
+    el.className = "api-status missing";
+    el.textContent = key ? "Key should start with sk-ant-..." : "No key set";
+    scan.innerHTML = '<span style="color:#D4873C">Set API key below to enable scanning</span>';
+  }
+}
+function toggleSettings() {
+  document.getElementById("settings-panel").classList.toggle("hidden");
+}
+
+function compressImage(dataUrl, maxWidth) {
+  maxWidth = maxWidth || 800;
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement("canvas");
+      var w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.6).split(",")[1]);
+    };
+    img.onerror = function() { resolve(null); };
+    img.src = dataUrl;
+  });
+}
+
+async function handlePhoto(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  input.value = "";
+  var apiKey = getApiKey();
+  if (!apiKey || !apiKey.startsWith("sk-")) {
+    showScanMsg("Set your API key first (scroll down)", "error");
+    return;
+  }
+  showScanMsg("Compressing photo...", "scanning");
+  showProgress(20);
+  try {
+    var dataUrl = await new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function() { resolve(reader.result); };
+      reader.onerror = function() { reject(new Error("Could not read file")); };
+      reader.readAsDataURL(file);
+    });
+    showScanMsg("Sending to AI...", "scanning");
+    showProgress(50);
+    var base64 = await compressImage(dataUrl);
+    if (!base64) { showScanMsg("Could not process image", "error"); return; }
+    var res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 300,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+            { type: "text", text: "This is a photo of a blood pressure monitor. Read the numbers on the screen. Return ONLY a JSON object: {\"systolic\":NUMBER,\"diastolic\":NUMBER,\"pulse\":NUMBER}. Use null for any value you cannot read. Return ONLY the JSON." }
+          ]
+        }]
+      })
+    });
+    showProgress(80);
+    if (!res.ok) {
+      var errText = await res.text();
+      showScanMsg("API error " + res.status + ": " + errText.slice(0, 150), "error");
+      document.getElementById("progress").classList.add("hidden");
+      return;
+    }
+    var data = await res.json();
+    showProgress(100);
+    var txt = data.content.map(function(b) { return b.text || ""; }).join("");
+    var result = JSON.parse(txt.replace(/```json|```/g, "").trim());
+    if (result.systolic != null) document.getElementById("systolic").value = result.systolic;
+    if (result.diastolic != null) document.getElementById("diastolic").value = result.diastolic;
+    if (result.pulse != null) document.getElementById("pulse").value = result.pulse;
+    updatePreview();
+    showScanMsg("Got it! Check the numbers and save.", "success");
+  } catch (err) {
+    showScanMsg("Error: " + (err.message || err), "error");
+  }
+  document.getElementById("progress").classList.add("hidden");
+}
+
+function renderHistory() {
+  var sorted = readings.slice().sort(function(a, b) {
+    return new Date(b.reading_datetime) - new Date(a.reading_datetime);
+  });
+  document.getElementById("total-count").textContent = sorted.length + " total";
+  var list = document.getElementById("readings-list");
+  if (sorted.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">&#128203;</div><div>No readings yet!</div></div>';
+    return;
+  }
+  list.innerHTML = sorted.map(function(r) {
+    var c = classify(r.systolic, r.diastolic);
+    return '<div class="reading">' +
+      '<div class="reading-top">' +
+        '<span class="reading-date">' + fmtDate(r.reading_datetime) + ' &middot; ' + fmtTime(r.reading_datetime) + '</span>' +
+        '<span class="badge" style="color:' + c.color + ';background:' + c.bg + '">' + c.label + '</span>' +
+      '</div>' +
+      '<div class="reading-vals">' +
+        '<div><span class="reading-bp" style="color:' + c.color + '">' + r.systolic + '</span>' +
+        '<span class="reading-slash"> / </span>' +
+        '<span class="reading-bp" style="color:' + c.color + '">' + r.diastolic + '</span>' +
+        '<span class="reading-unit">mmHg</span></div>' +
+        (r.pulse ? '<div><span class="reading-pulse">' + r.pulse + '</span><span class="reading-unit">bpm</span></div>' : '') +
+        '<button class="reading-del" onclick="deleteReading(' + r.id + ')">x</button>' +
+      '</div>' +
+      (r.notes ? '<div class="reading-notes">' + r.notes.replace(/</g, '&lt;') + '</div>' : '') +
+    '</div>';
+  }).join("");
+}
+
+async function deleteReading(id) {
+  await deleteReadingDB(id);
+  readings = readings.filter(function(r) { return r.id !== id; });
+  renderHistory();
+  setSyncStatus("Synced - " + readings.length + " readings", "#3A7D5C");
+}
+
+var bpChart = null, pulseChart = null;
+
+function renderStats() {
+  if (readings.length === 0) {
+    document.getElementById("stats-card").style.display = "none";
+    return;
+  }
+  document.getElementById("stats-card").style.display = "";
+  var now = new Date();
+  var d7 = new Date(now - 7 * 86400000);
+  var d30 = new Date(now - 30 * 86400000);
+  var r7 = readings.filter(function(r) { return new Date(r.reading_datetime) >= d7; });
+  var r30 = readings.filter(function(r) { return new Date(r.reading_datetime) >= d30; });
+  var all = readings;
+
+  function avg(arr, key) {
+    if (!arr.length) return "--";
+    var sum = arr.reduce(function(s, r) { return s + (+r[key]); }, 0);
+    return Math.round(sum / arr.length);
+  }
+  function avgPulse(arr) {
+    var p = arr.filter(function(r) { return r.pulse; });
+    if (!p.length) return "--";
+    return avg(p, "pulse");
+  }
+
+  // Morning (5am-12pm) vs Evening (5pm-10pm)
+  var morning = all.filter(function(r) {
+    var h = new Date(r.reading_datetime).getHours();
+    return h >= 5 && h < 12;
+  });
+  var evening = all.filter(function(r) {
+    var h = new Date(r.reading_datetime).getHours();
+    return h >= 17 && h < 22;
+  });
+
+  // Categories
+  var cats = { normal: 0, elevated: 0, high1: 0, high2: 0 };
+  all.forEach(function(r) {
+    var c = classify(r.systolic, r.diastolic);
+    if (c.label.indexOf("Normal") >= 0) cats.normal++;
+    else if (c.label.indexOf("Elevated") >= 0) cats.elevated++;
+    else if (c.label.indexOf("Stage 1") >= 0) cats.high1++;
+    else if (c.label.indexOf("Stage 2") >= 0) cats.high2++;
+  });
+  var total = all.length;
+  function pct(n) { return total ? Math.round(n / total * 100) : 0; }
+
+  // Highest & Lowest
+  var sorted = all.slice().sort(function(a, b) { return (+b.systolic) - (+a.systolic); });
+  var highest = sorted[0];
+  var lowest = sorted[sorted.length - 1];
+
+  var html = '';
+
+  // 7-day & 30-day averages
+  html += '<div class="stat-section">';
+  html += '<div class="stat-label">Averages</div>';
+  if (r7.length > 0) {
+    html += '<div class="stat-row"><span class="stat-name">Last 7 days <span class="stat-sub">(' + r7.length + ' readings)</span></span>';
+    html += '<span class="stat-val" style="color:' + classify(avg(r7,"systolic"), avg(r7,"diastolic")).color + '">' + avg(r7,"systolic") + '/' + avg(r7,"diastolic") + '</span></div>';
+  }
+  if (r30.length > 0) {
+    html += '<div class="stat-row"><span class="stat-name">Last 30 days <span class="stat-sub">(' + r30.length + ' readings)</span></span>';
+    html += '<span class="stat-val" style="color:' + classify(avg(r30,"systolic"), avg(r30,"diastolic")).color + '">' + avg(r30,"systolic") + '/' + avg(r30,"diastolic") + '</span></div>';
+  }
+  if (r7.length === 0 && r30.length === 0) {
+    html += '<div class="stat-row"><span class="stat-name">All time <span class="stat-sub">(' + all.length + ' readings)</span></span>';
+    html += '<span class="stat-val" style="color:' + classify(avg(all,"systolic"), avg(all,"diastolic")).color + '">' + avg(all,"systolic") + '/' + avg(all,"diastolic") + '</span></div>';
+  }
+  html += '</div>';
+
+  // Morning vs Evening
+  html += '<div class="stat-divider"></div>';
+  html += '<div class="stat-section">';
+  html += '<div class="stat-label">Morning vs Evening</div>';
+  if (morning.length > 0) {
+    html += '<div class="stat-row"><span class="stat-name">Morning <span class="stat-sub">(5am–12pm · ' + morning.length + ')</span></span>';
+    html += '<span class="stat-val" style="color:' + classify(avg(morning,"systolic"), avg(morning,"diastolic")).color + '">' + avg(morning,"systolic") + '/' + avg(morning,"diastolic");
+    html += ' <span class="stat-sub">' + avgPulse(morning) + ' bpm</span></span></div>';
+  } else {
+    html += '<div class="stat-row"><span class="stat-name">Morning</span><span class="stat-val" style="color:#8A8778">No data</span></div>';
+  }
+  if (evening.length > 0) {
+    html += '<div class="stat-row"><span class="stat-name">Evening <span class="stat-sub">(5pm–10pm · ' + evening.length + ')</span></span>';
+    html += '<span class="stat-val" style="color:' + classify(avg(evening,"systolic"), avg(evening,"diastolic")).color + '">' + avg(evening,"systolic") + '/' + avg(evening,"diastolic");
+    html += ' <span class="stat-sub">' + avgPulse(evening) + ' bpm</span></span></div>';
+  } else {
+    html += '<div class="stat-row"><span class="stat-name">Evening</span><span class="stat-val" style="color:#8A8778">No data</span></div>';
+  }
+  html += '</div>';
+
+  // Category breakdown
+  html += '<div class="stat-divider"></div>';
+  html += '<div class="stat-section">';
+  html += '<div class="stat-label">Reading Breakdown</div>';
+  var catData = [
+    { name: "Normal", pct: pct(cats.normal), color: "#3A7D5C", n: cats.normal },
+    { name: "Elevated", pct: pct(cats.elevated), color: "#D4873C", n: cats.elevated },
+    { name: "High - Stage 1", pct: pct(cats.high1), color: "#D4573B", n: cats.high1 },
+    { name: "High - Stage 2", pct: pct(cats.high2), color: "#C42B2B", n: cats.high2 }
+  ];
+  catData.forEach(function(c) {
+    html += '<div class="cat-bar-wrap">';
+    html += '<div class="cat-bar-label"><span style="color:' + c.color + '">' + c.name + '</span><span style="color:' + c.color + '">' + c.pct + '% <span class="stat-sub">(' + c.n + ')</span></span></div>';
+    html += '<div class="cat-bar"><div class="cat-bar-fill" style="width:' + c.pct + '%;background:' + c.color + '"></div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Highest & Lowest
+  html += '<div class="stat-divider"></div>';
+  html += '<div class="stat-section">';
+  html += '<div class="stat-label">Highest &amp; Lowest</div>';
+  var hc = classify(highest.systolic, highest.diastolic);
+  html += '<div class="stat-row"><span class="stat-name">Highest <span class="stat-sub">' + fmtDate(highest.reading_datetime) + '</span></span>';
+  html += '<span class="stat-val" style="color:' + hc.color + '">' + highest.systolic + '/' + highest.diastolic + '</span></div>';
+  var lc = classify(lowest.systolic, lowest.diastolic);
+  html += '<div class="stat-row"><span class="stat-name">Lowest <span class="stat-sub">' + fmtDate(lowest.reading_datetime) + '</span></span>';
+  html += '<span class="stat-val" style="color:' + lc.color + '">' + lowest.systolic + '/' + lowest.diastolic + '</span></div>';
+  html += '</div>';
+
+  document.getElementById("stats-content").innerHTML = html;
+
+  // Sleep stats
+  if (sleepEntries.length > 0) {
+    var sh = '';
+    sh += '<div class="stat-divider"></div>';
+    sh += '<div class="stat-section">';
+    sh += '<div class="stat-label">&#127769; Sleep Averages</div>';
+    var s7 = sleepEntries.filter(function(s) { return new Date(s.sleep_date) >= d7; });
+    var s30 = sleepEntries.filter(function(s) { return new Date(s.sleep_date) >= d30; });
+    var sAll = sleepEntries;
+    function sleepAvg(arr) {
+      if (!arr.length) return "--";
+      var sum = arr.reduce(function(s, e) { return s + (e.total_asleep_minutes || 0); }, 0);
+      return fmtMins(Math.round(sum / arr.length));
+    }
+    function stageAvg(arr, key) {
+      var valid = arr.filter(function(e) { return e[key]; });
+      if (!valid.length) return "--";
+      var sum = valid.reduce(function(s, e) { return s + e[key]; }, 0);
+      return fmtMins(Math.round(sum / valid.length));
+    }
+    var sleepSrc = s7.length >= 2 ? s7 : (s30.length >= 2 ? s30 : sAll);
+    var sleepLabel = s7.length >= 2 ? "Last 7 days" : (s30.length >= 2 ? "Last 30 days" : "All time");
+    sh += '<div class="stat-row"><span class="stat-name">' + sleepLabel + ' avg <span class="stat-sub">(' + sleepSrc.length + ' nights)</span></span>';
+    sh += '<span class="stat-val" style="color:#2D5F46">' + sleepAvg(sleepSrc) + '</span></div>';
+    sh += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">';
+    sh += '<span class="sleep-stage stage-rem">REM ' + stageAvg(sleepSrc, "rem_minutes") + '</span>';
+    sh += '<span class="sleep-stage stage-core">Core ' + stageAvg(sleepSrc, "core_minutes") + '</span>';
+    sh += '<span class="sleep-stage stage-deep">Deep ' + stageAvg(sleepSrc, "deep_minutes") + '</span>';
+    sh += '<span class="sleep-stage stage-awake">Awake ' + stageAvg(sleepSrc, "awake_minutes") + '</span>';
+    sh += '</div>';
+    sh += '</div>';
+    document.getElementById("stats-content").innerHTML += sh;
+  }
+}
+
+function renderCharts() {
+  var sorted = readings.slice().sort(function(a, b) {
+    return new Date(a.reading_datetime) - new Date(b.reading_datetime);
+  });
+  if (sorted.length < 2) {
+    document.getElementById("charts-empty").classList.remove("hidden");
+    document.getElementById("charts-content").classList.add("hidden");
+    return;
+  }
+  document.getElementById("charts-empty").classList.add("hidden");
+  document.getElementById("charts-content").classList.remove("hidden");
+  var labels = sorted.map(function(r) { return fmtShort(r.reading_datetime); });
+  var sysData = sorted.map(function(r) { return +r.systolic; });
+  var diaData = sorted.map(function(r) { return +r.diastolic; });
+  var pulseData = sorted.map(function(r) { return r.pulse ? +r.pulse : null; });
+  if (bpChart) bpChart.destroy();
+  if (pulseChart) pulseChart.destroy();
+  var opts = {
+    responsive: true,
+    plugins: { legend: { labels: { font: { size: 12 } } } },
+    scales: {
+      x: { ticks: { font: { size: 11 }, color: "#8A8778" } },
+      y: { ticks: { font: { size: 11 }, color: "#8A8778" } }
+    }
+  };
+  bpChart = new Chart(document.getElementById("bp-chart"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [
+        { label: "Systolic", data: sysData, borderColor: "#D4573B", backgroundColor: "#D4573B33", borderWidth: 2.5, pointRadius: 4, tension: 0.3 },
+        { label: "Diastolic", data: diaData, borderColor: "#3A7D5C", backgroundColor: "#3A7D5C33", borderWidth: 2.5, pointRadius: 4, tension: 0.3 }
+      ]
+    },
+    options: opts
+  });
+  pulseChart = new Chart(document.getElementById("pulse-chart"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{ label: "Pulse", data: pulseData, borderColor: "#D4A03C", backgroundColor: "#D4A03C33", borderWidth: 2.5, pointRadius: 4, tension: 0.3, spanGaps: true }]
+    },
+    options: opts
+  });
+}
+
+// ── Sleep Data ──
+var sleepEntries = [];
+
+async function loadSleepEntries() {
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/sleep_entries?person=eq.martin&order=sleep_date.desc", { headers: SUPA_HEADERS });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    sleepEntries = await res.json();
+  } catch(e) {
+    console.error("Sleep fetch error:", e);
+    sleepEntries = [];
+  }
+}
+
+async function insertSleep(entry) {
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/sleep_entries", {
+      method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry)
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } catch(e) {
+    alert("Could not save: " + e.message);
+    return null;
+  }
+}
+
+async function deleteSleepEntry(id) {
+  try {
+    await fetch(SUPA_URL + "/rest/v1/sleep_entries?id=eq." + id, {
+      method: "DELETE", headers: SUPA_HEADERS
+    });
+  } catch(e) { console.error(e); }
+  sleepEntries = sleepEntries.filter(function(s) { return s.id !== id; });
+  renderSleepHistory();
+}
+
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+function clearSleepForm() {
+  document.getElementById("sleep-date").value = todayStr();
+  document.getElementById("sleep-hrs").value = "";
+  document.getElementById("sleep-min").value = "";
+  document.getElementById("sleep-awake").value = "";
+  document.getElementById("sleep-rem").value = "";
+  document.getElementById("sleep-core").value = "";
+  document.getElementById("sleep-deep").value = "";
+  document.getElementById("sleep-bedtime").value = "";
+  document.getElementById("sleep-waketime").value = "";
+  document.getElementById("sleep-notes").value = "";
+  document.getElementById("sleep-scan-msg").classList.add("hidden");
+  document.getElementById("sleep-progress").classList.add("hidden");
+}
+
+async function saveSleep() {
+  var hrs = parseInt(document.getElementById("sleep-hrs").value) || 0;
+  var min = parseInt(document.getElementById("sleep-min").value) || 0;
+  var total = hrs * 60 + min;
+  if (total === 0) { alert("Enter total time asleep"); return; }
+  var btn = document.getElementById("sleep-save-btn");
+  btn.disabled = true; btn.textContent = "Saving...";
+  var entry = {
+    person: "martin",
+    sleep_date: document.getElementById("sleep-date").value || todayStr(),
+    total_asleep_minutes: total,
+    awake_minutes: parseInt(document.getElementById("sleep-awake").value) || null,
+    rem_minutes: parseInt(document.getElementById("sleep-rem").value) || null,
+    core_minutes: parseInt(document.getElementById("sleep-core").value) || null,
+    deep_minutes: parseInt(document.getElementById("sleep-deep").value) || null,
+    bedtime: document.getElementById("sleep-bedtime").value || null,
+    wake_time: document.getElementById("sleep-waketime").value || null,
+    notes: document.getElementById("sleep-notes").value || null
+  };
+  var result = await insertSleep(entry);
+  if (result) {
+    await loadSleepEntries();
+    clearSleepForm();
+    renderSleepHistory();
+  }
+  btn.disabled = false; btn.textContent = "Save Sleep";
+}
+
+function fmtMins(m) {
+  if (!m && m !== 0) return "--";
+  var h = Math.floor(m / 60);
+  var r = m % 60;
+  return h > 0 ? h + "h " + r + "m" : r + "m";
+}
+
+function renderSleepHistory() {
+  document.getElementById("sleep-total").textContent = sleepEntries.length + " nights";
+  var list = document.getElementById("sleep-list");
+  if (sleepEntries.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">&#127769;</div><div>No sleep data yet!</div></div>';
+    return;
+  }
+  list.innerHTML = sleepEntries.map(function(s) {
+    return '<div class="sleep-entry">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+        '<div class="sleep-date">' + fmtDate(s.sleep_date + "T12:00:00") + '</div>' +
+        '<button class="reading-del" onclick="deleteSleepEntry(' + s.id + ')">x</button>' +
+      '</div>' +
+      '<div class="sleep-total">' + fmtMins(s.total_asleep_minutes) + ' asleep</div>' +
+      (s.bedtime || s.wake_time ? '<div style="font-size:12px;color:#8A8778;margin-top:4px">' +
+        (s.bedtime ? 'Bed: ' + s.bedtime : '') +
+        (s.bedtime && s.wake_time ? ' &rarr; ' : '') +
+        (s.wake_time ? 'Wake: ' + s.wake_time : '') +
+      '</div>' : '') +
+      '<div class="sleep-stages">' +
+        (s.awake_minutes ? '<span class="sleep-stage stage-awake">Awake ' + s.awake_minutes + 'm</span>' : '') +
+        (s.rem_minutes ? '<span class="sleep-stage stage-rem">REM ' + fmtMins(s.rem_minutes) + '</span>' : '') +
+        (s.core_minutes ? '<span class="sleep-stage stage-core">Core ' + fmtMins(s.core_minutes) + '</span>' : '') +
+        (s.deep_minutes ? '<span class="sleep-stage stage-deep">Deep ' + fmtMins(s.deep_minutes) + '</span>' : '') +
+      '</div>' +
+      (s.notes ? '<div class="reading-notes">' + s.notes.replace(/</g,'&lt;') + '</div>' : '') +
+    '</div>';
+  }).join("");
+}
+
+// ── Sleep OCR ──
+function showSleepScanMsg(text, type) {
+  var el = document.getElementById("sleep-scan-msg");
+  el.textContent = text;
+  el.className = "scan-msg " + type;
+  el.classList.remove("hidden");
+}
+
+function showSleepProgress(pct) {
+  var bar = document.getElementById("sleep-progress");
+  bar.classList.remove("hidden");
+  document.getElementById("sleep-progress-fill").style.width = pct + "%";
+}
+
+async function handleSleepPhoto(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  input.value = "";
+  var apiKey = getApiKey();
+  if (!apiKey || !apiKey.startsWith("sk-")) {
+    showSleepScanMsg("Set your API key first (scroll down)", "error");
+    return;
+  }
+  showSleepScanMsg("Compressing...", "scanning");
+  showSleepProgress(20);
+  try {
+    var dataUrl = await new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function() { resolve(reader.result); };
+      reader.onerror = function() { reject(new Error("Could not read")); };
+      reader.readAsDataURL(file);
+    });
+    showSleepScanMsg("Reading sleep data...", "scanning");
+    showSleepProgress(50);
+    var base64 = await compressImage(dataUrl);
+    if (!base64) { showSleepScanMsg("Could not process image", "error"); return; }
+    var res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 400,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
+            { type: "text", text: "This is a screenshot of the Apple Health sleep screen. Extract the data shown. Return ONLY a JSON object with these fields: {\"date\":\"YYYY-MM-DD\",\"total_hours\":NUMBER,\"total_minutes\":NUMBER,\"awake_minutes\":NUMBER,\"rem_minutes\":NUMBER,\"core_minutes\":NUMBER,\"deep_minutes\":NUMBER,\"bedtime\":\"TIME\",\"wake_time\":\"TIME\"}. For stage times in hours and minutes like '2 hr 42 min', convert to total minutes (162). Use null for anything not visible. Return ONLY the JSON." }
+          ]
+        }]
+      })
+    });
+    showSleepProgress(80);
+    if (!res.ok) {
+      var errText = await res.text();
+      showSleepScanMsg("API error " + res.status + ": " + errText.slice(0, 150), "error");
+      document.getElementById("sleep-progress").classList.add("hidden");
+      return;
+    }
+    var data = await res.json();
+    showSleepProgress(100);
+    var txt = data.content.map(function(b) { return b.text || ""; }).join("");
+    var result = JSON.parse(txt.replace(/```json|```/g, "").trim());
+    if (result.date) document.getElementById("sleep-date").value = result.date;
+    if (result.total_hours != null) document.getElementById("sleep-hrs").value = result.total_hours;
+    if (result.total_minutes != null) document.getElementById("sleep-min").value = result.total_minutes;
+    if (result.awake_minutes != null) document.getElementById("sleep-awake").value = result.awake_minutes;
+    if (result.rem_minutes != null) document.getElementById("sleep-rem").value = result.rem_minutes;
+    if (result.core_minutes != null) document.getElementById("sleep-core").value = result.core_minutes;
+    if (result.deep_minutes != null) document.getElementById("sleep-deep").value = result.deep_minutes;
+    if (result.bedtime) document.getElementById("sleep-bedtime").value = result.bedtime;
+    if (result.wake_time) document.getElementById("sleep-waketime").value = result.wake_time;
+    showSleepScanMsg("Got it! Check the numbers and save.", "success");
+  } catch(err) {
+    showSleepScanMsg("Error: " + (err.message || err), "error");
+  }
+  document.getElementById("sleep-progress").classList.add("hidden");
+}
+
+// ── Meds: Supabase ──
+var medsCache = null;
+
+async function getMeds() {
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/meds?person=eq.martin&order=created_at.asc", { headers: SUPA_HEADERS });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    medsCache = await res.json();
+    return medsCache;
+  } catch(e) { return medsCache || []; }
+}
+
+async function insertMedDef(med) {
+  med.person = "martin";
+  var res = await fetch(SUPA_URL + "/rest/v1/meds", {
+    method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(med)
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return await res.json();
+}
+
+async function updateMedDef(id, med) {
+  var res = await fetch(SUPA_URL + "/rest/v1/meds?id=eq." + id, {
+    method: "PATCH", headers: SUPA_HEADERS, body: JSON.stringify(med)
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+}
+
+async function deleteMedDefDB(id) {
+  await fetch(SUPA_URL + "/rest/v1/meds?id=eq." + id, { method: "DELETE", headers: SUPA_HEADERS });
+}
+// ── Twilio — hardcoded, no user setup needed ──
+var TWILIO_URL = "https://bp-reminder-4383.twil.io/send-reminder";
+var TWILIO_TO  = "+19173996400";
+
+function getTwilioSettings() {
+  return { url: TWILIO_URL, to: TWILIO_TO };
+}
+function saveTwilioSettings() {} // no-op, settings are hardcoded
+
+// ── Fixed Reminder Schedule ──
+var WEEKDAY_TIMES = ["04:00", "16:30", "18:00", "20:00"];
+var WEEKEND_TIMES = ["09:30", "12:30", "15:30", "18:30", "21:00"];
+
+function getTodaySchedule() {
+  var dow = new Date().getDay(); // 0=Sun, 6=Sat
+  return (dow === 0 || dow === 6) ? WEEKEND_TIMES : WEEKDAY_TIMES;
+}
+
+function fmtScheduleTime(t) {
+  var p = t.split(":");
+  var h = parseInt(p[0]), m = parseInt(p[1]);
+  var ampm = h >= 12 ? "PM" : "AM";
+  var h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+  return h12 + ":" + String(m).padStart(2, "0") + " " + ampm;
+}
+
+function getNextReminderStr() {
+  var now = new Date();
+  var curMin = now.getHours() * 60 + now.getMinutes();
+  var schedule = getTodaySchedule();
+  for (var i = 0; i < schedule.length; i++) {
+    var p = schedule[i].split(":");
+    var slotMin = parseInt(p[0]) * 60 + parseInt(p[1]);
+    if (slotMin > curMin) return fmtScheduleTime(schedule[i]);
+  }
+  return "tomorrow";
+}
+
+function updateWindowStatus() {
+  var el = document.getElementById("twilio-window-status");
+  if (!el) return;
+  var dow = new Date().getDay();
+  var isWeekend = (dow === 0 || dow === 6);
+  el.textContent = (isWeekend ? "☀️ Weekend" : "💼 Weekday") + " schedule — next reminder check: " + getNextReminderStr();
+  el.style.color = "#3A7D5C";
+}
+
+// isAtScheduledTime: returns the slot key "YYYY-MM-DD_HH:MM" if we're within 5 min of a scheduled time
+function getActiveScheduleSlot() {
+  var now = new Date();
+  var curMin = now.getHours() * 60 + now.getMinutes();
+  var schedule = getTodaySchedule();
+  for (var i = 0; i < schedule.length; i++) {
+    var p = schedule[i].split(":");
+    var slotMin = parseInt(p[0]) * 60 + parseInt(p[1]);
+    if (curMin >= slotMin && curMin < slotMin + 5) {
+      return todayStr() + "_" + schedule[i];
+    }
+  }
+  return null;
+}
+var medLogs = [];
+
+async function fetchMedLogs() {
+  var today = todayStr();
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/med_logs?person=eq.martin&taken_at=gte." + today + "T00:00:00&order=taken_at.desc&limit=50", { headers: SUPA_HEADERS });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    medLogs = await res.json();
+  } catch(e) { medLogs = []; }
+}
+
+async function insertMedLog(medId, medName) {
+  var entry = { med_id: medId, med_name: medName, taken_at: new Date().toISOString(), person: "martin" };
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/med_logs", {
+      method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry)
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    var result = await res.json();
+    medLogs.unshift(Array.isArray(result) ? (result[0] || entry) : entry);
+    return true;
+  } catch(e) {
+    alert("Could not log med: " + e.message + "\n\nMake sure you created the med_logs table in Supabase.");
+    return false;
+  }
+}
+
+async function deleteMedLog(id) {
+  try {
+    await fetch(SUPA_URL + "/rest/v1/med_logs?id=eq." + id, { method: "DELETE", headers: SUPA_HEADERS });
+    medLogs = medLogs.filter(function(l) { return l.id !== id; });
+    renderMedsTab();
+  } catch(e) { console.error(e); }
+}
+
+// ── Med Form ──
+function addDoseTimeField(val) {
+  var div = document.createElement("div");
+  div.style.cssText = "display:flex;gap:8px;margin-bottom:6px;align-items:center";
+  div.innerHTML = '<input type="time" value="' + (val || "") + '" style="flex:1;padding:10px 12px;border-radius:8px;border:1.5px solid #DDD9CF;font-size:16px;font-family:inherit">' +
+    '<button onclick="this.parentNode.remove()" style="background:none;border:none;color:#D4573B;font-size:22px;cursor:pointer;padding:0 6px;line-height:1">&#215;</button>';
+  document.getElementById("med-times-list").appendChild(div);
+}
+
+function clearMedForm() {
+  document.getElementById("med-name").value = "";
+  document.getElementById("med-times-list").innerHTML = "";
+  document.getElementById("med-edit-id").value = "";
+  addDoseTimeField("");
+}
+
+function editMed(id) {
+  var meds = medsCache || [];
+  var med = meds.find(function(m) { return m.id === id; });
+  if (!med) return;
+  document.getElementById("med-name").value = med.name;
+  document.getElementById("med-times-list").innerHTML = "";
+  (med.dose_times || []).forEach(function(t) { addDoseTimeField(t); });
+  document.getElementById("med-edit-id").value = id;
+  showTab("admin");
+  document.getElementById("med-name").scrollIntoView({ behavior: "smooth" });
+}
+
+async function saveMed() {
+  var name = (document.getElementById("med-name").value || "").trim();
+  if (!name) { alert("Enter a med name"); return; }
+  var times = [];
+  document.getElementById("med-times-list").querySelectorAll("input[type=time]").forEach(function(inp) {
+    if (inp.value) times.push(inp.value);
+  });
+  if (!times.length) { alert("Add at least one dose time"); return; }
+  var medObj = {
+    name: name,
+    dose_times: times
+  };
+  var editId = document.getElementById("med-edit-id").value;
+  try {
+    if (editId) {
+      await updateMedDef(editId, medObj);
+    } else {
+      await insertMedDef(medObj);
+    }
+    medsCache = null;
+    clearMedForm();
+    await refreshMedsTab();
+    showBanner("&#128138; Med saved!");
+  } catch(e) {
+    alert("Could not save med: " + e.message + "\n\nMake sure you created the meds table in Supabase.");
+  }
+}
+
+async function deleteMedDef(id) {
+  if (!confirm("Delete this med?")) return;
+  try {
+    await deleteMedDefDB(id);
+    medsCache = null;
+    await refreshMedsTab();
+  } catch(e) { alert("Could not delete: " + e.message); }
+}
+
+// ── Today's Status ──
+function isInBlackout() { return false; } // Blackout replaced by fixed schedule
+
+function getTodayLogCount(medId) {
+  var today = todayStr();
+  return medLogs.filter(function(l) { return l.med_id === medId && l.taken_at && l.taken_at.slice(0, 10) === today; }).length;
+}
+
+async function renderMedsToday() {
+  var meds = await getMeds();
+  var el = document.getElementById("meds-today");
+  var dateEl = document.getElementById("meds-date");
+  if (dateEl) dateEl.textContent = new Date().toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric" });
+
+  if (!meds.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">&#128138;</div><div>No meds set up yet</div></div>';
+    return;
+  }
+
+  var allDone = meds.every(function(med) {
+    return getTodayLogCount(med.id) >= (med.dose_times || []).length;
+  });
+
+  var html = "";
+
+  // Big all-done banner
+  if (allDone) {
+    html += '<div style="text-align:center;padding:20px 0 10px">' +
+      '<div style="font-size:56px;margin-bottom:8px">&#9989;</div>' +
+      '<div style="font-size:20px;font-weight:800;color:#3A7D5C">All meds taken!</div>' +
+      '<div style="font-size:13px;color:#8A8778;margin-top:4px">Great job today &#127881;</div>' +
+    '</div><hr style="border:none;border-top:1px solid #EAE7E0;margin:16px 0">';
+  }
+
+  meds.forEach(function(med) {
+    var logsToday = getTodayLogCount(med.id);
+    var needed = (med.dose_times || []).length;
+    var done = logsToday >= needed;
+
+    if (done) {
+      // Logged — green, clear, no button
+      html += '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:#D4E8DB;border:1.5px solid #3A7D5C;margin-bottom:8px">' +
+        '<div style="font-size:28px;line-height:1">&#9989;</div>' +
+        '<div style="flex:1">' +
+          '<div style="font-size:16px;font-weight:700;color:#2D5F46">' + med.name + '</div>' +
+          '<div style="font-size:12px;color:#3A7D5C;margin-top:2px;font-weight:600">Logged today &#10003;</div>' +
+        '</div>' +
+      '</div>';
+    } else {
+      // Not logged — prominent Log Now button
+      html += '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:#FFF;border:1.5px solid #EAE7E0;margin-bottom:8px">' +
+        '<div style="font-size:28px;line-height:1">&#128138;</div>' +
+        '<div style="flex:1">' +
+          '<div style="font-size:16px;font-weight:700;color:#1A1A1A">' + med.name + '</div>' +
+          '<div style="font-size:12px;color:#8A8778;margin-top:2px">Next reminder: ' + getNextReminderStr() + '</div>' +
+        '</div>' +
+        '<button class="med-log-btn" style="padding:10px 18px;font-size:14px" onclick="logMedNow(\'' + med.id + '\',\'' + med.name.replace(/'/g, "").replace(/"/g, "") + '\')">&#10003; Log</button>' +
+      '</div>';
+    }
+  });
+
+  el.innerHTML = html;
+}
+
+async function logMedNow(medId, medName) {
+  var ok = await insertMedLog(medId, medName);
+  if (ok) {
+    showBanner("&#9989; " + medName + " logged!");
+    await refreshMedsTab();
+  }
+}
+
+// ── QR Code Generation ──
+async function generateQRCodes() {
+  var meds = await getMeds();
+  var list = document.getElementById("meds-qr-list");
+  if (!meds.length) {
+    list.innerHTML = '<div class="empty" style="padding:16px 0"><div>Add meds above to generate QR codes</div></div>';
+    return;
+  }
+  var baseUrl = window.location.href.split("?")[0];
+  list.innerHTML = meds.map(function(med) {
+    var url = baseUrl + "?log=" + med.id;
+    return '<div class="qr-box">' +
+      '<div style="font-size:14px;font-weight:700;color:#2D5F46;margin-bottom:10px">&#128138; ' + med.name + '</div>' +
+      '<div id="qr-' + med.id + '" style="display:inline-block;vertical-align:middle"></div>' +
+      '<div style="font-size:11px;color:#8A8778;margin-top:8px;margin-bottom:4px">Scan with iPhone Camera → tap link → dose logged!</div>' +
+      '<div style="font-size:11px;background:#F0EDE6;border-radius:6px;padding:6px 10px;margin-bottom:10px;word-break:break-all;color:#555">' + url + '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<button onclick="copyMedUrl(\'' + encodeURIComponent(url) + '\')" style="padding:6px 14px;border-radius:8px;border:1.5px solid #3A7D5C;color:#3A7D5C;background:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">&#128203; Copy Link</button>' +
+        '<button onclick="printQR(\'' + med.id + '\',\'' + med.name.replace(/'/g, "").replace(/"/g, "") + '\')" style="padding:6px 14px;border-radius:8px;border:1.5px solid #3A7D5C;color:#3A7D5C;background:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">&#128424; Print Label</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+  meds.forEach(function(med) {
+    var url = baseUrl + "?log=" + med.id;
+    var container = document.getElementById("qr-" + med.id);
+    if (container) {
+      container.innerHTML = "";
+      if (window.QRCode) {
+        try { new window.QRCode(container, { text: url, width: 140, height: 140, colorDark: "#1A1A1A", colorLight: "#FAFAF7" }); }
+        catch(e) { container.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=' + encodeURIComponent(url) + '" width="140" height="140">'; }
+      } else {
+        container.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=' + encodeURIComponent(url) + '" width="140" height="140">';
+      }
+    }
+  });
+}
+
+function copyMedUrl(encodedUrl) {
+  var url = decodeURIComponent(encodedUrl);
+  navigator.clipboard.writeText(url).then(function() {
+    showBanner("&#128203; Link copied!");
+  }).catch(function() {
+    prompt("Copy this link:", url);
+  });
+}
+
+function printQR(medId, medName) {
+  var baseUrl = window.location.href.split("?")[0];
+  var url = baseUrl + "?log=" + medId;
+  var qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(url);
+  var w = window.open("", "_blank");
+  w.document.write("<!DOCTYPE html><html><head><title>" + medName + " QR</title>" +
+    "<style>body{font-family:-apple-system,sans-serif;text-align:center;padding:40px;background:#fff}" +
+    "h2{color:#2D5F46;font-size:22px;margin-bottom:6px}p{color:#555;font-size:14px;margin-bottom:20px}" +
+    "img{border:2px solid #EAE7E0;border-radius:8px;padding:10px}" +
+    ".url{font-size:10px;color:#8A8778;margin-top:8px;word-break:break-all;max-width:260px;margin-left:auto;margin-right:auto}" +
+    "@media print{button{display:none}}</style></head><body>" +
+    "<h2>&#128138; " + medName + "</h2>" +
+    "<p>Scan with iPhone Camera to log dose</p>" +
+    '<img src="' + qrSrc + '" width="220" height="220">' +
+    "<div class='url'>" + url + "</div>" +
+    "<br><button onclick='window.print()' style='margin-top:16px;padding:10px 24px;border-radius:8px;border:none;background:#3A7D5C;color:#fff;font-size:15px;cursor:pointer'>&#128424; Print</button>" +
+    "</body></html>");
+  w.document.close();
+}
+
+// ── Render Meds Tab ──
+async function refreshMedsTab() {
+  await renderMedsToday();
+  renderMedLogHistory();
+  await generateQRCodes();
+}
+
+async function renderMedsTab() {
+  await renderMedsToday();
+  renderMedLogHistory();
+}
+
+function renderMedLogHistory() {
+  var list = document.getElementById("med-log-list");
+  var count = document.getElementById("med-log-count");
+  count.textContent = medLogs.length + " today";
+  if (!medLogs.length) {
+    list.innerHTML = '<div class="empty"><div>No meds logged today</div></div>';
+    return;
+  }
+  list.innerHTML = medLogs.slice(0, 30).map(function(l) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;background:#FAFAF7;border:1px solid #EAE7E0;margin-bottom:6px">' +
+      '<div>' +
+        '<div style="font-size:14px;font-weight:600;color:#2D5F46">&#128138; ' + (l.med_name || "Unknown") + '</div>' +
+        '<div style="font-size:11px;color:#8A8778;margin-top:2px">' + (l.taken_at ? fmtDate(l.taken_at) + " &middot; " + fmtTime(l.taken_at) : "") + '</div>' +
+      '</div>' +
+      (l.id ? '<button onclick="deleteMedLog(' + l.id + ')" style="background:none;border:none;color:#8A8778;font-size:20px;cursor:pointer;padding:4px">&#215;</button>' : '') +
+    '</div>';
+  }).join("");
+}
+
+// ── Auto-log from QR scan ──
+async function checkQRLog() {
+  var params = new URLSearchParams(window.location.search);
+  var medId = params.get("log");
+  if (!medId) return;
+  window.history.replaceState({}, "", window.location.pathname);
+  var meds = await getMeds();
+  var med = meds.find(function(m) { return String(m.id) === String(medId); });
+  if (!med) {
+    alert("Med not found. Make sure this is the right app URL.");
+    return;
+  }
+  await fetchMedLogs();
+  var ok = await insertMedLog(med.id, med.name);
+  if (ok) {
+    showTab("meds");
+    await refreshMedsTab();
+    showBanner("&#9989; " + med.name + " logged!");
+  }
+}
+
+// ── Banner notification ──
 function showBanner(msg) {
-  var b = document.createElement("div"); b.className = "banner"; b.innerHTML = msg;
+  var b = document.createElement("div");
+  b.className = "banner";
+  b.innerHTML = msg;
   document.body.appendChild(b);
   setTimeout(function() { if (b.parentNode) b.parentNode.removeChild(b); }, 2500);
 }
 
-// ═══ CELEBRATIONS ═══
-var celebrationIndex = 0;
-function triggerCelebration() {
-  [confettiBlast, unicornParade, sparkleShower, rainbowWave, starExplosion][celebrationIndex % 5]();
-  celebrationIndex++;
-}
-function confettiBlast() {
-  var o = document.createElement("div"); o.className = "celebration-overlay"; document.body.appendChild(o);
-  var colors = ["#9B59B6","#E74C9B","#FFD93D","#6BCB77","#4D96FF","#FF6B9D","#FFA94D","#B388FF"];
-  for (var i = 0; i < 50; i++) { var p = document.createElement("div"); p.className = "confetti-piece"; p.style.left = Math.random()*100+"%"; p.style.top = "-10px"; p.style.background = colors[Math.floor(Math.random()*colors.length)]; p.style.animationDelay = Math.random()*0.8+"s"; p.style.animationDuration = (2+Math.random()*1.5)+"s"; p.style.width = (6+Math.random()*8)+"px"; p.style.height = (6+Math.random()*8)+"px"; p.style.borderRadius = Math.random()>0.5?"50%":"2px"; o.appendChild(p); }
-  setTimeout(function() { o.remove(); }, 3500);
-}
-function unicornParade() {
-  var o = document.createElement("div"); o.className = "celebration-overlay"; document.body.appendChild(o);
-  var em = ["&#129412;","&#127752;","&#10024;","&#128156;","&#11088;"]; for (var i = 0; i < 8; i++) { var e = document.createElement("div"); e.className = "celebration-emoji"; e.innerHTML = em[i%em.length]; e.style.left = (10+Math.random()*80)+"%"; e.style.top = (15+Math.random()*60)+"%"; e.style.animationDelay = (i*0.15)+"s"; e.style.fontSize = (36+Math.random()*30)+"px"; o.appendChild(e); }
-  setTimeout(function() { o.remove(); }, 2000);
-}
-function sparkleShower() {
-  var o = document.createElement("div"); o.className = "celebration-overlay"; document.body.appendChild(o);
-  var sp = ["&#10024;","&#11088;","&#127775;","&#9733;"]; for (var i = 0; i < 25; i++) { var s = document.createElement("div"); s.className = "sparkle-star"; s.innerHTML = sp[Math.floor(Math.random()*sp.length)]; s.style.left = Math.random()*100+"%"; s.style.top = Math.random()*100+"%"; s.style.animationDelay = Math.random()+"s"; s.style.fontSize = (18+Math.random()*24)+"px"; o.appendChild(s); }
-  setTimeout(function() { o.remove(); }, 2500);
-}
-function rainbowWave() {
-  var bar = document.createElement("div"); bar.className = "rainbow-bar"; document.body.appendChild(bar);
-  var o = document.createElement("div"); o.className = "celebration-overlay"; document.body.appendChild(o);
-  var em = ["&#129412;","&#127752;","&#128156;"]; for (var i = 0; i < 5; i++) { var e = document.createElement("div"); e.className = "celebration-emoji"; e.innerHTML = em[i%em.length]; e.style.left = (15+i*18)+"%"; e.style.top = "40%"; e.style.animationDelay = (i*0.2)+"s"; o.appendChild(e); }
-  setTimeout(function() { bar.remove(); o.remove(); }, 2000);
-}
-function starExplosion() {
-  var o = document.createElement("div"); o.className = "celebration-overlay"; document.body.appendChild(o);
-  for (var i = 0; i < 16; i++) { var s = document.createElement("div"); s.className = "sparkle-star"; s.innerHTML = "&#11088;"; var a = (i/16)*Math.PI*2; s.style.left = (50+Math.cos(a)*25)+"%"; s.style.top = (40+Math.sin(a)*25)+"%"; s.style.animationDelay = (i*0.06)+"s"; s.style.fontSize = (20+Math.random()*20)+"px"; o.appendChild(s); }
-  var u = document.createElement("div"); u.className = "celebration-emoji"; u.innerHTML = "&#129412;"; u.style.left = "50%"; u.style.top = "40%"; u.style.transform = "translate(-50%,-50%)"; u.style.fontSize = "64px"; o.appendChild(u);
-  setTimeout(function() { o.remove(); }, 2000);
-}
-
-// ═══ API KEY ═══
-function getApiKey() { try { return localStorage.getItem("tina-api-key") || ""; } catch(e) { return ""; } }
-function saveApiKey() { var k = document.getElementById("api-key").value.trim(); try { localStorage.setItem("tina-api-key", k); } catch(e) {} updateApiStatus(); updateScanStatus(); }
-function updateApiStatus() {
-  var el = document.getElementById("api-status"); var k = getApiKey();
-  if (k && k.startsWith("sk-")) { el.innerHTML = '<span style="color:#9B59B6">&#10003; Key saved — camera ready</span>'; }
-  else { el.innerHTML = '<span style="color:#B85C3A">' + (k ? "Key should start with sk-ant-..." : "No key set") + '</span>'; }
-}
-function updateScanStatus() {
-  var el = document.getElementById("scan-key-status"); if (!el) return;
-  var k = getApiKey();
-  if (k && k.startsWith("sk-")) { el.innerHTML = '<span style="color:#9B59B6;font-weight:600">&#10003; Ready to scan</span>'; }
-  else { el.innerHTML = '<span style="color:#B85C3A">Set API key in Admin tab to enable scanning</span>'; }
-}
-
-// ═══ MEDS: SUPABASE ═══
-var medsCache = null; var medLogs = []; var allMedLogs = [];
-
-async function getMeds() {
-  try { var r = await fetch(SUPA_URL + "/rest/v1/meds?person=eq." + PERSON + "&order=created_at.asc", { headers: SUPA_HEADERS }); if (!r.ok) throw new Error("HTTP " + r.status); medsCache = await r.json(); return medsCache; } catch(e) { return medsCache || []; }
-}
-async function insertMedDef(m) { m.person = PERSON; var r = await fetch(SUPA_URL + "/rest/v1/meds", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(m) }); if (!r.ok) throw new Error("HTTP " + r.status); return await r.json(); }
-async function updateMedDef(id, m) { var r = await fetch(SUPA_URL + "/rest/v1/meds?id=eq." + id, { method: "PATCH", headers: SUPA_HEADERS, body: JSON.stringify(m) }); if (!r.ok) throw new Error("HTTP " + r.status); }
-async function deleteMedDefDB(id) { await fetch(SUPA_URL + "/rest/v1/meds?id=eq." + id, { method: "DELETE", headers: SUPA_HEADERS }); }
-
-async function fetchMedLogs() {
-  var today = todayStr();
-  try { var r = await fetch(SUPA_URL + "/rest/v1/med_logs?person=eq." + PERSON + "&taken_at=gte." + today + "T00:00:00&order=taken_at.desc&limit=50", { headers: SUPA_HEADERS }); if (!r.ok) throw new Error("HTTP " + r.status); medLogs = await r.json(); } catch(e) { medLogs = []; }
-}
-async function fetchAllMedLogs(days) {
-  var d = new Date(); d.setDate(d.getDate() - days); var since = d.toISOString().slice(0,10);
-  try { var r = await fetch(SUPA_URL + "/rest/v1/med_logs?person=eq." + PERSON + "&taken_at=gte." + since + "T00:00:00&order=taken_at.desc&limit=500", { headers: SUPA_HEADERS }); if (!r.ok) throw new Error("HTTP " + r.status); allMedLogs = await r.json(); } catch(e) { allMedLogs = []; }
-}
-async function insertMedLog(medId, medName, puffs) {
-  var entry = { med_id: String(medId), med_name: medName, taken_at: new Date().toISOString(), person: PERSON };
-  if (puffs) entry.puffs = parseInt(puffs);
-  try { var r = await fetch(SUPA_URL + "/rest/v1/med_logs", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry) }); if (!r.ok) throw new Error("HTTP " + r.status); var result = await r.json(); medLogs.unshift(Array.isArray(result) ? (result[0] || entry) : entry); return true; } catch(e) { alert("Could not log: " + e.message); return false; }
-}
-async function deleteMedLog(id) {
-  try { await fetch(SUPA_URL + "/rest/v1/med_logs?id=eq." + id, { method: "DELETE", headers: SUPA_HEADERS }); medLogs = medLogs.filter(function(l) { return l.id !== id; }); renderMedsTab(); } catch(e) {}
-}
-
-function openEditLogModal(id) {
-  var log = medLogs.find(function(l) { return l.id === id; }) || allMedLogs.find(function(l) { return l.id === id; });
-  if (!log) return;
-  document.getElementById("edit-log-id").value = id;
-  document.getElementById("edit-log-name").value = log.med_name || "";
-  document.getElementById("edit-log-puffs").value = log.puffs || "";
-  if (log.taken_at) {
-    var d = new Date(log.taken_at);
-    var local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    document.getElementById("edit-log-datetime").value = local;
-  }
-  document.getElementById("edit-log-modal").style.display = "flex";
-}
-function closeEditLogModal() { document.getElementById("edit-log-modal").style.display = "none"; }
-
-async function saveLogEdit() {
-  var id = document.getElementById("edit-log-id").value;
-  if (!id) return;
-  var name = (document.getElementById("edit-log-name").value || "").trim();
-  var dt = document.getElementById("edit-log-datetime").value;
-  var puffs = document.getElementById("edit-log-puffs").value;
-  if (!name) { alert("Enter a med name"); return; }
-  var update = { med_name: name, taken_at: new Date(dt).toISOString(), puffs: puffs ? parseInt(puffs) : null };
+// ── Twilio ──
+async function sendReminderSMS(message) {
+  var s = getTwilioSettings();
+  if (!s.url || !s.to) return { ok: false, error: "no URL/number set" };
   try {
-    var r = await fetch(SUPA_URL + "/rest/v1/med_logs?id=eq." + id, { method: "PATCH", headers: SUPA_HEADERS, body: JSON.stringify(update) });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    closeEditLogModal();
-    await fetchMedLogs();
-    await refreshMedsTab();
-    showBanner("&#128221; Log updated!");
-  } catch(e) { alert("Could not update: " + e.message); }
-}
-
-function getTodayLogCount(medId) { var today = todayStr(); return medLogs.filter(function(l) { return String(l.med_id) === String(medId) && l.taken_at && l.taken_at.slice(0,10) === today; }).length; }
-
-function isMedActiveToday(med) {
-  var today = todayStr();
-  if (med.start_date && today < med.start_date) return false;
-  if (med.end_date && today > med.end_date) return false;
-  return true;
-}
-
-function timeIcon(t) { if (!t) return ""; if (t === "morning") return "&#9728;&#65039;"; if (t === "night") return "&#127769;"; var h = parseInt(t.split(":")[0]); return h < 12 ? "&#9728;&#65039;" : h < 17 ? "&#127774;" : "&#127769;"; }
-function fmtTimeShort(t) { if (!t) return ""; if (t === "morning") return "Morning"; if (t === "night") return "Night"; var p = t.split(":"); var h = parseInt(p[0]), m = parseInt(p[1]); return (h > 12 ? h-12 : h || 12) + ":" + String(m).padStart(2,"0") + (h >= 12 ? "pm" : "am"); }
-
-function medTypeIcon(t) { return ""; }
-function medTypeLabel(t) {
-  var labels = { maintenance: "Maintenance", as_needed: "As Needed", short_course: "Short Course", seasonal: "Seasonal", prn: "Rescue" };
-  return labels[t] || t;
-}
-
-// ═══ PUFF MODAL ═══
-var pendingPuffMed = null;
-function openPuffModal(medId, medName, defaultPuffs) {
-  pendingPuffMed = { id: medId, name: medName };
-  document.getElementById("puff-modal-name").textContent = medName;
-  document.getElementById("puff-count").value = defaultPuffs || 2;
-  document.getElementById("puff-modal").style.display = "flex";
-}
-function closePuffModal() { document.getElementById("puff-modal").style.display = "none"; pendingPuffMed = null; }
-function adjustPuffs(delta) { var el = document.getElementById("puff-count"); var v = parseInt(el.value) + delta; if (v >= 1 && v <= 20) el.value = v; }
-async function confirmPuffLog() {
-  if (!pendingPuffMed) return;
-  var puffs = parseInt(document.getElementById("puff-count").value) || 1;
-  var ok = await insertMedLog(pendingPuffMed.id, pendingPuffMed.name, puffs);
-  closePuffModal();
-  if (ok) { triggerCelebration(); showBanner("&#10024; " + pendingPuffMed.name + " (" + puffs + " puffs) logged! &#129412;"); await refreshMedsTab(); }
-}
-
-// ═══ RENDER MEDS ═══
-async function refreshMedsTab() { await renderMedsToday(); renderMedLogHistory(); var days = parseInt(document.getElementById("past-days-select").value) || 7; await fetchAllMedLogs(days); renderPastLogs(); }
-async function renderMedsTab() { await renderMedsToday(); renderMedLogHistory(); }
-
-async function renderMedsToday() {
-  var meds = await getMeds(); var el = document.getElementById("meds-today");
-  var dateEl = document.getElementById("meds-date");
-  if (dateEl) dateEl.textContent = new Date().toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric" });
-  var activeMeds = meds.filter(isMedActiveToday);
-  if (!activeMeds.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">&#129412;</div><div>No meds for today!</div><div style="font-size:12px;margin-top:4px">Add meds in the Admin tab</div></div>'; setSyncStatus("Synced", "#9B59B6"); return; }
-
-  var scheduled = activeMeds.filter(function(m) { return m.med_type !== "as_needed" && m.med_type !== "prn"; });
-  var asNeeded = activeMeds.filter(function(m) { return m.med_type === "as_needed" || m.med_type === "prn"; });
-
-  var allDone = scheduled.every(function(med) { return getTodayLogCount(med.id) >= (med.dose_times || []).length; });
-  var html = "";
-
-  if (allDone && scheduled.length > 0) {
-    html += '<div class="all-done"><div style="font-size:56px;margin-bottom:8px">&#129412;</div><div style="font-size:20px;font-weight:700;color:#7D3C98">All scheduled meds taken!</div><div style="font-size:13px;color:#A88BC3;margin-top:4px">Great job! &#127775;</div></div><hr style="border:none;border-top:1.5px solid #E8D5F5;margin:16px 0">';
+    var params = new URLSearchParams({ to: s.to, message: message });
+    var url = s.url + "?" + params.toString();
+    await fetch(url, { method: "GET", mode: "no-cors" });
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, error: e.message };
   }
+}
 
-  scheduled.forEach(function(med) {
-    var logsToday = getTodayLogCount(med.id); var needed = (med.dose_times || []).length; var done = logsToday >= needed;
-    var times = (med.dose_times || []).map(function(t) { return timeIcon(t) + " " + fmtTimeShort(t); }).join(" &middot; ");
-    var hasPuffs = med.default_puffs != null;
-
-    if (done) {
-      html += '<div class="med-card med-card-done"><div class="med-icon">&#10024;</div><div class="med-info"><div class="med-name">' + med.name + '</div><div class="med-sub">Done! ' + times + '</div></div><div class="med-done-badge">&#10003; Done</div></div>';
-    } else {
-      var remaining = needed - logsToday;
-      var endInfo = (med.med_type === "short_course" || med.med_type === "seasonal") && med.end_date ? '<div class="med-sub">Ends ' + fmtDate(med.end_date + "T12:00:00") + '</div>' : '';
-      var onclick = hasPuffs ? "openPuffModal('" + med.id + "','" + med.name.replace(/'/g,"").replace(/"/g,"") + "'," + med.default_puffs + ")" : "logMedNow('" + med.id + "','" + med.name.replace(/'/g,"").replace(/"/g,"") + "')";
-      html += '<div class="med-card med-card-pending"><div class="med-icon">&#128138;</div><div class="med-info"><div class="med-name">' + med.name + '</div><div class="med-sub">' + times + (remaining < needed ? " &middot; " + remaining + " left" : "") + '</div>' + endInfo + '</div><button class="med-log-btn" onclick="' + onclick + '">&#10003; Log</button></div>';
-    }
-  });
-
-  if (asNeeded.length > 0) {
-    html += '<div style="font-size:11px;font-weight:700;color:#A88BC3;text-transform:uppercase;letter-spacing:0.6px;margin:14px 0 8px;padding-left:4px">As Needed / PRN</div>';
-    asNeeded.forEach(function(med) {
-      var logsToday = getTodayLogCount(med.id);
-      var hasPuffs = med.default_puffs != null;
-      var onclick = hasPuffs ? "openPuffModal('" + med.id + "','" + med.name.replace(/'/g,"").replace(/"/g,"") + "'," + med.default_puffs + ")" : "logMedNow('" + med.id + "','" + med.name.replace(/'/g,"").replace(/"/g,"") + "')";
-      html += '<div class="med-card med-card-pending"><div class="med-icon">' + medTypeIcon(med.med_type) + '</div><div class="med-info"><div class="med-name">' + med.name + '</div><div class="med-sub">' + (logsToday > 0 ? "Logged " + logsToday + "x today" : "Not logged yet") + '</div></div><button class="med-log-btn" onclick="' + onclick + '">&#10003; Log</button></div>';
-    });
+async function sendTestReminder() {
+  var el = document.getElementById("twilio-status");
+  el.textContent = "Sending..."; el.style.color = "#8A8778";
+  var result = await sendReminderSMS("💊 Med Tracker test — reminders are working! I LOVE YOU!");
+  if (result.ok) {
+    el.textContent = "✅ Test text sent!";
+    el.style.color = "#3A7D5C";
+  } else {
+    el.textContent = "❌ Failed: " + (result.error || "unknown error");
+    el.style.color = "#D4573B";
   }
-  el.innerHTML = html;
-  setSyncStatus("Synced &#129412;", "#9B59B6");
 }
 
-async function logMedNow(medId, medName) {
-  var ok = await insertMedLog(medId, medName); if (ok) { triggerCelebration(); showBanner("&#10024; " + medName + " logged! &#129412;"); await refreshMedsTab(); }
-}
-
-function renderMedLogHistory() {
-  var list = document.getElementById("med-log-list"); var count = document.getElementById("med-log-count");
-  count.textContent = medLogs.length + " today";
-  if (!medLogs.length) { list.innerHTML = '<div class="empty" style="padding:16px 0"><div>No meds logged today yet</div></div>'; return; }
-  list.innerHTML = medLogs.slice(0,30).map(function(l) {
-    var puffInfo = l.puffs ? ' <span style="color:#9B59B6;font-weight:700">(' + l.puffs + ' puffs)</span>' : '';
-    return '<div class="log-entry"><div><div style="font-size:14px;font-weight:600;color:#7D3C98">&#128138; ' + (l.med_name || "Unknown") + puffInfo + '</div><div style="font-size:11px;color:#A88BC3;margin-top:2px">' + (l.taken_at ? fmtTime(l.taken_at) : "") + '</div></div><div style="display:flex;gap:4px">' + (l.id ? '<button class="note-del" onclick="openEditLogModal(' + l.id + ')" style="color:#9B59B6">&#9998;</button><button class="note-del" onclick="deleteMedLog(' + l.id + ')">&#215;</button>' : '') + '</div></div>';
-  }).join("");
-}
-
-async function renderPastLogs() {
-  var days = parseInt(document.getElementById("past-days-select").value) || 7;
-  await fetchAllMedLogs(days);
-  var list = document.getElementById("past-log-list"); var today = todayStr();
-  var byDate = {};
-  allMedLogs.forEach(function(l) { var d = l.taken_at ? l.taken_at.slice(0,10) : ""; if (d === today || !d) return; if (!byDate[d]) byDate[d] = []; byDate[d].push(l); });
-  var dates = Object.keys(byDate).sort().reverse();
-  if (!dates.length) { list.innerHTML = '<div class="empty" style="padding:16px 0"><div>No past logs yet</div></div>'; return; }
-  list.innerHTML = dates.map(function(d) {
-    return '<div><div class="past-med-date">' + fmtShort(d + "T12:00:00") + '</div>' + byDate[d].map(function(l) {
-      var puffInfo = l.puffs ? ' (' + l.puffs + ' puffs)' : '';
-      return '<div class="log-entry"><div><div style="font-size:13px;font-weight:600;color:#7D3C98">&#128138; ' + (l.med_name || "Unknown") + puffInfo + '</div><div style="font-size:11px;color:#A88BC3">' + fmtTime(l.taken_at) + '</div></div>' + (l.id ? '<button class="note-del" onclick="openEditLogModal(' + l.id + ')" style="color:#9B59B6">&#9998;</button>' : '') + '</div>';
-    }).join("") + '</div>';
-  }).join("");
-}
-
-// ═══ VITALS ═══
-var vitals = [];
-
-async function loadVitals() {
-  try { var r = await fetch(SUPA_URL + "/rest/v1/bp_readings?person=eq." + PERSON + "&order=reading_datetime.desc&limit=50", { headers: SUPA_HEADERS }); if (!r.ok) throw new Error("HTTP " + r.status); vitals = await r.json(); } catch(e) { vitals = []; }
-  renderVitalsList();
-}
-
-function clearVitalForm() {
-  document.getElementById("vital-temp").value = "";
-  document.getElementById("vital-ox").value = "";
-  document.getElementById("vital-pulse").value = "";
-  document.getElementById("vital-datetime").value = localNow();
-  document.getElementById("vital-symptoms").value = "";
-  document.getElementById("vital-notes").value = "";
-  document.getElementById("vital-scan-msg").classList.add("hidden");
-  document.getElementById("vital-progress").classList.add("hidden");
-}
-
-async function saveVital() {
-  var temp = document.getElementById("vital-temp").value;
-  var ox = document.getElementById("vital-ox").value;
-  if (!temp && !ox) { alert("Enter at least a temp or pulse ox"); return; }
-  var btn = document.getElementById("vital-save-btn"); btn.disabled = true; btn.textContent = "Saving...";
-  var entry = {
-    person: PERSON,
-    temp: temp ? parseFloat(temp) : null,
-    pulse_ox: ox ? parseInt(ox) : null,
-    pulse: document.getElementById("vital-pulse").value ? parseInt(document.getElementById("vital-pulse").value) : null,
-    reading_datetime: new Date(document.getElementById("vital-datetime").value).toISOString(),
-    symptoms: document.getElementById("vital-symptoms").value || null,
-    notes: document.getElementById("vital-notes").value || null
-  };
-  try {
-    var r = await fetch(SUPA_URL + "/rest/v1/bp_readings", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry) });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    clearVitalForm(); await loadVitals(); showBanner("&#127777; Vital saved!");
-  } catch(e) { alert("Could not save: " + e.message); }
-  btn.disabled = false; btn.textContent = "Save Reading";
-}
-
-async function deleteVital(id) {
-  try { await fetch(SUPA_URL + "/rest/v1/bp_readings?id=eq." + id, { method: "DELETE", headers: SUPA_HEADERS }); vitals = vitals.filter(function(v) { return v.id !== id; }); renderVitalsList(); } catch(e) {}
-}
-
-function tempColor(t) {
-  if (!t) return "#A88BC3";
-  if (t < 97.5) return "#4D96FF"; // low
-  if (t <= 99.5) return "#9B59B6"; // normal
-  if (t <= 100.3) return "#FFA94D"; // low fever
-  return "#E74C3C"; // fever
-}
-function oxColor(o) {
-  if (!o) return "#A88BC3";
-  if (o >= 95) return "#9B59B6";
-  if (o >= 90) return "#FFA94D";
-  return "#E74C3C";
-}
-
-function renderVitalsList() {
-  var count = document.getElementById("vital-count"); count.textContent = vitals.length + " readings";
-  var list = document.getElementById("vital-list");
-  if (!vitals.length) { list.innerHTML = '<div class="empty"><div class="empty-icon">&#127777;</div><div>No readings yet</div></div>'; return; }
-  list.innerHTML = vitals.map(function(v) {
-    var html = '<div class="vital-reading"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:12px;color:#A88BC3;font-weight:600">' + fmtDate(v.reading_datetime) + ' &middot; ' + fmtTime(v.reading_datetime) + '</span><button class="note-del" onclick="deleteVital(' + v.id + ')">&#215;</button></div><div class="vital-vals">';
-    if (v.temp) html += '<div><span class="vital-num" style="color:' + tempColor(v.temp) + '">' + v.temp + '&deg;</span><span class="vital-unit">F</span></div>';
-    if (v.pulse_ox) html += '<div><span class="vital-num" style="color:' + oxColor(v.pulse_ox) + '">' + v.pulse_ox + '</span><span class="vital-unit">% SpO2</span></div>';
-    if (v.pulse) html += '<div><span class="vital-num" style="color:#E74C9B">' + v.pulse + '</span><span class="vital-unit">bpm</span></div>';
-    html += '</div>';
-    if (v.symptoms) html += '<div style="margin-top:6px;font-size:12px;color:#B85C3A;font-weight:600">&#9888;&#65039; ' + v.symptoms.replace(/</g,"&lt;") + '</div>';
-    if (v.notes) html += '<div style="margin-top:4px;font-size:13px;color:#5B4A6E;border-top:1px solid #E8D5F5;padding-top:6px">' + v.notes.replace(/</g,"&lt;") + '</div>';
-    html += '</div>';
-    return html;
-  }).join("");
-}
-
-// ── Vital Photo Scan ──
-function compressImage(dataUrl, maxW) {
-  maxW = maxW || 800;
-  return new Promise(function(res) {
-    var img = new Image(); img.onload = function() {
-      var c = document.createElement("canvas"); var w = img.width, h = img.height;
-      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-      c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
-      res(c.toDataURL("image/jpeg", 0.6).split(",")[1]);
-    }; img.onerror = function() { res(null); }; img.src = dataUrl;
-  });
-}
-
-function showVitalScanMsg(t, type) { var el = document.getElementById("vital-scan-msg"); el.textContent = t; el.className = "scan-msg " + type; el.classList.remove("hidden"); }
-function showVitalProgress(pct) { var bar = document.getElementById("vital-progress"); bar.classList.remove("hidden"); document.getElementById("vital-progress-fill").style.width = pct + "%"; }
-
-async function handleVitalPhoto(input) {
-  var file = input.files && input.files[0]; if (!file) return; input.value = "";
-  var apiKey = getApiKey();
-  if (!apiKey || !apiKey.startsWith("sk-")) { showVitalScanMsg("Set your API key first (Admin tab)", "error"); return; }
-  showVitalScanMsg("Compressing photo...", "scanning"); showVitalProgress(20);
-  try {
-    var dataUrl = await new Promise(function(res, rej) { var r = new FileReader(); r.onload = function() { res(r.result); }; r.onerror = function() { rej(new Error("Could not read")); }; r.readAsDataURL(file); });
-    showVitalScanMsg("Reading vitals...", "scanning"); showVitalProgress(50);
-    var base64 = await compressImage(dataUrl);
-    if (!base64) { showVitalScanMsg("Could not process image", "error"); return; }
-    var r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514", max_tokens: 300,
-        messages: [{ role: "user", content: [
-          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
-          { type: "text", text: "This is a photo of a medical device showing vital signs. It could be a thermometer, pulse oximeter, or both. Read ALL numbers on the screen. Return ONLY a JSON object: {\"temp\":NUMBER_OR_NULL,\"pulse_ox\":NUMBER_OR_NULL,\"pulse\":NUMBER_OR_NULL}. Temp should be in Fahrenheit (e.g. 98.6). Pulse ox is the SpO2 percentage (e.g. 98). Pulse is heart rate BPM. Use null for anything not visible. Return ONLY the JSON." }
-        ]}]
-      })
-    });
-    showVitalProgress(80);
-    if (!r.ok) { var err = await r.text(); showVitalScanMsg("API error " + r.status + ": " + err.slice(0,120), "error"); document.getElementById("vital-progress").classList.add("hidden"); return; }
-    var data = await r.json(); showVitalProgress(100);
-    var txt = data.content.map(function(b) { return b.text || ""; }).join("");
-    var result = JSON.parse(txt.replace(/```json|```/g, "").trim());
-    if (result.temp != null) document.getElementById("vital-temp").value = result.temp;
-    if (result.pulse_ox != null) document.getElementById("vital-ox").value = result.pulse_ox;
-    if (result.pulse != null) document.getElementById("vital-pulse").value = result.pulse;
-    showVitalScanMsg("Got it! Check the numbers and save.", "success");
-  } catch(err) { showVitalScanMsg("Error: " + (err.message || err), "error"); }
-  document.getElementById("vital-progress").classList.add("hidden");
-}
-
-// ═══ NOTES ═══
-var notes = [];
-async function loadNotes() {
-  try { var r = await fetch(SUPA_URL + "/rest/v1/med_notes?person=eq." + PERSON + "&order=note_date.desc,created_at.desc&limit=100", { headers: SUPA_HEADERS }); if (!r.ok) throw new Error("HTTP " + r.status); notes = await r.json(); } catch(e) { notes = []; }
-  renderNotesList();
-}
-function clearNoteForm() { document.getElementById("note-type").value = "doctor"; document.getElementById("note-date").value = todayStr(); document.getElementById("note-title").value = ""; document.getElementById("note-content").value = ""; }
-async function saveNote() {
-  var title = (document.getElementById("note-title").value || "").trim(); var content = (document.getElementById("note-content").value || "").trim();
-  if (!title && !content) { alert("Add a title or details"); return; }
-  var entry = { person: PERSON, note_type: document.getElementById("note-type").value, title: title || null, content: content || null, note_date: document.getElementById("note-date").value || todayStr() };
-  try { var r = await fetch(SUPA_URL + "/rest/v1/med_notes", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry) }); if (!r.ok) throw new Error("HTTP " + r.status); clearNoteForm(); showBanner("&#128221; Note saved!"); await loadNotes(); } catch(e) { alert("Could not save: " + e.message); }
-}
-async function deleteNote(id) { if (!confirm("Delete this note?")) return; try { await fetch(SUPA_URL + "/rest/v1/med_notes?id=eq." + id, { method: "DELETE", headers: SUPA_HEADERS }); notes = notes.filter(function(n) { return n.id !== id; }); renderNotesList(); } catch(e) {} }
-function noteTypeBadge(t) { if (t === "doctor") return '<span class="note-type-badge badge-doctor">&#129657; Doctor Visit</span>'; if (t === "symptom") return '<span class="note-type-badge badge-symptom">&#9888;&#65039; Symptom</span>'; return '<span class="note-type-badge badge-general">&#128221; Note</span>'; }
-function renderNotesList() {
-  document.getElementById("notes-count").textContent = notes.length + " notes";
-  var list = document.getElementById("notes-list");
-  if (!notes.length) { list.innerHTML = '<div class="empty"><div class="empty-icon">&#128221;</div><div>No notes yet</div></div>'; return; }
-  list.innerHTML = notes.map(function(n) {
-    return '<div class="note-card"><div style="display:flex;justify-content:space-between;align-items:start"><div>' + noteTypeBadge(n.note_type) + '</div><button class="note-del" onclick="deleteNote(' + n.id + ')">&#215;</button></div>' + (n.title ? '<div class="note-title">' + n.title.replace(/</g,"&lt;") + '</div>' : '') + (n.content ? '<div class="note-content">' + n.content.replace(/</g,"&lt;").replace(/\n/g,"<br>") + '</div>' : '') + '<div class="note-date">' + fmtDate(n.note_date + "T12:00:00") + '</div></div>';
-  }).join("");
-}
-
-// ═══ ADMIN ═══
-function toggleMedTypeFields() {
-  var t = document.getElementById("med-type").value;
-  var usesSchedule = (t === "maintenance" || t === "short_course" || t === "seasonal");
-  var usesTimePicker = (t === "prn");
-  document.getElementById("med-schedule-section").classList.toggle("hidden", !usesSchedule);
-  document.getElementById("med-times-section").classList.toggle("hidden", !usesTimePicker);
-  document.getElementById("med-date-section").classList.toggle("hidden", t === "as_needed" || t === "prn");
-  document.getElementById("med-puffs-section").classList.remove("hidden");
-}
-function addDoseTimeField(val) {
-  var div = document.createElement("div"); div.style.cssText = "display:flex;gap:8px;margin-bottom:6px;align-items:center";
-  div.innerHTML = '<input type="time" value="' + (val || "") + '" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid #E0CCF0;font-size:16px;font-family:\'Fredoka\',sans-serif;background:#FDF8FF"><button onclick="this.parentNode.remove()" style="background:none;border:none;color:#E74C9B;font-size:22px;cursor:pointer;padding:0 6px;line-height:1">&#215;</button>';
-  document.getElementById("med-times-list").appendChild(div);
-}
-function clearMedForm() {
-  document.getElementById("med-name").value = ""; document.getElementById("med-type").value = "maintenance";
-  document.getElementById("med-times-list").innerHTML = ""; document.getElementById("med-edit-id").value = "";
-  document.getElementById("med-start-date").value = ""; document.getElementById("med-end-date").value = "";
-  document.getElementById("med-default-puffs").value = "";
-  document.getElementById("med-morning").checked = false;
-  document.getElementById("med-night").checked = false;
-  toggleMedTypeFields();
-}
-function editMed(id) {
-  var med = (medsCache || []).find(function(m) { return m.id === id; }); if (!med) return;
-  document.getElementById("med-name").value = med.name;
-  document.getElementById("med-type").value = med.med_type || "maintenance";
-  document.getElementById("med-times-list").innerHTML = "";
-  // Populate morning/night checkboxes from dose_times
-  var times = med.dose_times || [];
-  document.getElementById("med-morning").checked = times.indexOf("morning") >= 0;
-  document.getElementById("med-night").checked = times.indexOf("night") >= 0;
-  // Populate time pickers for PRN
-  times.filter(function(t) { return t !== "morning" && t !== "night"; }).forEach(function(t) { addDoseTimeField(t); });
-  if (med.start_date) document.getElementById("med-start-date").value = med.start_date;
-  if (med.end_date) document.getElementById("med-end-date").value = med.end_date;
-  if (med.default_puffs) document.getElementById("med-default-puffs").value = med.default_puffs;
-  document.getElementById("med-edit-id").value = id;
-  toggleMedTypeFields(); showTab("admin");
-  document.getElementById("med-name").scrollIntoView({ behavior: "smooth" });
-}
-async function saveMed() {
-  var name = (document.getElementById("med-name").value || "").trim();
-  if (!name) { alert("Enter a med name"); return; }
-  var medType = document.getElementById("med-type").value; var times = [];
-  var usesSchedule = (medType === "maintenance" || medType === "short_course" || medType === "seasonal");
-  if (usesSchedule) {
-    if (document.getElementById("med-morning").checked) times.push("morning");
-    if (document.getElementById("med-night").checked) times.push("night");
-    if (!times.length) { alert("Pick at least Morning or Night"); return; }
-  } else if (medType === "prn") {
-    document.getElementById("med-times-list").querySelectorAll("input[type=time]").forEach(function(inp) { if (inp.value) times.push(inp.value); });
-  }
-  var puffs = document.getElementById("med-default-puffs").value;
-  var medObj = { name: name, med_type: medType, dose_times: times.length ? times : null, start_date: usesSchedule ? (document.getElementById("med-start-date").value || null) : null, end_date: usesSchedule ? (document.getElementById("med-end-date").value || null) : null, default_puffs: puffs ? parseInt(puffs) : null };
-  var editId = document.getElementById("med-edit-id").value;
-  try { if (editId) { await updateMedDef(editId, medObj); } else { await insertMedDef(medObj); } medsCache = null; clearMedForm(); await renderAdminMedList(); showBanner("&#128138; Med saved!"); } catch(e) { alert("Could not save: " + e.message); }
-}
-async function deleteMedDef(id) { if (!confirm("Delete this med?")) return; try { await deleteMedDefDB(id); medsCache = null; await renderAdminMedList(); } catch(e) { alert("Could not delete: " + e.message); } }
-
-async function renderAdminMedList() {
-  var meds = await getMeds(); var list = document.getElementById("meds-admin-list");
-  if (!meds.length) { list.innerHTML = '<div class="empty" style="padding:12px 0"><div>No meds yet</div></div>'; return; }
-  list.innerHTML = meds.map(function(med) {
-    var tl = medTypeLabel(med.med_type); var times = (med.dose_times || []).map(fmtTimeShort).join(", ");
-    var extra = (med.med_type === "short_course" || med.med_type === "seasonal") && med.end_date ? " &middot; ends " + med.end_date : "";
-    var puffs = med.default_puffs ? " &middot; " + med.default_puffs + " puffs" : "";
-    return '<div style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;background:#FDF8FF;border:1.5px solid #E8D5F5;margin-bottom:8px"><div style="flex:1"><div style="font-size:15px;font-weight:700;color:#2D1B4E">' + med.name + '</div><div style="font-size:11px;color:#A88BC3;margin-top:2px">' + medTypeIcon(med.med_type) + ' ' + tl + (times ? " &middot; " + times : "") + extra + puffs + '</div></div><button onclick="editMed(' + med.id + ')" style="background:none;border:none;color:#9B59B6;font-size:16px;cursor:pointer;padding:4px">&#9998;</button><button onclick="deleteMedDef(' + med.id + ')" style="background:none;border:none;color:#E74C9B;font-size:18px;cursor:pointer;padding:4px">&#215;</button></div>';
-  }).join("");
-}
-
-// ═══ QR CODES ═══
-async function generateQRCodes() {
-  var meds = await getMeds(); var list = document.getElementById("meds-qr-list"); var dcList = document.getElementById("daycare-qr-list");
-  var baseUrl = window.location.href.split("?")[0];
-  if (!meds.length) { list.innerHTML = '<div class="empty" style="padding:12px 0"><div>Add meds first</div></div>'; dcList.innerHTML = ''; return; }
-  // Home QR codes — every med
-  list.innerHTML = meds.map(function(med) {
-    var url = baseUrl + "?log=" + med.id;
-    var qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=" + encodeURIComponent(url);
-    return '<div style="padding:12px;border-radius:12px;background:#FDF8FF;border:1px solid #E8D5F5;margin-bottom:10px">' +
-      '<div style="font-size:15px;font-weight:700;color:#7D3C98;margin-bottom:8px">&#128138; ' + med.name + '</div>' +
-      '<div style="text-align:center;margin-bottom:8px"><img src="' + qrSrc + '" width="140" height="140" style="border:2px solid #E8D5F5;border-radius:10px;padding:6px"></div>' +
-      '<div style="font-size:10px;color:#C0A3D6;word-break:break-all;margin-bottom:8px;text-align:center">' + url + '</div>' +
-      '<div style="display:flex;gap:6px;justify-content:center">' +
-        '<button onclick="copyUrl(\'' + encodeURIComponent(url) + '\')" style="padding:6px 14px;border-radius:8px;border:1.5px solid #9B59B6;color:#9B59B6;background:none;font-size:12px;font-weight:600;cursor:pointer;font-family:\'Fredoka\',sans-serif">&#128203; Copy</button>' +
-        '<button onclick="printQR(\'' + med.id + '\',\'' + med.name.replace(/'/g,"").replace(/"/g,"") + '\',false)" style="padding:6px 14px;border-radius:8px;border:1.5px solid #9B59B6;color:#9B59B6;background:none;font-size:12px;font-weight:600;cursor:pointer;font-family:\'Fredoka\',sans-serif">&#128424; Print</button>' +
-      '</div></div>';
-  }).join("");
-  // Daycare QR codes — every med
-  dcList.innerHTML = meds.map(function(med) {
-    var url = baseUrl + "?daycare=" + med.id;
-    var qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=" + encodeURIComponent(url);
-    return '<div style="padding:12px;border-radius:12px;background:#FDF8FF;border:1px solid #E8D5F5;margin-bottom:10px">' +
-      '<div style="font-size:15px;font-weight:700;color:#7D3C98;margin-bottom:8px">&#127979; ' + med.name + '</div>' +
-      '<div style="text-align:center;margin-bottom:8px"><img src="' + qrSrc + '" width="140" height="140" style="border:2px solid #E8D5F5;border-radius:10px;padding:6px"></div>' +
-      '<div style="font-size:10px;color:#C0A3D6;word-break:break-all;margin-bottom:8px;text-align:center">' + url + '</div>' +
-      '<div style="display:flex;gap:6px;justify-content:center">' +
-        '<button onclick="copyUrl(\'' + encodeURIComponent(url) + '\')" style="padding:6px 14px;border-radius:8px;border:1.5px solid #9B59B6;color:#9B59B6;background:none;font-size:12px;font-weight:600;cursor:pointer;font-family:\'Fredoka\',sans-serif">&#128203; Copy</button>' +
-        '<button onclick="printQR(\'' + med.id + '\',\'' + med.name.replace(/'/g,"").replace(/"/g,"") + '\',true)" style="padding:6px 14px;border-radius:8px;border:1.5px solid #9B59B6;color:#9B59B6;background:none;font-size:12px;font-weight:600;cursor:pointer;font-family:\'Fredoka\',sans-serif">&#128424; Print</button>' +
-      '</div></div>';
-  }).join("");
-}
-function copyUrl(enc) { navigator.clipboard.writeText(decodeURIComponent(enc)).then(function() { showBanner("&#128203; Copied!"); }).catch(function() { prompt("Copy:", decodeURIComponent(enc)); }); }
-function printQR(medId, medName, isDaycare) {
-  var baseUrl = window.location.href.split("?")[0];
-  var url = isDaycare ? baseUrl + "?daycare=" + medId : baseUrl + "?log=" + medId;
-  var qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(url);
-  var label = isDaycare ? "Daycare: " + medName : medName;
-  var w = window.open("", "_blank");
-  w.document.write('<!DOCTYPE html><html><head><title>' + label + ' QR</title><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet"><style>body{font-family:"Fredoka",sans-serif;text-align:center;padding:40px;background:#FDF8FF}h2{color:#7D3C98;font-size:22px;margin-bottom:6px}p{color:#A88BC3;font-size:14px;margin-bottom:20px}img{border:2px solid #E8D5F5;border-radius:12px;padding:10px}.url{font-size:10px;color:#C0A3D6;margin-top:8px;word-break:break-all;max-width:260px;margin:8px auto}@media print{button{display:none}}</style></head><body><h2>&#129412; ' + label + '</h2><p>' + (isDaycare ? "Scan to log (shows Thank You)" : "Scan to log dose") + '</p><img src="' + qrSrc + '" width="220" height="220"><div class="url">' + url + '</div><br><button onclick="window.print()" style="margin-top:16px;padding:10px 24px;border-radius:10px;border:none;background:linear-gradient(135deg,#9B59B6,#8E44AD);color:#fff;font-size:15px;cursor:pointer;font-family:Fredoka,sans-serif;font-weight:600">&#128424; Print</button></body></html>');
-  w.document.close();
-}
-
-// ═══ QR SCAN HANDLERS ═══
-async function checkQRLog() {
-  var params = new URLSearchParams(window.location.search);
-  var daycareId = params.get("daycare");
-  if (daycareId) {
-    window.history.replaceState({}, "", window.location.pathname);
-    var meds = await getMeds(); var med = meds.find(function(m) { return String(m.id) === String(daycareId); });
-    if (med) {
-      await fetchMedLogs();
-      showDaycareForm(med);
-    } else {
-      showThankYou();
+async function checkAndSendReminders(auto) {
+  var s = getTwilioSettings();
+  if (!s.url || !s.to) {
+    if (!auto) {
+      var el = document.getElementById("twilio-status");
+      el.textContent = "Add Twilio settings above first!";
+      el.style.color = "#D4873C";
     }
     return;
   }
-  var medId = params.get("log"); if (!medId) return;
-  window.history.replaceState({}, "", window.location.pathname);
-  var meds2 = await getMeds(); var med2 = meds2.find(function(m) { return String(m.id) === String(medId); });
-  if (!med2) { alert("Med not found!"); return; }
-  await fetchMedLogs();
-  if (med2.default_puffs) { openPuffModal(med2.id, med2.name, med2.default_puffs); }
-  else { var ok = await insertMedLog(med2.id, med2.name); if (ok) { showTab("meds"); triggerCelebration(); await refreshMedsTab(); showBanner("&#10024; " + med2.name + " logged! &#129412;"); } }
-}
-function showDaycareForm(med) {
-  var hasPuffs = med.default_puffs != null;
-  var page = document.createElement("div"); page.className = "thankyou-page";
-  page.style.justifyContent = "flex-start"; page.style.paddingTop = "60px";
-  page.innerHTML = '<div style="font-size:60px;animation:float 2s ease-in-out infinite;margin-bottom:16px">&#129412;</div>' +
-    '<div style="font-size:24px;font-weight:700;background:linear-gradient(135deg,#9B59B6,#8E44AD);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px">Log Med</div>' +
-    '<div style="font-size:18px;font-weight:600;color:#7D3C98;margin-bottom:24px">&#128138; ' + med.name + '</div>' +
-    '<div style="width:100%;max-width:320px;text-align:left">' +
-      (hasPuffs ? '<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#A88BC3;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Number of Puffs</div><div style="display:flex;align-items:center;justify-content:center;gap:14px"><button onclick="var e=document.getElementById(\'dc-puffs\');var v=parseInt(e.value)-1;if(v>=1)e.value=v" style="width:44px;height:44px;border-radius:50%;border:2px solid #9B59B6;background:none;color:#9B59B6;font-size:22px;font-weight:700;cursor:pointer;font-family:Fredoka">−</button><input type="number" id="dc-puffs" value="' + (med.default_puffs || 2) + '" min="1" max="20" style="width:70px;text-align:center;font-size:28px;font-weight:700;border-radius:12px;padding:10px;border:1.5px solid #E0CCF0;font-family:Fredoka;background:#FDF8FF;color:#2D1B4E"><button onclick="var e=document.getElementById(\'dc-puffs\');var v=parseInt(e.value)+1;if(v<=20)e.value=v" style="width:44px;height:44px;border-radius:50%;border:2px solid #9B59B6;background:none;color:#9B59B6;font-size:22px;font-weight:700;cursor:pointer;font-family:Fredoka">+</button></div></div>' : '') +
-      '<div style="margin-bottom:20px"><div style="font-size:11px;font-weight:700;color:#A88BC3;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Notes (optional)</div><textarea id="dc-notes" rows="2" placeholder="e.g. given with lunch, seemed congested..." style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #E0CCF0;font-size:14px;font-family:Fredoka;color:#2D1B4E;background:#FDF8FF;resize:vertical;min-height:56px"></textarea></div>' +
-      '<button id="dc-submit-btn" onclick="submitDaycareLog(\'' + med.id + '\',\'' + med.name.replace(/'/g,"").replace(/"/g,"") + '\',' + (hasPuffs ? 'true' : 'false') + ')" style="width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#9B59B6,#8E44AD);color:#FFF;font-size:16px;font-weight:600;cursor:pointer;font-family:Fredoka;box-shadow:0 3px 12px rgba(142,68,173,0.25)">&#10003; Log Med</button>' +
-    '</div>';
-  document.body.appendChild(page);
-}
 
-async function submitDaycareLog(medId, medName, hasPuffs) {
-  var btn = document.getElementById("dc-submit-btn"); btn.disabled = true; btn.textContent = "Logging...";
-  var puffs = hasPuffs ? parseInt(document.getElementById("dc-puffs").value) : null;
-  var notes = (document.getElementById("dc-notes").value || "").trim();
-  
-  // Insert the med log
-  var entry = { med_id: String(medId), med_name: medName, taken_at: new Date().toISOString(), person: PERSON };
-  if (puffs) entry.puffs = puffs;
-  try {
-    await fetch(SUPA_URL + "/rest/v1/med_logs", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry) });
-  } catch(e) {}
+  // Auto mode: only fire at scheduled times (within 5-min window)
+  var slot = getActiveScheduleSlot();
+  if (auto && !slot) return;
 
-  // If notes were entered, save as a med_note
-  if (notes) {
-    var noteEntry = { person: PERSON, note_type: "general", title: "Daycare: " + medName, content: notes, note_date: todayStr() };
-    try { await fetch(SUPA_URL + "/rest/v1/med_notes", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(noteEntry) }); } catch(e) {}
+  // If auto, check we haven't already sent for this slot
+  if (auto && slot) {
+    var slotKey = "sched_sent_" + slot;
+    try { if (sessionStorage.getItem(slotKey)) return; } catch(e) {}
   }
 
-  // Show thank you with details
-  showThankYouWithDetails(medName, puffs, notes);
+  // Fetch fresh logs so we have up-to-date status
+  await fetchMedLogs();
+  var meds = await getMeds();
+
+  // Find any meds not yet fully logged today
+  var outstanding = meds.filter(function(med) {
+    return getTodayLogCount(med.id) < (med.dose_times || []).length;
+  });
+
+  var sent = 0;
+  if (outstanding.length > 0) {
+    var names = outstanding.map(function(m) { return m.name; }).join(", ");
+    var msg = "💊 Reminder: " + names + (outstanding.length === 1 ? " hasn't" : " haven't") + " been logged yet today. Time to take " + (outstanding.length === 1 ? "it" : "them") + "!";
+    var result = await sendReminderSMS(msg);
+    if (result.ok) {
+      sent = outstanding.length;
+      if (auto && slot) { try { sessionStorage.setItem("sched_sent_" + slot, "1"); } catch(e) {} }
+    }
+  } else if (auto && slot) {
+    // Mark slot done even if no meds outstanding (all taken, no text needed)
+    try { sessionStorage.setItem("sched_sent_" + slot, "1"); } catch(e) {}
+  }
+
+  if (!auto) {
+    var el = document.getElementById("twilio-status");
+    if (outstanding.length === 0) {
+      el.textContent = "✅ All meds logged — no reminder needed!";
+      el.style.color = "#3A7D5C";
+    } else if (sent > 0) {
+      el.textContent = "✅ Reminder sent for: " + outstanding.map(function(m) { return m.name; }).join(", ");
+      el.style.color = "#D4873C";
+    } else {
+      el.textContent = "❌ Failed: " + (result.error || "unknown error");
+      el.style.color = "#D4573B";
+    }
+  }
 }
 
-function showThankYouWithDetails(medName, puffs, notes) {
-  // Remove the form
-  var existing = document.querySelector(".thankyou-page");
-  if (existing) existing.remove();
+// ═══ TODAY TAB ═══
+var fiveDayLogs = [];
 
-  var page = document.createElement("div"); page.className = "thankyou-page";
-  var details = '<div style="margin-top:20px;background:rgba(255,255,255,0.7);border-radius:14px;padding:16px 20px;border:1.5px solid #E8D5F5;text-align:left;width:100%;max-width:300px">' +
-    '<div style="font-size:15px;font-weight:700;color:#7D3C98;margin-bottom:6px">&#128138; ' + medName + '</div>' +
-    (puffs ? '<div style="font-size:13px;color:#5B4A6E;margin-bottom:4px">Puffs: <strong>' + puffs + '</strong></div>' : '') +
-    (notes ? '<div style="font-size:13px;color:#5B4A6E">Notes: ' + notes.replace(/</g,"&lt;") + '</div>' : '') +
-    '<div style="font-size:11px;color:#A88BC3;margin-top:6px">' + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) + '</div>' +
+async function loadTodayTab() {
+  var d = new Date(); d.setDate(d.getDate() - 4);
+  var since = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/med_logs?person=eq.martin&taken_at=gte." + since + "T00:00:00&order=taken_at.desc&limit=200", { headers: SUPA_HEADERS });
+    if (res.ok) fiveDayLogs = await res.json();
+  } catch(e) { fiveDayLogs = []; }
+  renderTodayTab();
+}
+
+function getDayLogs(dateStr) {
+  return fiveDayLogs.filter(function(l) { return l.taken_at && l.taken_at.slice(0,10) === dateStr; });
+}
+
+function isMedLoggedToday(medId) {
+  var today = todayStr();
+  return fiveDayLogs.some(function(l) { return String(l.med_id) === String(medId) && l.taken_at && l.taken_at.slice(0,10) === today; });
+}
+
+async function toggleMedToday(medId, medName) {
+  var today = todayStr();
+  var existing = fiveDayLogs.filter(function(l) { return String(l.med_id) === String(medId) && l.taken_at && l.taken_at.slice(0,10) === today; });
+
+  if (existing.length > 0) {
+    // Unlog — delete today's entries for this med
+    for (var i = 0; i < existing.length; i++) {
+      if (existing[i].id) {
+        try { await fetch(SUPA_URL + "/rest/v1/med_logs?id=eq." + existing[i].id, { method: "DELETE", headers: SUPA_HEADERS }); } catch(e) {}
+      }
+    }
+  } else {
+    // Log it
+    var entry = { med_id: String(medId), med_name: medName, taken_at: new Date().toISOString(), person: "martin" };
+    try { await fetch(SUPA_URL + "/rest/v1/med_logs", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry) }); } catch(e) {}
+  }
+  await loadTodayTab();
+}
+
+async function logAllMedsToday() {
+  var btn = document.getElementById("took-meds-btn");
+  btn.disabled = true; btn.textContent = "Logging...";
+  var meds = await getMeds();
+  var today = todayStr();
+  var logged = 0;
+  for (var i = 0; i < meds.length; i++) {
+    var m = meds[i];
+    if (m.med_type === "as_needed" || m.med_type === "prn") continue;
+    if (isMedLoggedToday(m.id)) continue; // skip already logged
+    var entry = { med_id: String(m.id), med_name: m.name, taken_at: new Date().toISOString(), person: "martin" };
+    try {
+      await fetch(SUPA_URL + "/rest/v1/med_logs", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry) });
+      logged++;
+    } catch(e) {}
+  }
+  btn.textContent = "✓ Took My Meds";
+  btn.disabled = false;
+  if (logged > 0) {
+    showBanner("💪 " + logged + " meds logged!");
+  }
+  await loadTodayTab();
+}
+
+async function undoTodayMeds() {
+  if (!confirm("Remove all of today's med logs?")) return;
+  var today = todayStr();
+  var todayLogs = getDayLogs(today);
+  for (var i = 0; i < todayLogs.length; i++) {
+    if (todayLogs[i].id) {
+      try { await fetch(SUPA_URL + "/rest/v1/med_logs?id=eq." + todayLogs[i].id, { method: "DELETE", headers: SUPA_HEADERS }); } catch(e) {}
+    }
+  }
+  await loadTodayTab();
+  showBanner("Undone — today's logs cleared");
+}
+
+async function toggleDayMeds(dateStr) {
+  var logs = getDayLogs(dateStr);
+  if (logs.length > 0) {
+    for (var i = 0; i < logs.length; i++) {
+      if (logs[i].id) {
+        try { await fetch(SUPA_URL + "/rest/v1/med_logs?id=eq." + logs[i].id, { method: "DELETE", headers: SUPA_HEADERS }); } catch(e) {}
+      }
+    }
+  } else {
+    var meds = await getMeds();
+    var dt = dateStr + "T12:00:00.000Z";
+    for (var i = 0; i < meds.length; i++) {
+      var m = meds[i];
+      if (m.med_type === "as_needed" || m.med_type === "prn") continue;
+      var entry = { med_id: String(m.id), med_name: m.name, taken_at: dt, person: "martin" };
+      try { await fetch(SUPA_URL + "/rest/v1/med_logs", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry) }); } catch(e) {}
+    }
+  }
+  await loadTodayTab();
+}
+
+async function renderTodayTab() {
+  var today = todayStr();
+  var todayLogs = getDayLogs(today);
+  var meds = await getMeds();
+
+  // Filter to scheduled meds only (not as_needed/prn)
+  var scheduledMeds = meds.filter(function(m) { return m.med_type !== "as_needed" && m.med_type !== "prn"; });
+  var allTaken = scheduledMeds.length > 0 && scheduledMeds.every(function(m) { return isMedLoggedToday(m.id); });
+
+  // Update status
+  var status = document.getElementById("today-meds-status");
+  if (allTaken) {
+    status.innerHTML = '<span style="color:#3A7D5C;">All done 💪</span>';
+  } else {
+    var taken = scheduledMeds.filter(function(m) { return isMedLoggedToday(m.id); }).length;
+    if (taken > 0) {
+      status.innerHTML = '<span style="color:#D4873C;">' + taken + '/' + scheduledMeds.length + '</span>';
+    } else {
+      status.innerHTML = '<span style="color:#D4573B;">0/' + scheduledMeds.length + '</span>';
+    }
+  }
+
+  // Individual med checklist
+  var medList = document.getElementById("today-med-list");
+  if (scheduledMeds.length === 0) {
+    medList.innerHTML = '<div style="text-align:center;padding:16px;color:#8A8778;">No meds set up yet — add them in the Meds tab</div>';
+  } else {
+    medList.innerHTML = scheduledMeds.map(function(m) {
+      var taken = isMedLoggedToday(m.id);
+      var bg = taken ? "#D4EDDA" : "#FFF";
+      var border = taken ? "#3A7D5C" : "#EAE7E0";
+      var icon = taken ? "✅" : "⬜";
+      var nameStyle = taken ? "text-decoration:line-through;color:#8A8778;" : "color:#1A1A1A;";
+      var safeName = m.name.replace(/'/g, "").replace(/"/g, "");
+      return '<div onclick="toggleMedToday(\'' + m.id + '\',\'' + safeName + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:' + bg + ';border:1.5px solid ' + border + ';margin-bottom:8px;cursor:pointer;transition:all 0.2s;">' +
+        '<div style="font-size:22px;line-height:1;">' + icon + '</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:15px;font-weight:600;' + nameStyle + '">' + m.name + '</div>' +
+          (m.dose_times && m.dose_times.length ? '<div style="font-size:11px;color:#8A8778;margin-top:2px;">' + m.dose_times.join(" · ") + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  // 5-day grid
+  var grid = document.getElementById("five-day-grid");
+  var days = [];
+  for (var i = 4; i >= 0; i--) {
+    var d = new Date(); d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+
+  grid.innerHTML = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center;">' +
+    days.map(function(d) {
+      var ds = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+      var logs = getDayLogs(ds);
+      var taken = logs.length > 0;
+      var isToday = ds === today;
+      var dayName = isToday ? "TODAY" : d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+      var dayNum = d.getDate();
+      var bg = taken ? "#D4EDDA" : (isToday ? "#FFF3CD" : "#FAFAF7");
+      var border = isToday ? "2px solid #3A7D5C" : "1.5px solid #EAE7E0";
+      var icon = taken ? '<div style="font-size:20px;margin:4px 0;">✅</div>' : '<div style="font-size:20px;margin:4px 0;opacity:0.3;">⬜</div>';
+      var clickable = !isToday ? ' onclick="toggleDayMeds(\'' + ds + '\')" style="cursor:pointer;"' : '';
+
+      return '<div' + clickable + '>' +
+        '<div style="background:' + bg + ';border:' + border + ';border-radius:10px;padding:10px 4px;">' +
+          '<div style="font-size:10px;font-weight:600;color:' + (isToday ? '#3A7D5C' : '#8A8778') + ';">' + dayName + '</div>' +
+          '<div style="font-size:16px;font-weight:700;color:#2D5F46;">' + dayNum + '</div>' +
+          icon +
+        '</div>' +
+      '</div>';
+    }).join("") +
   '</div>';
 
-  page.innerHTML = '<div class="butt-shake-unicorn">&#129412;</div>' +
-    '<div style="font-size:28px;font-weight:700;background:linear-gradient(135deg,#9B59B6,#8E44AD);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Thank You!</div>' +
-    '<div style="font-size:16px;color:#A88BC3;margin-top:8px;font-weight:500">Med has been logged &#128156;</div>' +
-    details +
-    '<div style="margin-top:30px;font-size:13px;color:#C0A3D6">You can close this page</div>';
-  document.body.appendChild(page);
+  // BP reminder — check last reading
+  checkBPReminder();
 }
 
-function showThankYou() {
-  var page = document.createElement("div"); page.className = "thankyou-page";
-  page.innerHTML = '<div style="font-size:80px;animation:float 2s ease-in-out infinite;margin-bottom:20px">&#129412;</div><div style="font-size:28px;font-weight:700;background:linear-gradient(135deg,#9B59B6,#8E44AD);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Thank You!</div><div style="font-size:16px;color:#A88BC3;margin-top:8px;font-weight:500">Have a great day! &#128156;</div><div style="margin-top:30px;font-size:13px;color:#C0A3D6">You can close this page</div>';
-  document.body.appendChild(page);
+async function checkBPReminder() {
+  var el = document.getElementById("bp-reminder");
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/bp_readings?person=eq.martin&order=reading_datetime.desc&limit=1", { headers: SUPA_HEADERS });
+    if (!res.ok) { el.style.display = "none"; return; }
+    var data = await res.json();
+    if (data.length === 0) {
+      el.style.display = "block";
+      el.innerHTML = "❤️ No BP readings on file — time to take one!";
+      return;
+    }
+    var lastDate = new Date(data[0].reading_datetime);
+    var now = new Date();
+    var daysSince = Math.floor((now - lastDate) / 86400000);
+    if (daysSince >= 7) {
+      el.style.display = "block";
+      el.innerHTML = "❤️ BP not taken in " + daysSince + " days — time for a reading!";
+    } else {
+      el.style.display = "none";
+    }
+  } catch(e) { el.style.display = "none"; }
 }
 
-// ═══ INIT ═══
-document.getElementById("note-date").value = todayStr();
-document.getElementById("vital-datetime").value = localNow();
+// Auto-check reminders every 5 min
+setInterval(function() { checkAndSendReminders(true); }, 5 * 60 * 1000);
+
+// Init
+document.getElementById("datetime").value = localNow();
+document.getElementById("sleep-date").value = todayStr();
 document.getElementById("api-key").value = getApiKey();
 updateApiStatus();
-setSyncStatus("Syncing...", "#A88BC3");
-(async function() { await fetchMedLogs(); await checkQRLog(); await refreshMedsTab(); setSyncStatus("Synced &#129412;", "#9B59B6"); })();
+if (!getApiKey()) document.getElementById("settings-panel").classList.remove("hidden");
+loadTodayTab();
+
+// Meds init
+(function initMeds() {
+  clearMedForm();
+  updateWindowStatus();
+  checkQRLog();
+})();
 </script>
 </body>
 </html>
