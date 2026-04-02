@@ -1808,7 +1808,6 @@ async function renderTodayTab() {
         '<div style="font-size:24px;line-height:1;">' + icon + '</div>' +
         '<div style="flex:1;">' +
           '<div style="font-size:16px;font-weight:700;color:' + textColor + ';">' + m.name + '</div>' +
-          (m.dose_times && m.dose_times.length ? '<div style="font-size:11px;color:' + subColor + ';margin-top:2px;">' + m.dose_times.join(" · ") + '</div>' : '') +
         '</div>' +
         (taken ? '<div style="font-size:12px;color:rgba(255,255,255,0.8);font-weight:600;">TAP TO UNDO</div>' : '') +
       '</button>';
