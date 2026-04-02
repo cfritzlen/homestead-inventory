@@ -16,6 +16,15 @@
     max-width: 480px; margin: 0 auto; padding: 0 16px 60px;
     min-height: 100vh; -webkit-font-smoothing: antialiased;
   }
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url('duck-gentleman.png') right center / auto 100% no-repeat, #F0EDE6;
+    opacity: 0.15;
+    z-index: -1;
+    pointer-events: none;
+  }
   .header { text-align: center; padding: 28px 0 12px; }
   .header h1 { font-size: 24px; font-weight: 700; color: #2D5F46; }
   .header p { font-size: 13px; color: #8A8778; margin-top: 4px; }
@@ -194,17 +203,15 @@
 </head>
 <body>
 
-<div class="header">
+<div class="header" style="position:relative;text-align:center;padding:20px 0 12px;">
+  <a href="index.html" style="position:absolute;left:0;top:20px;padding:6px 12px;border-radius:8px;border:1.5px solid #DDD9CF;background:rgba(255,255,255,0.7);color:#3A7D5C;font-size:12px;font-weight:600;text-decoration:none;font-family:inherit;">← Hub</a>
   <h1>💪 Martin Heath</h1>
-  <p>BP, Meds, Sleep &amp; More</p>
 </div>
-<div id="sync-status" class="sync-status" style="color:#8A8778">Loading...</div>
 
 <div class="tabs">
   <button class="tab active" onclick="showTab('today')">Today</button>
-  <button class="tab" onclick="showTab('add')">&#xFF0B; New</button>
+  <button class="tab" onclick="showTab('add')">&#xFF0B; New BP</button>
   <button class="tab" onclick="showTab('history')">History</button>
-  <button class="tab" onclick="showTab('meds')">&#128138; Meds</button>
   <button class="tab" onclick="showTab('sleep')">Sleep</button>
   <button class="tab" onclick="showTab('charts')">Charts</button>
   <button class="tab" onclick="showTab('admin')" style="color:#B07030;font-size:16px">&#9881;</button>
@@ -212,18 +219,17 @@
 
 <!-- ═══ TODAY TAB ═══ -->
 <div id="tab-today">
-  <div class="card" style="text-align:center;padding:28px 20px;">
-    <div id="today-meds-status" style="font-size:15px;font-weight:600;color:#8A8778;margin-bottom:16px;"></div>
-    <button id="took-meds-btn" onclick="logAllMedsToday()" style="width:100%;max-width:320px;padding:22px 32px;border-radius:16px;border:none;background:linear-gradient(135deg,#3A7D5C,#2D5F46);color:white;font-size:1.3rem;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 16px rgba(45,95,70,0.35);transition:all 0.2s;">
-      ✓ Took My Meds
-    </button>
-    <button id="undo-meds-btn" onclick="undoTodayMeds()" style="display:none;width:100%;max-width:320px;padding:16px 32px;border-radius:16px;border:2px solid #DDD9CF;background:white;color:#8A8778;font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer;margin-top:10px;">
-      Undo Today
-    </button>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="sec-title" style="margin-bottom:0;">Today's Meds</div>
+      <div id="today-meds-status" style="font-size:12px;font-weight:600;"></div>
+    </div>
+    <div id="today-med-list"></div>
   </div>
   <div class="card">
     <div class="sec-title">Last 5 Days</div>
     <div id="five-day-grid"></div>
+    <div id="bp-reminder" style="display:none;margin-top:14px;padding:12px 16px;border-radius:10px;background:#FFF3CD;border:1.5px solid #E0D4A0;font-size:13px;font-weight:600;color:#856404;"></div>
   </div>
 </div>
 
@@ -544,12 +550,13 @@ function localNow() {
 }
 
 function showTab(name) {
-  var tabNames = ["today","add","history","meds","sleep","charts","admin"];
+  var tabNames = ["today","add","history","sleep","charts","admin"];
   document.querySelectorAll(".tab").forEach(function(t, i) {
     t.classList.toggle("active", tabNames[i] === name);
   });
-  tabNames.forEach(function(t) {
-    document.getElementById("tab-" + t).classList.toggle("hidden", t !== name);
+  tabNames.concat(["meds"]).forEach(function(t) {
+    var el = document.getElementById("tab-" + t);
+    if (el) el.classList.toggle("hidden", t !== name);
   });
   if (name === "today") { loadTodayTab(); }
   if (name === "history") { loadReadings().then(renderHistory); }
@@ -1666,7 +1673,6 @@ async function checkAndSendReminders(auto) {
 var fiveDayLogs = [];
 
 async function loadTodayTab() {
-  // Fetch last 5 days of med logs
   var d = new Date(); d.setDate(d.getDate() - 4);
   var since = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
   try {
@@ -1680,17 +1686,41 @@ function getDayLogs(dateStr) {
   return fiveDayLogs.filter(function(l) { return l.taken_at && l.taken_at.slice(0,10) === dateStr; });
 }
 
+function isMedLoggedToday(medId) {
+  var today = todayStr();
+  return fiveDayLogs.some(function(l) { return String(l.med_id) === String(medId) && l.taken_at && l.taken_at.slice(0,10) === today; });
+}
+
+async function toggleMedToday(medId, medName) {
+  var today = todayStr();
+  var existing = fiveDayLogs.filter(function(l) { return String(l.med_id) === String(medId) && l.taken_at && l.taken_at.slice(0,10) === today; });
+
+  if (existing.length > 0) {
+    // Unlog — delete today's entries for this med
+    for (var i = 0; i < existing.length; i++) {
+      if (existing[i].id) {
+        try { await fetch(SUPA_URL + "/rest/v1/med_logs?id=eq." + existing[i].id, { method: "DELETE", headers: SUPA_HEADERS }); } catch(e) {}
+      }
+    }
+  } else {
+    // Log it
+    var entry = { med_id: String(medId), med_name: medName, taken_at: new Date().toISOString(), person: "martin" };
+    try { await fetch(SUPA_URL + "/rest/v1/med_logs", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry) }); } catch(e) {}
+  }
+  await loadTodayTab();
+}
+
 async function logAllMedsToday() {
   var btn = document.getElementById("took-meds-btn");
   btn.disabled = true; btn.textContent = "Logging...";
   var meds = await getMeds();
-  var today = new Date().toISOString();
+  var today = todayStr();
   var logged = 0;
   for (var i = 0; i < meds.length; i++) {
     var m = meds[i];
-    // Skip as_needed / prn meds
     if (m.med_type === "as_needed" || m.med_type === "prn") continue;
-    var entry = { med_id: String(m.id), med_name: m.name, taken_at: today, person: "martin" };
+    if (isMedLoggedToday(m.id)) continue; // skip already logged
+    var entry = { med_id: String(m.id), med_name: m.name, taken_at: new Date().toISOString(), person: "martin" };
     try {
       await fetch(SUPA_URL + "/rest/v1/med_logs", { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify(entry) });
       logged++;
@@ -1700,14 +1730,14 @@ async function logAllMedsToday() {
   btn.disabled = false;
   if (logged > 0) {
     showBanner("💪 " + logged + " meds logged!");
-    await loadTodayTab();
   }
+  await loadTodayTab();
 }
 
 async function undoTodayMeds() {
   if (!confirm("Remove all of today's med logs?")) return;
-  var todayStr2 = todayStr();
-  var todayLogs = getDayLogs(todayStr2);
+  var today = todayStr();
+  var todayLogs = getDayLogs(today);
   for (var i = 0; i < todayLogs.length; i++) {
     if (todayLogs[i].id) {
       try { await fetch(SUPA_URL + "/rest/v1/med_logs?id=eq." + todayLogs[i].id, { method: "DELETE", headers: SUPA_HEADERS }); } catch(e) {}
@@ -1720,14 +1750,12 @@ async function undoTodayMeds() {
 async function toggleDayMeds(dateStr) {
   var logs = getDayLogs(dateStr);
   if (logs.length > 0) {
-    // Remove all logs for that day
     for (var i = 0; i < logs.length; i++) {
       if (logs[i].id) {
         try { await fetch(SUPA_URL + "/rest/v1/med_logs?id=eq." + logs[i].id, { method: "DELETE", headers: SUPA_HEADERS }); } catch(e) {}
       }
     }
   } else {
-    // Log all meds for that day
     var meds = await getMeds();
     var dt = dateStr + "T12:00:00.000Z";
     for (var i = 0; i < meds.length; i++) {
@@ -1740,28 +1768,48 @@ async function toggleDayMeds(dateStr) {
   await loadTodayTab();
 }
 
-function renderTodayTab() {
+async function renderTodayTab() {
   var today = todayStr();
   var todayLogs = getDayLogs(today);
-  var takenToday = todayLogs.length > 0;
+  var meds = await getMeds();
 
-  // Update button state
-  var btn = document.getElementById("took-meds-btn");
-  var undoBtn = document.getElementById("undo-meds-btn");
+  // Filter to scheduled meds only (not as_needed/prn)
+  var scheduledMeds = meds.filter(function(m) { return m.med_type !== "as_needed" && m.med_type !== "prn"; });
+  var allTaken = scheduledMeds.length > 0 && scheduledMeds.every(function(m) { return isMedLoggedToday(m.id); });
+
+  // Update status
   var status = document.getElementById("today-meds-status");
-
-  if (takenToday) {
-    btn.style.background = "linear-gradient(135deg,#8A8778,#A09D90)";
-    btn.textContent = "✓ Meds Taken Today";
-    btn.style.opacity = "0.7";
-    undoBtn.style.display = "inline-block";
-    status.innerHTML = '<span style="color:#3A7D5C;">✓ ' + todayLogs.length + ' meds logged today</span>';
+  if (allTaken) {
+    status.innerHTML = '<span style="color:#3A7D5C;">All done 💪</span>';
   } else {
-    btn.style.background = "linear-gradient(135deg,#3A7D5C,#2D5F46)";
-    btn.textContent = "✓ Took My Meds";
-    btn.style.opacity = "1";
-    undoBtn.style.display = "none";
-    status.innerHTML = '<span style="color:#D4573B;">No meds logged yet today</span>';
+    var taken = scheduledMeds.filter(function(m) { return isMedLoggedToday(m.id); }).length;
+    if (taken > 0) {
+      status.innerHTML = '<span style="color:#D4873C;">' + taken + '/' + scheduledMeds.length + '</span>';
+    } else {
+      status.innerHTML = '<span style="color:#D4573B;">0/' + scheduledMeds.length + '</span>';
+    }
+  }
+
+  // Individual med checklist
+  var medList = document.getElementById("today-med-list");
+  if (scheduledMeds.length === 0) {
+    medList.innerHTML = '<div style="text-align:center;padding:16px;color:#8A8778;">No meds set up yet — add them in the Meds tab</div>';
+  } else {
+    medList.innerHTML = scheduledMeds.map(function(m) {
+      var taken = isMedLoggedToday(m.id);
+      var bg = taken ? "#D4EDDA" : "#FFF";
+      var border = taken ? "#3A7D5C" : "#EAE7E0";
+      var icon = taken ? "✅" : "⬜";
+      var nameStyle = taken ? "text-decoration:line-through;color:#8A8778;" : "color:#1A1A1A;";
+      var safeName = m.name.replace(/'/g, "").replace(/"/g, "");
+      return '<div onclick="toggleMedToday(\'' + m.id + '\',\'' + safeName + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:' + bg + ';border:1.5px solid ' + border + ';margin-bottom:8px;cursor:pointer;transition:all 0.2s;">' +
+        '<div style="font-size:22px;line-height:1;">' + icon + '</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:15px;font-weight:600;' + nameStyle + '">' + m.name + '</div>' +
+          (m.dose_times && m.dose_times.length ? '<div style="font-size:11px;color:#8A8778;margin-top:2px;">' + m.dose_times.join(" · ") + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    }).join("");
   }
 
   // 5-day grid
@@ -1778,22 +1826,48 @@ function renderTodayTab() {
       var logs = getDayLogs(ds);
       var taken = logs.length > 0;
       var isToday = ds === today;
-      var dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+      var dayName = isToday ? "TODAY" : d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
       var dayNum = d.getDate();
-      var bg = taken ? "#D4EDDA" : (isToday ? "#FFF3CD" : "#F8F7F4");
+      var bg = taken ? "#D4EDDA" : (isToday ? "#FFF3CD" : "#FAFAF7");
       var border = isToday ? "2px solid #3A7D5C" : "1.5px solid #EAE7E0";
-      var icon = taken ? '<div style="font-size:24px;margin:6px 0;">✅</div>' : '<div style="font-size:24px;margin:6px 0;opacity:0.3;">⬜</div>';
+      var icon = taken ? '<div style="font-size:20px;margin:4px 0;">✅</div>' : '<div style="font-size:20px;margin:4px 0;opacity:0.3;">⬜</div>';
       var clickable = !isToday ? ' onclick="toggleDayMeds(\'' + ds + '\')" style="cursor:pointer;"' : '';
 
       return '<div' + clickable + '>' +
-        '<div style="background:' + bg + ';border:' + border + ';border-radius:12px;padding:12px 8px;">' +
-          '<div style="font-size:11px;font-weight:600;color:#8A8778;text-transform:uppercase;">' + dayName + '</div>' +
-          '<div style="font-size:18px;font-weight:700;color:#2D5F46;">' + dayNum + '</div>' +
+        '<div style="background:' + bg + ';border:' + border + ';border-radius:10px;padding:10px 4px;">' +
+          '<div style="font-size:10px;font-weight:600;color:' + (isToday ? '#3A7D5C' : '#8A8778') + ';">' + dayName + '</div>' +
+          '<div style="font-size:16px;font-weight:700;color:#2D5F46;">' + dayNum + '</div>' +
           icon +
         '</div>' +
       '</div>';
     }).join("") +
   '</div>';
+
+  // BP reminder — check last reading
+  checkBPReminder();
+}
+
+async function checkBPReminder() {
+  var el = document.getElementById("bp-reminder");
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/bp_readings?person=eq.martin&order=reading_datetime.desc&limit=1", { headers: SUPA_HEADERS });
+    if (!res.ok) { el.style.display = "none"; return; }
+    var data = await res.json();
+    if (data.length === 0) {
+      el.style.display = "block";
+      el.innerHTML = "❤️ No BP readings on file — time to take one!";
+      return;
+    }
+    var lastDate = new Date(data[0].reading_datetime);
+    var now = new Date();
+    var daysSince = Math.floor((now - lastDate) / 86400000);
+    if (daysSince >= 7) {
+      el.style.display = "block";
+      el.innerHTML = "❤️ BP not taken in " + daysSince + " days — time for a reading!";
+    } else {
+      el.style.display = "none";
+    }
+  } catch(e) { el.style.display = "none"; }
 }
 
 // Auto-check reminders every 5 min
