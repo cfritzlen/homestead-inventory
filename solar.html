@@ -501,12 +501,33 @@ async function loadDashboard(){
         const realtime=await sbGet('solar_realtime','order=snapshot_at.desc&limit=1');
 
         let t={pv:0,load:0,gridIn:0,battC:0,battD:0,peakPv:0,peakLoad:0};
-        if(summaries.length>0){
-            summaries.forEach(s=>{t.pv+=s.pv_kwh||0;t.load+=s.load_kwh||0;t.gridIn+=s.grid_import_kwh||0;t.battC+=s.battery_charge_kwh||0;t.battD+=s.battery_discharge_kwh||0;if(s.peak_pv_watts>t.peakPv)t.peakPv=s.peak_pv_watts;if(s.peak_load_watts>t.peakLoad)t.peakLoad=s.peak_load_watts;});
-        }else if(readings.length>0){
-            const hrs=5/60;
-            readings.forEach(r=>{const pv=r.pv_watts||0,ld=r.load_watts||0,gr=r.grid_watts||0,bt=r.battery_watts||0;t.pv+=Math.max(pv,0)*hrs/1000;t.load+=Math.max(ld,0)*hrs/1000;t.gridIn+=Math.max(gr,0)*hrs/1000;t.battC+=Math.max(bt,0)*hrs/1000;t.battD+=Math.abs(Math.min(bt,0))*hrs/1000;if(pv>t.peakPv)t.peakPv=pv;if(ld>t.peakLoad)t.peakLoad=ld;});
-        }
+        // Build a set of dates covered by summaries
+        const summaryDates=new Set(summaries.map(s=>s.summary_date));
+        // Add totals from summaries
+        summaries.forEach(s=>{t.pv+=s.pv_kwh||0;t.load+=s.load_kwh||0;t.gridIn+=s.grid_import_kwh||0;t.battC+=s.battery_charge_kwh||0;t.battD+=s.battery_discharge_kwh||0;if(s.peak_pv_watts>t.peakPv)t.peakPv=s.peak_pv_watts;if(s.peak_load_watts>t.peakLoad)t.peakLoad=s.peak_load_watts;});
+        // For dates with readings but no summary, compute from readings
+        const readingsByDate={};
+        readings.forEach(r=>{
+            const d=r.reading_date;
+            if(!readingsByDate[d])readingsByDate[d]={pv:0,load:0,gridIn:0,battC:0,battD:0,peakPv:0,peakLoad:0};
+            const hrs=5/60,pv=r.pv_watts||0,ld=r.load_watts||0,gr=r.grid_watts||0,bt=r.battery_watts||0;
+            readingsByDate[d].pv+=Math.max(pv,0)*hrs/1000;
+            readingsByDate[d].load+=Math.max(ld,0)*hrs/1000;
+            readingsByDate[d].gridIn+=Math.max(gr,0)*hrs/1000;
+            readingsByDate[d].battC+=Math.max(bt,0)*hrs/1000;
+            readingsByDate[d].battD+=Math.abs(Math.min(bt,0))*hrs/1000;
+            if(pv>readingsByDate[d].peakPv)readingsByDate[d].peakPv=pv;
+            if(ld>readingsByDate[d].peakLoad)readingsByDate[d].peakLoad=ld;
+        });
+        // Add readings-only dates to totals
+        Object.keys(readingsByDate).forEach(d=>{
+            if(!summaryDates.has(d)){
+                const rd=readingsByDate[d];
+                t.pv+=rd.pv;t.load+=rd.load;t.gridIn+=rd.gridIn;t.battC+=rd.battC;t.battD+=rd.battD;
+                if(rd.peakPv>t.peakPv)t.peakPv=rd.peakPv;
+                if(rd.peakLoad>t.peakLoad)t.peakLoad=rd.peakLoad;
+            }
+        });
 
         const solarSelf=Math.max(0,t.pv);
         const offsetVal=solarSelf*RATE,gridCost=t.gridIn*RATE,net=offsetVal;
@@ -559,14 +580,20 @@ async function loadDashboard(){
 
         // Daily breakdown
         const ds=document.getElementById('dailySection');
-        if(currentPeriod!=='day'&&summaries.length>0){
+        const allDayDates=new Set([...summaries.map(s=>s.summary_date),...Object.keys(readingsByDate)]);
+        if(currentPeriod!=='day'&&allDayDates.size>0){
             ds.style.display='block';
             const c=document.getElementById('dailyRows');c.innerHTML='';
-            summaries.forEach(s=>{
-                const dt=new Date(s.summary_date+'T12:00:00');
+            const sortedDates=[...allDayDates].sort().reverse();
+            sortedDates.forEach(dateStr=>{
+                const dt=new Date(dateStr+'T12:00:00');
                 const name=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-                const sv=(s.pv_kwh||0)*RATE;
-                c.innerHTML+=`<div class="detail-row"><span class="detail-label">${name}</span><span style="display:flex;gap:14px;align-items:center;"><span style="font-size:0.8rem;color:var(--sage-600);">☀️${fmt(s.pv_kwh||0)} · 🏠${fmt(s.load_kwh||0)} kWh</span><span class="detail-value pos">$${fmtMoney(sv)}</span></span></div>`;
+                const summ=summaries.find(s=>s.summary_date===dateStr);
+                const pvKwh=summ?(summ.pv_kwh||0):(readingsByDate[dateStr]?.pv||0);
+                const loadKwh=summ?(summ.load_kwh||0):(readingsByDate[dateStr]?.load||0);
+                const sv=pvKwh*RATE;
+                c.innerHTML+=`<div class="detail-row"><span class="detail-label">${name}</span><span style="display:flex;gap:14px;align-items:center;"><span style="font-size:0.8rem;color:var(--sage-600);">☀️${fmt(pvKwh)} · 🏠${fmt(loadKwh)} kWh</span><span class="detail-value pos">$${fmtMoney(sv)}</span></span></div>`;
+            });
             });
         }else{ds.style.display='none';}
 
