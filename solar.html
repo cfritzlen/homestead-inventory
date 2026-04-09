@@ -495,7 +495,7 @@ async function loadDashboard(){
             endDate=isoDate(lastDay>today?today:lastDay);
         }
 
-        const readings=await sbGet('solar_readings',`reading_date=gte.${startDate}&reading_date=lte.${endDate}&order=reading_date.asc,reading_time.asc&limit=10000`);
+        const readings=await sbGet('solar_readings',`reading_date=gte.${startDate}&reading_date=lte.${endDate}&order=reading_date.asc,reading_time.asc&limit=50000`);
         cachedReadings=readings;
         const summaries=await sbGet('solar_daily_summary',`summary_date=gte.${startDate}&summary_date=lte.${endDate}&order=summary_date.desc`);
         const realtime=await sbGet('solar_realtime','order=snapshot_at.desc&limit=1');
