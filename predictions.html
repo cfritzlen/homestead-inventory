@@ -3,181 +3,187 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prediction Markets</title>
+<title>Prediction Agent Monitor</title>
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --sage-50: #f6f7f3; --sage-100: #e8ebe0; --sage-200: #d4dac5;
-    --sage-300: #b8c5a3; --sage-400: #98ab7e; --sage-500: #7a9061;
-    --sage-600: #5f734c; --sage-700: #4a5a3b; --sage-800: #3d4a32;
-    --cream: #ece8dd; --taupe: #c4b5a4; --dusty-sage: #a4ac95;
-    --mauve: #a88479; --charcoal: #4a4d47; --dusty-rose: #9b7269;
-    --blue: #6b8fad; --amber: #b5924a;
+    --sage-50:#f6f7f3;--sage-100:#e8ebe0;--sage-200:#d4dac5;--sage-300:#b8c5a3;--sage-400:#98ab7e;--sage-500:#7a9061;
+    --sage-600:#5f734c;--sage-700:#4a5a3b;--sage-800:#3d4a32;--cream:#ece8dd;--taupe:#c4b5a4;--dusty-sage:#a4ac95;
+    --mauve:#a88479;--charcoal:#4a4d47;--dusty-rose:#9b7269;--blue:#6b8fad;--amber:#b5924a;
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Karla', sans-serif; background: var(--charcoal); color: var(--cream); min-height: 100vh; }
-  .header { background: rgba(61,74,50,0.6); border-bottom: 1px solid rgba(196,181,164,0.2); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
-  .header h1 { font-family: 'Crimson Pro', serif; font-size: 22px; font-weight: 300; color: var(--cream); letter-spacing: 1px; }
-  .header h1 span { color: var(--sage-400); font-weight: 600; }
-  .header-right { display: flex; gap: 12px; align-items: center; }
-  .balance-badge { font-size: 13px; font-weight: 700; background: rgba(122,144,97,0.2); color: var(--sage-300); padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(122,144,97,0.3); }
-  .back-link { color: var(--taupe); text-decoration: none; font-size: 13px; transition: color 0.2s; }
-  .back-link:hover { color: var(--cream); }
-  .status-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  .tabs { display: flex; background: rgba(61,74,50,0.3); border-bottom: 1px solid rgba(196,181,164,0.15); padding: 0 24px; }
-  .tab { padding: 12px 20px; font-size: 13px; font-weight: 700; color: var(--taupe); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
-  .tab:hover { color: var(--cream); }
-  .tab.active { color: var(--sage-300); border-bottom-color: var(--sage-400); }
-  .main { padding: 24px; max-width: 1100px; margin: 0 auto; }
-  .card { background: rgba(236,232,221,0.07); border: 1px solid rgba(196,181,164,0.15); border-radius: 12px; padding: 20px; margin-bottom: 16px; transition: all 0.2s; }
-  .card:hover { border-color: rgba(196,181,164,0.3); background: rgba(236,232,221,0.1); }
-  .market-card { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
-  .market-title { font-family: 'Crimson Pro', serif; font-size: 16px; font-weight: 600; color: var(--cream); margin-bottom: 6px; line-height: 1.4; }
-  .market-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .market-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 6px; background: rgba(196,181,164,0.15); color: var(--taupe); }
-  .market-tag.sports { background: rgba(107,143,173,0.2); color: var(--blue); }
-  .market-tag.politics { background: rgba(181,146,74,0.2); color: var(--amber); }
-  .market-tag.crypto { background: rgba(168,132,121,0.15); color: var(--mauve); }
-  .market-tag.economics { background: rgba(122,144,97,0.2); color: var(--sage-400); }
-  .market-prices { display: flex; gap: 8px; align-items: center; }
-  .price-btn { font-family: 'Karla', sans-serif; font-size: 14px; font-weight: 700; padding: 10px 18px; border-radius: 10px; border: 1px solid; cursor: pointer; transition: all 0.15s; min-width: 80px; text-align: center; }
-  .price-yes { background: rgba(95,115,76,0.15); color: var(--sage-300); border-color: rgba(95,115,76,0.3); }
-  .price-yes:hover { background: rgba(95,115,76,0.3); border-color: var(--sage-400); }
-  .price-no { background: rgba(155,114,105,0.15); color: var(--mauve); border-color: rgba(155,114,105,0.3); }
-  .price-no:hover { background: rgba(155,114,105,0.3); border-color: var(--dusty-rose); }
-  .price-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 2px; opacity: 0.7; font-weight: 400; }
-  .ai-reasoning { font-size: 13px; color: var(--taupe); margin-top: 8px; line-height: 1.5; padding: 10px 14px; background: rgba(122,144,97,0.08); border-radius: 8px; border-left: 3px solid var(--sage-500); }
-  .btn { font-family: 'Karla', sans-serif; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; transition: all 0.15s; }
-  .btn-primary { background: var(--sage-500); color: white; }
-  .btn-primary:hover { background: var(--sage-600); }
-  .btn-outline { background: transparent; color: var(--taupe); border: 1px solid rgba(196,181,164,0.3); }
-  .btn-outline:hover { border-color: var(--taupe); color: var(--cream); }
-  .btn-danger { background: rgba(155,114,105,0.2); color: var(--dusty-rose); border: 1px solid rgba(155,114,105,0.3); }
-  .analyze-btn { display: flex; align-items: center; gap: 6px; background: rgba(122,144,97,0.15); color: var(--sage-300); border: 1px solid rgba(122,144,97,0.3); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 700; font-family: 'Karla', sans-serif; transition: all 0.2s; }
-  .analyze-btn:hover { background: rgba(122,144,97,0.3); border-color: var(--sage-400); }
-  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .stat-card { background: rgba(236,232,221,0.07); border: 1px solid rgba(196,181,164,0.15); border-radius: 10px; padding: 16px; text-align: center; }
-  .stat-value { font-family: 'Crimson Pro', serif; font-size: 28px; font-weight: 600; color: var(--sage-300); }
-  .stat-value.red { color: var(--dusty-rose); }
-  .stat-label { font-size: 11px; color: var(--taupe); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; font-weight: 700; }
-  .filter-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-  .filter-chip { font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 20px; background: rgba(196,181,164,0.1); color: var(--taupe); border: 1px solid rgba(196,181,164,0.2); cursor: pointer; transition: all 0.15s; }
-  .filter-chip:hover { border-color: var(--taupe); }
-  .filter-chip.active { background: var(--sage-500); color: white; border-color: var(--sage-500); }
-  .form-group { margin-bottom: 16px; }
-  .form-label { display: block; font-size: 12px; font-weight: 700; color: var(--taupe); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-  .form-input { width: 100%; padding: 10px 12px; background: rgba(236,232,221,0.08); border: 1px solid rgba(196,181,164,0.2); border-radius: 8px; color: var(--cream); font-family: 'Karla', sans-serif; font-size: 13px; outline: none; }
-  .form-input:focus { border-color: var(--sage-400); }
-  .form-input::placeholder { color: rgba(196,181,164,0.4); }
-  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--taupe); }
-  .spinner { width: 20px; height: 20px; border: 2px solid rgba(196,181,164,0.2); border-top-color: var(--sage-400); border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .empty-state { text-align: center; padding: 60px 20px; color: var(--taupe); }
-  .empty-state h3 { font-family: 'Crimson Pro', serif; font-size: 20px; margin-bottom: 8px; color: var(--cream); }
-  .trade-row { display: grid; grid-template-columns: 1fr 80px 80px 80px 100px; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(196,181,164,0.1); font-size: 13px; }
-  .trade-row:last-child { border-bottom: none; }
-  .trade-side { font-weight: 700; font-size: 12px; padding: 2px 8px; border-radius: 4px; text-align: center; }
-  .trade-side.yes { background: rgba(95,115,76,0.2); color: var(--sage-300); }
-  .trade-side.no { background: rgba(155,114,105,0.2); color: var(--mauve); }
-  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--charcoal); border: 1px solid rgba(196,181,164,0.3); border-radius: 10px; padding: 12px 20px; font-size: 13px; z-index: 1000; transform: translateY(100px); opacity: 0; transition: all 0.3s; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-  .toast.show { transform: translateY(0); opacity: 1; }
-  .toast.success { border-color: var(--sage-400); color: var(--sage-300); }
-  .toast.error { border-color: var(--dusty-rose); color: var(--dusty-rose); }
-  .setup-screen { max-width: 500px; margin: 60px auto; padding: 0 20px; }
-  .setup-screen h2 { font-family: 'Crimson Pro', serif; font-weight: 300; font-size: 28px; color: var(--cream); margin-bottom: 8px; }
-  .setup-screen p { color: var(--taupe); margin-bottom: 24px; font-size: 14px; }
-  .step-number { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--sage-500); color: white; font-size: 11px; font-weight: 700; margin-right: 8px; }
-  .demo-banner { background: rgba(181,146,74,0.15); border: 1px solid rgba(181,146,74,0.3); border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; font-size: 13px; color: var(--amber); display: none; }
-  @media (max-width: 768px) {
-    .main { padding: 16px; } .market-card { grid-template-columns: 1fr; }
-    .trade-row { grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
-    .stats-row { grid-template-columns: 1fr 1fr; } .settings-grid { grid-template-columns: 1fr; }
-    .header h1 { font-size: 18px; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Karla',sans-serif;background:var(--charcoal);color:var(--cream);min-height:100vh}
+  .header{background:rgba(61,74,50,0.6);border-bottom:1px solid rgba(196,181,164,0.2);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+  .header h1{font-family:'Crimson Pro',serif;font-size:22px;font-weight:300;color:var(--cream);letter-spacing:1px}
+  .header h1 span{color:var(--sage-400);font-weight:600}
+  .header-right{display:flex;gap:12px;align-items:center}
+  .back-link{color:var(--taupe);text-decoration:none;font-size:13px}
+  .back-link:hover{color:var(--cream)}
+  .status-pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;display:flex;align-items:center;gap:6px}
+  .status-pill.live{background:rgba(122,144,97,0.2);color:var(--sage-300);border:1px solid rgba(122,144,97,0.3)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--sage-400);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+  .main{padding:24px;max-width:1100px;margin:0 auto}
+
+  /* STATS GRID */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+  .stat-card{background:rgba(236,232,221,0.07);border:1px solid rgba(196,181,164,0.15);border-radius:10px;padding:16px;text-align:center}
+  .stat-value{font-family:'Crimson Pro',serif;font-size:28px;font-weight:600;color:var(--sage-300)}
+  .stat-value.warn{color:var(--amber)}
+  .stat-value.bad{color:var(--dusty-rose)}
+  .stat-label{font-size:10px;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;font-weight:700}
+
+  /* TABS */
+  .tabs{display:flex;background:rgba(61,74,50,0.3);border-bottom:1px solid rgba(196,181,164,0.15);padding:0 24px}
+  .tab{padding:12px 20px;font-size:13px;font-weight:700;color:var(--taupe);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
+  .tab:hover{color:var(--cream)}
+  .tab.active{color:var(--sage-300);border-bottom-color:var(--sage-400)}
+
+  /* TRADE CARDS */
+  .trade-card{background:rgba(236,232,221,0.07);border:1px solid rgba(196,181,164,0.15);border-radius:12px;padding:18px;margin-bottom:12px;transition:all 0.2s}
+  .trade-card:hover{border-color:rgba(196,181,164,0.3)}
+  .trade-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+  .trade-title{font-family:'Crimson Pro',serif;font-size:16px;font-weight:600;color:var(--cream);line-height:1.4;flex:1}
+  .trade-badges{display:flex;gap:6px;align-items:center;flex-shrink:0}
+  .badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:6px}
+  .badge.yes{background:rgba(95,115,76,0.25);color:var(--sage-300)}
+  .badge.no{background:rgba(155,114,105,0.25);color:var(--mauve)}
+  .badge.placed{background:rgba(107,143,173,0.2);color:var(--blue)}
+  .badge.approved{background:rgba(181,146,74,0.2);color:var(--amber)}
+  .badge.settled{background:rgba(122,144,97,0.2);color:var(--sage-400)}
+  .badge.failed{background:rgba(155,114,105,0.2);color:var(--dusty-rose)}
+  .trade-detail{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--taupe);margin-bottom:8px}
+  .trade-detail strong{color:var(--cream);font-weight:700}
+  .trade-reasoning{font-size:13px;color:var(--taupe);line-height:1.5;padding:10px 14px;background:rgba(122,144,97,0.06);border-radius:8px;border-left:3px solid var(--sage-500);margin-top:8px}
+  .trade-time{font-size:11px;color:rgba(196,181,164,0.5);margin-top:8px}
+
+  /* ACTIVITY LOG */
+  .log-entry{padding:10px 0;border-bottom:1px solid rgba(196,181,164,0.08);font-size:13px;display:flex;gap:12px;align-items:baseline}
+  .log-entry:last-child{border-bottom:none}
+  .log-time{font-size:11px;color:rgba(196,181,164,0.4);white-space:nowrap;min-width:70px}
+  .log-msg{color:var(--taupe);flex:1}
+  .log-msg strong{color:var(--cream)}
+
+  /* SETUP */
+  .setup-screen{max-width:460px;margin:60px auto;padding:0 20px}
+  .setup-screen h2{font-family:'Crimson Pro',serif;font-weight:300;font-size:28px;color:var(--cream);margin-bottom:8px}
+  .setup-screen p{color:var(--taupe);margin-bottom:24px;font-size:14px}
+  .card{background:rgba(236,232,221,0.07);border:1px solid rgba(196,181,164,0.15);border-radius:12px;padding:20px;margin-bottom:16px}
+  .form-group{margin-bottom:16px}
+  .form-label{display:block;font-size:12px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+  .form-input{width:100%;padding:10px 12px;background:rgba(236,232,221,0.08);border:1px solid rgba(196,181,164,0.2);border-radius:8px;color:var(--cream);font-family:'Karla',sans-serif;font-size:13px;outline:none}
+  .form-input:focus{border-color:var(--sage-400)}
+  .form-input::placeholder{color:rgba(196,181,164,0.4)}
+  .btn{font-family:'Karla',sans-serif;font-size:13px;font-weight:700;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s}
+  .btn-primary{background:var(--sage-500);color:white}
+  .btn-primary:hover{background:var(--sage-600)}
+  .btn-outline{background:transparent;color:var(--taupe);border:1px solid rgba(196,181,164,0.3)}
+  .btn-outline:hover{border-color:var(--taupe);color:var(--cream)}
+
+  .empty-state{text-align:center;padding:60px 20px;color:var(--taupe)}
+  .empty-state h3{font-family:'Crimson Pro',serif;font-size:20px;margin-bottom:8px;color:var(--cream)}
+  .loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--taupe)}
+  .spinner{width:20px;height:20px;border:2px solid rgba(196,181,164,0.2);border-top-color:var(--sage-400);border-radius:50%;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--charcoal);border:1px solid rgba(196,181,164,0.3);border-radius:10px;padding:12px 20px;font-size:13px;z-index:1000;transform:translateY(100px);opacity:0;transition:all 0.3s;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+  .toast.show{transform:translateY(0);opacity:1}
+  .toast.success{border-color:var(--sage-400);color:var(--sage-300)}
+  .toast.error{border-color:var(--dusty-rose);color:var(--dusty-rose)}
+  .refresh-btn{background:rgba(122,144,97,0.15);color:var(--sage-300);border:1px solid rgba(122,144,97,0.3);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Karla',sans-serif;transition:all 0.2s}
+  .refresh-btn:hover{background:rgba(122,144,97,0.3)}
+  .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .section-title{font-family:'Crimson Pro',serif;font-size:18px;font-weight:300;color:var(--cream)}
+  .day-divider{font-size:12px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px;padding:8px 0;margin-top:8px;border-top:1px solid rgba(196,181,164,0.1)}
+  .next-run{font-size:12px;color:var(--taupe);background:rgba(236,232,221,0.05);border:1px solid rgba(196,181,164,0.1);border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+  .next-run strong{color:var(--cream)}
+  @media(max-width:768px){
+    .main{padding:16px}.stats-grid{grid-template-columns:1fr 1fr}
+    .trade-header{flex-direction:column}.header h1{font-size:18px}
   }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div style="display:flex;align-items:center;gap:16px;">
+  <div style="display:flex;align-items:center;gap:16px">
     <a href="index.html" class="back-link">← Hub</a>
-    <h1><span>Prediction</span> Markets</h1>
+    <h1><span>Prediction</span> Agent</h1>
   </div>
   <div class="header-right">
-    <div class="balance-badge" id="balanceDisplay">--</div>
-    <div class="status-dot" id="statusDot" style="background:var(--dusty-rose)"></div>
+    <div class="status-pill live" id="agentStatus"><div class="dot"></div>Agent Live</div>
   </div>
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-tab="markets" onclick="switchTab('markets')">Markets</div>
-  <div class="tab" data-tab="recommendations" onclick="switchTab('recommendations')">AI Picks</div>
-  <div class="tab" data-tab="trades" onclick="switchTab('trades')">My Trades</div>
+  <div class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</div>
+  <div class="tab" data-tab="trades" onclick="switchTab('trades')">All Trades</div>
   <div class="tab" data-tab="settings" onclick="switchTab('settings')">Settings</div>
 </div>
 
 <div class="main">
-  <div class="demo-banner" id="demoBanner">⚠ Demo Mode — Kalshi's API doesn't allow direct browser access. Showing sample markets. AI Picks still work!</div>
 
-  <div id="setupScreen" class="setup-screen" style="display:none;">
-    <h2>Setup Your Agent</h2>
-    <p>Connect your Supabase and Kalshi accounts to get started.</p>
+  <!-- SETUP -->
+  <div id="setupScreen" class="setup-screen" style="display:none">
+    <h2>Connect to Your Agent</h2>
+    <p>Enter your Supabase details to monitor your prediction agent.</p>
     <div class="card">
-      <div class="form-group"><label class="form-label"><span class="step-number">1</span>Supabase URL</label><input class="form-input" id="setupSupaUrl" placeholder="https://xxxxx.supabase.co" /></div>
-      <div class="form-group"><label class="form-label"><span class="step-number">2</span>Supabase Anon Key</label><input class="form-input" id="setupSupaKey" placeholder="eyJhbG..." /></div>
-      <div class="form-group"><label class="form-label"><span class="step-number">3</span>Kalshi API Key ID</label><input class="form-input" id="setupKalshiKey" placeholder="Your Kalshi key ID" /></div>
-      <div class="form-group"><label class="form-label"><span class="step-number">4</span>Kalshi Private Key</label><textarea class="form-input" id="setupKalshiSecret" rows="4" placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END RSA PRIVATE KEY-----"></textarea></div>
-      <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="saveSetup()">Connect & Start</button>
+      <div class="form-group"><label class="form-label">Supabase URL</label><input class="form-input" id="setupUrl" placeholder="https://xxxxx.supabase.co" /></div>
+      <div class="form-group"><label class="form-label">Supabase Anon Key</label><input class="form-input" id="setupKey" placeholder="eyJhbG..." /></div>
+      <button class="btn btn-primary" style="width:100%;padding:12px" onclick="saveSetup()">Connect</button>
     </div>
   </div>
 
-  <div id="tab-markets" class="tab-content">
-    <div class="filter-bar">
-      <div class="filter-chip active" onclick="filterMarkets('all', this)">All</div>
-      <div class="filter-chip" onclick="filterMarkets('sports', this)">Sports</div>
-      <div class="filter-chip" onclick="filterMarkets('politics', this)">Politics</div>
-      <div class="filter-chip" onclick="filterMarkets('economics', this)">Economics</div>
-      <div class="filter-chip" onclick="filterMarkets('crypto', this)">Crypto</div>
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard" class="tab-content">
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-value" id="statTotal">-</div><div class="stat-label">Total Trades</div></div>
+      <div class="stat-card"><div class="stat-value" id="statToday">-</div><div class="stat-label">Today</div></div>
+      <div class="stat-card"><div class="stat-value" id="statSpentToday">-</div><div class="stat-label">Spent Today</div></div>
+      <div class="stat-card"><div class="stat-value" id="statPlaced">-</div><div class="stat-label">Placed</div></div>
+      <div class="stat-card"><div class="stat-value" id="statPL">$0</div><div class="stat-label">Profit / Loss</div></div>
+      <div class="stat-card"><div class="stat-value" id="statBudgetLeft">-</div><div class="stat-label">Budget Left Today</div></div>
     </div>
-    <div id="marketsContainer"><div class="loading"><div class="spinner"></div>Loading markets...</div></div>
+
+    <div class="next-run" id="nextRunInfo">
+      <span>⏱</span> Agent runs every <strong>6 hours</strong> (00:00, 06:00, 12:00, 18:00 UTC). Auto-refreshes every 60s.
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Recent Agent Activity</div>
+      <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+    </div>
+    <div id="recentTrades"><div class="loading"><div class="spinner"></div>Loading trades...</div></div>
   </div>
 
-  <div id="tab-recommendations" class="tab-content" style="display:none;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <h3 style="font-family:'Crimson Pro',serif;font-size:18px;font-weight:300;">AI Recommendations</h3>
-      <button class="analyze-btn" onclick="runAIAnalysis()">★ Analyze Markets</button>
+  <!-- ALL TRADES TAB -->
+  <div id="tab-trades" class="tab-content" style="display:none">
+    <div class="section-header">
+      <div class="section-title">Trade History</div>
+      <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
     </div>
-    <div id="recommendationsContainer"><div class="empty-state"><h3>No recommendations yet</h3><p>Click "Analyze Markets" to have Claude find good bets.</p></div></div>
+    <div id="allTrades"><div class="loading"><div class="spinner"></div>Loading...</div></div>
   </div>
 
-  <div id="tab-trades" class="tab-content" style="display:none;">
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-value" id="totalTrades">0</div><div class="stat-label">Total Trades</div></div>
-      <div class="stat-card"><div class="stat-value" id="winRate">--%</div><div class="stat-label">Win Rate</div></div>
-      <div class="stat-card"><div class="stat-value" id="totalPL">$0</div><div class="stat-label">Profit / Loss</div></div>
-      <div class="stat-card"><div class="stat-value" id="openPositions">0</div><div class="stat-label">Open</div></div>
-    </div>
-    <div class="card"><div id="tradesContainer"><div class="empty-state"><h3>No trades yet</h3><p>Approve some AI picks to get started.</p></div></div></div>
-  </div>
-
-  <div id="tab-settings" class="tab-content" style="display:none;">
-    <div class="settings-grid">
-      <div class="card">
-        <h3 style="font-family:'Crimson Pro',serif;font-size:17px;font-weight:400;margin-bottom:16px;">Budget & Risk</h3>
-        <div class="form-group"><label class="form-label">Max Budget ($)</label><input class="form-input" id="settingBudget" type="number" value="50" /></div>
-        <div class="form-group"><label class="form-label">Max Per Trade ($)</label><input class="form-input" id="settingMaxTrade" type="number" value="5" /></div>
-        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+  <!-- SETTINGS TAB -->
+  <div id="tab-settings" class="tab-content" style="display:none">
+    <div class="card">
+      <h3 style="font-family:'Crimson Pro',serif;font-size:17px;font-weight:400;margin-bottom:16px">Agent Configuration</h3>
+      <p style="font-size:13px;color:var(--taupe);margin-bottom:16px">These limits are enforced by the Edge Function. To change them, update the function code via Claude Code.</p>
+      <div class="trade-detail" style="flex-direction:column;gap:8px">
+        <div>Max per trade: <strong>$5.00</strong></div>
+        <div>Max per day: <strong>$25.00</strong></div>
+        <div>Schedule: <strong>Every 6 hours (pg_cron)</strong></div>
+        <div>AI Model: <strong>Claude Sonnet</strong></div>
+        <div>Platform: <strong>Kalshi</strong></div>
       </div>
-      <div class="card">
-        <h3 style="font-family:'Crimson Pro',serif;font-size:17px;font-weight:400;margin-bottom:16px;">Connections</h3>
-        <div class="form-group"><label class="form-label">Kalshi API Key ID</label><input class="form-input" id="settingKalshiKey" type="password" /></div>
-        <div class="form-group"><label class="form-label">Status</label><div id="connectionStatus" style="font-size:13px;color:var(--taupe);">Checking...</div></div>
-        <button class="btn btn-outline" onclick="testConnection()">Test</button>
-        <button class="btn btn-danger" style="margin-left:8px;" onclick="resetSetup()">Reset All</button>
-      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-family:'Crimson Pro',serif;font-size:17px;font-weight:400;margin-bottom:16px">Connection</h3>
+      <div class="form-group"><label class="form-label">Supabase URL</label><input class="form-input" id="settingUrl" readonly /></div>
+      <div id="connectionStatus" style="font-size:13px;color:var(--taupe);margin-bottom:12px">Checking...</div>
+      <button class="btn btn-outline" onclick="testConn()">Test Connection</button>
+      <button class="btn" style="margin-left:8px;color:var(--dusty-rose)" onclick="resetSetup()">Reset</button>
     </div>
   </div>
 </div>
@@ -185,288 +191,164 @@
 <div class="toast" id="toast"></div>
 
 <script>
-var supabaseClient = null, markets = [], currentFilter = 'all', config = {};
-var KALSHI_API = 'https://api.elections.kalshi.com/trade-api/v2';
+var sb = null, trades = [], config = {};
 
 function init() {
-  config = loadConfig();
-  if (!config.supaUrl || !config.supaKey) { showSetup(); return; }
-  supabaseClient = window.supabase.createClient(config.supaUrl, config.supaKey);
+  config = loadCfg();
+  if (!config.url || !config.key) { showSetup(); return; }
+  sb = window.supabase.createClient(config.url, config.key);
   hideSetup();
-  loadMarkets();
-  testConnection();
+  document.getElementById('settingUrl').value = config.url;
+  loadAll();
+  testConn();
+  // Auto-refresh every 60 seconds
+  setInterval(loadAll, 60000);
 }
 
-function loadConfig() { try { return JSON.parse(localStorage.getItem('kalshi_config') || '{}'); } catch(e) { return {}; } }
+function loadCfg() { try { return JSON.parse(localStorage.getItem('pred_monitor') || '{}'); } catch(e) { return {}; } }
 
 function showSetup() {
   document.getElementById('setupScreen').style.display = 'block';
   var tabs = document.querySelectorAll('.tab-content');
   for (var i = 0; i < tabs.length; i++) tabs[i].style.display = 'none';
 }
-
 function hideSetup() {
   document.getElementById('setupScreen').style.display = 'none';
-  document.getElementById('tab-markets').style.display = 'block';
-  if (config.kalshiKeyId) document.getElementById('settingKalshiKey').value = config.kalshiKeyId;
-  if (config.budget) document.getElementById('settingBudget').value = config.budget;
-  if (config.maxTrade) document.getElementById('settingMaxTrade').value = config.maxTrade;
+  document.getElementById('tab-dashboard').style.display = 'block';
 }
-
 function saveSetup() {
-  var cfg = {
-    supaUrl: document.getElementById('setupSupaUrl').value.trim(),
-    supaKey: document.getElementById('setupSupaKey').value.trim(),
-    kalshiKeyId: document.getElementById('setupKalshiKey').value.trim(),
-    kalshiPrivateKey: document.getElementById('setupKalshiSecret').value.trim(),
-    budget: 50, maxTrade: 5
-  };
-  if (!cfg.supaUrl || !cfg.supaKey) { toast('Please fill in Supabase details', 'error'); return; }
-  localStorage.setItem('kalshi_config', JSON.stringify(cfg));
-  config = cfg;
-  init();
-  toast('Connected!', 'success');
+  var c = { url: document.getElementById('setupUrl').value.trim(), key: document.getElementById('setupKey').value.trim() };
+  if (!c.url || !c.key) { toast('Fill in both fields', 'error'); return; }
+  localStorage.setItem('pred_monitor', JSON.stringify(c));
+  config = c; init(); toast('Connected!', 'success');
 }
-
-function resetSetup() {
-  if (confirm('Reset all settings?')) { localStorage.removeItem('kalshi_config'); location.reload(); }
-}
+function resetSetup() { if (confirm('Reset connection?')) { localStorage.removeItem('pred_monitor'); location.reload(); } }
 
 function switchTab(tab) {
-  var allTabs = document.querySelectorAll('.tab');
-  for (var i = 0; i < allTabs.length; i++) allTabs[i].classList.remove('active');
-  document.querySelector('.tab[data-tab="' + tab + '"]').classList.add('active');
-  var allContent = document.querySelectorAll('.tab-content');
-  for (var j = 0; j < allContent.length; j++) allContent[j].style.display = 'none';
-  document.getElementById('tab-' + tab).style.display = 'block';
-  if (tab === 'trades') loadTrades();
+  var allT = document.querySelectorAll('.tab');
+  for (var i = 0; i < allT.length; i++) allT[i].classList.remove('active');
+  document.querySelector('.tab[data-tab="'+tab+'"]').classList.add('active');
+  var allC = document.querySelectorAll('.tab-content');
+  for (var j = 0; j < allC.length; j++) allC[j].style.display = 'none';
+  document.getElementById('tab-'+tab).style.display = 'block';
 }
 
-// Try direct, then CORS proxies
-function fetchKalshi(path) {
-  var url = KALSHI_API + path;
-  return fetch(url).then(function(r) { if (!r.ok) throw new Error(r.status); return r; })
-    .catch(function() { return fetch('https://corsproxy.io/?' + encodeURIComponent(url)); })
-    .catch(function() { return fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url)); });
-}
-
-function loadMarkets() {
-  var container = document.getElementById('marketsContainer');
-  container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading markets...</div>';
-
-  fetchKalshi('/markets?limit=50&status=open')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      markets = data.markets || [];
-      if (markets.length === 0) throw new Error('empty');
-      document.getElementById('balanceDisplay').textContent = markets.length + ' markets';
-      document.getElementById('statusDot').style.background = 'var(--sage-400)';
-      renderMarkets();
-    })
-    .catch(function(err) {
-      console.warn('API unavailable, using demo data:', err);
-      loadDemoMarkets();
-    });
-}
-
-function loadDemoMarkets() {
-  document.getElementById('demoBanner').style.display = 'block';
-  document.getElementById('balanceDisplay').textContent = 'Demo';
-  document.getElementById('statusDot').style.background = 'var(--amber)';
-  markets = [
-    { ticker:'FED-RATE-26JUN', title:'Will the Fed cut rates at the June 2026 meeting?', yes_ask:0.42, volume:85000, close_time:'2026-06-18T00:00:00Z', category:'economics' },
-    { ticker:'NBA-FINALS-26', title:'Will the Celtics win the 2026 NBA Finals?', yes_ask:0.31, volume:120000, close_time:'2026-06-20T00:00:00Z', category:'sports' },
-    { ticker:'TRUMP-APPROVE-50', title:'Will Trump approval be above 50% on July 1?', yes_ask:0.28, volume:65000, close_time:'2026-07-01T00:00:00Z', category:'politics' },
-    { ticker:'BTC-100K-APR26', title:'Will Bitcoin be above $100K on April 30?', yes_ask:0.55, volume:200000, close_time:'2026-04-30T00:00:00Z', category:'crypto' },
-    { ticker:'CPI-APR26', title:'Will April 2026 CPI be above 3.0%?', yes_ask:0.37, volume:45000, close_time:'2026-05-15T00:00:00Z', category:'economics' },
-    { ticker:'MLB-WS-NYY', title:'Will the Yankees win the 2026 World Series?', yes_ask:0.12, volume:78000, close_time:'2026-10-30T00:00:00Z', category:'sports' },
-    { ticker:'HOUSE-DEM-26', title:'Will Democrats win the House in 2026 midterms?', yes_ask:0.58, volume:310000, close_time:'2026-11-03T00:00:00Z', category:'politics' },
-    { ticker:'ETH-5K-APR26', title:'Will Ethereum be above $5,000 on April 30?', yes_ask:0.22, volume:92000, close_time:'2026-04-30T00:00:00Z', category:'crypto' },
-    { ticker:'MASTERS-SCHEFF', title:'Will Scottie Scheffler win the 2026 Masters?', yes_ask:0.14, volume:55000, close_time:'2026-04-13T00:00:00Z', category:'sports' },
-    { ticker:'RECESSION-26', title:'Will the US enter a recession in 2026?', yes_ask:0.33, volume:175000, close_time:'2026-12-31T00:00:00Z', category:'economics' },
-    { ticker:'SEN-DEM-PA', title:'Will Democrats win the Pennsylvania Senate race?', yes_ask:0.52, volume:48000, close_time:'2026-11-03T00:00:00Z', category:'politics' },
-    { ticker:'NBA-MVP-JOKIC', title:'Will Jokic win 2026 NBA MVP?', yes_ask:0.35, volume:67000, close_time:'2026-06-01T00:00:00Z', category:'sports' },
-  ];
-  renderMarkets();
-}
-
-function categorizeMarket(m) {
-  if (m.category) return m.category;
-  var t = (m.title + ' ' + (m.series_ticker || '')).toLowerCase();
-  if (/nba|nfl|mlb|nhl|game|player|golf|masters|tennis|mvp|finals|world series/.test(t)) return 'sports';
-  if (/trump|democrat|republican|senate|house|election|governor|president|vote|primary|party|approval|midterm/.test(t)) return 'politics';
-  if (/bitcoin|btc|eth|crypto|ethereum/.test(t)) return 'crypto';
-  if (/fed|rate|cpi|gdp|inflation|unemployment|economic|recession|treasury/.test(t)) return 'economics';
-  return 'other';
-}
-
-function renderMarkets() {
-  var container = document.getElementById('marketsContainer');
-  var filtered = currentFilter === 'all' ? markets : markets.filter(function(m) { return categorizeMarket(m) === currentFilter; });
-  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state"><h3>No markets found</h3><p>Try a different category.</p></div>'; return; }
-
-  var html = '';
-  for (var i = 0; i < filtered.length; i++) {
-    var m = filtered[i];
-    var cat = categorizeMarket(m);
-    var yp = m.yes_ask || m.last_price || 0.5;
-    var np = m.no_ask || (1 - yp);
-    var yc = Math.round(yp * 100);
-    var nc = Math.round(np * 100);
-    var vol = m.volume ? m.volume.toLocaleString() : '--';
-    var closeDate = m.close_time ? new Date(m.close_time).toLocaleDateString() : '';
-
-    html += '<div class="card market-card">' +
-      '<div><div class="market-title">' + m.title + '</div>' +
-      '<div class="market-meta"><span class="market-tag ' + cat + '">' + cat + '</span>' +
-      '<span class="market-tag">Vol: ' + vol + '</span>' +
-      (closeDate ? '<span class="market-tag">Closes: ' + closeDate + '</span>' : '') +
-      '</div></div>' +
-      '<div class="market-prices">' +
-      '<button class="price-btn price-yes" onclick="quickBet(\'' + m.ticker + '\',\'yes\',' + yp + ')"><span class="price-label">Yes</span>' + yc + '¢</button>' +
-      '<button class="price-btn price-no" onclick="quickBet(\'' + m.ticker + '\',\'no\',' + np + ')"><span class="price-label">No</span>' + nc + '¢</button>' +
-      '</div></div>';
-  }
-  container.innerHTML = html;
-}
-
-function filterMarkets(cat, el) {
-  currentFilter = cat;
-  var chips = document.querySelectorAll('.filter-chip');
-  for (var i = 0; i < chips.length; i++) chips[i].classList.remove('active');
-  el.classList.add('active');
-  renderMarkets();
-}
-
-// AI ANALYSIS
-function runAIAnalysis() {
-  var container = document.getElementById('recommendationsContainer');
-  container.innerHTML = '<div class="loading"><div class="spinner"></div>Claude is analyzing markets...</div>';
-
-  var topMarkets = markets.slice().sort(function(a,b) { return (b.volume||0)-(a.volume||0); }).slice(0,20)
-    .map(function(m) { return { ticker:m.ticker, title:m.title, yes_price:m.yes_ask||m.last_price||0.5, volume:m.volume, category:categorizeMarket(m), close_time:m.close_time }; });
-
-  fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514", max_tokens: 1000,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages: [{ role: "user", content: 'You are a prediction market analyst. Use web search to check current news, then pick the 3-5 best bets from these Kalshi markets for a $' + (config.budget||50) + ' budget (max $' + (config.maxTrade||5) + ' per trade). Say YES or NO for each and explain in 1-2 sentences.\n\nMarkets:\n' + JSON.stringify(topMarkets) + '\n\nRespond with ONLY a JSON array, no backticks:\n[{"ticker":"...","title":"...","side":"yes or no","price":0.XX,"confidence":"high/medium/low","reasoning":"..."}]' }]
-    })
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    var text = '';
-    if (data.content) { for (var i = 0; i < data.content.length; i++) { if (data.content[i].type === 'text') text += data.content[i].text; } }
-    if (!text) throw new Error('No AI response');
-    var clean = text.replace(/```json|```/g, '').trim();
-    var s = clean.indexOf('['), e = clean.lastIndexOf(']');
-    if (s === -1 || e === -1) throw new Error('Bad format');
-    renderRecommendations(JSON.parse(clean.substring(s, e + 1)));
-  })
-  .catch(function(err) {
-    console.error('AI failed:', err);
-    container.innerHTML = '<div class="empty-state"><h3>Analysis failed</h3><p>' + err.message + '</p><button class="btn btn-outline" style="margin-top:12px;" onclick="runAIAnalysis()">Try Again</button></div>';
+function loadAll() {
+  if (!sb) return;
+  sb.from('prediction_trades').select('*').order('created_at', { ascending: false }).then(function(r) {
+    if (r.error) { console.error(r.error); toast('Failed to load trades', 'error'); return; }
+    trades = r.data || [];
+    updateStats();
+    renderRecent();
+    renderAll();
   });
 }
 
-function renderRecommendations(picks) {
-  var container = document.getElementById('recommendationsContainer');
-  if (!picks || !picks.length) { container.innerHTML = '<div class="empty-state"><h3>No strong picks</h3></div>'; return; }
+function updateStats() {
+  var today = new Date().toISOString().slice(0, 10);
+  var todayTrades = trades.filter(function(t) { return (t.created_at || '').slice(0, 10) === today; });
+  var placed = trades.filter(function(t) { return t.status === 'placed'; });
+  var spentToday = todayTrades.reduce(function(s, t) { return s + (t.price || 0) * (t.contracts || 1); }, 0);
+  var pl = trades.reduce(function(s, t) { return s + (t.profit_loss || 0); }, 0);
+
+  document.getElementById('statTotal').textContent = trades.length;
+  document.getElementById('statToday').textContent = todayTrades.length;
+  document.getElementById('statSpentToday').textContent = '$' + spentToday.toFixed(2);
+  document.getElementById('statPlaced').textContent = placed.length;
+
+  var plEl = document.getElementById('statPL');
+  plEl.textContent = (pl >= 0 ? '+' : '') + '$' + pl.toFixed(2);
+  plEl.className = 'stat-value' + (pl < 0 ? ' bad' : '');
+
+  var left = 25 - spentToday;
+  var leftEl = document.getElementById('statBudgetLeft');
+  leftEl.textContent = '$' + Math.max(0, left).toFixed(2);
+  leftEl.className = 'stat-value' + (left < 5 ? ' warn' : left <= 0 ? ' bad' : '');
+}
+
+function renderRecent() {
+  var container = document.getElementById('recentTrades');
+  var recent = trades.slice(0, 10);
+  if (!recent.length) { container.innerHTML = '<div class="empty-state"><h3>No trades yet</h3><p>Your agent will place its first trades at the next scheduled run.</p></div>'; return; }
+  container.innerHTML = recent.map(renderTradeCard).join('');
+}
+
+function renderAll() {
+  var container = document.getElementById('allTrades');
+  if (!trades.length) { container.innerHTML = '<div class="empty-state"><h3>No trades</h3></div>'; return; }
+
+  // Group by date
+  var grouped = {};
+  trades.forEach(function(t) {
+    var day = (t.created_at || '').slice(0, 10);
+    if (!grouped[day]) grouped[day] = [];
+    grouped[day].push(t);
+  });
+
   var html = '';
-  for (var i = 0; i < picks.length; i++) {
-    var p = picks[i];
-    var pc = Math.round((p.price||0)*100);
-    var cc = p.confidence==='high'?'var(--sage-300)':p.confidence==='medium'?'var(--amber)':'var(--taupe)';
-    var st = (p.title||'').replace(/'/g,"\\'"), sr = (p.reasoning||'').replace(/'/g,"\\'");
-    html += '<div class="card"><div class="market-title">' + p.title + '</div>' +
-      '<div style="display:flex;align-items:center;gap:12px;margin-top:10px;">' +
-      '<span class="trade-side ' + p.side + '">' + p.side.toUpperCase() + '</span>' +
-      '<span style="font-weight:700">' + pc + '¢</span>' +
-      '<span style="font-size:11px;color:' + cc + ';font-weight:700;text-transform:uppercase">' + p.confidence + '</span></div>' +
-      '<div class="ai-reasoning">' + p.reasoning + '</div>' +
-      '<div style="display:flex;gap:8px;margin-top:12px;">' +
-      '<button class="btn btn-primary" onclick="approveBet(\'' + p.ticker + '\',\'' + p.side + '\',' + p.price + ',\'' + st + '\',\'' + sr + '\')">Approve</button>' +
-      '<button class="btn btn-outline" onclick="this.parentElement.parentElement.remove()">Skip</button></div></div>';
-  }
+  Object.keys(grouped).sort().reverse().forEach(function(day) {
+    var d = new Date(day + 'T12:00:00Z');
+    var label = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    var daySpend = grouped[day].reduce(function(s, t) { return s + (t.price || 0) * (t.contracts || 1); }, 0);
+    html += '<div class="day-divider">' + label + ' — ' + grouped[day].length + ' trades · $' + daySpend.toFixed(2) + ' spent</div>';
+    html += grouped[day].map(renderTradeCard).join('');
+  });
   container.innerHTML = html;
 }
 
-function quickBet(ticker, side, price) {
-  var m = null;
-  for (var i = 0; i < markets.length; i++) { if (markets[i].ticker === ticker) { m = markets[i]; break; } }
-  if (!m) return;
-  if (confirm('Buy ' + side.toUpperCase() + ' on "' + m.title + '" at ' + Math.round(price*100) + '¢?')) {
-    saveTrade(ticker, m.title, side, price, 'approved', 'Manual pick');
-    toast('Trade saved!', 'success');
+function renderTradeCard(t) {
+  var priceCents = t.price != null ? Math.round(t.price * 100) : '--';
+  var cost = t.price != null ? '$' + (t.price * (t.contracts || 1)).toFixed(2) : '--';
+  var time = t.created_at ? new Date(t.created_at).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+  var sideClass = (t.side || 'yes').toLowerCase();
+  var statusClass = (t.status || 'placed').toLowerCase();
+
+  // Clean up title
+  var title = t.title || t.ticker || 'Unknown market';
+  // If title is very long ticker, try to make it readable
+  if (title.length > 60) title = title.substring(0, 57) + '...';
+
+  var html = '<div class="trade-card">' +
+    '<div class="trade-header">' +
+      '<div class="trade-title">' + title + '</div>' +
+      '<div class="trade-badges">' +
+        '<span class="badge ' + sideClass + '">' + (t.side || 'yes').toUpperCase() + '</span>' +
+        '<span class="badge ' + statusClass + '">' + (t.status || 'placed') + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="trade-detail">' +
+      '<span>Price: <strong>' + priceCents + '¢</strong></span>' +
+      '<span>Contracts: <strong>' + (t.contracts || 1) + '</strong></span>' +
+      '<span>Cost: <strong>' + cost + '</strong></span>' +
+      '<span>Platform: <strong>' + (t.platform || 'kalshi') + '</strong></span>' +
+    '</div>';
+
+  if (t.ai_reasoning) {
+    html += '<div class="trade-reasoning">' + t.ai_reasoning + '</div>';
   }
+
+  if (t.profit_loss != null && t.profit_loss !== 0) {
+    var plColor = t.profit_loss >= 0 ? 'var(--sage-300)' : 'var(--dusty-rose)';
+    html += '<div style="margin-top:8px;font-weight:700;color:' + plColor + '">P/L: ' + (t.profit_loss >= 0 ? '+' : '') + '$' + t.profit_loss.toFixed(2) + '</div>';
+  }
+
+  html += '<div class="trade-time">' + time + ' · ' + (t.ticker || '') + '</div>';
+  html += '</div>';
+  return html;
 }
 
-function approveBet(ticker, side, price, title, reasoning) {
-  saveTrade(ticker, title, side, price, 'approved', reasoning);
-  toast('Approved: ' + side.toUpperCase() + ' on ' + ticker, 'success');
-}
-
-function saveTrade(ticker, title, side, price, status, reasoning) {
-  if (!supabaseClient) { toast('Connect Supabase first', 'error'); return; }
-  supabaseClient.from('prediction_trades').insert({
-    platform:'kalshi', ticker:ticker, title:title, side:side,
-    price:price, contracts:1, status:status, ai_reasoning:reasoning
-  }).then(function(r) { if (r.error) { console.error(r.error); toast('Save failed', 'error'); } });
-}
-
-function loadTrades() {
-  if (!supabaseClient) return;
-  supabaseClient.from('prediction_trades').select('*').order('created_at', { ascending: false }).then(function(r) {
-    if (r.error) return;
-    var trades = r.data || [];
-    document.getElementById('totalTrades').textContent = trades.length;
-    var settled = trades.filter(function(t){return t.status==='settled';});
-    var wins = settled.filter(function(t){return (t.profit_loss||0)>0;});
-    document.getElementById('winRate').textContent = settled.length ? Math.round(wins.length/settled.length*100)+'%' : '--%';
-    var pl = trades.reduce(function(s,t){return s+(t.profit_loss||0);},0);
-    var plEl = document.getElementById('totalPL');
-    plEl.textContent = '$'+pl.toFixed(2);
-    plEl.className = 'stat-value'+(pl<0?' red':'');
-    document.getElementById('openPositions').textContent = trades.filter(function(t){return t.status==='approved'||t.status==='placed';}).length;
-    var c = document.getElementById('tradesContainer');
-    if (!trades.length) { c.innerHTML = '<div class="empty-state"><h3>No trades yet</h3><p>Approve some AI picks.</p></div>'; return; }
-    var h = '<div class="trade-row" style="font-weight:700;color:var(--taupe);font-size:11px;text-transform:uppercase"><div>Market</div><div>Side</div><div>Price</div><div>Status</div><div>P/L</div></div>';
-    for (var i=0;i<trades.length;i++) {
-      var t=trades[i];
-      h+='<div class="trade-row"><div style="font-weight:500">'+(t.title||t.ticker)+'</div>' +
-        '<div><span class="trade-side '+t.side+'">'+(t.side||'').toUpperCase()+'</span></div>' +
-        '<div style="font-weight:700">'+(t.price!=null?Math.round(t.price*100)+'¢':'--')+'</div>' +
-        '<div><span class="market-tag">'+t.status+'</span></div>' +
-        '<div style="font-weight:700;color:'+((t.profit_loss||0)>=0?'var(--sage-300)':'var(--dusty-rose)')+'">'+(t.profit_loss!=null?'$'+t.profit_loss.toFixed(2):'--')+'</div></div>';
-    }
-    c.innerHTML = h;
-  });
-}
-
-function testConnection() {
+function testConn() {
   var el = document.getElementById('connectionStatus');
-  fetchKalshi('/markets?limit=1').then(function(r) {
-    if (r.ok) el.innerHTML = '<span style="color:var(--sage-300)">✓ Kalshi API connected</span>';
-    else throw new Error();
-  }).catch(function() {
-    el.innerHTML = '<span style="color:var(--amber)">⚠ Demo mode — API not directly accessible from browser</span>';
+  if (!sb) { el.innerHTML = '<span style="color:var(--dusty-rose)">Not connected</span>'; return; }
+  sb.from('prediction_trades').select('id', { count: 'exact', head: true }).then(function(r) {
+    if (r.error) el.innerHTML = '<span style="color:var(--dusty-rose)">✗ ' + r.error.message + '</span>';
+    else el.innerHTML = '<span style="color:var(--sage-300)">✓ Connected · ' + (r.count || 0) + ' trades in database</span>';
   });
-}
-
-function saveSettings() {
-  config.budget = parseFloat(document.getElementById('settingBudget').value)||50;
-  config.maxTrade = parseFloat(document.getElementById('settingMaxTrade').value)||5;
-  config.kalshiKeyId = document.getElementById('settingKalshiKey').value;
-  localStorage.setItem('kalshi_config', JSON.stringify(config));
-  toast('Settings saved', 'success');
 }
 
 function toast(msg, type) {
   var el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'toast ' + (type||'success') + ' show';
+  el.textContent = msg; el.className = 'toast ' + (type || 'success') + ' show';
   setTimeout(function() { el.classList.remove('show'); }, 3000);
 }
 
