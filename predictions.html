@@ -291,7 +291,7 @@ function renderAll() {
 
 function buildTable(list) {
   var html = '<div class="table-wrap"><table class="trades-table"><thead><tr>' +
-    '<th>Date</th><th>Category</th><th>Market</th><th>Side</th><th>Price</th><th>Cost</th><th>Status</th><th>P/L</th><th></th>' +
+    '<th>Date</th><th>Category</th><th>Market</th><th>Side</th><th>Price</th><th>Cost</th><th>Settles</th><th>Status</th><th>P/L</th><th></th>' +
     '</tr></thead><tbody>';
 
   for (var i = 0; i < list.length; i++) {
@@ -310,6 +310,19 @@ function buildTable(list) {
       plClass = t.profit_loss >= 0 ? 'pl-win' : 'pl-loss';
     }
 
+    // Settles / closes date
+    var settlesText = '--';
+    var settlesClass = '';
+    if (t.closes_at) {
+      var closes = new Date(t.closes_at);
+      var now = new Date();
+      var diffHrs = (closes - now) / (1000 * 60 * 60);
+      settlesText = closes.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (diffHrs < 0) { settlesText = 'Done'; settlesClass = 'style="color:var(--sage-300)"'; }
+      else if (diffHrs < 24) { settlesText = 'Today'; settlesClass = 'style="color:var(--amber);font-weight:700"'; }
+      else if (diffHrs < 48) { settlesText = 'Tomorrow'; settlesClass = 'style="color:var(--amber)"'; }
+    }
+
     html += '<tr>' +
       '<td><div style="font-weight:600">' + date + '</div><div style="font-size:11px;color:var(--taupe)">' + time + '</div></td>' +
       '<td><span class="cat cat-' + parsed.category + '">' + parsed.category + '</span></td>' +
@@ -319,6 +332,7 @@ function buildTable(list) {
       '<td><span class="badge ' + sideClass + '">' + (t.side || 'yes').toUpperCase() + '</span></td>' +
       '<td style="font-weight:700">' + priceCents + '</td>' +
       '<td>' + cost + '</td>' +
+      '<td ' + settlesClass + '>' + settlesText + '</td>' +
       '<td><span class="badge ' + statusClass + '">' + (t.status || 'placed') + '</span></td>' +
       '<td class="' + plClass + '">' + plText + '</td>' +
       '<td>' + (t.ai_reasoning ? '<span class="reason-toggle" onclick="toggleReason(this)">why?</span><div class="reason-text">' + t.ai_reasoning + '</div>' : '') + '</td>' +
