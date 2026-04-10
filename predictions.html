@@ -40,23 +40,33 @@
   .tab:hover{color:var(--cream)}
   .tab.active{color:var(--sage-300);border-bottom-color:var(--sage-400)}
 
-  /* TRADE CARDS */
-  .trade-card{background:rgba(236,232,221,0.07);border:1px solid rgba(196,181,164,0.15);border-radius:12px;padding:18px;margin-bottom:12px;transition:all 0.2s}
-  .trade-card:hover{border-color:rgba(196,181,164,0.3)}
-  .trade-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
-  .trade-title{font-family:'Crimson Pro',serif;font-size:16px;font-weight:600;color:var(--cream);line-height:1.4;flex:1}
-  .trade-badges{display:flex;gap:6px;align-items:center;flex-shrink:0}
-  .badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:6px}
+  /* TRADE TABLE */
+  .trades-table{width:100%;border-collapse:collapse}
+  .trades-table th{font-size:10px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px;padding:10px 12px;text-align:left;border-bottom:1px solid rgba(196,181,164,0.15);position:sticky;top:0}
+  .trades-table td{padding:10px 12px;border-bottom:1px solid rgba(196,181,164,0.06);font-size:13px;color:var(--cream);vertical-align:top}
+  .trades-table tr:hover td{background:rgba(236,232,221,0.04)}
+  .trades-table .cat{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:2px 7px;border-radius:4px;white-space:nowrap}
+  .cat-sports{background:rgba(107,143,173,0.2);color:var(--blue)}
+  .cat-politics{background:rgba(181,146,74,0.2);color:var(--amber)}
+  .cat-crypto{background:rgba(168,132,121,0.15);color:var(--mauve)}
+  .cat-economics{background:rgba(122,144,97,0.2);color:var(--sage-400)}
+  .cat-other{background:rgba(196,181,164,0.15);color:var(--taupe)}
+  .badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 7px;border-radius:4px}
   .badge.yes{background:rgba(95,115,76,0.25);color:var(--sage-300)}
   .badge.no{background:rgba(155,114,105,0.25);color:var(--mauve)}
-  .badge.placed{background:rgba(107,143,173,0.2);color:var(--blue)}
-  .badge.approved{background:rgba(181,146,74,0.2);color:var(--amber)}
-  .badge.settled{background:rgba(122,144,97,0.2);color:var(--sage-400)}
-  .badge.failed{background:rgba(155,114,105,0.2);color:var(--dusty-rose)}
-  .trade-detail{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--taupe);margin-bottom:8px}
-  .trade-detail strong{color:var(--cream);font-weight:700}
-  .trade-reasoning{font-size:13px;color:var(--taupe);line-height:1.5;padding:10px 14px;background:rgba(122,144,97,0.06);border-radius:8px;border-left:3px solid var(--sage-500);margin-top:8px}
-  .trade-time{font-size:11px;color:rgba(196,181,164,0.5);margin-top:8px}
+  .badge.placed{background:rgba(107,143,173,0.15);color:var(--blue)}
+  .badge.approved{background:rgba(181,146,74,0.15);color:var(--amber)}
+  .badge.settled{background:rgba(122,144,97,0.15);color:var(--sage-400)}
+  .badge.won{background:rgba(122,144,97,0.25);color:var(--sage-300)}
+  .badge.lost{background:rgba(155,114,105,0.25);color:var(--dusty-rose)}
+  .reason-toggle{font-size:11px;color:var(--sage-400);cursor:pointer;text-decoration:underline;text-decoration-style:dotted}
+  .reason-toggle:hover{color:var(--sage-300)}
+  .reason-text{font-size:12px;color:var(--taupe);line-height:1.5;padding:8px 12px;background:rgba(122,144,97,0.06);border-radius:6px;border-left:3px solid var(--sage-500);margin-top:6px;display:none}
+  .reason-text.open{display:block}
+  .market-name{font-weight:600;line-height:1.3;max-width:300px}
+  .pl-win{color:var(--sage-300);font-weight:700}
+  .pl-loss{color:var(--dusty-rose);font-weight:700}
+  .table-wrap{overflow-x:auto;background:rgba(236,232,221,0.04);border:1px solid rgba(196,181,164,0.12);border-radius:10px}
 
   /* ACTIVITY LOG */
   .log-entry{padding:10px 0;border-bottom:1px solid rgba(196,181,164,0.08);font-size:13px;display:flex;gap:12px;align-items:baseline}
@@ -268,73 +278,104 @@ function updateStats() {
 
 function renderRecent() {
   var container = document.getElementById('recentTrades');
-  var recent = trades.slice(0, 10);
+  var recent = trades.slice(0, 15);
   if (!recent.length) { container.innerHTML = '<div class="empty-state"><h3>No trades yet</h3><p>Your agent will place its first trades at the next scheduled run.</p></div>'; return; }
-  container.innerHTML = recent.map(renderTradeCard).join('');
+  container.innerHTML = buildTable(recent);
 }
 
 function renderAll() {
   var container = document.getElementById('allTrades');
   if (!trades.length) { container.innerHTML = '<div class="empty-state"><h3>No trades</h3></div>'; return; }
-
-  // Group by date
-  var grouped = {};
-  trades.forEach(function(t) {
-    var day = (t.created_at || '').slice(0, 10);
-    if (!grouped[day]) grouped[day] = [];
-    grouped[day].push(t);
-  });
-
-  var html = '';
-  Object.keys(grouped).sort().reverse().forEach(function(day) {
-    var d = new Date(day + 'T12:00:00Z');
-    var label = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-    var daySpend = grouped[day].reduce(function(s, t) { return s + (t.price || 0) * (t.contracts || 1); }, 0);
-    html += '<div class="day-divider">' + label + ' — ' + grouped[day].length + ' trades · $' + daySpend.toFixed(2) + ' spent</div>';
-    html += grouped[day].map(renderTradeCard).join('');
-  });
-  container.innerHTML = html;
+  container.innerHTML = buildTable(trades);
 }
 
-function renderTradeCard(t) {
-  var priceCents = t.price != null ? Math.round(t.price * 100) : '--';
-  var cost = t.price != null ? '$' + (t.price * (t.contracts || 1)).toFixed(2) : '--';
-  var time = t.created_at ? new Date(t.created_at).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
-  var sideClass = (t.side || 'yes').toLowerCase();
-  var statusClass = (t.status || 'placed').toLowerCase();
+function buildTable(list) {
+  var html = '<div class="table-wrap"><table class="trades-table"><thead><tr>' +
+    '<th>Date</th><th>Category</th><th>Market</th><th>Side</th><th>Price</th><th>Cost</th><th>Status</th><th>P/L</th><th></th>' +
+    '</tr></thead><tbody>';
 
-  // Clean up title
-  var title = t.title || t.ticker || 'Unknown market';
-  // If title is very long ticker, try to make it readable
-  if (title.length > 60) title = title.substring(0, 57) + '...';
+  for (var i = 0; i < list.length; i++) {
+    var t = list[i];
+    var parsed = parseMarket(t);
+    var priceCents = t.price != null ? Math.round(t.price * 100) + '¢' : '--';
+    var cost = t.price != null ? '$' + (t.price * (t.contracts || 1)).toFixed(2) : '--';
+    var date = t.created_at ? new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '--';
+    var time = t.created_at ? new Date(t.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+    var sideClass = (t.side || 'yes').toLowerCase();
+    var statusClass = (t.status || 'placed').toLowerCase();
+    var plText = '--';
+    var plClass = '';
+    if (t.profit_loss != null && t.profit_loss !== 0) {
+      plText = (t.profit_loss >= 0 ? '+' : '') + '$' + t.profit_loss.toFixed(2);
+      plClass = t.profit_loss >= 0 ? 'pl-win' : 'pl-loss';
+    }
 
-  var html = '<div class="trade-card">' +
-    '<div class="trade-header">' +
-      '<div class="trade-title">' + title + '</div>' +
-      '<div class="trade-badges">' +
-        '<span class="badge ' + sideClass + '">' + (t.side || 'yes').toUpperCase() + '</span>' +
-        '<span class="badge ' + statusClass + '">' + (t.status || 'placed') + '</span>' +
-      '</div>' +
-    '</div>' +
-    '<div class="trade-detail">' +
-      '<span>Price: <strong>' + priceCents + '¢</strong></span>' +
-      '<span>Contracts: <strong>' + (t.contracts || 1) + '</strong></span>' +
-      '<span>Cost: <strong>' + cost + '</strong></span>' +
-      '<span>Platform: <strong>' + (t.platform || 'kalshi') + '</strong></span>' +
-    '</div>';
-
-  if (t.ai_reasoning) {
-    html += '<div class="trade-reasoning">' + t.ai_reasoning + '</div>';
+    html += '<tr>' +
+      '<td><div style="font-weight:600">' + date + '</div><div style="font-size:11px;color:var(--taupe)">' + time + '</div></td>' +
+      '<td><span class="cat cat-' + parsed.category + '">' + parsed.category + '</span></td>' +
+      '<td><div class="market-name">' + parsed.name + '</div>' +
+        (parsed.details ? '<div style="font-size:11px;color:var(--taupe);margin-top:2px">' + parsed.details + '</div>' : '') +
+      '</td>' +
+      '<td><span class="badge ' + sideClass + '">' + (t.side || 'yes').toUpperCase() + '</span></td>' +
+      '<td style="font-weight:700">' + priceCents + '</td>' +
+      '<td>' + cost + '</td>' +
+      '<td><span class="badge ' + statusClass + '">' + (t.status || 'placed') + '</span></td>' +
+      '<td class="' + plClass + '">' + plText + '</td>' +
+      '<td>' + (t.ai_reasoning ? '<span class="reason-toggle" onclick="toggleReason(this)">why?</span><div class="reason-text">' + t.ai_reasoning + '</div>' : '') + '</td>' +
+    '</tr>';
   }
-
-  if (t.profit_loss != null && t.profit_loss !== 0) {
-    var plColor = t.profit_loss >= 0 ? 'var(--sage-300)' : 'var(--dusty-rose)';
-    html += '<div style="margin-top:8px;font-weight:700;color:' + plColor + '">P/L: ' + (t.profit_loss >= 0 ? '+' : '') + '$' + t.profit_loss.toFixed(2) + '</div>';
-  }
-
-  html += '<div class="trade-time">' + time + ' · ' + (t.ticker || '') + '</div>';
-  html += '</div>';
+  html += '</tbody></table></div>';
   return html;
+}
+
+function parseMarket(t) {
+  var title = t.title || t.ticker || '';
+  var ticker = (t.ticker || '').toUpperCase();
+  var cat = 'other';
+  var name = title;
+  var details = '';
+
+  // Detect category from ticker or title
+  if (/SPORT|NBA|NFL|MLB|NHL|GAME|MULTIGAME|ALCARAZ|SINNER|HARDEN|MILLER|LAMELO|BALL/.test(ticker + ' ' + title.toUpperCase())) {
+    cat = 'sports';
+  } else if (/FED|RATE|CPI|GDP|INFLATION|RECESSION|JOBS|TREASURY/.test(ticker + ' ' + title.toUpperCase())) {
+    cat = 'economics';
+  } else if (/TRUMP|BIDEN|DEMOCRAT|REPUBLICAN|SENATE|HOUSE|ELECTION|GOVERNOR|PRIMARY|MIDTERM/.test(ticker + ' ' + title.toUpperCase())) {
+    cat = 'politics';
+  } else if (/BTC|BITCOIN|ETH|CRYPTO|ETHEREUM/.test(ticker + ' ' + title.toUpperCase())) {
+    cat = 'crypto';
+  }
+
+  // Parse messy combo titles like "yes Philadelphia,yes James Harden: 15+,yes I"
+  if (title.indexOf(',yes ') > -1 || title.indexOf(',no ') > -1) {
+    var parts = title.split(',').map(function(p) {
+      return p.replace(/^(yes |no )/i, '').trim();
+    }).filter(function(p) { return p.length > 2; });
+    if (parts.length > 1) {
+      name = 'Combo: ' + parts.length + ' legs';
+      details = parts.join(' + ');
+    } else if (parts.length === 1) {
+      name = parts[0];
+    }
+  }
+
+  // Clean up known patterns
+  if (/Fed cut rates|Fed rate/i.test(title)) {
+    name = 'Fed Rate Cut — June 2026';
+    cat = 'economics';
+    details = '';
+  }
+
+  // Truncate if still too long
+  if (name.length > 50) name = name.substring(0, 47) + '...';
+  if (details.length > 80) details = details.substring(0, 77) + '...';
+
+  return { category: cat, name: name, details: details };
+}
+
+function toggleReason(el) {
+  var text = el.nextElementSibling;
+  if (text) text.classList.toggle('open');
 }
 
 function testConn() {
