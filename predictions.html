@@ -102,6 +102,9 @@
   .toast.error{border-color:var(--dusty-rose);color:var(--dusty-rose)}
   .refresh-btn{background:rgba(122,144,97,0.15);color:var(--sage-300);border:1px solid rgba(122,144,97,0.3);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Karla',sans-serif;transition:all 0.2s}
   .refresh-btn:hover{background:rgba(122,144,97,0.3)}
+  .filter-btn{font-size:11px;font-weight:700;padding:5px 12px;border-radius:14px;background:rgba(196,181,164,0.08);color:var(--taupe);border:1px solid rgba(196,181,164,0.15);cursor:pointer;transition:all 0.15s;font-family:'Karla',sans-serif}
+  .filter-btn:hover{border-color:var(--taupe);color:var(--cream)}
+  .filter-btn.active{background:var(--sage-500);color:white;border-color:var(--sage-500)}
   .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
   .section-title{font-family:'Crimson Pro',serif;font-size:18px;font-weight:300;color:var(--cream)}
   .day-divider{font-size:12px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px;padding:8px 0;margin-top:8px;border-top:1px solid rgba(196,181,164,0.1)}
@@ -155,13 +158,13 @@
       <div class="stat-card"><div class="stat-value" id="statBudgetLeft">-</div><div class="stat-label">Budget Left Today</div></div>
     </div>
 
-    <div class="next-run" id="nextRunInfo">
-      <span>⏱</span> Agent runs every <strong>6 hours</strong> (00:00, 06:00, 12:00, 18:00 UTC). Auto-refreshes every 60s.
-    </div>
-
     <div class="section-header">
       <div class="section-title">Recent Agent Activity</div>
       <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+    </div>
+
+    <div class="next-run" id="nextRunInfo">
+      <span>⏱</span> Agent runs every <strong>6 hours</strong> (8pm, 2am, 8am, 2pm Eastern). Auto-refreshes every 60s.
     </div>
     <div id="recentTrades"><div class="loading"><div class="spinner"></div>Loading trades...</div></div>
   </div>
@@ -171,6 +174,28 @@
     <div class="section-header">
       <div class="section-title">Trade History</div>
       <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+      <div style="font-size:11px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px">Filter:</div>
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('sports',this)">Sports</button>
+      <button class="filter-btn" onclick="setFilter('politics',this)">Politics</button>
+      <button class="filter-btn" onclick="setFilter('economics',this)">Economics</button>
+      <button class="filter-btn" onclick="setFilter('crypto',this)">Crypto</button>
+      <span style="color:rgba(196,181,164,0.3)">|</span>
+      <button class="filter-btn" onclick="setFilter('placed',this)">Placed</button>
+      <button class="filter-btn" onclick="setFilter('settled',this)">Settled</button>
+      <button class="filter-btn" onclick="setFilter('won',this)">Won</button>
+      <button class="filter-btn" onclick="setFilter('lost',this)">Lost</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+      <div style="font-size:11px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px">Sort:</div>
+      <button class="filter-btn active" onclick="setSort('newest',this)">Newest</button>
+      <button class="filter-btn" onclick="setSort('oldest',this)">Oldest</button>
+      <button class="filter-btn" onclick="setSort('price-high',this)">Price ↑</button>
+      <button class="filter-btn" onclick="setSort('price-low',this)">Price ↓</button>
+      <button class="filter-btn" onclick="setSort('cost-high',this)">Cost ↑</button>
+      <button class="filter-btn" onclick="setSort('settles-soon',this)">Settles Soon</button>
     </div>
     <div id="allTrades"><div class="loading"><div class="spinner"></div>Loading...</div></div>
   </div>
@@ -202,6 +227,8 @@
 
 <script>
 var sb = null, trades = [], config = {};
+var currentFilter = 'all';
+var currentSort = 'newest';
 
 function init() {
   config = loadCfg();
@@ -286,7 +313,61 @@ function renderRecent() {
 function renderAll() {
   var container = document.getElementById('allTrades');
   if (!trades.length) { container.innerHTML = '<div class="empty-state"><h3>No trades</h3></div>'; return; }
-  container.innerHTML = buildTable(trades);
+
+  // Filter
+  var filtered = trades.filter(function(t) {
+    if (currentFilter === 'all') return true;
+    var parsed = parseMarket(t);
+    var status = (t.status || '').toLowerCase();
+    // Category filters
+    if (currentFilter === 'sports' || currentFilter === 'politics' || currentFilter === 'economics' || currentFilter === 'crypto') {
+      return parsed.category === currentFilter;
+    }
+    // Status filters
+    if (currentFilter === 'placed') return status === 'placed';
+    if (currentFilter === 'settled') return status === 'settled';
+    if (currentFilter === 'won') return status === 'settled' && (t.profit_loss || 0) > 0;
+    if (currentFilter === 'lost') return status === 'settled' && (t.profit_loss || 0) < 0;
+    return true;
+  });
+
+  // Sort
+  filtered.sort(function(a, b) {
+    if (currentSort === 'newest') return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    if (currentSort === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    if (currentSort === 'price-high') return (b.price || 0) - (a.price || 0);
+    if (currentSort === 'price-low') return (a.price || 0) - (b.price || 0);
+    if (currentSort === 'cost-high') return ((b.price || 0) * (b.contracts || 1)) - ((a.price || 0) * (a.contracts || 1));
+    if (currentSort === 'settles-soon') {
+      var aDate = a.closes_at ? new Date(a.closes_at) : new Date('2099-01-01');
+      var bDate = b.closes_at ? new Date(b.closes_at) : new Date('2099-01-01');
+      return aDate - bDate;
+    }
+    return 0;
+  });
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state"><h3>No matching trades</h3><p>Try a different filter.</p></div>';
+    return;
+  }
+
+  container.innerHTML = '<div style="font-size:12px;color:var(--taupe);margin-bottom:8px">Showing ' + filtered.length + ' of ' + trades.length + ' trades</div>' + buildTable(filtered);
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  var btns = el.parentElement.querySelectorAll('.filter-btn');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+  el.classList.add('active');
+  renderAll();
+}
+
+function setSort(s, el) {
+  currentSort = s;
+  var btns = el.parentElement.querySelectorAll('.filter-btn');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+  el.classList.add('active');
+  renderAll();
 }
 
 function buildTable(list) {
