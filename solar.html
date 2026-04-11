@@ -1,413 +1,1016 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prediction Agent Monitor</title>
-<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root {
-    --sage-50:#f6f7f3;--sage-100:#e8ebe0;--sage-200:#d4dac5;--sage-300:#b8c5a3;--sage-400:#98ab7e;--sage-500:#7a9061;
-    --sage-600:#5f734c;--sage-700:#4a5a3b;--sage-800:#3d4a32;--cream:#ece8dd;--taupe:#c4b5a4;--dusty-sage:#a4ac95;
-    --mauve:#a88479;--charcoal:#4a4d47;--dusty-rose:#9b7269;--blue:#6b8fad;--amber:#b5924a;
-  }
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Karla',sans-serif;background:var(--charcoal);color:var(--cream);min-height:100vh}
-  .header{background:rgba(61,74,50,0.6);border-bottom:1px solid rgba(196,181,164,0.2);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
-  .header h1{font-family:'Crimson Pro',serif;font-size:22px;font-weight:300;color:var(--cream);letter-spacing:1px}
-  .header h1 span{color:var(--sage-400);font-weight:600}
-  .header-right{display:flex;gap:12px;align-items:center}
-  .back-link{color:var(--taupe);text-decoration:none;font-size:13px}
-  .back-link:hover{color:var(--cream)}
-  .status-pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;display:flex;align-items:center;gap:6px}
-  .status-pill.live{background:rgba(122,144,97,0.2);color:var(--sage-300);border:1px solid rgba(122,144,97,0.3)}
-  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--sage-400);animation:pulse 2s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-  .main{padding:24px;max-width:1100px;margin:0 auto}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Dashboard — Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        :root{
+            --sage-50:#f6f7f3;--sage-100:#e8ebe0;--sage-200:#d4dac5;--sage-300:#b8c5a3;--sage-400:#98ab7e;
+            --sage-500:#7a9061;--sage-600:#5f734c;--sage-700:#4a5a3b;--sage-800:#3d4a32;
+            --cream:#ece8dd;--taupe:#c4b5a4;--dusty-sage:#a4ac95;--mauve:#a88479;--charcoal:#4a4d47;--dusty-rose:#9b7269;
+            --pv-color:#66BB6A;--pv-bg:rgba(102,187,106,0.12);
+            --batt-color:#AB47BC;--batt-bg:rgba(171,71,188,0.12);
+            --grid-color:#FFA726;--grid-bg:rgba(255,167,38,0.12);
+            --load-color:#EF5350;--load-bg:rgba(239,83,80,0.12);
+            --soc-color:#4DD0E1;--soc-bg:rgba(77,208,225,0.08);
+        }
+        body{font-family:'Karla',sans-serif;background:var(--charcoal);min-height:100vh;color:var(--cream);}
+        .top-bar{display:flex;align-items:center;padding:16px 24px;background:rgba(0,0,0,0.2);}
+        .top-bar a{color:var(--taupe);text-decoration:none;font-size:0.95rem;transition:color 0.2s;}
+        .top-bar a:hover{color:var(--cream);}
+        .main-content{padding:24px 20px 60px;max-width:1200px;margin:0 auto;}
+        header{text-align:center;margin-bottom:20px;}
+        header .icon{font-size:2.5rem;margin-bottom:8px;}
+        h1{font-family:'Crimson Pro',serif;font-size:2.6rem;font-weight:300;letter-spacing:1px;margin-bottom:4px;}
+        .subtitle{font-size:1rem;color:var(--taupe);}
 
-  /* STATS GRID */
-  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
-  .stat-card{background:rgba(236,232,221,0.07);border:1px solid rgba(196,181,164,0.15);border-radius:10px;padding:16px;text-align:center}
-  .stat-value{font-family:'Crimson Pro',serif;font-size:28px;font-weight:600;color:var(--sage-300)}
-  .stat-value.warn{color:var(--amber)}
-  .stat-value.bad{color:var(--dusty-rose)}
-  .stat-label{font-size:10px;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;font-weight:700}
+        .status-bar{display:flex;justify-content:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+        .status-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.15);border-radius:20px;padding:6px 14px;font-size:0.82rem;color:var(--taupe);}
+        .status-dot{width:8px;height:8px;border-radius:50%;background:#66BB6A;animation:pulse 2s infinite;}
+        .status-dot.offline{background:var(--dusty-rose);animation:none;}
+        @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+        .weather-pill{font-size:0.85rem;gap:4px;}
+        .wx-icon{font-size:1.1rem;}
 
-  /* TABS */
-  .tabs{display:flex;background:rgba(61,74,50,0.3);border-bottom:1px solid rgba(196,181,164,0.15);padding:0 24px}
-  .tab{padding:12px 20px;font-size:13px;font-weight:700;color:var(--taupe);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s}
-  .tab:hover{color:var(--cream)}
-  .tab.active{color:var(--sage-300);border-bottom-color:var(--sage-400)}
+        .day-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;}
+        .day-nav-btn{background:rgba(236,232,221,0.12);border:1px solid rgba(236,232,221,0.15);color:var(--taupe);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.1rem;transition:all 0.2s;}
+        .day-nav-btn:hover{background:rgba(236,232,221,0.25);color:var(--cream);}
+        .day-nav-btn:disabled{opacity:0.3;cursor:not-allowed;}
+        .day-nav-date{font-family:'Crimson Pro',serif;font-size:1.3rem;font-weight:400;color:var(--cream);min-width:200px;text-align:center;}
+        .day-nav-today{background:none;border:1px solid rgba(236,232,221,0.2);color:var(--taupe);border-radius:6px;padding:4px 12px;font-size:0.78rem;cursor:pointer;font-family:'Karla';transition:all 0.2s;}
+        .day-nav-today:hover{background:rgba(236,232,221,0.15);color:var(--cream);}
 
-  /* TRADE TABLE */
-  .trades-table{width:100%;border-collapse:collapse}
-  .trades-table th{font-size:10px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px;padding:10px 12px;text-align:left;border-bottom:1px solid rgba(196,181,164,0.15);position:sticky;top:0}
-  .trades-table td{padding:10px 12px;border-bottom:1px solid rgba(196,181,164,0.06);font-size:13px;color:var(--cream);vertical-align:top}
-  .trades-table tr:hover td{background:rgba(236,232,221,0.04)}
-  .trades-table .cat{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:2px 7px;border-radius:4px;white-space:nowrap}
-  .cat-sports{background:rgba(107,143,173,0.2);color:var(--blue)}
-  .cat-politics{background:rgba(181,146,74,0.2);color:var(--amber)}
-  .cat-crypto{background:rgba(168,132,121,0.15);color:var(--mauve)}
-  .cat-economics{background:rgba(122,144,97,0.2);color:var(--sage-400)}
-  .cat-other{background:rgba(196,181,164,0.15);color:var(--taupe)}
-  .badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 7px;border-radius:4px}
-  .badge.yes{background:rgba(95,115,76,0.25);color:var(--sage-300)}
-  .badge.no{background:rgba(155,114,105,0.25);color:var(--mauve)}
-  .badge.placed{background:rgba(107,143,173,0.15);color:var(--blue)}
-  .badge.approved{background:rgba(181,146,74,0.15);color:var(--amber)}
-  .badge.settled{background:rgba(122,144,97,0.15);color:var(--sage-400)}
-  .badge.won{background:rgba(122,144,97,0.25);color:var(--sage-300)}
-  .badge.lost{background:rgba(155,114,105,0.25);color:var(--dusty-rose)}
-  .reason-toggle{font-size:11px;color:var(--sage-400);cursor:pointer;text-decoration:underline;text-decoration-style:dotted}
-  .reason-toggle:hover{color:var(--sage-300)}
-  .reason-text{font-size:12px;color:var(--taupe);line-height:1.5;padding:8px 12px;background:rgba(122,144,97,0.06);border-radius:6px;border-left:3px solid var(--sage-500);margin-top:6px;display:none}
-  .reason-text.open{display:block}
-  .market-name{font-weight:600;line-height:1.3;max-width:300px}
-  .pl-win{color:var(--sage-300);font-weight:700}
-  .pl-loss{color:var(--dusty-rose);font-weight:700}
-  .table-wrap{overflow-x:auto;background:rgba(236,232,221,0.04);border:1px solid rgba(196,181,164,0.12);border-radius:10px}
+        .period-toggle{display:flex;justify-content:center;gap:4px;margin-bottom:20px;background:rgba(236,232,221,0.1);border-radius:10px;padding:4px;width:fit-content;margin-left:auto;margin-right:auto;}
+        .period-btn{border:none;background:transparent;color:var(--taupe);padding:8px 20px;border-radius:8px;cursor:pointer;font-family:'Karla';font-size:0.9rem;font-weight:500;transition:all 0.2s;}
+        .period-btn.active{background:rgba(236,232,221,0.95);color:var(--sage-700);box-shadow:0 2px 8px rgba(0,0,0,0.15);}
+        .period-btn:hover:not(.active){color:var(--cream);}
 
-  /* ACTIVITY LOG */
-  .log-entry{padding:10px 0;border-bottom:1px solid rgba(196,181,164,0.08);font-size:13px;display:flex;gap:12px;align-items:baseline}
-  .log-entry:last-child{border-bottom:none}
-  .log-time{font-size:11px;color:rgba(196,181,164,0.4);white-space:nowrap;min-width:70px}
-  .log-msg{color:var(--taupe);flex:1}
-  .log-msg strong{color:var(--cream)}
+        /* Stat cards - now clickable filters */
+        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+        .stat-card{background:rgba(236,232,221,0.95);border-radius:12px;padding:16px 12px;text-align:center;color:var(--charcoal);box-shadow:0 3px 12px rgba(0,0,0,0.2);position:relative;overflow:hidden;cursor:pointer;transition:all 0.25s;border:2px solid transparent;}
+        .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+        .stat-card.pv::before{background:var(--pv-color);}
+        .stat-card.batt::before{background:var(--batt-color);}
+        .stat-card.grid-c::before{background:var(--grid-color);}
+        .stat-card.load-c::before{background:var(--load-color);}
+        .stat-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.3);}
+        .stat-card.active-filter{border-color:var(--cream);box-shadow:0 6px 20px rgba(0,0,0,0.4);}
+        .stat-card .filter-hint{font-size:0.65rem;color:var(--sage-400);margin-top:3px;opacity:0;transition:opacity 0.2s;}
+        .stat-card:hover .filter-hint{opacity:1;}
+        .stat-card.active-filter .filter-hint{opacity:1;color:var(--sage-600);}
+        .stat-icon{font-size:1.4rem;margin-bottom:4px;}
+        .stat-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--sage-600);font-weight:700;margin-bottom:2px;}
+        .stat-value{font-family:'Crimson Pro',serif;font-size:1.7rem;font-weight:600;color:var(--sage-800);line-height:1.1;}
+        .stat-unit{font-family:'Karla';font-size:0.8rem;font-weight:400;color:var(--sage-600);}
+        .stat-sub{font-size:0.72rem;color:var(--sage-500);margin-top:2px;}
 
-  /* SETUP */
-  .setup-screen{max-width:460px;margin:60px auto;padding:0 20px}
-  .setup-screen h2{font-family:'Crimson Pro',serif;font-weight:300;font-size:28px;color:var(--cream);margin-bottom:8px}
-  .setup-screen p{color:var(--taupe);margin-bottom:24px;font-size:14px}
-  .card{background:rgba(236,232,221,0.07);border:1px solid rgba(196,181,164,0.15);border-radius:12px;padding:20px;margin-bottom:16px}
-  .form-group{margin-bottom:16px}
-  .form-label{display:block;font-size:12px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
-  .form-input{width:100%;padding:10px 12px;background:rgba(236,232,221,0.08);border:1px solid rgba(196,181,164,0.2);border-radius:8px;color:var(--cream);font-family:'Karla',sans-serif;font-size:13px;outline:none}
-  .form-input:focus{border-color:var(--sage-400)}
-  .form-input::placeholder{color:rgba(196,181,164,0.4)}
-  .btn{font-family:'Karla',sans-serif;font-size:13px;font-weight:700;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s}
-  .btn-primary{background:var(--sage-500);color:white}
-  .btn-primary:hover{background:var(--sage-600)}
-  .btn-outline{background:transparent;color:var(--taupe);border:1px solid rgba(196,181,164,0.3)}
-  .btn-outline:hover{border-color:var(--taupe);color:var(--cream)}
+        /* Chart - lighter background */
+        .chart-card{background:rgba(246,247,243,0.97);border-radius:14px;padding:20px;margin-bottom:24px;border:1px solid rgba(196,181,164,0.3);height:400px;}
 
-  .empty-state{text-align:center;padding:60px 20px;color:var(--taupe)}
-  .empty-state h3{font-family:'Crimson Pro',serif;font-size:20px;margin-bottom:8px;color:var(--cream)}
-  .loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--taupe)}
-  .spinner{width:20px;height:20px;border:2px solid rgba(196,181,164,0.2);border-top-color:var(--sage-400);border-radius:50%;animation:spin 0.8s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .toast{position:fixed;bottom:24px;right:24px;background:var(--charcoal);border:1px solid rgba(196,181,164,0.3);border-radius:10px;padding:12px 20px;font-size:13px;z-index:1000;transform:translateY(100px);opacity:0;transition:all 0.3s;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
-  .toast.show{transform:translateY(0);opacity:1}
-  .toast.success{border-color:var(--sage-400);color:var(--sage-300)}
-  .toast.error{border-color:var(--dusty-rose);color:var(--dusty-rose)}
-  .refresh-btn{background:rgba(122,144,97,0.15);color:var(--sage-300);border:1px solid rgba(122,144,97,0.3);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;font-family:'Karla',sans-serif;transition:all 0.2s}
-  .refresh-btn:hover{background:rgba(122,144,97,0.3)}
-  .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-  .section-title{font-family:'Crimson Pro',serif;font-size:18px;font-weight:300;color:var(--cream)}
-  .day-divider{font-size:12px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px;padding:8px 0;margin-top:8px;border-top:1px solid rgba(196,181,164,0.1)}
-  .next-run{font-size:12px;color:var(--taupe);background:rgba(236,232,221,0.05);border:1px solid rgba(196,181,164,0.1);border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:8px}
-  .next-run strong{color:var(--cream)}
-  @media(max-width:768px){
-    .main{padding:16px}.stats-grid{grid-template-columns:1fr 1fr}
-    .trade-header{flex-direction:column}.header h1{font-size:18px}
-  }
-</style>
+        .card{background:rgba(236,232,221,0.95);border-radius:14px;padding:24px;color:var(--charcoal);box-shadow:0 4px 16px rgba(0,0,0,0.25);margin-bottom:20px;}
+        .card h3{font-family:'Crimson Pro',serif;font-size:1.3rem;font-weight:600;color:var(--sage-700);margin-bottom:14px;}
+        .detail-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(196,181,164,0.25);}
+        .detail-row:last-child{border-bottom:none;}
+        .detail-label{font-size:0.88rem;color:var(--sage-600);display:flex;align-items:center;gap:8px;}
+        .detail-value{font-weight:700;font-size:0.95rem;color:var(--sage-800);}
+        .detail-value.pos{color:#3d8b37;}
+        .detail-value.neg{color:var(--dusty-rose);}
+        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+
+        .section-title{font-family:'Crimson Pro',serif;font-size:1.6rem;font-weight:400;color:var(--cream);margin:32px 0 16px;}
+        .invest-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+        .invest-card{background:rgba(236,232,221,0.95);border-radius:12px;padding:18px 14px;text-align:center;color:var(--charcoal);box-shadow:0 3px 12px rgba(0,0,0,0.2);}
+        .invest-card .cat-icon{font-size:1.6rem;margin-bottom:4px;}
+        .invest-card .cat-label{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--sage-600);font-weight:700;}
+        .invest-card .cat-amount{font-family:'Crimson Pro',serif;font-size:1.5rem;font-weight:600;color:var(--sage-800);}
+        .invest-card .cat-detail{font-size:0.75rem;color:var(--sage-500);margin-top:2px;}
+        .specs-note{background:rgba(236,232,221,0.08);border:1px solid rgba(236,232,221,0.12);border-radius:10px;padding:14px 18px;font-size:0.88rem;color:var(--taupe);line-height:1.6;margin-bottom:20px;}
+        .specs-note strong{color:var(--cream);}
+        .payback-bar-bg{background:rgba(196,181,164,0.3);border-radius:8px;height:28px;overflow:hidden;position:relative;margin:10px 0;}
+        .payback-bar-fill{height:100%;background:linear-gradient(90deg,var(--sage-500),var(--sage-400));border-radius:8px;transition:width 0.8s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:0.75rem;font-weight:700;color:white;min-width:40px;}
+
+        /* What-if calculator */
+        .calc-card{background:rgba(236,232,221,0.95);border-radius:14px;padding:24px;color:var(--charcoal);box-shadow:0 4px 16px rgba(0,0,0,0.25);margin-bottom:20px;}
+        .calc-card h3{font-family:'Crimson Pro',serif;font-size:1.3rem;font-weight:600;color:var(--sage-700);margin-bottom:14px;}
+        .slider-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+        .slider-row label{font-size:0.88rem;color:var(--sage-600);min-width:110px;}
+        .slider-row input[type=range]{flex:1;accent-color:var(--sage-500);}
+        .slider-row .slider-val{font-family:'Crimson Pro',serif;font-size:1.2rem;font-weight:600;color:var(--sage-800);min-width:50px;text-align:right;}
+        .rate-input{width:72px;border:1px solid var(--sage-300);border-radius:6px;padding:4px 6px;font-family:'Crimson Pro',serif;font-size:1rem;font-weight:600;color:var(--sage-800);background:var(--sage-50);text-align:right;}
+
+        .loading-msg{text-align:center;color:var(--taupe);padding:40px;}
+        .spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--taupe);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:12px;}
+        @keyframes spin{to{transform:rotate(360deg);}}
+
+        .meter-filter-btn{border:1px solid var(--sage-300);background:var(--sage-50);color:var(--sage-600);border-radius:6px;padding:5px 14px;font-size:0.8rem;cursor:pointer;font-family:'Karla';font-weight:500;transition:all 0.2s;}
+        .meter-filter-btn.active{background:var(--sage-500);color:white;border-color:var(--sage-500);}
+        .meter-filter-btn:hover:not(.active){background:var(--sage-100);}
+        #dropZone.dragover{border-color:var(--sage-500);background:var(--sage-100);}
+
+        @media(max-width:768px){
+            h1{font-size:2rem;}
+            .stats-grid{grid-template-columns:repeat(2,1fr);}
+            .two-col{grid-template-columns:1fr;}
+            .invest-grid{grid-template-columns:repeat(2,1fr);}
+            .day-nav-date{font-size:1.1rem;min-width:160px;}
+            .slider-row{flex-wrap:wrap;}
+            .slider-row label{min-width:100%;}
+        }
+    </style>
 </head>
 <body>
+<div class="top-bar"><a href="index.html">← Back to Hub</a></div>
+<div class="main-content">
+    <header><div class="icon">☀️</div><h1>Solar Dashboard</h1><p class="subtitle">SolArk 15K — 1038 Poplar</p></header>
 
-<div class="header">
-  <div style="display:flex;align-items:center;gap:16px">
-    <a href="index.html" class="back-link">← Hub</a>
-    <h1><span>Prediction</span> Agent</h1>
-  </div>
-  <div class="header-right">
-    <div class="status-pill live" id="agentStatus"><div class="dot"></div>Agent Live</div>
-  </div>
+    <div class="status-bar">
+        <div class="status-pill"><span class="status-dot" id="statusDot"></span> <span id="statusText">Connecting...</span></div>
+        <div class="status-pill"><span id="lastUpdated">—</span></div>
+        <div class="status-pill weather-pill"><span class="wx-icon" id="wxIcon">—</span> <span id="wxText">...</span></div>
+    </div>
+
+    <div class="day-nav">
+        <button class="day-nav-btn" id="prevDay" onclick="changeDay(-1)">←</button>
+        <span class="day-nav-date" id="dayLabel">Today</span>
+        <button class="day-nav-btn" id="nextDay" onclick="changeDay(1)">→</button>
+        <button class="day-nav-today" id="todayBtn" onclick="goToday()" style="display:none;">Today</button>
+    </div>
+
+    <div class="period-toggle">
+        <button class="period-btn active" data-p="day" onclick="setPeriod('day')">Day</button>
+        <button class="period-btn" data-p="week" onclick="setPeriod('week')">Week</button>
+        <button class="period-btn" data-p="month" onclick="setPeriod('month')">Month</button>
+    </div>
+
+    <div id="loadingState" class="loading-msg"><div class="spinner"></div><div>Loading solar data...</div></div>
+
+    <div id="dashContent" style="display:none;">
+
+        <!-- Stat cards = clickable chart filters -->
+        <div class="stats-grid">
+            <div class="stat-card pv" onclick="toggleFilter('pv')"><div class="stat-icon">☀️</div><div class="stat-label">Solar</div><div class="stat-value"><span id="pvKwh">0</span> <span class="stat-unit">kWh</span></div><div class="stat-sub" id="pvPeak"></div><div class="filter-hint">click to isolate</div></div>
+            <div class="stat-card load-c" onclick="toggleFilter('load')"><div class="stat-icon">🏠</div><div class="stat-label">Home Usage</div><div class="stat-value"><span id="loadKwh">0</span> <span class="stat-unit">kWh</span></div><div class="stat-sub" id="loadPeak"></div><div class="filter-hint">click to isolate</div></div>
+            <div class="stat-card grid-c" onclick="toggleFilter('grid')"><div class="stat-icon">⚡</div><div class="stat-label">Grid Import</div><div class="stat-value"><span id="gridKwh">0</span> <span class="stat-unit">kWh</span></div><div class="filter-hint">click to isolate</div></div>
+            <div class="stat-card batt" onclick="toggleFilter('battery')"><div class="stat-icon">🔋</div><div class="stat-label">Battery</div><div class="stat-value"><span id="battSoc">—</span><span class="stat-unit">%</span></div><div class="stat-sub" id="battSub"></div><div class="filter-hint">click to isolate</div></div>
+        </div>
+
+        <div class="chart-card"><canvas id="energyChart"></canvas></div>
+
+        <div class="two-col">
+            <div class="card">
+                <h3>⚡ Energy Breakdown</h3>
+                <div class="detail-row"><span class="detail-label">☀️ Solar Generated</span><span class="detail-value pos" id="dPv">0 kWh</span></div>
+                <div class="detail-row"><span class="detail-label">🏠 Home Consumed</span><span class="detail-value" id="dLoad">0 kWh</span></div>
+                <div class="detail-row"><span class="detail-label">⬇️ Grid Imported</span><span class="detail-value neg" id="dGridIn">0 kWh</span></div>
+                <div class="detail-row"><span class="detail-label">🔋 Battery Charged</span><span class="detail-value" id="dBattC">0 kWh</span></div>
+                <div class="detail-row"><span class="detail-label">🔋 Battery Used</span><span class="detail-value" id="dBattD">0 kWh</span></div>
+            </div>
+            <div class="card">
+                <h3>💰 Cost Breakdown</h3>
+                <div class="detail-row"><span class="detail-label">Utility Rate</span><span class="detail-value">$<input type="number" id="rateInput" value="0.197264" step="0.001" class="rate-input">/kWh</span></div>
+                <div class="detail-row"><span class="detail-label">Solar Offset Value</span><span class="detail-value pos" id="cOffset">$0.00</span></div>
+                <div class="detail-row"><span class="detail-label">Grid Cost</span><span class="detail-value neg" id="cGrid">$0.00</span></div>
+                <div class="detail-row" style="border-top:2px solid var(--sage-300);margin-top:4px;padding-top:12px;">
+                    <span class="detail-label" style="font-weight:700;">Net Savings</span>
+                    <span class="detail-value pos" id="cNet" style="font-size:1.15rem;">$0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="dailySection" style="display:none;">
+            <h2 class="section-title">📅 Daily Breakdown</h2>
+            <div class="card"><div id="dailyRows"></div></div>
+        </div>
+
+        <!-- Investment Section -->
+        <h2 class="section-title">🔧 Solar Investment</h2>
+        <div class="specs-note"><strong>System Specs:</strong> SolArk 15K Inverter · 31× 580W panels (17.98 kW system, <strong id="installedCount">—</strong> installed) · 4 batteries (60.5 kWh total) · Rate: $0.197/kWh</div>
+        <div class="invest-grid">
+            <div class="invest-card"><div class="cat-icon">🔋</div><div class="cat-label">Batteries</div><div class="cat-amount" id="expBatt">$0</div><div class="cat-detail">4× · 60.5 kWh</div></div>
+            <div class="invest-card"><div class="cat-icon">🔆</div><div class="cat-label">Panels</div><div class="cat-amount" id="expPanel">$0</div><div class="cat-detail">31× 580W</div></div>
+            <div class="invest-card"><div class="cat-icon">⚙️</div><div class="cat-label">Inverter</div><div class="cat-amount" id="expInv">$0</div><div class="cat-detail">SolArk 15K</div></div>
+            <div class="invest-card"><div class="cat-icon">🔩</div><div class="cat-label">Misc</div><div class="cat-amount" id="expMisc">$0</div><div class="cat-detail">Hardware & supplies</div></div>
+        </div>
+
+        <!-- Payback Tracker -->
+        <div class="card">
+            <h3>📊 Payback Tracker</h3>
+            <div class="detail-row"><span class="detail-label">Total Invested <a href="expenses.html" style="font-size:0.7rem;background:var(--sage-500);color:white;padding:2px 8px;border-radius:6px;text-decoration:none;font-weight:600;margin-left:6px;">View ↗</a></span><span class="detail-value" id="totalInvested">$0</span></div>
+            <div class="detail-row"><span class="detail-label">Total Saved (all time)</span><span class="detail-value pos" id="totalSaved">$0.00</span></div>
+            <div class="detail-row"><span class="detail-label">Remaining</span><span class="detail-value" id="remaining">$0</span></div>
+            <div class="payback-bar-bg"><div class="payback-bar-fill" id="paybackBar" style="width:1%;">0%</div></div>
+            <div class="detail-row"><span class="detail-label">Est. payback (<span id="paybackPanelCount">—</span> panels)</span><span class="detail-value" id="paybackEst">—</span></div>
+        </div>
+
+        <!-- Electric Bills -->
+        <h2 class="section-title" style="cursor:pointer;" onclick="toggleBillUpload()">💡 Electric Bills <span id="billToggleHint" style="font-size:0.8rem;color:var(--taupe);">▶ click to add bills</span></h2>
+
+        <div id="billUploadSection" style="display:none;">
+            <div class="card">
+                <h3>📄 Scan Bills</h3>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
+                    <input type="password" id="billApiKey" placeholder="key" style="width:120px;border:1px solid var(--sage-300);border-radius:6px;padding:5px 8px;font-size:0.78rem;font-family:'Karla';background:var(--sage-50);color:var(--sage-800);" oninput="saveBillApiKey()">
+                    <span id="billKeyStatus" style="font-size:0.7rem;color:var(--sage-400);">⚪</span>
+                </div>
+                <div id="dropZone" style="border:2px dashed var(--sage-300);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--sage-50);" onclick="document.getElementById('billFiles').click()">
+                    <div style="font-size:1.8rem;margin-bottom:6px;">📎</div>
+                    <div style="color:var(--sage-600);font-weight:500;font-size:0.9rem;">Drop PDFs here or click to browse</div>
+                    <input type="file" id="billFiles" multiple accept=".pdf" style="display:none;" onchange="handleBillUpload(this.files)">
+                </div>
+                <div id="uploadProgress" style="margin-top:14px;display:none;">
+                    <div id="uploadStatus" style="font-size:0.85rem;color:var(--sage-600);"></div>
+                    <div style="background:var(--sage-100);border-radius:6px;height:8px;margin-top:8px;overflow:hidden;">
+                        <div id="uploadBar" style="height:100%;background:var(--sage-500);border-radius:6px;transition:width 0.3s;width:0%;"></div>
+                    </div>
+                </div>
+                <div id="monthCheck" style="margin-top:14px;"></div>
+            </div>
+        </div>
+
+        <!-- Bill history -->
+        <div class="card">
+            <h3>📊 Usage History</h3>
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                <button class="meter-filter-btn active" onclick="filterMeter('all')">All Meters</button>
+                <span id="meterFilterBtns"></span>
+            </div>
+            <div style="height:300px;margin-bottom:20px;background:rgba(246,247,243,0.97);border-radius:10px;padding:12px;"><canvas id="billsCanvas"></canvas></div>
+            <div style="overflow-x:auto;margin-bottom:16px;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                    <thead><tr style="border-bottom:2px solid var(--sage-300);text-align:left;">
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;">Period</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;">Meter</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;text-align:right;">kWh</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;text-align:right;">Energy</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;text-align:right;">Fees</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;text-align:right;">Total</th>
+                        <th style="padding:8px 6px;color:var(--sage-600);font-size:0.75rem;text-transform:uppercase;text-align:right;">$/kWh</th>
+                    </tr></thead>
+                    <tbody id="billsBody"></tbody>
+                </table>
+            </div>
+            <div id="billsSummary" style="padding-top:14px;border-top:2px solid var(--sage-300);"></div>
+        </div>
+
+        <!-- What-If Calculator -->
+        <div class="calc-card">
+            <h3>🔮 What-If Calculator</h3>
+            <p style="font-size:0.85rem;color:var(--sage-500);margin-bottom:16px;">Estimate payback with more panels installed</p>
+            <div class="slider-row">
+                <label>Panels installed</label>
+                <input type="range" id="calcPanels" min="1" max="31" value="12" oninput="updateCalc()">
+                <span class="slider-val" id="calcPanelsVal">12</span>
+            </div>
+            <div class="slider-row">
+                <label>Utility rate</label>
+                <span style="color:var(--sage-600);">$</span>
+                <input type="number" id="calcRate" value="0.197264" step="0.001" class="rate-input" oninput="updateCalc()">
+                <span style="font-size:0.85rem;color:var(--sage-600);">/kWh</span>
+            </div>
+            <div style="border-top:1px solid rgba(196,181,164,0.3);padding-top:14px;margin-top:8px;">
+                <div class="detail-row"><span class="detail-label">System size</span><span class="detail-value" id="calcSize">6.96 kW</span></div>
+                <div class="detail-row"><span class="detail-label">Est. daily production</span><span class="detail-value" id="calcDaily">—</span></div>
+                <div class="detail-row"><span class="detail-label">Est. monthly savings</span><span class="detail-value pos" id="calcMonthly">—</span></div>
+                <div class="detail-row"><span class="detail-label">Est. annual savings</span><span class="detail-value pos" id="calcAnnual">—</span></div>
+            </div>
+            <div style="border-top:2px solid var(--sage-300);padding-top:14px;margin-top:8px;">
+                <div class="detail-row"><span class="detail-label" style="font-weight:700;">Est. payback</span><span class="detail-value pos" id="calcPayback" style="font-size:1.2rem;">—</span></div>
+            </div>
+        </div>
+
+    </div>
 </div>
-
-<div class="tabs">
-  <div class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</div>
-  <div class="tab" data-tab="trades" onclick="switchTab('trades')">All Trades</div>
-  <div class="tab" data-tab="settings" onclick="switchTab('settings')">Settings</div>
-</div>
-
-<div class="main">
-
-  <!-- SETUP -->
-  <div id="setupScreen" class="setup-screen" style="display:none">
-    <h2>Connect to Your Agent</h2>
-    <p>Enter your Supabase details to monitor your prediction agent.</p>
-    <div class="card">
-      <div class="form-group"><label class="form-label">Supabase URL</label><input class="form-input" id="setupUrl" placeholder="https://xxxxx.supabase.co" /></div>
-      <div class="form-group"><label class="form-label">Supabase Anon Key</label><input class="form-input" id="setupKey" placeholder="eyJhbG..." /></div>
-      <button class="btn btn-primary" style="width:100%;padding:12px" onclick="saveSetup()">Connect</button>
-    </div>
-  </div>
-
-  <!-- DASHBOARD TAB -->
-  <div id="tab-dashboard" class="tab-content">
-    <div class="stats-grid" id="statsGrid">
-      <div class="stat-card"><div class="stat-value" id="statTotal">-</div><div class="stat-label">Total Trades</div></div>
-      <div class="stat-card"><div class="stat-value" id="statToday">-</div><div class="stat-label">Today</div></div>
-      <div class="stat-card"><div class="stat-value" id="statSpentToday">-</div><div class="stat-label">Spent Today</div></div>
-      <div class="stat-card"><div class="stat-value" id="statPlaced">-</div><div class="stat-label">Placed</div></div>
-      <div class="stat-card"><div class="stat-value" id="statPL">$0</div><div class="stat-label">Profit / Loss</div></div>
-      <div class="stat-card"><div class="stat-value" id="statBudgetLeft">-</div><div class="stat-label">Budget Left Today</div></div>
-    </div>
-
-    <div class="next-run" id="nextRunInfo">
-      <span>⏱</span> Agent runs every <strong>6 hours</strong> (00:00, 06:00, 12:00, 18:00 UTC). Auto-refreshes every 60s.
-    </div>
-
-    <div class="section-header">
-      <div class="section-title">Recent Agent Activity</div>
-      <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
-    </div>
-    <div id="recentTrades"><div class="loading"><div class="spinner"></div>Loading trades...</div></div>
-  </div>
-
-  <!-- ALL TRADES TAB -->
-  <div id="tab-trades" class="tab-content" style="display:none">
-    <div class="section-header">
-      <div class="section-title">Trade History</div>
-      <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
-    </div>
-    <div id="allTrades"><div class="loading"><div class="spinner"></div>Loading...</div></div>
-  </div>
-
-  <!-- SETTINGS TAB -->
-  <div id="tab-settings" class="tab-content" style="display:none">
-    <div class="card">
-      <h3 style="font-family:'Crimson Pro',serif;font-size:17px;font-weight:400;margin-bottom:16px">Agent Configuration</h3>
-      <p style="font-size:13px;color:var(--taupe);margin-bottom:16px">These limits are enforced by the Edge Function. To change them, update the function code via Claude Code.</p>
-      <div class="trade-detail" style="flex-direction:column;gap:8px">
-        <div>Max per trade: <strong>$5.00</strong></div>
-        <div>Max per day: <strong>$25.00</strong></div>
-        <div>Schedule: <strong>Every 6 hours (pg_cron)</strong></div>
-        <div>AI Model: <strong>Claude Sonnet</strong></div>
-        <div>Platform: <strong>Kalshi</strong></div>
-      </div>
-    </div>
-    <div class="card">
-      <h3 style="font-family:'Crimson Pro',serif;font-size:17px;font-weight:400;margin-bottom:16px">Connection</h3>
-      <div class="form-group"><label class="form-label">Supabase URL</label><input class="form-input" id="settingUrl" readonly /></div>
-      <div id="connectionStatus" style="font-size:13px;color:var(--taupe);margin-bottom:12px">Checking...</div>
-      <button class="btn btn-outline" onclick="testConn()">Test Connection</button>
-      <button class="btn" style="margin-left:8px;color:var(--dusty-rose)" onclick="resetSetup()">Reset</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
 
 <script>
-var sb = null, trades = [], config = {};
+const SUPABASE_URL='https://jzpipxvxrtdhmsdkveog.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
+let RATE=0.197264;
+const PANEL_COST=4845.30,INVERTER_COST=5168.93;
+const LAT=40.96,LON=-75.18;
+const PANEL_WATT=580,TOTAL_PANELS=31;
 
-function init() {
-  config = loadCfg();
-  if (!config.url || !config.key) { showSetup(); return; }
-  sb = window.supabase.createClient(config.url, config.key);
-  hideSetup();
-  document.getElementById('settingUrl').value = config.url;
-  loadAll();
-  testConn();
-  // Auto-refresh every 60 seconds
-  setInterval(loadAll, 60000);
+// Panel installation history — add new entries as panels are installed
+const PANEL_HISTORY=[
+    {date:'2025-01-01',count:6},  // initial 6 panels
+    {date:'2026-03-28',count:12}  // expanded to 12
+];
+function panelsOnDate(d){
+    const ds=typeof d==='string'?d:isoDate(d);
+    let count=0;
+    for(const h of PANEL_HISTORY){if(ds>=h.date)count=h.count;}
+    return count||PANEL_HISTORY[0].count;
+}
+function currentPanelCount(){return panelsOnDate(new Date());}
+
+let currentPeriod='day',selectedDate=new Date(),energyChart=null;
+let activeFilter=null; // null = show all, 'pv'/'load'/'grid'/'battery' = isolate
+let cachedReadings=[]; // store for re-filtering without re-fetching
+let avgKwhPerPanel=0; // calculated from real data
+
+// Helpers
+async function sbGet(t,q=''){const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}?${q}`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${SUPABASE_ANON_KEY}`}});if(!r.ok)throw new Error(`Supabase ${r.status}`);return r.json();}
+async function sbGetAll(t,q='',pageSize=1000){
+    let all=[],offset=0;
+    while(true){
+        const page=await sbGet(t,`${q}&limit=${pageSize}&offset=${offset}`);
+        all=all.concat(page);
+        if(page.length<pageSize)break;
+        offset+=pageSize;
+    }
+    return all;
+}
+function isoDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function todayStr(){return isoDate(new Date());}
+function isToday(d){return isoDate(d)===todayStr();}
+function fmt(n,dec=1){return Number(n).toFixed(dec);}
+function fmtMoney(n){return Number(n).toFixed(2);}
+function fmtComma(n,dec=2){return Number(n).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});}
+
+// Weather
+const WMO_ICONS={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',66:'🌨️',67:'🌨️',71:'🌨️',73:'🌨️',75:'❄️',77:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
+const WMO_DESC={0:'Clear',1:'Mostly Clear',2:'Partly Cloudy',3:'Overcast',45:'Fog',48:'Fog',51:'Light Drizzle',53:'Drizzle',55:'Heavy Drizzle',61:'Light Rain',63:'Rain',65:'Heavy Rain',66:'Freezing Rain',67:'Freezing Rain',71:'Light Snow',73:'Snow',75:'Heavy Snow',77:'Snow Grains',80:'Light Showers',81:'Showers',82:'Heavy Showers',85:'Snow Showers',86:'Heavy Snow',95:'Thunderstorm',96:'Thunderstorm',99:'Severe Storm'};
+
+async function loadWeather(){
+    try{
+        const ds=isoDate(selectedDate);
+        const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&daily=weathercode,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=America%2FNew_York&start_date=${ds}&end_date=${ds}`);
+        const d=await r.json();
+        if(d.daily&&d.daily.weathercode){
+            const c=d.daily.weathercode[0],hi=Math.round(d.daily.temperature_2m_max[0]),lo=Math.round(d.daily.temperature_2m_min[0]);
+            document.getElementById('wxIcon').textContent=WMO_ICONS[c]||'🌡️';
+            document.getElementById('wxText').textContent=`${hi}°/${lo}°F ${WMO_DESC[c]||''}`;
+        }
+    }catch(e){document.getElementById('wxIcon').textContent='🌡️';document.getElementById('wxText').textContent='—';}
 }
 
-function loadCfg() { try { return JSON.parse(localStorage.getItem('pred_monitor') || '{}'); } catch(e) { return {}; } }
-
-function showSetup() {
-  document.getElementById('setupScreen').style.display = 'block';
-  var tabs = document.querySelectorAll('.tab-content');
-  for (var i = 0; i < tabs.length; i++) tabs[i].style.display = 'none';
+// Day Nav
+function updateDayLabel(){
+    const el=document.getElementById('dayLabel');
+    const opts={weekday:'short',month:'short',day:'numeric',year:'numeric'};
+    const shortOpts={month:'short',day:'numeric'};
+    if(currentPeriod==='day'){
+        el.textContent=isToday(selectedDate)?'Today — '+selectedDate.toLocaleDateString('en-US',opts):selectedDate.toLocaleDateString('en-US',opts);
+    }else if(currentPeriod==='week'){
+        const s=new Date(selectedDate);s.setDate(s.getDate()-6);
+        el.textContent=s.toLocaleDateString('en-US',shortOpts)+' – '+selectedDate.toLocaleDateString('en-US',shortOpts);
+    }else{
+        el.textContent=selectedDate.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    }
+    document.getElementById('nextDay').disabled=isToday(selectedDate);
+    document.getElementById('todayBtn').style.display=isToday(selectedDate)?'none':'inline-block';
 }
-function hideSetup() {
-  document.getElementById('setupScreen').style.display = 'none';
-  document.getElementById('tab-dashboard').style.display = 'block';
+function changeDay(d){
+    const n=new Date(selectedDate);
+    if(currentPeriod==='day')n.setDate(n.getDate()+d);
+    else if(currentPeriod==='week')n.setDate(n.getDate()+(d*7));
+    else{
+        // Month: move to same day in prev/next month, capped to last day of that month
+        const targetMonth=n.getMonth()+d;
+        n.setDate(1); // avoid overflow
+        n.setMonth(targetMonth);
+        const lastDay=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();
+        n.setDate(Math.min(selectedDate.getDate(),lastDay));
+    }
+    const today=new Date();today.setHours(23,59,59,999);
+    if(n>today)return;
+    // For month view, cap to today if landing in current month
+    if(currentPeriod==='month'&&n.getMonth()===new Date().getMonth()&&n.getFullYear()===new Date().getFullYear()){
+        selectedDate=new Date();
+    }else{
+        selectedDate=n;
+    }
+    activeFilter=null;updateFilterUI();updateDayLabel();loadWeather();loadDashboard();
 }
-function saveSetup() {
-  var c = { url: document.getElementById('setupUrl').value.trim(), key: document.getElementById('setupKey').value.trim() };
-  if (!c.url || !c.key) { toast('Fill in both fields', 'error'); return; }
-  localStorage.setItem('pred_monitor', JSON.stringify(c));
-  config = c; init(); toast('Connected!', 'success');
+function goToday(){selectedDate=new Date();activeFilter=null;updateFilterUI();updateDayLabel();loadWeather();loadDashboard();}
+
+// Filter
+const FILTER_MAP={pv:0,battery:1,grid:3,load:4}; // dataset indices (SOC=2 always visible with filtered)
+function toggleFilter(metric){
+    if(activeFilter===metric){activeFilter=null;}else{activeFilter=metric;}
+    updateFilterUI();
+    applyChartFilter();
 }
-function resetSetup() { if (confirm('Reset connection?')) { localStorage.removeItem('pred_monitor'); location.reload(); } }
-
-function switchTab(tab) {
-  var allT = document.querySelectorAll('.tab');
-  for (var i = 0; i < allT.length; i++) allT[i].classList.remove('active');
-  document.querySelector('.tab[data-tab="'+tab+'"]').classList.add('active');
-  var allC = document.querySelectorAll('.tab-content');
-  for (var j = 0; j < allC.length; j++) allC[j].style.display = 'none';
-  document.getElementById('tab-'+tab).style.display = 'block';
+function updateFilterUI(){
+    document.querySelectorAll('.stat-card').forEach(c=>{c.classList.remove('active-filter');});
+    if(activeFilter){
+        const map={pv:0,load:1,grid:2,battery:3};
+        document.querySelectorAll('.stat-card')[map[activeFilter]]?.classList.add('active-filter');
+    }
 }
-
-function loadAll() {
-  if (!sb) return;
-  sb.from('prediction_trades').select('*').order('created_at', { ascending: false }).then(function(r) {
-    if (r.error) { console.error(r.error); toast('Failed to load trades', 'error'); return; }
-    trades = r.data || [];
-    updateStats();
-    renderRecent();
-    renderAll();
-  });
-}
-
-function updateStats() {
-  var today = new Date().toISOString().slice(0, 10);
-  var todayTrades = trades.filter(function(t) { return (t.created_at || '').slice(0, 10) === today; });
-  var placed = trades.filter(function(t) { return t.status === 'placed'; });
-  var spentToday = todayTrades.reduce(function(s, t) { return s + (t.price || 0) * (t.contracts || 1); }, 0);
-  var pl = trades.reduce(function(s, t) { return s + (t.profit_loss || 0); }, 0);
-
-  document.getElementById('statTotal').textContent = trades.length;
-  document.getElementById('statToday').textContent = todayTrades.length;
-  document.getElementById('statSpentToday').textContent = '$' + spentToday.toFixed(2);
-  document.getElementById('statPlaced').textContent = placed.length;
-
-  var plEl = document.getElementById('statPL');
-  plEl.textContent = (pl >= 0 ? '+' : '') + '$' + pl.toFixed(2);
-  plEl.className = 'stat-value' + (pl < 0 ? ' bad' : '');
-
-  var left = 25 - spentToday;
-  var leftEl = document.getElementById('statBudgetLeft');
-  leftEl.textContent = '$' + Math.max(0, left).toFixed(2);
-  leftEl.className = 'stat-value' + (left < 5 ? ' warn' : left <= 0 ? ' bad' : '');
-}
-
-function renderRecent() {
-  var container = document.getElementById('recentTrades');
-  var recent = trades.slice(0, 15);
-  if (!recent.length) { container.innerHTML = '<div class="empty-state"><h3>No trades yet</h3><p>Your agent will place its first trades at the next scheduled run.</p></div>'; return; }
-  container.innerHTML = buildTable(recent);
-}
-
-function renderAll() {
-  var container = document.getElementById('allTrades');
-  if (!trades.length) { container.innerHTML = '<div class="empty-state"><h3>No trades</h3></div>'; return; }
-  container.innerHTML = buildTable(trades);
+function applyChartFilter(){
+    if(!energyChart)return;
+    const ds=energyChart.data.datasets;
+    if(!activeFilter){
+        ds.forEach(d=>{ const m=energyChart.getDatasetMeta(ds.indexOf(d)); m.hidden=false; });
+    }else{
+        const labels=['pv','battery','soc','grid','load'];
+        ds.forEach((d,i)=>{
+            const m=energyChart.getDatasetMeta(i);
+            const lbl=labels[i];
+            if(lbl===activeFilter||lbl==='soc')m.hidden=false;
+            else m.hidden=true;
+        });
+    }
+    energyChart.update();
 }
 
-function buildTable(list) {
-  var html = '<div class="table-wrap"><table class="trades-table"><thead><tr>' +
-    '<th>Date</th><th>Category</th><th>Market</th><th>Side</th><th>Price</th><th>Cost</th><th>Settles</th><th>Status</th><th>P/L</th><th></th>' +
-    '</tr></thead><tbody>';
+// Chart
+function buildChart(readings){
+    const ctx=document.getElementById('energyChart').getContext('2d');
+    if(energyChart)energyChart.destroy();
+    const isDay=currentPeriod==='day';
+    let labels,pvD,battD,socD,gridD,loadD;
 
-  for (var i = 0; i < list.length; i++) {
-    var t = list[i];
-    var parsed = parseMarket(t);
-    var priceCents = t.price != null ? Math.round(t.price * 100) + '¢' : '--';
-    var cost = t.price != null ? '$' + (t.price * (t.contracts || 1)).toFixed(2) : '--';
-    var date = t.created_at ? new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '--';
-    var time = t.created_at ? new Date(t.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
-    var sideClass = (t.side || 'yes').toLowerCase();
-    var statusClass = (t.status || 'placed').toLowerCase();
-    var plText = '--';
-    var plClass = '';
-    if (t.profit_loss != null && t.profit_loss !== 0) {
-      plText = (t.profit_loss >= 0 ? '+' : '') + '$' + t.profit_loss.toFixed(2);
-      plClass = t.profit_loss >= 0 ? 'pl-win' : 'pl-loss';
+    if(isDay){
+        labels=readings.map(r=>r.reading_time?.substring(0,5)||'');
+        pvD=readings.map(r=>r.pv_watts||0);
+        battD=readings.map(r=>r.battery_watts||0);
+        socD=readings.map(r=>r.battery_soc||0);
+        gridD=readings.map(r=>r.grid_watts||0);
+        loadD=readings.map(r=>r.load_watts||0);
+    }else{
+        const byDate={};
+        readings.forEach(r=>{
+            const d=r.reading_date;
+            if(!byDate[d])byDate[d]={pv:0,batt:0,grid:0,load:0,soc:[],n:0};
+            byDate[d].pv+=(r.pv_watts||0)*(5/60)/1000;
+            byDate[d].batt+=(r.battery_watts||0)*(5/60)/1000;
+            byDate[d].grid+=(r.grid_watts||0)*(5/60)/1000;
+            byDate[d].load+=(r.load_watts||0)*(5/60)/1000;
+            byDate[d].soc.push(r.battery_soc||0);
+        });
+        const dates=Object.keys(byDate).sort();
+        labels=dates.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+        pvD=dates.map(d=>byDate[d].pv);battD=dates.map(d=>byDate[d].batt);
+        gridD=dates.map(d=>byDate[d].grid);loadD=dates.map(d=>byDate[d].load);
+        socD=dates.map(d=>{const a=byDate[d].soc;return a.length?a[a.length-1]:0;});
     }
 
-    // Settles / closes date
-    var settlesText = '--';
-    var settlesClass = '';
-    if (t.closes_at) {
-      var closes = new Date(t.closes_at);
-      var now = new Date();
-      var diffHrs = (closes - now) / (1000 * 60 * 60);
-      settlesText = closes.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      if (diffHrs < 0) { settlesText = 'Done'; settlesClass = 'style="color:var(--sage-300)"'; }
-      else if (diffHrs < 24) { settlesText = 'Today'; settlesClass = 'style="color:var(--amber);font-weight:700"'; }
-      else if (diffHrs < 48) { settlesText = 'Tomorrow'; settlesClass = 'style="color:var(--amber)"'; }
+    const yLbl=isDay?'Watts (W)':'Energy (kWh)';
+    const datasets=[
+        {label:'PV',data:pvD,borderColor:'#66BB6A',backgroundColor:isDay?'rgba(102,187,106,0.10)':'rgba(102,187,106,0.75)',borderWidth:isDay?2:1,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:2,borderRadius:isDay?0:4},
+        {label:'Battery',data:battD,borderColor:'#AB47BC',backgroundColor:isDay?'rgba(171,71,188,0.10)':'rgba(171,71,188,0.70)',borderWidth:isDay?2:1,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:3,borderRadius:isDay?0:4},
+        {label:'SOC %',data:socD,borderColor:'#4DD0E1',backgroundColor:'transparent',borderWidth:2,borderDash:[5,3],fill:false,type:'line',yAxisID:'y1',order:1,pointRadius:isDay?0:4},
+        {label:'Grid',data:gridD,borderColor:'#FFA726',backgroundColor:isDay?'rgba(255,167,38,0.10)':'rgba(255,167,38,0.75)',borderWidth:isDay?2:1,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:4,borderRadius:isDay?0:4},
+        {label:'Load',data:loadD,borderColor:'#EF5350',backgroundColor:isDay?'rgba(239,83,80,0.08)':'rgba(239,83,80,0.65)',borderWidth:isDay?2:1,fill:isDay,type:isDay?'line':'bar',yAxisID:'y',order:5,borderRadius:isDay?0:4},
+    ];
+
+    energyChart=new Chart(ctx,{
+        type:isDay?'line':'bar',
+        data:{labels,datasets},
+        options:{
+            responsive:true,maintainAspectRatio:false,
+            interaction:{mode:'index',intersect:false},
+            plugins:{
+                legend:{
+                    position:'bottom',
+                    labels:{color:'#5f734c',usePointStyle:true,padding:16,font:{family:'Karla',size:13}},
+                    onClick:(e,item,legend)=>{const m=legend.chart.getDatasetMeta(item.datasetIndex);m.hidden=!m.hidden;legend.chart.update();}
+                },
+                tooltip:{
+                    backgroundColor:'rgba(74,77,71,0.95)',titleColor:'#ece8dd',bodyColor:'#c4b5a4',
+                    borderColor:'rgba(236,232,221,0.3)',borderWidth:1,cornerRadius:8,
+                    callbacks:{label:c=>{const u=c.dataset.yAxisID==='y1'?'%':(isDay?' W':' kWh');return `${c.dataset.label}: ${c.parsed.y?.toFixed(1)}${u}`;}}
+                }
+            },
+            scales:{
+                x:{ticks:{color:'#7a9061',maxRotation:0,autoSkip:true,maxTicksLimit:isDay?24:15,font:{size:11}},grid:{color:'rgba(74,77,71,0.08)'}},
+                y:{position:'left',title:{display:true,text:yLbl,color:'#7a9061'},ticks:{color:'#7a9061'},grid:{color:'rgba(74,77,71,0.08)'}},
+                y1:{position:'right',title:{display:true,text:'SOC (%)',color:'#4DD0E1'},min:0,max:100,ticks:{color:'#4DD0E1'},grid:{drawOnChartArea:false}}
+            },
+            elements:{line:{tension:0.3},point:{radius:isDay?0:3}}
+        }
+    });
+    applyChartFilter();
+}
+
+// Dashboard
+async function loadDashboard(){
+    document.getElementById('loadingState').style.display='block';
+    document.getElementById('dashContent').style.display='none';
+    RATE=parseFloat(document.getElementById('rateInput')?.value)||0.197264;
+    try{
+        let startDate,endDate;
+        if(currentPeriod==='day'){startDate=endDate=isoDate(selectedDate);}
+        else if(currentPeriod==='week'){const s=new Date(selectedDate);s.setDate(s.getDate()-6);startDate=isoDate(s);endDate=isoDate(selectedDate);}
+        else{
+            // Full calendar month — 1st to last day, capped at today if current month
+            startDate=isoDate(new Date(selectedDate.getFullYear(),selectedDate.getMonth(),1));
+            const lastDay=new Date(selectedDate.getFullYear(),selectedDate.getMonth()+1,0);
+            const today=new Date();
+            endDate=isoDate(lastDay>today?today:lastDay);
+        }
+
+        const readings=await sbGetAll('solar_readings',`reading_date=gte.${startDate}&reading_date=lte.${endDate}&order=reading_date.asc,reading_time.asc`);
+        cachedReadings=readings;
+        const summaries=await sbGet('solar_daily_summary',`summary_date=gte.${startDate}&summary_date=lte.${endDate}&order=summary_date.desc`);
+        const realtime=await sbGet('solar_realtime','order=snapshot_at.desc&limit=1');
+
+        let t={pv:0,load:0,gridIn:0,battC:0,battD:0,peakPv:0,peakLoad:0};
+        // Build a set of dates covered by summaries
+        const summaryDates=new Set(summaries.map(s=>s.summary_date));
+        // Add totals from summaries
+        summaries.forEach(s=>{t.pv+=s.pv_kwh||0;t.load+=s.load_kwh||0;t.gridIn+=s.grid_import_kwh||0;t.battC+=s.battery_charge_kwh||0;t.battD+=s.battery_discharge_kwh||0;if(s.peak_pv_watts>t.peakPv)t.peakPv=s.peak_pv_watts;if(s.peak_load_watts>t.peakLoad)t.peakLoad=s.peak_load_watts;});
+        // For dates with readings but no summary, compute from readings
+        const readingsByDate={};
+        readings.forEach(r=>{
+            const d=r.reading_date;
+            if(!readingsByDate[d])readingsByDate[d]={pv:0,load:0,gridIn:0,battC:0,battD:0,peakPv:0,peakLoad:0};
+            const hrs=5/60,pv=r.pv_watts||0,ld=r.load_watts||0,gr=r.grid_watts||0,bt=r.battery_watts||0;
+            readingsByDate[d].pv+=Math.max(pv,0)*hrs/1000;
+            readingsByDate[d].load+=Math.max(ld,0)*hrs/1000;
+            readingsByDate[d].gridIn+=Math.max(gr,0)*hrs/1000;
+            readingsByDate[d].battC+=Math.max(bt,0)*hrs/1000;
+            readingsByDate[d].battD+=Math.abs(Math.min(bt,0))*hrs/1000;
+            if(pv>readingsByDate[d].peakPv)readingsByDate[d].peakPv=pv;
+            if(ld>readingsByDate[d].peakLoad)readingsByDate[d].peakLoad=ld;
+        });
+        // Add readings-only dates to totals
+        Object.keys(readingsByDate).forEach(d=>{
+            if(!summaryDates.has(d)){
+                const rd=readingsByDate[d];
+                t.pv+=rd.pv;t.load+=rd.load;t.gridIn+=rd.gridIn;t.battC+=rd.battC;t.battD+=rd.battD;
+                if(rd.peakPv>t.peakPv)t.peakPv=rd.peakPv;
+                if(rd.peakLoad>t.peakLoad)t.peakLoad=rd.peakLoad;
+            }
+        });
+
+        const solarSelf=Math.max(0,t.pv);
+        const offsetVal=solarSelf*RATE,gridCost=t.gridIn*RATE,net=offsetVal;
+
+        // Status
+        if(realtime.length){
+            const last=new Date(realtime[0].snapshot_at),mins=Math.floor((Date.now()-last)/60000);
+            document.getElementById('statusDot').className=mins<60?'status-dot':'status-dot offline';
+            document.getElementById('statusText').textContent=mins<60?'System Online':`Last seen ${mins}m ago`;
+            document.getElementById('lastUpdated').textContent='Updated '+last.toLocaleTimeString();
+            document.getElementById('battSoc').textContent=Math.round(realtime[0].battery_soc||0);
+            const bw=realtime[0].battery_watts||0;
+            document.getElementById('battSub').textContent=bw>50?'Charging':bw<-50?'Discharging':'Idle';
+        }
+
+        document.getElementById('pvKwh').textContent=fmt(t.pv);
+        document.getElementById('pvPeak').textContent=t.peakPv>0?`Peak: ${fmt(t.peakPv/1000)} kW`:'';
+        document.getElementById('loadKwh').textContent=fmt(t.load);
+        document.getElementById('loadPeak').textContent=t.peakLoad>0?`Peak: ${fmt(t.peakLoad/1000)} kW`:'';
+        document.getElementById('gridKwh').textContent=fmt(t.gridIn);
+
+        document.getElementById('dPv').textContent=`${fmt(t.pv)} kWh`;
+        document.getElementById('dLoad').textContent=`${fmt(t.load)} kWh`;
+        document.getElementById('dGridIn').textContent=`${fmt(t.gridIn)} kWh`;
+        document.getElementById('dBattC').textContent=`${fmt(t.battC)} kWh`;
+        document.getElementById('dBattD').textContent=`${fmt(t.battD)} kWh`;
+        document.getElementById('cOffset').textContent=`$${fmtMoney(offsetVal)}`;
+        document.getElementById('cGrid').textContent=`$${fmtMoney(gridCost)}`;
+        document.getElementById('cNet').textContent=`$${fmtMoney(net)}`;
+
+        buildChart(readings);
+
+        // Calculate avg kWh per panel per day for the what-if calculator (exclude today's partial data)
+        if(t.pv>0){
+            const todayISO=isoDate(new Date());
+            const completeDays=summaries.filter(s=>s.summary_date!==todayISO);
+            if(currentPeriod==='day'&&isoDate(selectedDate)===todayISO){
+                // Viewing today only — don't update avg, keep previous value
+            }else if(completeDays.length>0){
+                // Weight each day by its actual panel count
+                let totalPerPanel=0;
+                completeDays.forEach(s=>{totalPerPanel+=(s.pv_kwh||0)/panelsOnDate(s.summary_date);});
+                avgKwhPerPanel=totalPerPanel/completeDays.length;
+                updateCalc();
+            }else{
+                avgKwhPerPanel=(t.pv/(summaries.length||1))/currentPanelCount();
+                updateCalc();
+            }
+        }
+
+        // Daily breakdown
+        const ds=document.getElementById('dailySection');
+        const allDayDates=new Set([...summaries.map(s=>s.summary_date),...Object.keys(readingsByDate)]);
+        if(currentPeriod!=='day'&&allDayDates.size>0){
+            ds.style.display='block';
+            const c=document.getElementById('dailyRows');c.innerHTML='';
+            const sortedDates=[...allDayDates].sort().reverse();
+            sortedDates.forEach(dateStr=>{
+                const dt=new Date(dateStr+'T12:00:00');
+                const name=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+                const summ=summaries.find(s=>s.summary_date===dateStr);
+                const pvKwh=summ?(summ.pv_kwh||0):(readingsByDate[dateStr]?.pv||0);
+                const loadKwh=summ?(summ.load_kwh||0):(readingsByDate[dateStr]?.load||0);
+                const sv=pvKwh*RATE;
+                c.innerHTML+=`<div class="detail-row"><span class="detail-label">${name}</span><span style="display:flex;gap:14px;align-items:center;"><span style="font-size:0.8rem;color:var(--sage-600);">☀️${fmt(pvKwh)} · 🏠${fmt(loadKwh)} kWh</span><span class="detail-value pos">$${fmtMoney(sv)}</span></span></div>`;
+            });
+        }else{ds.style.display='none';}
+
+        document.getElementById('loadingState').style.display='none';
+        document.getElementById('dashContent').style.display='block';
+    }catch(err){
+        console.error(err);
+        document.getElementById('loadingState').innerHTML=`<div style="color:var(--dusty-rose);">Could not load data<br><span style="font-size:0.85rem;color:var(--taupe);">${err.message}</span></div>`;
     }
-
-    html += '<tr>' +
-      '<td><div style="font-weight:600">' + date + '</div><div style="font-size:11px;color:var(--taupe)">' + time + '</div></td>' +
-      '<td><span class="cat cat-' + parsed.category + '">' + parsed.category + '</span></td>' +
-      '<td><div class="market-name">' + parsed.name + '</div>' +
-        (parsed.details ? '<div style="font-size:11px;color:var(--taupe);margin-top:2px">' + parsed.details + '</div>' : '') +
-      '</td>' +
-      '<td><span class="badge ' + sideClass + '">' + (t.side || 'yes').toUpperCase() + '</span></td>' +
-      '<td style="font-weight:700">' + priceCents + '</td>' +
-      '<td>' + cost + '</td>' +
-      '<td ' + settlesClass + '>' + settlesText + '</td>' +
-      '<td><span class="badge ' + statusClass + '">' + (t.status || 'placed') + '</span></td>' +
-      '<td class="' + plClass + '">' + plText + '</td>' +
-      '<td>' + (t.ai_reasoning ? '<span class="reason-toggle" onclick="toggleReason(this)">why?</span><div class="reason-text">' + t.ai_reasoning + '</div>' : '') + '</td>' +
-    '</tr>';
-  }
-  html += '</tbody></table></div>';
-  return html;
 }
 
-function parseMarket(t) {
-  var title = t.title || t.ticker || '';
-  var ticker = (t.ticker || '').toUpperCase();
-  var cat = 'other';
-  var name = title;
-  var details = '';
+// Expenses
+async function loadExpenses(){
+    try{
+        const expenses=await sbGet('home_expenses','category=eq.Solar%20Project&order=expense_date.desc');
+        let batteries=0,panels=0,inverter=0,misc=0;
+        expenses.forEach(e=>{
+            const amt=Math.abs(e.amount||0),desc=(e.description||'').toLowerCase();
+            if(desc.includes('batter'))batteries+=amt;
+            else if(desc.includes('panel')||Math.abs(e.amount-PANEL_COST)<1)panels+=amt;
+            else if(desc.includes('inverter')||desc.includes('solark')||desc.includes('sol-ark')||Math.abs(e.amount-INVERTER_COST)<1)inverter+=amt;
+            else if(e.amount<0)misc+=e.amount;
+            else misc+=amt;
+        });
+        document.getElementById('expBatt').textContent=`$${batteries.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+        document.getElementById('expPanel').textContent=`$${panels.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+        document.getElementById('expInv').textContent=`$${inverter.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+        document.getElementById('expMisc').textContent=`$${misc.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
 
-  // Detect category from ticker or title
-  if (/SPORT|NBA|NFL|MLB|NHL|GAME|MULTIGAME|ALCARAZ|SINNER|HARDEN|MILLER|LAMELO|BALL/.test(ticker + ' ' + title.toUpperCase())) {
-    cat = 'sports';
-  } else if (/FED|RATE|CPI|GDP|INFLATION|RECESSION|JOBS|TREASURY/.test(ticker + ' ' + title.toUpperCase())) {
-    cat = 'economics';
-  } else if (/TRUMP|BIDEN|DEMOCRAT|REPUBLICAN|SENATE|HOUSE|ELECTION|GOVERNOR|PRIMARY|MIDTERM/.test(ticker + ' ' + title.toUpperCase())) {
-    cat = 'politics';
-  } else if (/BTC|BITCOIN|ETH|CRYPTO|ETHEREUM/.test(ticker + ' ' + title.toUpperCase())) {
-    cat = 'crypto';
-  }
+        const totalInvested=batteries+panels+inverter+misc;
+        document.getElementById('totalInvested').innerHTML=`$${fmtComma(totalInvested)} <a href="expenses.html?category=Solar" title="View solar expenses" style="font-size:0.7rem;background:var(--sage-500);color:white;padding:2px 8px;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">View ↗</a>`;
 
-  // Parse messy combo titles like "yes Philadelphia,yes James Harden: 15+,yes I"
-  if (title.indexOf(',yes ') > -1 || title.indexOf(',no ') > -1) {
-    var parts = title.split(',').map(function(p) {
-      return p.replace(/^(yes |no )/i, '').trim();
-    }).filter(function(p) { return p.length > 2; });
-    if (parts.length > 1) {
-      name = 'Combo: ' + parts.length + ' legs';
-      details = parts.join(' + ');
-    } else if (parts.length === 1) {
-      name = parts[0];
+        const allS=await sbGet('solar_daily_summary','order=summary_date.asc');
+        let totalSaved=0;
+        allS.forEach(s=>{totalSaved+=(s.pv_kwh||0)*RATE;});
+        document.getElementById('totalSaved').textContent=`$${fmtMoney(totalSaved)}`;
+        const remaining=Math.max(0,totalInvested-totalSaved);
+        document.getElementById('remaining').textContent=`$${fmtComma(remaining)}`;
+        const pct=totalInvested>0?Math.min(100,(totalSaved/totalInvested)*100):0;
+        const bar=document.getElementById('paybackBar');
+        bar.style.width=Math.max(1,pct)+'%';bar.textContent=fmt(pct,1)+'%';
+        if(totalSaved>0&&allS.length>1){
+            const first=new Date(allS[0].summary_date);
+            const last=new Date(allS[allS.length-1].summary_date);
+            const today=new Date();today.setHours(0,0,0,0);
+            const useDate=last.toISOString().slice(0,10)===today.toISOString().slice(0,10)?new Date(allS.length>2?allS[allS.length-2].summary_date:last):last;
+            const days=Math.max(1,(useDate-first)/86400000);
+            const savedExclToday=allS.filter(s=>new Date(s.summary_date).toISOString().slice(0,10)!==today.toISOString().slice(0,10)).reduce((a,s)=>a+(s.pv_kwh||0)*RATE,0)||totalSaved;
+            const dLeft=remaining/(savedExclToday/days);
+            const yrs=dLeft/365;
+            document.getElementById('paybackEst').textContent=yrs>1?`~${fmt(yrs,1)} years`:`~${Math.round(dLeft)} days`;
+        }else{document.getElementById('paybackEst').textContent='Collecting data...';}
+
+        // Store for what-if
+        window._totalInvested=totalInvested;
+        updateCalc();
+    }catch(err){console.error('Expense error:',err);}
+}
+
+// What-If Calculator
+function updateCalc(){
+    const numPanels=parseInt(document.getElementById('calcPanels').value)||currentPanelCount();
+    const rate=parseFloat(document.getElementById('calcRate').value)||0.197264;
+    document.getElementById('calcPanelsVal').textContent=numPanels;
+    const sizeKw=(numPanels*PANEL_WATT)/1000;
+    document.getElementById('calcSize').textContent=`${fmt(sizeKw)} kW`;
+    // Use real data if available, otherwise estimate 4.5 sun hours * panel watt
+    const dailyPerPanel=avgKwhPerPanel>0?avgKwhPerPanel:(PANEL_WATT*4.5/1000);
+    const dailyKwh=dailyPerPanel*numPanels;
+    const monthlySavings=dailyKwh*30*rate;
+    const annualSavings=dailyKwh*365*rate;
+    document.getElementById('calcDaily').textContent=`~${fmt(dailyKwh)} kWh`;
+    document.getElementById('calcMonthly').textContent=`~$${fmtMoney(monthlySavings)}`;
+    document.getElementById('calcAnnual').textContent=`~$${fmtMoney(annualSavings)}`;
+    const invested=window._totalInvested||23585;
+    if(annualSavings>0){
+        const yrs=invested/annualSavings;
+        document.getElementById('calcPayback').textContent=yrs>1?`~${fmt(yrs,1)} years`:`~${Math.round(yrs*365)} days`;
+    }else{document.getElementById('calcPayback').textContent='—';}
+    // Refresh bill chart solar line
+    if(allBills.length>0)renderBillsChart();
+}
+
+// Period toggle
+function setPeriod(p){
+    currentPeriod=p;activeFilter=null;updateFilterUI();
+    document.querySelectorAll('.period-btn').forEach(b=>b.classList.toggle('active',b.dataset.p===p));
+    updateDayLabel();loadWeather();loadDashboard();
+}
+
+// Rate input
+document.getElementById('rateInput').addEventListener('change',function(){RATE=parseFloat(this.value)||0.197264;loadDashboard();loadExpenses();});
+
+// =============================================
+// Electric Bills
+// =============================================
+let allBills=[],billChart=null,activeMeterFilter='all';
+let pendingBills=[],currentBillData=null; // for modal review
+const METER_LABELS=['Landlord','101','202/3C','201'];
+const ACCT_MAP={'100156002667':'Landlord','100156008516':'101','100156008532':'202/3C','100156014092':'201'};
+
+// Meter number → label mapping (learned from user)
+function getMeterMap(){try{return JSON.parse(localStorage.getItem('solar-meter-map')||'{}');}catch(e){return {};}}
+function saveMeterMap(map){try{localStorage.setItem('solar-meter-map',JSON.stringify(map));}catch(e){}}
+
+// API key
+function getBillApiKey(){try{return localStorage.getItem('homestead-api-key')||'';}catch(e){return '';}}
+function saveBillApiKey(){
+    const key=document.getElementById('billApiKey').value.trim();
+    try{localStorage.setItem('homestead-api-key',key);}catch(e){}
+    const el=document.getElementById('billKeyStatus');
+    el.textContent=key&&key.startsWith('sk-')?'🟢':'⚪';
+}
+(function(){const s=getBillApiKey();if(s){document.getElementById('billApiKey').value=s;document.getElementById('billKeyStatus').textContent='🟢';}})();
+
+// Toggle upload section
+function toggleBillUpload(){
+    const sec=document.getElementById('billUploadSection');
+    const hint=document.getElementById('billToggleHint');
+    if(sec.style.display==='none'){sec.style.display='block';hint.textContent='▼ click to hide';}
+    else{sec.style.display='none';hint.textContent='▶ click to add bills';}
+}
+
+// Drag and drop
+const dz=document.getElementById('dropZone');
+if(dz){
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+    dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');handleBillUpload(e.dataTransfer.files);});
+}
+
+async function handleBillUpload(files){
+    if(!files||files.length===0)return;
+    const pdfs=Array.from(files).filter(f=>f.type==='application/pdf');
+    if(pdfs.length===0){alert('Please upload PDF files');return;}
+    const prog=document.getElementById('uploadProgress'),status=document.getElementById('uploadStatus'),bar=document.getElementById('uploadBar');
+    prog.style.display='block';
+    pendingBills=[];
+    for(let i=0;i<pdfs.length;i++){
+        status.textContent=`Scanning ${i+1} of ${pdfs.length}: ${pdfs[i].name}...`;
+        bar.style.width=((i/pdfs.length)*100)+'%';
+        try{
+            const billData=await scanBillWithAI(pdfs[i]);
+            if(billData){billData._fileName=pdfs[i].name;pendingBills.push(billData);}
+        }catch(err){console.error(`Error on ${pdfs[i].name}:`,err);status.textContent=`Error: ${err.message}`;}
     }
-  }
-
-  // Clean up known patterns
-  if (/Fed cut rates|Fed rate/i.test(title)) {
-    name = 'Fed Rate Cut — June 2026';
-    cat = 'economics';
-    details = '';
-  }
-
-  // Truncate if still too long
-  if (name.length > 50) name = name.substring(0, 47) + '...';
-  if (details.length > 80) details = details.substring(0, 77) + '...';
-
-  return { category: cat, name: name, details: details };
+    bar.style.width='100%';
+    status.textContent=`Scanned ${pendingBills.length} bill(s). Review each one...`;
+    // Start modal review flow
+    reviewNextBill();
 }
 
-function toggleReason(el) {
-  var text = el.nextElementSibling;
-  if (text) text.classList.toggle('open');
+async function scanBillWithAI(file){
+    const apiKey=getBillApiKey();
+    if(!apiKey||!apiKey.startsWith('sk-'))throw new Error('Enter your API key first');
+    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('Read failed'));r.readAsDataURL(file);});
+    const response=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({
+            model:'claude-sonnet-4-20250514',max_tokens:1000,
+            messages:[{role:'user',content:[
+                {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
+                {type:'text',text:`Extract from this Met-Ed electric bill. Return ONLY valid JSON, no backticks.
+{"account_number":"","meter_number":"the meter number from Usage Information section","invoice_number":"","billing_period_start":"YYYY-MM-DD","billing_period_end":"YYYY-MM-DD","billing_days":0,"kwh_used":0,"meter_reading_start":0,"meter_reading_end":0,"avg_daily_kwh":0,"generation_charge":0,"generation_rate":0,"customer_charge":0,"distribution_charge":0,"distribution_rate":0,"default_service_support":0,"led_conversion_charge":0,"state_tax_surcharge":0,"other_charges":0,"total_charges":0,"service_address":""}`}
+            ]}]
+        })
+    });
+    const data=await response.json();
+    const text=data.content?.map(c=>c.text||'').join('')||'';
+    const bill=JSON.parse(text.replace(/```json|```/g,'').trim());
+    bill.raw_ai_response=data;
+    return bill;
 }
 
-function testConn() {
-  var el = document.getElementById('connectionStatus');
-  if (!sb) { el.innerHTML = '<span style="color:var(--dusty-rose)">Not connected</span>'; return; }
-  sb.from('prediction_trades').select('id', { count: 'exact', head: true }).then(function(r) {
-    if (r.error) el.innerHTML = '<span style="color:var(--dusty-rose)">✗ ' + r.error.message + '</span>';
-    else el.innerHTML = '<span style="color:var(--sage-300)">✓ Connected · ' + (r.count || 0) + ' trades in database</span>';
-  });
+// Modal review flow
+function reviewNextBill(){
+    if(pendingBills.length===0){
+        document.getElementById('billModal').style.display='none';
+        document.getElementById('uploadProgress').style.display='none';
+        loadBillHistory();
+        showMonthCheck();
+        return;
+    }
+    currentBillData=pendingBills.shift();
+    const b=currentBillData;
+    // Auto-map by account number (strip spaces), fallback to meter number map
+    const acctClean=(b.account_number||'').replace(/\s/g,'');
+    const autoLabel=ACCT_MAP[acctClean]||getMeterMap()[b.meter_number]||'';
+    document.getElementById('mFileName').textContent=b._fileName||'';
+    document.getElementById('mLabel').value=autoLabel||METER_LABELS[0];
+    document.getElementById('mMeterNum').value=b.meter_number||'';
+    document.getElementById('mAcctNum').value=b.account_number||'';
+    document.getElementById('mStart').value=b.billing_period_start||'';
+    document.getElementById('mEnd').value=b.billing_period_end||'';
+    document.getElementById('mKwh').value=b.kwh_used||0;
+    document.getElementById('mDays').value=b.billing_days||0;
+    document.getElementById('mGen').value=b.generation_charge||0;
+    document.getElementById('mDist').value=b.distribution_charge||0;
+    document.getElementById('mCust').value=b.customer_charge||0;
+    document.getElementById('mTotal').value=b.total_charges||0;
+    document.getElementById('billModal').style.display='flex';
 }
 
-function toast(msg, type) {
-  var el = document.getElementById('toast');
-  el.textContent = msg; el.className = 'toast ' + (type || 'success') + ' show';
-  setTimeout(function() { el.classList.remove('show'); }, 3000);
+async function approveBill(){
+    const b=currentBillData;
+    b.meter_label=document.getElementById('mLabel').value;
+    b.meter_number=document.getElementById('mMeterNum').value;
+    b.account_number=document.getElementById('mAcctNum').value;
+    b.billing_period_start=document.getElementById('mStart').value;
+    b.billing_period_end=document.getElementById('mEnd').value;
+    b.kwh_used=parseFloat(document.getElementById('mKwh').value)||0;
+    b.billing_days=parseInt(document.getElementById('mDays').value)||0;
+    b.generation_charge=parseFloat(document.getElementById('mGen').value)||0;
+    b.distribution_charge=parseFloat(document.getElementById('mDist').value)||0;
+    b.customer_charge=parseFloat(document.getElementById('mCust').value)||0;
+    b.total_charges=parseFloat(document.getElementById('mTotal').value)||0;
+    // Compute derived
+    b.cost_per_kwh=b.kwh_used>0?+(b.total_charges/b.kwh_used).toFixed(4):0;
+    b.energy_cost=+((b.generation_charge||0)+(b.distribution_charge||0)).toFixed(2);
+    b.fees_total=+((b.customer_charge||0)+(b.default_service_support||0)+(b.led_conversion_charge||0)+(b.state_tax_surcharge||0)+(b.other_charges||0)).toFixed(2);
+    // Save meter mapping
+    if(b.meter_number){const map=getMeterMap();map[b.meter_number]=b.meter_label;saveMeterMap(map);}
+    // Remove internal fields
+    delete b._fileName;
+    await saveBillToSupabase(b);
+    reviewNextBill();
 }
 
-document.addEventListener('DOMContentLoaded', init);
+function rejectBill(){
+    reviewNextBill();
+}
+
+async function saveBillToSupabase(bill){
+    const resp=await fetch(`${SUPABASE_URL}/rest/v1/solar_electric_bills?on_conflict=invoice_number`,{
+        method:'POST',headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+        body:JSON.stringify(bill)});
+    if(!resp.ok)console.error('Save bill error:',await resp.text());
+}
+
+function showMonthCheck(){
+    if(allBills.length===0)return;
+    // Group by month, check which meters we have
+    const byMonth={};
+    allBills.forEach(b=>{
+        const d=new Date(b.billing_period_end+'T12:00:00');
+        const key=d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+        if(!byMonth[key])byMonth[key]=new Set();
+        if(b.meter_label)byMonth[key].add(b.meter_label);
+    });
+    const latest=Object.keys(byMonth)[0];
+    if(!latest)return;
+    const found=byMonth[latest];
+    let html=`<div style="font-size:0.82rem;color:var(--sage-600);margin-bottom:6px;font-weight:600;">${latest} meters:</div><div style="display:flex;gap:6px;flex-wrap:wrap;">`;
+    METER_LABELS.forEach(m=>{
+        if(found.has(m))html+=`<span style="font-size:0.78rem;padding:3px 10px;border-radius:5px;background:#d4edda;color:#155724;">✓ ${m}</span>`;
+        else html+=`<span style="font-size:0.78rem;padding:3px 10px;border-radius:5px;background:#f8d7da;color:#721c24;">✕ ${m}</span>`;
+    });
+    html+='</div>';
+    document.getElementById('monthCheck').innerHTML=html;
+}
+
+async function loadBillHistory(){
+    try{
+        allBills=await sbGet('solar_electric_bills','order=billing_period_end.desc&limit=200');
+        const meters=[...new Set(allBills.map(b=>b.meter_label).filter(Boolean))].sort();
+        document.getElementById('meterFilterBtns').innerHTML=meters.map(m=>`<button class="meter-filter-btn${activeMeterFilter===m?' active':''}" onclick="filterMeter('${m}')">${m}</button>`).join('');
+        renderBillsTable();renderBillsChart();showMonthCheck();
+    }catch(err){console.error('Load bills error:',err);}
+}
+
+function filterMeter(m){
+    activeMeterFilter=m;
+    document.querySelectorAll('.meter-filter-btn').forEach(b=>{b.classList.toggle('active',(m==='all'&&b.textContent==='All Meters')||b.textContent===m);});
+    renderBillsTable();renderBillsChart();
+}
+
+function getFilteredBills(){return activeMeterFilter==='all'?allBills:allBills.filter(b=>b.meter_label===activeMeterFilter);}
+
+function getCalcMonthlyKwh(){
+    const numPanels=parseInt(document.getElementById('calcPanels')?.value)||currentPanelCount();
+    const dailyPerPanel=avgKwhPerPanel>0?avgKwhPerPanel:(PANEL_WATT*4.5/1000);
+    return dailyPerPanel*numPanels*30;
+}
+
+function renderBillsTable(){
+    const bills=getFilteredBills(),tbody=document.getElementById('billsBody');
+    if(bills.length===0){
+        tbody.innerHTML='<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--sage-400);">No bills yet — upload some PDFs above!</td></tr>';
+        document.getElementById('billsSummary').innerHTML='';return;
+    }
+    tbody.innerHTML=bills.map(b=>{
+        const d=new Date(b.billing_period_end+'T12:00:00');
+        const period=d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+        return `<tr style="border-bottom:1px solid var(--sage-100);">
+            <td style="padding:8px 6px;">${period}</td>
+            <td style="padding:8px 6px;"><span style="background:var(--sage-100);padding:2px 8px;border-radius:4px;font-size:0.8rem;font-weight:600;">${b.meter_label||'?'}</span></td>
+            <td style="padding:8px 6px;text-align:right;font-weight:600;">${(b.kwh_used||0).toLocaleString()}</td>
+            <td style="padding:8px 6px;text-align:right;">$${(b.energy_cost||0).toFixed(2)}</td>
+            <td style="padding:8px 6px;text-align:right;color:var(--sage-500);">$${(b.fees_total||0).toFixed(2)}</td>
+            <td style="padding:8px 6px;text-align:right;font-weight:700;">$${(b.total_charges||0).toFixed(2)}</td>
+            <td style="padding:8px 6px;text-align:right;color:var(--sage-500);">$${(b.cost_per_kwh||0).toFixed(4)}</td></tr>`;
+    }).join('');
+    const tKwh=bills.reduce((s,b)=>s+(b.kwh_used||0),0),tCost=bills.reduce((s,b)=>s+(b.total_charges||0),0);
+    const tEnergy=bills.reduce((s,b)=>s+(b.energy_cost||0),0),tFees=bills.reduce((s,b)=>s+(b.fees_total||0),0);
+    const avgRate=tKwh>0?tCost/tKwh:0;
+    document.getElementById('billsSummary').innerHTML=`
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;text-align:center;">
+            <div><div style="font-size:0.7rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Total kWh</div><div style="font-family:'Crimson Pro',serif;font-size:1.4rem;font-weight:600;color:var(--sage-800);">${tKwh.toLocaleString()}</div></div>
+            <div><div style="font-size:0.7rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Energy Cost</div><div style="font-family:'Crimson Pro',serif;font-size:1.4rem;font-weight:600;color:var(--sage-800);">$${tEnergy.toLocaleString('en-US',{minimumFractionDigits:2})}</div></div>
+            <div><div style="font-size:0.7rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Fees & Taxes</div><div style="font-family:'Crimson Pro',serif;font-size:1.4rem;font-weight:600;color:var(--sage-800);">$${tFees.toLocaleString('en-US',{minimumFractionDigits:2})}</div></div>
+            <div><div style="font-size:0.7rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Total Cost</div><div style="font-family:'Crimson Pro',serif;font-size:1.4rem;font-weight:600;color:var(--dusty-rose);">$${tCost.toLocaleString('en-US',{minimumFractionDigits:2})}</div></div>
+            <div><div style="font-size:0.7rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Avg $/kWh</div><div style="font-family:'Crimson Pro',serif;font-size:1.4rem;font-weight:600;color:var(--sage-800);">$${avgRate.toFixed(4)}</div></div>
+        </div>`;
+}
+
+function renderBillsChart(){
+    const bills=getFilteredBills();
+    const container=document.getElementById('billsCanvas').parentNode;
+    // Fully destroy old chart and replace canvas to avoid Chart.js reuse bugs
+    if(billChart){try{billChart.destroy();}catch(e){}billChart=null;}
+    const oldCanvas=document.getElementById('billsCanvas');
+    const newCanvas=document.createElement('canvas');newCanvas.id='billsCanvas';
+    oldCanvas.replaceWith(newCanvas);
+    if(bills.length===0)return;
+    const ctx=newCanvas.getContext('2d');
+    const byMonth={};
+    bills.forEach(b=>{
+        const d=new Date(b.billing_period_end+'T12:00:00');
+        const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        if(!byMonth[key])byMonth[key]={kwh:0,cost:0,energy:0,fees:0,days:0};
+        byMonth[key].kwh+=b.kwh_used||0;byMonth[key].cost+=b.total_charges||0;
+        byMonth[key].energy+=b.energy_cost||0;byMonth[key].fees+=b.fees_total||0;
+        byMonth[key].days=Math.max(byMonth[key].days,b.billing_days||30);
+    });
+    const months=Object.keys(byMonth).sort();
+    const labels=months.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleDateString('en-US',{month:'short',year:'2-digit'});});
+    const solarMonthlyKwh=getCalcMonthlyKwh();
+    billChart=new Chart(ctx,{
+        type:'bar',
+        data:{labels,datasets:[
+            {label:'Energy Cost',data:months.map(m=>byMonth[m].energy),backgroundColor:'rgba(255,167,38,0.6)',borderRadius:4,stack:'cost'},
+            {label:'Fees & Taxes',data:months.map(m=>byMonth[m].fees),backgroundColor:'rgba(196,181,164,0.5)',borderRadius:4,stack:'cost'},
+            {label:'kWh',data:months.map(m=>byMonth[m].kwh),type:'line',borderColor:'#EF5350',backgroundColor:'transparent',borderWidth:2,yAxisID:'y1',pointRadius:4,tension:0.3},
+            {label:`Potential solar (${parseInt(document.getElementById('calcPanels')?.value)||currentPanelCount()} panels)`,data:months.map(()=>solarMonthlyKwh),type:'line',borderColor:'#66BB6A',backgroundColor:'rgba(102,187,106,0.08)',borderWidth:2.5,borderDash:[8,4],fill:true,yAxisID:'y1',pointRadius:0}
+        ]},
+        options:{
+            responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+            plugins:{
+                legend:{position:'bottom',labels:{color:'#5f734c',usePointStyle:true,padding:12,font:{family:'Karla',size:12}}},
+                tooltip:{backgroundColor:'rgba(74,77,71,0.95)',titleColor:'#ece8dd',bodyColor:'#c4b5a4',
+                    callbacks:{
+                        label:c=>{if(c.dataset.yAxisID==='y1')return `${c.dataset.label}: ${c.parsed.y.toLocaleString()} kWh`;return `${c.dataset.label}: $${c.parsed.y.toFixed(2)}`;},
+                        afterBody:ctx=>{const m=months[ctx[0].dataIndex];const d=byMonth[m];const avg=d.days>0?(d.kwh/d.days).toFixed(1):'?';return [`Avg daily: ${avg} kWh (${d.days} days)`];}
+                    }
+                }
+            },
+            scales:{
+                x:{ticks:{color:'#7a9061',font:{size:11}},grid:{color:'rgba(74,77,71,0.06)'}},
+                y:{position:'left',title:{display:true,text:'Cost ($)',color:'#7a9061'},ticks:{color:'#7a9061',callback:v=>'$'+v},grid:{color:'rgba(74,77,71,0.06)'},stacked:true},
+                y1:{position:'right',title:{display:true,text:'kWh',color:'#EF5350'},ticks:{color:'#EF5350'},grid:{drawOnChartArea:false}}
+            }
+        }
+    });
+}
+
+// Init
+document.getElementById('installedCount').textContent=currentPanelCount()+' installed';
+document.getElementById('paybackPanelCount').textContent=currentPanelCount();
+document.getElementById('calcPanels').value=currentPanelCount();
+document.getElementById('calcPanelsVal').textContent=currentPanelCount();
+updateDayLabel();loadWeather();loadDashboard();loadExpenses();loadBillHistory();
+setInterval(()=>{if(currentPeriod==='day'&&isToday(selectedDate))loadDashboard();},120000);
 </script>
+<div id="billModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;">
+<div style="background:var(--cream);border-radius:16px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;color:var(--charcoal);box-shadow:0 12px 40px rgba(0,0,0,0.4);">
+    <h3 style="font-family:'Crimson Pro',serif;font-size:1.3rem;font-weight:600;color:var(--sage-700);margin-bottom:4px;">📋 Review Bill</h3>
+    <div id="mFileName" style="font-size:0.78rem;color:var(--sage-400);margin-bottom:14px;"></div>
+    <div style="margin-bottom:10px;"><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Meter Label</label>
+        <select id="mLabel" style="width:100%;border:1px solid var(--sage-300);border-radius:6px;padding:7px 10px;font-family:'Karla';font-size:0.9rem;color:var(--sage-800);background:white;">
+            <option value="Landlord">Landlord</option><option value="101">101</option><option value="202/3C">202/3C</option><option value="201">201</option>
+        </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Meter #</label><input id="mMeterNum" readonly style="width:100%;border:1px solid var(--sage-200);border-radius:6px;padding:6px 8px;font-size:0.85rem;background:var(--sage-50);color:var(--sage-600);"></div>
+        <div><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Account #</label><input id="mAcctNum" readonly style="width:100%;border:1px solid var(--sage-200);border-radius:6px;padding:6px 8px;font-size:0.85rem;background:var(--sage-50);color:var(--sage-600);"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Period Start</label><input id="mStart" type="date" style="width:100%;border:1px solid var(--sage-300);border-radius:6px;padding:6px 8px;font-size:0.85rem;"></div>
+        <div><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Period End</label><input id="mEnd" type="date" style="width:100%;border:1px solid var(--sage-300);border-radius:6px;padding:6px 8px;font-size:0.85rem;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">kWh Used</label><input id="mKwh" type="number" step="1" style="width:100%;border:1px solid var(--sage-300);border-radius:6px;padding:6px 8px;font-size:0.85rem;"></div>
+        <div><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Days</label><input id="mDays" type="number" style="width:100%;border:1px solid var(--sage-300);border-radius:6px;padding:6px 8px;font-size:0.85rem;"></div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--sage-200);margin:12px 0;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Generation $</label><input id="mGen" type="number" step="0.01" style="width:100%;border:1px solid var(--sage-300);border-radius:6px;padding:6px 8px;font-size:0.85rem;"></div>
+        <div><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Distribution $</label><input id="mDist" type="number" step="0.01" style="width:100%;border:1px solid var(--sage-300);border-radius:6px;padding:6px 8px;font-size:0.85rem;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Customer Charge $</label><input id="mCust" type="number" step="0.01" style="width:100%;border:1px solid var(--sage-300);border-radius:6px;padding:6px 8px;font-size:0.85rem;"></div>
+        <div><label style="font-size:0.72rem;text-transform:uppercase;color:var(--sage-500);font-weight:700;">Total $</label><input id="mTotal" type="number" step="0.01" style="width:100%;border:1px solid var(--sage-300);border-radius:6px;padding:6px 8px;font-size:0.85rem;font-weight:700;"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+        <button onclick="approveBill()" style="flex:1;padding:10px;border-radius:8px;border:none;font-family:'Karla';font-size:0.95rem;font-weight:600;cursor:pointer;background:var(--sage-500);color:white;">✓ Approve</button>
+        <button onclick="rejectBill()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--sage-300);font-family:'Karla';font-size:0.95rem;font-weight:600;cursor:pointer;background:var(--sage-100);color:var(--sage-600);">✕ Skip</button>
+    </div>
+</div>
+</div>
 </body>
 </html>
