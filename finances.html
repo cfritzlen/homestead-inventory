@@ -137,6 +137,24 @@
         }
         .entry-row input:focus { outline: none; border-color: var(--sage-500); box-shadow: 0 0 0 3px rgba(122, 144, 97, 0.15); }
         .entry-row .calc { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; padding-right: 12px; }
+
+        /* Loan/Tax bill tracking sub-row */
+        .debt-bill-row { display:grid; grid-template-columns:28px 110px 110px auto; gap:6px; align-items:center; padding:2px 0 8px; margin-left:8px; font-size:0.85rem; }
+        .debt-bill-row input[type="date"] { padding:3px 4px; border:1px solid var(--sage-200); border-radius:6px; font-family:'Karla',sans-serif; font-size:0.8rem; }
+        .debt-bill-row select { padding:3px 4px; border:1px solid var(--sage-200); border-radius:6px; font-family:'Karla',sans-serif; font-size:0.8rem; }
+        .debt-bill-row .paid-date-gray { color:var(--sage-300); }
+        .debt-bill-row .paid-date-confirmed { color:var(--charcoal); }
+
+        /* All Monthly Bills table */
+        .bills-table-header { display:grid; gap:6px; align-items:center; padding:6px 0; font-size:0.75rem; font-weight:600; color:var(--sage-500); text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid var(--sage-300); cursor:pointer; }
+        .bills-table-header > div:hover { color:var(--sage-700); }
+        .bills-filter-row { display:grid; gap:6px; align-items:center; padding:4px 0 8px; border-bottom:1px solid var(--sage-200); }
+        .bills-filter-row select, .bills-filter-row input { padding:2px 4px; border:1px solid var(--sage-200); border-radius:4px; font-family:'Karla',sans-serif; font-size:0.75rem; width:100%; }
+        .bill-row { display:grid; gap:6px; align-items:center; padding:7px 0; border-bottom:1px solid var(--sage-100); transition:opacity 0.2s; }
+        .bill-row.is-paid { opacity:0.45; }
+        .bill-row.is-this-week:not(.is-paid) { background:rgba(243,156,18,0.06); margin:0 -8px; padding-left:8px; padding-right:8px; border-radius:6px; }
+        .bill-autosave-flash { animation: flashGreen 0.6s ease; }
+        @keyframes flashGreen { 0%{background:rgba(39,174,96,0.15);} 100%{background:transparent;} }
         .section-divider { font-family: 'Crimson Pro', serif; font-size: 1.1rem; color: var(--sage-600); padding: 16px 0 6px; border-bottom: 2px solid var(--sage-300); margin-top: 8px; }
 
         .month-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
@@ -165,6 +183,9 @@
             .card { padding: 12px; margin: 8px; }
             .entry-row { grid-template-columns: 1fr 90px 90px 90px; gap: 4px; }
             .entry-row input { padding: 6px 8px; font-size: 0.85rem; }
+            #weekly-bills-list { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .bills-table-header, .bills-filter-row, .bill-row { min-width: 620px; }
+            .debt-bill-row { grid-template-columns: 24px 95px 95px auto; gap: 4px; font-size: 0.8rem; }
             .data-table { font-size: 0.8rem; }
             .data-table th, .data-table td { padding: 8px 6px; }
 
@@ -1270,10 +1291,9 @@ async function fetchLoanDueDates(weekStr){
 function getMonthWednesdays(monthKey){
     const [y,m]=monthKey.split('-').map(Number);
     const weds=[];
-    // Start from 2 weeks before month start
     const start=new Date(y,m-1,1);start.setDate(start.getDate()-14);
     while(start.getDay()!==3) start.setDate(start.getDate()+1);
-    const end=new Date(y,m,7); // a week into next month
+    const end=new Date(y,m,7);
     let d=new Date(start);
     while(d<=end){
         const ys=d.getFullYear(),ms=String(d.getMonth()+1).padStart(2,'0'),ds=String(d.getDate()).padStart(2,'0');
@@ -1283,120 +1303,15 @@ function getMonthWednesdays(monthKey){
     return weds;
 }
 
-// Helper: find default wednesday for a due day in a month
 function defaultWedForDueDay(dueDay,monthKey,wednesdays){
     const [y,m]=monthKey.split('-').map(Number);
     const dueDate=new Date(y,m-1,Math.min(dueDay,28));
-    // Find the Wednesday that starts the week containing the due date (Wed <= dueDate < next Wed)
     for(let i=0;i<wednesdays.length-1;i++){
         const w=new Date(wednesdays[i]+'T12:00:00');
         const nw=new Date(wednesdays[i+1]+'T12:00:00');
         if(dueDate>=w && dueDate<nw) return wednesdays[i];
     }
     return wednesdays[wednesdays.length-1];
-}
-
-async function loadWeeklyBills(){
-    const dt=document.getElementById('entry-date').value;
-    if(!dt||!bills.length){document.getElementById('weekly-bills-section').style.display='none';document.getElementById('weekly-bills-total-row').style.display='none';return;}
-
-    const weekDate=new Date(dt+'T12:00:00');
-    const mkCurrent=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-01`;
-
-    // Fetch all payments for this month
-    let payments=[];
-    try{
-        payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${mkCurrent}`);
-    }catch(e){payments=[];}
-
-    // ALL active bills — no exclusions
-    const allBills=bills.filter(b=>b.due_day);
-    allBills.sort((a,b)=>a.due_day-b.due_day);
-
-    const wednesdays=getMonthWednesdays(mkCurrent);
-    const currentWeek=dt; // currently selected Wednesday
-
-    const section=document.getElementById('weekly-bills-section');
-    const list=document.getElementById('weekly-bills-list');
-    const totalRow=document.getElementById('weekly-bills-total-row');
-    section.style.display='';
-    totalRow.style.display='flex';
-
-    calculatedBillTotal=0;
-    let monthTotal=0, paidTotal=0, paidCount=0;
-    let html='';
-
-    // Month label
-    const monthLabel=weekDate.toLocaleDateString('en-US',{month:'long',year:'numeric'});
-
-    html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 10px;">
-        <span style="font-size:0.95rem;font-weight:600;color:var(--sage-700);">${monthLabel}</span>
-        <span id="bills-paid-count" style="font-size:0.8rem;color:var(--sage-400);"></span>
-    </div>`;
-
-    // Header
-    html+=`<div style="display:grid;grid-template-columns:28px 1fr 110px 100px 100px 50px;gap:6px;align-items:center;padding:6px 0;font-size:0.75rem;font-weight:600;color:var(--sage-500);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--sage-300);">
-        <div></div><div>Bill</div><div>Week</div><div>Paid Date</div><div style="text-align:right">Amount</div><div></div>
-    </div>`;
-
-    allBills.forEach(b=>{
-        const billMonth=mkCurrent;
-        const p=payments.find(x=>x.bill_id===b.id && x.bill_month===billMonth);
-        const amt=p?.actual_amount||b.expected_amount||0;
-        const paid=p?.is_paid||false;
-        const paidDate=p?.paid_date||'';
-        const weekAssigned=p?.week_assigned||defaultWedForDueDay(b.due_day,billMonth,wednesdays);
-        const isThisWeek=(weekAssigned===currentWeek);
-        const isDue=isThisWeek && !paid;
-
-        monthTotal+=amt;
-        if(paid){paidTotal+=amt;paidCount++;}
-
-        // Only unpaid bills assigned to this week count toward PNC set-aside
-        if(isThisWeek && !paid) calculatedBillTotal+=amt;
-
-        // Week dropdown options
-        let weekOpts=wednesdays.map(w=>{
-            const wd=new Date(w+'T12:00:00');
-            const lbl=wd.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-            return `<option value="${w}" ${w===weekAssigned?'selected':''}>${lbl}</option>`;
-        }).join('');
-
-        const rowBg=isDue?'background:rgba(243,156,18,0.08);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:6px;':'';
-
-        html+=`<div data-bill-id="${b.id}" data-bill-month="${billMonth}" style="display:grid;grid-template-columns:28px 1fr 110px 100px 100px 50px;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--sage-100);${paid?'opacity:0.45;':''}${rowBg}">
-            <div><input type="checkbox" class="check-paid" data-bill-id="${b.id}" data-bill-month="${billMonth}" ${paid?'checked':''} onchange="toggleWeeklyBillPaid('${b.id}','${billMonth}',this.checked,this)" style="accent-color:var(--sage-500);width:18px;height:18px;cursor:pointer;"></div>
-            <div>
-                <span style="font-weight:600;font-size:0.9rem;${paid?'text-decoration:line-through;color:var(--sage-400);':''}">${b.name}</span>
-                <span style="font-size:0.75rem;color:var(--sage-400);margin-left:4px;">due ${b.due_day}${ordSuffix(b.due_day)}</span>
-                ${b.is_auto_pay?'<span style="font-size:0.65rem;background:rgba(122,144,97,0.15);color:var(--sage-600);padding:1px 5px;border-radius:4px;margin-left:4px;">Auto</span>':''}
-                ${b.is_variable_amount?'<span style="font-size:0.65rem;background:rgba(192,57,43,0.1);color:var(--dusty-rose);padding:1px 5px;border-radius:4px;margin-left:4px;">~</span>':''}
-                ${isDue?'<span style="font-size:0.65rem;background:rgba(243,156,18,0.2);color:#b27a00;padding:1px 5px;border-radius:4px;margin-left:4px;font-weight:600;">this week</span>':''}
-            </div>
-            <div><select data-bill-id="${b.id}" data-bill-month="${billMonth}" data-field="week" onchange="onBillWeekChange('${b.id}','${billMonth}',this.value)" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;width:100%;${isThisWeek?'font-weight:600;border-color:var(--sage-400);':''}">${weekOpts}</select></div>
-            <div><input type="date" value="${paidDate}" data-bill-id="${b.id}" data-bill-month="${billMonth}" data-field="date" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;width:100%;"></div>
-            <div><input type="number" step="0.01" value="${amt.toFixed(2)}" data-bill-id="${b.id}" data-bill-month="${billMonth}" data-field="amount" onchange="recalcBillTotal()" style="padding:3px 6px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.85rem;text-align:right;width:100%;"></div>
-            <div><button class="btn btn-small btn-secondary" onclick="saveWeeklyBill('${b.id}','${billMonth}')" style="padding:3px 8px;font-size:0.8rem;">✓</button></div>
-        </div>`;
-    });
-
-    // Summary footer
-    const remaining=monthTotal-paidTotal;
-    html+=`<div style="display:flex;justify-content:space-between;padding:10px 0 4px;font-size:0.85rem;border-top:2px solid var(--sage-300);margin-top:4px;">
-        <span style="color:var(--green-soft);font-weight:600;">Paid: ${fmt(paidTotal)}</span>
-        <span style="color:var(--dusty-rose);font-weight:600;">Remaining: ${fmt(remaining)}</span>
-        <span style="font-weight:600;">Total: ${fmt(monthTotal)}</span>
-    </div>`;
-
-    list.innerHTML=html;
-
-    // Update paid count
-    const countEl=document.getElementById('bills-paid-count');
-    if(countEl) countEl.textContent=`${paidCount} of ${allBills.length} paid`;
-
-    // Set the override total to bills due this week (unpaid only)
-    document.getElementById('bills-override-total').value=calculatedBillTotal.toFixed(2);
-    calcWeekly();
 }
 
 function ordSuffix(n){
@@ -1408,27 +1323,311 @@ function ordSuffix(n){
     return 'th';
 }
 
-function onBillWeekChange(billId,billMonth,newWeek){
-    // Recalculate totals when week assignment changes
-    recalcBillTotal();
+// Bill grid columns: paid | name | due | week | paid date | amount | this week
+const billGridCols='28px 1fr 60px 110px 100px 95px 90px';
+
+let billSortCol='due', billSortAsc=true;
+let billFilters={name:'',paid:'all',week:'all'};
+let allBillData=[]; // populated by loadWeeklyBills, used for filtering/sorting
+
+async function loadWeeklyBills(){
+    const dt=document.getElementById('entry-date').value;
+    if(!dt||!bills.length){document.getElementById('weekly-bills-section').style.display='none';document.getElementById('weekly-bills-total-row').style.display='none';return;}
+
+    const weekDate=new Date(dt+'T12:00:00');
+    const mkCurrent=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-01`;
+    const currentWeek=dt;
+
+    let payments=[];
+    try{ payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${mkCurrent}`); }catch(e){payments=[];}
+
+    const allBills=bills.filter(b=>b.due_day);
+    const wednesdays=getMonthWednesdays(mkCurrent);
+
+    // Build data array
+    allBillData=allBills.map(b=>{
+        const billMonth=mkCurrent;
+        const p=payments.find(x=>x.bill_id===b.id && x.bill_month===billMonth);
+        const amt=p?.actual_amount||b.expected_amount||0;
+        const paid=p?.is_paid||false;
+        const paidDate=p?.paid_date||'';
+        const weekAssigned=p?.week_assigned||defaultWedForDueDay(b.due_day,billMonth,wednesdays);
+        const isThisWeek=(weekAssigned===currentWeek);
+        return {bill:b, billMonth, amt, paid, paidDate, weekAssigned, isThisWeek, wednesdays};
+    });
+
+    // Also populate debt bill sub-rows (loans/taxes at top)
+    loadDebtBillRows(payments,mkCurrent,wednesdays,currentWeek);
+
+    renderBillsTable();
+}
+
+function loadDebtBillRows(payments,mkCurrent,wednesdays,currentWeek){
+    document.querySelectorAll('.debt-bill-row').forEach(row=>{
+        const billId=row.dataset.debtBillId;
+        const p=payments.find(x=>x.bill_id===billId && x.bill_month===mkCurrent);
+        const bill=bills.find(b=>b.id===billId);
+        const weekAssigned=p?.week_assigned||defaultWedForDueDay(bill?.due_day||1,mkCurrent,wednesdays);
+        const paid=p?.is_paid||false;
+        const paidDate=p?.paid_date||'';
+
+        const checkbox=row.querySelector('.debt-bill-paid');
+        const dateInput=row.querySelector('.debt-bill-date');
+        const weekSel=row.querySelector('.debt-bill-week');
+
+        if(checkbox) checkbox.checked=paid;
+        if(dateInput){
+            dateInput.value=paidDate;
+            dateInput.className='debt-bill-date '+(paid?'paid-date-confirmed':'paid-date-gray');
+        }
+        if(weekSel){
+            weekSel.innerHTML=wednesdays.map(w=>{
+                const wd=new Date(w+'T12:00:00');
+                const lbl=wd.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+                return `<option value="${w}" ${w===weekAssigned?'selected':''}>${lbl}</option>`;
+            }).join('');
+        }
+
+        // Auto-save handlers
+        if(checkbox && !checkbox._billBound){
+            checkbox._billBound=true;
+            checkbox.addEventListener('change',()=>{
+                if(checkbox.checked && !dateInput.value) dateInput.value=new Date().toISOString().split('T')[0];
+                dateInput.className='debt-bill-date '+(checkbox.checked?'paid-date-confirmed':'paid-date-gray');
+                autoSaveDebtBill(billId,mkCurrent,row);
+            });
+        }
+        if(dateInput && !dateInput._billBound){
+            dateInput._billBound=true;
+            dateInput.addEventListener('change',()=>autoSaveDebtBill(billId,mkCurrent,row));
+        }
+        if(weekSel && !weekSel._billBound){
+            weekSel._billBound=true;
+            weekSel.addEventListener('change',()=>{
+                autoSaveDebtBill(billId,mkCurrent,row);
+                // If week matches current, fill payment; otherwise clear it
+                const acctId=row.dataset.acctId;
+                const payInput=document.querySelector(`input[data-id="${acctId}"][data-f="pay"]`);
+                if(payInput){
+                    if(weekSel.value===currentWeek){
+                        const b=bills.find(x=>x.id===billId);
+                        if(b && (!payInput.value || parseFloat(payInput.value)===0)){
+                            payInput.value=(b.expected_amount||0).toFixed(2);
+                        }
+                    }
+                    calcWeekly();
+                }
+            });
+        }
+    });
+}
+
+async function autoSaveDebtBill(billId,billMonth,row){
+    const checkbox=row.querySelector('.debt-bill-paid');
+    const dateInput=row.querySelector('.debt-bill-date');
+    const weekSel=row.querySelector('.debt-bill-week');
+    const isPaid=checkbox?.checked||false;
+    const paidDate=dateInput?.value||null;
+    const weekAssigned=weekSel?.value||null;
+    const bill=bills.find(b=>b.id===billId);
+    const amt=bill?.expected_amount||0;
+
+    try{
+        const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
+        const data={is_paid:isPaid, paid_date:isPaid?paidDate:null, week_assigned:weekAssigned, actual_amount:amt};
+        if(existing?.length){
+            await supaFetch('finance_bill_payments','PATCH',data,`?id=eq.${existing[0].id}`);
+        }else{
+            await supaFetch('finance_bill_payments','POST',{bill_id:billId, bill_month:billMonth, ...data});
+        }
+        row.classList.add('bill-autosave-flash');
+        setTimeout(()=>row.classList.remove('bill-autosave-flash'),700);
+    }catch(e){console.error('Auto-save debt bill error:',e);}
+}
+
+function renderBillsTable(){
+    const dt=document.getElementById('entry-date').value;
+    const currentWeek=dt;
+    const section=document.getElementById('weekly-bills-section');
+    const list=document.getElementById('weekly-bills-list');
+    const totalRow=document.getElementById('weekly-bills-total-row');
+    section.style.display='';
+    totalRow.style.display='flex';
+
+    // Filter
+    let filtered=allBillData.slice();
+    if(billFilters.name){
+        const q=billFilters.name.toLowerCase();
+        filtered=filtered.filter(d=>d.bill.name.toLowerCase().includes(q));
+    }
+    if(billFilters.paid==='paid') filtered=filtered.filter(d=>d.paid);
+    if(billFilters.paid==='unpaid') filtered=filtered.filter(d=>!d.paid);
+    if(billFilters.week==='this') filtered=filtered.filter(d=>d.weekAssigned===currentWeek);
+
+    // Sort
+    filtered.sort((a,b)=>{
+        let va,vb;
+        if(billSortCol==='name'){va=a.bill.name;vb=b.bill.name;return billSortAsc?va.localeCompare(vb):vb.localeCompare(va);}
+        if(billSortCol==='due'){va=a.bill.due_day;vb=b.bill.due_day;}
+        if(billSortCol==='amount'){va=a.amt;vb=b.amt;}
+        if(billSortCol==='week'){va=a.weekAssigned;vb=b.weekAssigned;return billSortAsc?va.localeCompare(vb):vb.localeCompare(va);}
+        if(billSortCol==='thisweek'){va=a.isThisWeek?a.amt:0;vb=b.isThisWeek?b.amt:0;}
+        if(billSortCol==='paid'){va=a.paid?1:0;vb=b.paid?1:0;}
+        va=va||0;vb=vb||0;
+        return billSortAsc?(va-vb):(vb-va);
+    });
+
+    const weekDate=new Date(dt+'T12:00:00');
+    const monthLabel=weekDate.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const paidCount=allBillData.filter(d=>d.paid).length;
+
+    let html=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 10px;">
+        <span style="font-size:0.95rem;font-weight:600;color:var(--sage-700);">${monthLabel}</span>
+        <span style="font-size:0.8rem;color:var(--sage-400);">${paidCount} of ${allBillData.length} paid</span>
+    </div>`;
+
+    // Sort indicator
+    const sortArrow=(col)=>billSortCol===col?(billSortAsc?' ↑':' ↓'):'';
+
+    // Header row (clickable for sort)
+    html+=`<div class="bills-table-header" style="grid-template-columns:${billGridCols};">
+        <div onclick="sortBills('paid')">✓${sortArrow('paid')}</div>
+        <div onclick="sortBills('name')">Bill${sortArrow('name')}</div>
+        <div onclick="sortBills('due')">Due${sortArrow('due')}</div>
+        <div onclick="sortBills('week')">Week${sortArrow('week')}</div>
+        <div>Paid Date</div>
+        <div onclick="sortBills('amount')" style="text-align:right">Amount${sortArrow('amount')}</div>
+        <div onclick="sortBills('thisweek')" style="text-align:right;color:var(--sage-700);">This Wk${sortArrow('thisweek')}</div>
+    </div>`;
+
+    // Filter row
+    html+=`<div class="bills-filter-row" style="grid-template-columns:${billGridCols};">
+        <div><select id="bf-paid" onchange="billFilters.paid=this.value;renderBillsTable();" style="width:100%;">
+            <option value="all" ${billFilters.paid==='all'?'selected':''}>All</option>
+            <option value="unpaid" ${billFilters.paid==='unpaid'?'selected':''}>No</option>
+            <option value="paid" ${billFilters.paid==='paid'?'selected':''}>Yes</option>
+        </select></div>
+        <div><input type="text" id="bf-name" placeholder="filter..." value="${billFilters.name}" oninput="billFilters.name=this.value;renderBillsTable();"></div>
+        <div></div>
+        <div><select id="bf-week" onchange="billFilters.week=this.value;renderBillsTable();">
+            <option value="all" ${billFilters.week==='all'?'selected':''}>All</option>
+            <option value="this" ${billFilters.week==='this'?'selected':''}>This wk</option>
+        </select></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>`;
+
+    // Data rows
+    calculatedBillTotal=0;
+    let monthTotal=0, paidTotal=0;
+
+    filtered.forEach(d=>{
+        const b=d.bill;
+        const isThisWeek=(d.weekAssigned===currentWeek);
+        const thisWeekAmt=(!d.paid && isThisWeek)?d.amt:0;
+        if(!d.paid && isThisWeek) calculatedBillTotal+=d.amt;
+        monthTotal+=d.amt;
+        if(d.paid) paidTotal+=d.amt;
+
+        let weekOpts=d.wednesdays.map(w=>{
+            const wd=new Date(w+'T12:00:00');
+            const lbl=wd.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+            return `<option value="${w}" ${w===d.weekAssigned?'selected':''}>${lbl}</option>`;
+        }).join('');
+
+        const rowClass='bill-row'+(d.paid?' is-paid':'')+(isThisWeek&&!d.paid?' is-this-week':'');
+
+        html+=`<div class="${rowClass}" data-bill-id="${b.id}" data-bill-month="${d.billMonth}" style="grid-template-columns:${billGridCols};">
+            <div><input type="checkbox" class="check-paid" ${d.paid?'checked':''} onchange="autoSaveBillField('${b.id}','${d.billMonth}',this)" style="accent-color:var(--sage-500);width:18px;height:18px;cursor:pointer;"></div>
+            <div>
+                <span style="font-weight:600;font-size:0.88rem;${d.paid?'text-decoration:line-through;color:var(--sage-400);':''}">${b.name}</span>
+                ${b.is_auto_pay?'<span style="font-size:0.6rem;background:rgba(122,144,97,0.15);color:var(--sage-600);padding:1px 4px;border-radius:3px;margin-left:3px;">Auto</span>':''}
+                ${b.is_variable_amount?'<span style="font-size:0.6rem;background:rgba(192,57,43,0.1);color:var(--dusty-rose);padding:1px 4px;border-radius:3px;margin-left:3px;">~</span>':''}
+            </div>
+            <div style="font-size:0.8rem;color:var(--sage-500);">${b.due_day}${ordSuffix(b.due_day)}</div>
+            <div><select data-field="week" onchange="autoSaveBillField('${b.id}','${d.billMonth}',this)" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;width:100%;${isThisWeek?'font-weight:600;border-color:var(--sage-400);':''}">${weekOpts}</select></div>
+            <div><input type="date" data-field="date" value="${d.paidDate}" onchange="autoSaveBillField('${b.id}','${d.billMonth}',this)" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;width:100%;${d.paid?'':'color:var(--sage-300);'}"></div>
+            <div><input type="number" step="0.01" data-field="amount" value="${d.amt.toFixed(2)}" onchange="autoSaveBillField('${b.id}','${d.billMonth}',this)" style="padding:3px 6px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.85rem;text-align:right;width:100%;"></div>
+            <div style="text-align:right;font-weight:${thisWeekAmt>0?'600':'400'};font-size:0.85rem;color:${thisWeekAmt>0?'var(--charcoal)':'var(--sage-300)'};">${thisWeekAmt>0?fmt(thisWeekAmt):'-'}</div>
+        </div>`;
+    });
+
+    // This Week total row
+    const remaining=monthTotal-paidTotal;
+    html+=`<div style="display:grid;grid-template-columns:${billGridCols};gap:6px;align-items:center;padding:10px 0 4px;border-top:2px solid var(--sage-300);margin-top:4px;font-size:0.85rem;font-weight:600;">
+        <div></div>
+        <div style="color:var(--green-soft);">Paid: ${fmt(paidTotal)}</div>
+        <div></div>
+        <div></div>
+        <div style="color:var(--dusty-rose);">Left: ${fmt(remaining)}</div>
+        <div style="text-align:right;">Total: ${fmt(monthTotal)}</div>
+        <div style="text-align:right;color:var(--sage-700);font-size:0.9rem;">${fmt(calculatedBillTotal)}</div>
+    </div>`;
+
+    list.innerHTML=html;
+
+    document.getElementById('bills-override-total').value=calculatedBillTotal.toFixed(2);
+    calcWeekly();
+}
+
+function sortBills(col){
+    if(billSortCol===col) billSortAsc=!billSortAsc;
+    else { billSortCol=col; billSortAsc=true; }
+    renderBillsTable();
+}
+
+// Auto-save any bill field change
+async function autoSaveBillField(billId,billMonth,el){
+    const row=el.closest('.bill-row');
+    if(!row) return;
+    const checkbox=row.querySelector('.check-paid');
+    const weekSel=row.querySelector('[data-field="week"]');
+    const dateInput=row.querySelector('[data-field="date"]');
+    const amtInput=row.querySelector('[data-field="amount"]');
+    const isPaid=checkbox?.checked||false;
+    const weekAssigned=weekSel?.value||null;
+    const amt=parseFloat(amtInput?.value)||0;
+
+    // Auto-fill date when checking paid
+    if(isPaid && !dateInput.value) dateInput.value=new Date().toISOString().split('T')[0];
+    const paidDate=dateInput?.value||null;
+
+    // Update data array for re-render
+    const d=allBillData.find(x=>x.bill.id===billId && x.billMonth===billMonth);
+    if(d){
+        d.paid=isPaid;
+        d.paidDate=paidDate||'';
+        d.weekAssigned=weekAssigned||d.weekAssigned;
+        d.amt=amt;
+        d.isThisWeek=(d.weekAssigned===document.getElementById('entry-date').value);
+    }
+
+    // Save to DB
+    try{
+        const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
+        const data={is_paid:isPaid, actual_amount:amt, paid_date:isPaid?paidDate:null, week_assigned:weekAssigned};
+        if(existing?.length){
+            await supaFetch('finance_bill_payments','PATCH',data,`?id=eq.${existing[0].id}`);
+        }else{
+            await supaFetch('finance_bill_payments','POST',{bill_id:billId, bill_month:billMonth, ...data});
+        }
+        // Flash green on the row
+        row.classList.add('bill-autosave-flash');
+        setTimeout(()=>row.classList.remove('bill-autosave-flash'),700);
+    }catch(e){console.error('Auto-save bill error:',e);}
+
+    // Re-render to update this-week column and totals
+    renderBillsTable();
 }
 
 function recalcBillTotal(){
     const currentWeek=document.getElementById('entry-date').value;
-    let total=0;
-    document.querySelectorAll('#weekly-bills-list [data-bill-id]').forEach(row=>{
-        if(row.tagName!=='DIV'||!row.querySelector)return;
-        const weekSel=row.querySelector('select[data-field="week"]');
-        const amtInput=row.querySelector('input[data-field="amount"]');
-        const checkbox=row.querySelector('.check-paid');
-        if(!weekSel||!amtInput)return;
-        const isPaid=checkbox?.checked||false;
-        if(weekSel.value===currentWeek && !isPaid){
-            total+=parseFloat(amtInput.value)||0;
-        }
+    calculatedBillTotal=0;
+    allBillData.forEach(d=>{
+        if(!d.paid && d.weekAssigned===currentWeek) calculatedBillTotal+=d.amt;
     });
-    calculatedBillTotal=total;
-    document.getElementById('bills-override-total').value=total.toFixed(2);
+    document.getElementById('bills-override-total').value=calculatedBillTotal.toFixed(2);
     calcWeekly();
 }
 
@@ -1437,48 +1636,12 @@ function resetBillTotal(){
     calcWeekly();
 }
 
+// Keep toggleWeeklyBillPaid for compatibility but redirect to auto-save
 async function toggleWeeklyBillPaid(billId,billMonth,isPaid,checkbox){
-    const row=checkbox.closest('div[style*="grid"]');
-    const amtInput=row.querySelector('input[data-field="amount"]');
-    const dateInput=row.querySelector('input[data-field="date"]');
-    const weekSel=row.querySelector('select[data-field="week"]');
-    const amt=parseFloat(amtInput?.value)||0;
-    // Auto-fill today's date when checking paid
-    if(isPaid && !dateInput.value){
-        dateInput.value=new Date().toISOString().split('T')[0];
-    }
-    const paidDate=dateInput?.value||null;
-    const weekAssigned=weekSel?.value||null;
-
-    try{
-        const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
-        if(existing?.length){
-            await supaFetch('finance_bill_payments','PATCH',{is_paid:isPaid,actual_amount:amt,paid_date:isPaid?paidDate:null,week_assigned:weekAssigned},`?id=eq.${existing[0].id}`);
-        }else{
-            await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:billMonth,actual_amount:amt,is_paid:isPaid,paid_date:isPaid?paidDate:null,week_assigned:weekAssigned});
-        }
-        await loadWeeklyBills();
-    }catch(e){alert('Error: '+e.message);}
+    autoSaveBillField(billId,billMonth,checkbox);
 }
 async function saveWeeklyBill(billId,billMonth){
-    const amtInput=document.querySelector(`input[data-bill-id="${billId}"][data-bill-month="${billMonth}"][data-field="amount"]`);
-    const dateInput=document.querySelector(`input[data-bill-id="${billId}"][data-bill-month="${billMonth}"][data-field="date"]`);
-    const weekSel=document.querySelector(`select[data-bill-id="${billId}"][data-bill-month="${billMonth}"][data-field="week"]`);
-    const checkbox=document.querySelector(`.check-paid[data-bill-id="${billId}"][data-bill-month="${billMonth}"]`);
-    const amt=parseFloat(amtInput?.value)||0;
-    const paidDate=dateInput?.value||null;
-    const weekAssigned=weekSel?.value||null;
-    const isPaid=checkbox?.checked||false;
-
-    try{
-        const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
-        if(existing?.length){
-            await supaFetch('finance_bill_payments','PATCH',{actual_amount:amt,paid_date:paidDate,week_assigned:weekAssigned,is_paid:isPaid},`?id=eq.${existing[0].id}`);
-        }else{
-            await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:billMonth,actual_amount:amt,is_paid:isPaid,paid_date:paidDate,week_assigned:weekAssigned});
-        }
-        await loadWeeklyBills();
-    }catch(e){alert('Error: '+e.message);}
+    // No longer needed — auto-save handles it
 }
 
 function buildWeeklyForm(){
@@ -1524,7 +1687,19 @@ function buildWeeklyForm(){
 
     if(taxes.length){
         h+=`<div class="section-divider">🏛️ Tax Debts</div>`;
-        taxes.forEach(a=>{h+=entryRow(a,true);});
+        taxes.forEach(a=>{
+            h+=entryRow(a,true);
+            // Bill tracking sub-row
+            const matchBill=bills.find(b=>b.name.toLowerCase().includes(a.name.toLowerCase().replace(' debt','').replace(' payment','').trim()) || a.name.toLowerCase().includes(b.name.toLowerCase().replace(' payment','').trim()));
+            if(matchBill){
+                h+=`<div class="debt-bill-row" data-debt-bill-id="${matchBill.id}" data-acct-id="${a.id}">
+                    <input type="checkbox" class="debt-bill-paid" data-debt-bill-id="${matchBill.id}" style="accent-color:var(--sage-500);width:16px;height:16px;cursor:pointer;">
+                    <input type="date" class="debt-bill-date paid-date-gray" data-debt-bill-id="${matchBill.id}" placeholder="Paid date">
+                    <select class="debt-bill-week" data-debt-bill-id="${matchBill.id}"></select>
+                    <span style="font-size:0.75rem;color:var(--sage-400);font-style:italic;">↑ paid / date / pay week</span>
+                </div>`;
+            }
+        });
         h+=sumRow('tax','Tax Total');
     }
 
@@ -1532,6 +1707,19 @@ function buildWeeklyForm(){
         h+=`<div class="section-divider">🏦 Loans</div>`;
         loans.forEach(a=>{
             h+=entryRow(a,true);
+            // Bill tracking sub-row
+            const matchBill=bills.find(b=>{
+                const bn=b.name.toLowerCase(), an=a.name.toLowerCase();
+                return bn.includes(an.split(' ')[0]) || an.includes(bn.split(' ')[0]);
+            });
+            if(matchBill){
+                h+=`<div class="debt-bill-row" data-debt-bill-id="${matchBill.id}" data-acct-id="${a.id}">
+                    <input type="checkbox" class="debt-bill-paid" data-debt-bill-id="${matchBill.id}" style="accent-color:var(--sage-500);width:16px;height:16px;cursor:pointer;">
+                    <input type="date" class="debt-bill-date paid-date-gray" data-debt-bill-id="${matchBill.id}" placeholder="Paid date">
+                    <select class="debt-bill-week" data-debt-bill-id="${matchBill.id}"></select>
+                    <span style="font-size:0.75rem;color:var(--sage-400);font-style:italic;">↑ paid / date / pay week</span>
+                </div>`;
+            }
             if(a.name.toLowerCase().includes('prudential')){
                 h+=`<div style="display:grid;grid-template-columns:1fr 120px 120px 120px;gap:8px;align-items:center;padding:2px 0 8px;margin-left:8px;" id="extra-pay-row">
                     <label style="font-size:0.85rem;color:var(--sage-500);font-style:italic;">↳ Extra Payment</label>
