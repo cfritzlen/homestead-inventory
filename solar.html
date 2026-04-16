@@ -155,7 +155,7 @@
             <div class="stat-card pv" onclick="toggleFilter('pv')"><div class="stat-icon">☀️</div><div class="stat-label">Solar</div><div class="stat-value"><span id="pvKwh">0</span> <span class="stat-unit">kWh</span></div><div class="stat-sub" id="pvPeak"></div><div class="filter-hint">click to isolate</div></div>
             <div class="stat-card load-c" onclick="toggleFilter('load')"><div class="stat-icon">🏠</div><div class="stat-label">Home Usage</div><div class="stat-value"><span id="loadKwh">0</span> <span class="stat-unit">kWh</span></div><div class="stat-sub" id="loadPeak"></div><div class="filter-hint">click to isolate</div></div>
             <div class="stat-card grid-c" onclick="toggleFilter('grid')"><div class="stat-icon">⚡</div><div class="stat-label">Grid Import</div><div class="stat-value"><span id="gridKwh">0</span> <span class="stat-unit">kWh</span></div><div class="filter-hint">click to isolate</div></div>
-            <div class="stat-card batt" onclick="toggleFilter('battery')"><div class="stat-icon">🔋</div><div class="stat-label">Battery</div><div class="stat-value"><span id="battSoc">—</span><span class="stat-unit">%</span></div><div class="stat-sub" id="battSub"></div><div class="filter-hint">click to isolate</div></div>
+            <div class="stat-card batt" onclick="toggleFilter('battery')"><div class="stat-icon">🔋</div><div class="stat-label">Battery</div><div class="stat-value"><span id="battSoc">—</span><span class="stat-unit">%</span></div><div class="stat-sub" id="battSub"></div><div class="stat-sub" id="battRange" style="font-size:0.68rem;"></div><div class="stat-sub" id="battKwh" style="font-size:0.68rem;"></div><div class="filter-hint">click to isolate</div></div>
         </div>
 
         <div class="chart-card"><canvas id="energyChart"></canvas></div>
@@ -239,6 +239,7 @@
                 <span id="meterFilterBtns"></span>
             </div>
             <div style="height:300px;margin-bottom:20px;background:rgba(246,247,243,0.97);border-radius:10px;padding:12px;"><canvas id="billsCanvas"></canvas></div>
+            <div id="billsTableSection" style="display:none;">
             <div style="overflow-x:auto;margin-bottom:16px;">
                 <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
                     <thead><tr style="border-bottom:2px solid var(--sage-300);text-align:left;">
@@ -254,6 +255,7 @@
                 </table>
             </div>
             <div id="billsSummary" style="padding-top:14px;border-top:2px solid var(--sage-300);"></div>
+            </div>
         </div>
 
         <!-- What-If Calculator -->
@@ -540,7 +542,7 @@ async function loadDashboard(){
         });
 
         const solarSelf=Math.max(0,t.pv);
-        const offsetVal=solarSelf*RATE,gridCost=t.gridIn*RATE,net=offsetVal;
+        const offsetVal=solarSelf*RATE,gridCost=t.gridIn*RATE,net=offsetVal-gridCost;
 
         // Status
         if(realtime.length){
@@ -562,11 +564,22 @@ async function loadDashboard(){
         document.getElementById('dPv').textContent=`${fmt(t.pv)} kWh`;
         document.getElementById('dLoad').textContent=`${fmt(t.load)} kWh`;
         document.getElementById('dGridIn').textContent=`${fmt(t.gridIn)} kWh`;
-        document.getElementById('dBattC').textContent=`${fmt(t.battC)} kWh`;
-        document.getElementById('dBattD').textContent=`${fmt(t.battD)} kWh`;
+        document.getElementById('dBattC').textContent=`${fmt(t.battD)} kWh`;
+        document.getElementById('dBattD').textContent=`${fmt(t.battC)} kWh`;
         document.getElementById('cOffset').textContent=`$${fmtMoney(offsetVal)}`;
         document.getElementById('cGrid').textContent=`$${fmtMoney(gridCost)}`;
         document.getElementById('cNet').textContent=`$${fmtMoney(net)}`;
+
+        // Battery SOC min/max + throughput kWh for the selected period
+        const socVals=readings.map(r=>r.battery_soc).filter(v=>v!=null&&!isNaN(v));
+        const battRangeEl=document.getElementById('battRange');
+        const battKwhEl=document.getElementById('battKwh');
+        if(socVals.length){
+            const mn=Math.min(...socVals),mx=Math.max(...socVals);
+            battRangeEl.textContent=`Min ${Math.round(mn)}% / Max ${Math.round(mx)}%`;
+        }else{battRangeEl.textContent='';}
+        const battTotal=(t.battC||0)+(t.battD||0);
+        battKwhEl.textContent=battTotal>0?`${fmt(battTotal)} kWh`:'';
 
         buildChart(readings);
 
@@ -721,9 +734,10 @@ function saveBillApiKey(){
 // Toggle upload section
 function toggleBillUpload(){
     const sec=document.getElementById('billUploadSection');
+    const tbl=document.getElementById('billsTableSection');
     const hint=document.getElementById('billToggleHint');
-    if(sec.style.display==='none'){sec.style.display='block';hint.textContent='▼ click to hide';}
-    else{sec.style.display='none';hint.textContent='▶ click to add bills';}
+    if(sec.style.display==='none'){sec.style.display='block';tbl.style.display='block';hint.textContent='▼ click to hide';}
+    else{sec.style.display='none';tbl.style.display='none';hint.textContent='▶ click to add bills';}
 }
 
 // Drag and drop
