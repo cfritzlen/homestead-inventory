@@ -1341,7 +1341,12 @@ async function loadWeeklyBills(){
     let payments=[];
     try{ payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${mkCurrent}`); }catch(e){payments=[];}
 
-    const allBills=bills.filter(b=>b.due_day);
+    const HIDDEN_FROM_BILLS_SECTION=['irs','side by side','kubota','prudential','pa tax'];
+    const allBills=bills.filter(b=>{
+        if(!b.due_day)return false;
+        const n=(b.name||'').toLowerCase();
+        return !HIDDEN_FROM_BILLS_SECTION.some(h=>n.includes(h));
+    });
     const wednesdays=getMonthWednesdays(mkCurrent);
 
     // Build data array
@@ -1360,6 +1365,7 @@ async function loadWeeklyBills(){
     loadDebtBillRows(payments,mkCurrent,wednesdays,currentWeek);
 
     renderBillsTable();
+    autoMatchBillsFromTransactions();
 }
 
 function loadDebtBillRows(payments,mkCurrent,wednesdays,currentWeek){
@@ -1443,6 +1449,81 @@ async function autoSaveDebtBill(billId,billMonth,row){
         row.classList.add('bill-autosave-flash');
         setTimeout(()=>row.classList.remove('bill-autosave-flash'),700);
     }catch(e){console.error('Auto-save debt bill error:',e);}
+}
+
+const BILL_MATCH_RULES=[
+    {billMatch:n=>n.includes('electric')&&n.includes('landlord'), vendor:'FIRSTENERGY', last4:'2667'},
+    {billMatch:n=>n.includes('electric')&&n.includes('101'), vendor:'FIRSTENERGY', last4:'8516'},
+    {billMatch:n=>n.includes('electric')&&n.includes('201')&&!n.includes('202'), vendor:'FIRSTENERGY', last4:'4092'},
+    {billMatch:n=>n.includes('electric')&&(n.includes('202')||n.includes('3c')), vendor:'FIRSTENERGY', last4:'8532'},
+    {billMatch:n=>n.includes('car insurance'), vendor:'ALLSTATE', last4:'4897'},
+    {billMatch:n=>n.includes('umbrella'), vendor:'ALLSTATE', last4:'0947'},
+    {billMatch:n=>n.includes('life insurance 1'), vendor:'NAT BEN'},
+    {billMatch:n=>n.includes('life insurance 2'), vendor:'AMERICAN GEN'},
+    {billMatch:n=>n.includes('life insurance 3'), amountExact:145.50},
+    {billMatch:n=>n.includes('side by side'), vendor:'HONDA', last4:'8127'},
+    {billMatch:n=>n.includes('kubota'), vendor:'KUBOTA'},
+    {billMatch:n=>n.includes('prudential'), vendor:'EMPOWER'},
+    {billMatch:n=>n.includes('irs'), amountExact:332.00}
+];
+
+async function autoMatchBillsFromTransactions(){
+    const unpaid=[];
+    if(allBillData&&allBillData.length){
+        allBillData.filter(d=>!d.paid).forEach(d=>unpaid.push({bill:d.bill, billMonth:d.billMonth, weekAssigned:d.weekAssigned, dataRef:d}));
+    }
+    document.querySelectorAll('.debt-bill-row').forEach(row=>{
+        const billId=row.dataset.debtBillId;
+        const checkbox=row.querySelector('.debt-bill-paid');
+        if(!billId||checkbox?.checked)return;
+        const bill=bills.find(b=>b.id===billId);
+        if(!bill||!bill.due_day)return;
+        const weekStr=document.getElementById('entry-date')?.value;
+        if(!weekStr)return;
+        const weekDate=new Date(weekStr+'T12:00:00');
+        const billMonth=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-01`;
+        unpaid.push({bill, billMonth, weekAssigned:weekStr, rowRef:row});
+    });
+    if(!unpaid.length)return;
+    let mainSectionUpdated=false, matchCount=0;
+    for(const item of unpaid){
+        const name=(item.bill.name||'').toLowerCase();
+        const rule=BILL_MATCH_RULES.find(r=>r.billMatch(name));
+        if(!rule)continue;
+        const [y,m]=item.billMonth.split('-').map(Number);
+        const dueDate=new Date(y,m-1,Math.min(item.bill.due_day||15,28));
+        const from=new Date(dueDate); from.setDate(from.getDate()-7);
+        const to=new Date(dueDate); to.setDate(to.getDate()+7);
+        const fromStr=from.toISOString().split('T')[0];
+        const toStr=to.toISOString().split('T')[0];
+        try{
+            let query=`?transaction_date=gte.${fromStr}&transaction_date=lte.${toStr}&amount=lt.0&order=transaction_date.desc`;
+            if(rule.vendor) query+=`&description=ilike.*${encodeURIComponent(rule.vendor)}*`;
+            const txns=await supaFetch('finance_transactions','GET',null,query);
+            if(!txns?.length)continue;
+            let match=null;
+            if(rule.last4) match=txns.find(t=>(t.description||'').includes(rule.last4));
+            else if(rule.amountExact) match=txns.find(t=>Math.abs(Math.abs(parseFloat(t.amount))-rule.amountExact)<0.5);
+            else match=txns[0];
+            if(!match)continue;
+            const paidDate=match.transaction_date;
+            const paidAmt=Math.abs(parseFloat(match.amount));
+            const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${item.bill.id}&bill_month=eq.${item.billMonth}`);
+            const data={is_paid:true, paid_date:paidDate, actual_amount:paidAmt, week_assigned:item.weekAssigned};
+            if(existing?.length) await supaFetch('finance_bill_payments','PATCH',data,`?id=eq.${existing[0].id}`);
+            else await supaFetch('finance_bill_payments','POST',{bill_id:item.bill.id, bill_month:item.billMonth, ...data});
+            if(item.dataRef){ item.dataRef.paid=true; item.dataRef.paidDate=paidDate; item.dataRef.amt=paidAmt; mainSectionUpdated=true; }
+            if(item.rowRef){
+                const cb=item.rowRef.querySelector('.debt-bill-paid');
+                const di=item.rowRef.querySelector('.debt-bill-date');
+                if(cb) cb.checked=true;
+                if(di){ di.value=paidDate; di.className='debt-bill-date paid-date-confirmed'; }
+            }
+            matchCount++;
+        }catch(e){console.error('Auto-match error for',item.bill.name,e);}
+    }
+    if(mainSectionUpdated) renderBillsTable();
+    if(matchCount>0) console.log(`Auto-matched ${matchCount} bill(s) from transactions`);
 }
 
 function renderBillsTable(){
