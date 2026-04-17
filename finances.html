@@ -174,10 +174,8 @@
         #column-picker label:hover { background: var(--sage-100); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
 
         @media (max-width: 768px) {
-            /* Tabs - scrollable, dashboard first */
             .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
             .tab-btn { padding: 10px 12px; font-size: 0.78rem; white-space: nowrap; flex-shrink: 0; }
-
             .form-row { grid-template-columns: 1fr; }
             .summary-grid { grid-template-columns: 1fr 1fr; }
             .card { padding: 12px; margin: 8px; }
@@ -188,26 +186,16 @@
             .debt-bill-row { grid-template-columns: 24px 95px 95px auto; gap: 4px; font-size: 0.8rem; }
             .data-table { font-size: 0.8rem; }
             .data-table th, .data-table td { padding: 8px 6px; }
-
-            /* Dashboard - top 3 spend cards */
             #dash-cards { gap: 8px !important; }
             #dash-cards > div { padding: 14px 8px !important; }
             #dash-cards > div > div:first-child { font-size: 0.6rem !important; }
             #dash-cards > div > div:last-child { font-size: 1.2rem !important; }
-
-            /* Dashboard - 4 debt tiles → 2x2 */
             #tab-dashboard .card > div[style*="repeat(4"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
-
-            /* Dashboard tables */
             #dash-big-charges .data-table, #dash-boa-girls .data-table,
             #dash-loans-table .data-table, #dash-accounts-table .data-table { font-size: 0.78rem; }
             #dash-big-charges td, #dash-boa-girls td,
             #dash-loans-table td, #dash-accounts-table td { padding: 8px 6px; }
-
-            /* Hide Account & Date columns on small screens */
             .dash-hide-sm { display: none !important; }
-
-            /* Transactions & Import mobile */
             #tab-transactions .card > div[style*="grid-template-columns"] { grid-template-columns: 1fr 1fr !important; }
             #txn-table-wrap { font-size: 0.75rem; }
             #import-zones { grid-template-columns: 1fr !important; }
@@ -217,26 +205,17 @@
         }
 
         @media (max-width: 420px) {
-            /* Small phones */
             #dash-cards { grid-template-columns: 1fr 1fr 1fr !important; gap: 6px !important; }
             #dash-cards > div { padding: 10px 6px !important; }
             #dash-cards > div > div:first-child { font-size: 0.5rem !important; }
             #dash-cards > div > div:last-child { font-size: 1rem !important; }
-
-            /* Debt tiles smaller text */
             #tab-dashboard .card > div[style*="repeat(4"] > div { padding: 10px 6px !important; }
             #tab-dashboard .card > div[style*="repeat(4"] > div > div:first-child { font-size: 0.55rem !important; }
             #tab-dashboard .card > div[style*="repeat(4"] > div > div:last-child { font-size: 1.15rem !important; }
-
-            /* Top bar compact */
             .top-bar h1 { font-size: 1.2rem; }
             .top-bar a { font-size: 0.75rem; }
-
-            /* Week nav */
             #tab-dashboard .card > div:first-child { gap: 6px !important; }
             #dash-week-label { font-size: 0.95rem !important; min-width: 140px !important; }
-
-            /* Description column tighter */
             #dash-big-charges td:first-child,
             #dash-boa-girls td:first-child { max-width: 120px !important; }
         }
@@ -308,7 +287,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
 
 <div class="main-content">
 
-    <!-- ==================== DASHBOARD ==================== -->
     <div id="tab-dashboard" class="tab-panel active">
         <div class="card">
             <h2>📊 Weekly Snapshot</h2>
@@ -319,7 +297,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
             </div>
             <div id="dash-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:0 0 16px;"></div>
 
-            <!-- Debt tiles: CC, Prudential, Tax & Toys, Total -->
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
                 <div style="background:var(--sage-700);border-radius:12px;padding:16px;text-align:center;">
                     <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-200);margin-bottom:4px;">💳 CC Debt</div>
@@ -339,20 +316,12 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                 </div>
             </div>
 
-            <!-- Week-over-week changes rendered inside tiles via JS -->
-
-            <!-- Charges over $200 table -->
             <div id="dash-big-charges" style="margin-bottom:24px;"></div>
-
-            <!-- BOA Girls charges table -->
             <div id="dash-boa-girls" style="margin-bottom:24px;"></div>
-
-            <!-- PNC & Rental balances -->
             <div id="dash-accounts-table" style="margin-bottom:24px;"></div>
         </div>
     </div>
 
-    <!-- ==================== IMPORT ==================== -->
     <div id="tab-import" class="tab-panel">
         <div class="card">
             <h2>📥 Import Transactions</h2>
@@ -374,7 +343,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
         </div>
     </div>
 
-    <!-- ==================== TRANSACTIONS ==================== -->
     <div id="tab-transactions" class="tab-panel">
         <div class="card">
             <h2>🔍 Transactions</h2>
@@ -431,7 +399,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
         </div>
     </div>
 
-    <!-- ==================== ACCOUNTS ==================== -->
     <div id="tab-accounts" class="tab-panel">
         <div class="card">
             <h2>➕ Add Account</h2>
@@ -489,7 +456,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
         </div>
     </div>
 
-    <!-- ==================== BILLS ==================== -->
     <div id="tab-bills" class="tab-panel">
         <div class="card">
             <h2>➕ Add Recurring Bill</h2>
@@ -534,7 +500,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
         </div>
     </div>
 
-    <!-- ==================== WEEKLY ENTRY ==================== -->
     <div id="tab-weekly" class="tab-panel">
         <div class="card">
             <h2>📸 Weekly Entry</h2>
@@ -549,7 +514,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                 </div>
             </div>
 
-            <!-- Summary at top -->
             <div class="summary-grid">
                 <div class="summary-box"><div class="label">Total Debt</div><div class="value negative" id="we-total-debt">$0</div></div>
                 <div class="summary-box"><div class="label">Total Payments</div><div class="value positive" id="we-total-payments">$0</div></div>
@@ -566,12 +530,9 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
         </div>
     </div>
 
-    <!-- ==================== HISTORY ==================== -->
     <div id="tab-history" class="tab-panel">
         <div class="card">
             <h2>📈 Weekly History</h2>
-            
-            <!-- Filters -->
             <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:16px;">
                 <div class="form-group">
                     <label>From</label>
@@ -585,7 +546,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                 <button class="btn btn-small btn-primary" onclick="toggleColumnPicker()" id="btn-col-toggle">⚙ Columns</button>
             </div>
 
-            <!-- Column picker -->
             <div id="column-picker" style="display:none;background:var(--sage-50);border-radius:8px;padding:12px 16px;margin-bottom:16px;border:1px solid var(--sage-200);">
                 <div style="font-size:0.8rem;font-weight:600;color:var(--sage-600);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Show / Hide Columns</div>
                 <div id="column-checks" style="display:flex;flex-wrap:wrap;gap:8px 16px;"></div>
@@ -605,7 +565,6 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
     </div>
 </div>
 
-<!-- Modals -->
 <div class="modal-overlay" id="modal-bill-amount">
     <div class="modal">
         <h2>Enter Actual Amount</h2>
@@ -673,12 +632,10 @@ async function supaFetch(table, method='GET', body=null, query='') {
     return text ? JSON.parse(text) : null;
 }
 
-// State
 let accounts=[], closedAccounts=[], bills=[], billPayments=[];
 let editingAccountId=null, editingBillId=null, editingBillPaymentId=null, closingAccountId=null;
 let currentBillMonth = new Date(); currentBillMonth.setDate(1);
 
-// Tabs
 function switchTab(tab) {
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -692,7 +649,6 @@ function switchTab(tab) {
     if (tab==='history') loadHistory();
 }
 
-// Helpers
 function fmt(n) {
     if (n==null||isNaN(n)) return '-';
     const v=Number(n), s='$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -706,7 +662,6 @@ function typeLabel(t){return{credit_card:'Credit Card',loan:'Loan',bank:'Bank',t
 function closeReasonLabel(r){return{paid_off:'🎉 Paid Off',closed:'Closed',refinanced:'Refinanced',other:'Other'}[r]||'-';}
 function closeModal(id){document.getElementById(id).classList.remove('active');}
 
-// ==================== ACCOUNTS ====================
 async function loadAccounts() {
     try {
         accounts = await supaFetch('finance_accounts','GET',null,'?is_active=eq.true&order=display_order.asc,name.asc');
@@ -790,14 +745,11 @@ async function saveAccount() {
         notes:document.getElementById('acc-notes').value.trim()||null
     };
     if(!data.name)return alert('Enter a name.');
-    
     const isNewLoan=data.account_type==='loan'&&!editingAccountId;
     const loanTerm=parseInt(document.getElementById('acc-loan-term').value)||0;
     const loanStart=document.getElementById('acc-loan-start').value;
     const createBill=document.getElementById('acc-loan-bill').value==='true';
-    
     if(isNewLoan&&(!loanTerm||!loanStart))return alert('Enter loan term and first payment date.');
-    
     try{
         let accountId;
         if(editingAccountId){
@@ -809,38 +761,29 @@ async function saveAccount() {
             const result=await supaFetch('finance_accounts','POST',data);
             accountId=result?.[0]?.id||result?.id;
         }
-        
-        // Auto-generate amortization schedule for new loans
         if(isNewLoan&&accountId&&loanTerm&&loanStart){
             const balance=data.starting_balance;
             const monthlyRate=data.interest_rate/100/12;
             const payment=data.min_payment;
             let bal=balance;
             const rows=[];
-            
             for(let i=0;i<loanTerm;i++){
                 const dt=new Date(loanStart+'T00:00:00');
                 dt.setMonth(dt.getMonth()+i);
                 const dateStr=dt.toISOString().split('T')[0];
                 const interest=Math.round(bal*monthlyRate*100)/100;
-                
                 let payAmt=payment,princ=payment-interest;
                 if(i===loanTerm-1||princ>=bal){payAmt=Math.round((bal+interest)*100)/100;princ=bal;}
                 else{princ=Math.round(princ*100)/100;}
-                
                 const newBal=Math.max(0,Math.round((bal-princ)*100)/100);
                 rows.push({account_id:accountId,payment_number:i+1,due_date:dateStr,
                     payment_amount:payAmt,interest:interest,principal:princ,balance_after:newBal});
                 bal=newBal;
                 if(bal<=0)break;
             }
-            
-            // Insert in batches
             for(let i=0;i<rows.length;i+=50){
                 await supaFetch('finance_loan_schedules','POST',rows.slice(i,i+50));
             }
-            
-            // Auto-create bill
             if(createBill){
                 await supaFetch('finance_bills','POST',{
                     name:data.name,expected_amount:data.min_payment,
@@ -850,10 +793,8 @@ async function saveAccount() {
                 });
                 await loadBills();
             }
-            
             alert(`✅ ${data.name} set up!\n• ${rows.length} payment schedule created\n${createBill?'• Bill added':''}`)
         }
-        
         clearAccForm(); await loadAccounts();
     }catch(e){alert('Error: '+e.message);}
 }
@@ -886,7 +827,6 @@ async function reopenAccount(id){
     try{await supaFetch('finance_accounts','PATCH',{is_active:true,closed_date:null,closed_reason:null},`?id=eq.${id}`);await loadAccounts();}catch(e){alert('Error: '+e.message);}
 }
 
-// ==================== BILLS ====================
 async function loadBills(){try{bills=await supaFetch('finance_bills','GET',null,'?is_active=eq.true&order=due_day.asc.nullsfirst,name.asc');}catch(e){console.error(e);}}
 async function loadBillPayments(){
     try{billPayments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${monthKey(currentBillMonth)}`);}catch(e){billPayments=[];}
@@ -897,7 +837,6 @@ function renderBills(){
     document.getElementById('bill-month-display').textContent=monthDisplay(currentBillMonth);
     if(!bills.length){container.innerHTML='';empty.style.display='block';return;}
     empty.style.display='none';
-    
     const catOrder=['loan','electric','insurance','tax','mortgage','phone','internet','subscription','vehicle','other'];
     const catLabels={loan:'🏦 Loans',electric:'⚡ Electric',insurance:'🛡️ Insurance',tax:'🏛️ Taxes',mortgage:'🏠 Mortgage',phone:'📱 Phone',internet:'🌐 Internet',subscription:'📺 Subscriptions',vehicle:'🚗 Vehicle',other:'📁 Other'};
     const groups={};
@@ -906,7 +845,6 @@ function renderBills(){
         if(!groups[c])groups[c]=[];
         groups[c].push(b);
     });
-    
     let html='';
     let grandTotal=0;
     catOrder.forEach(cat=>{
@@ -985,8 +923,6 @@ function clearBillForm(){['bill-name','bill-amount','bill-due-day','bill-pays-fr
     document.getElementById('bill-autopay').value='false';document.getElementById('bill-category').value='other';}
 async function deleteBill(id){if(!confirm('Delete?'))return;try{await supaFetch('finance_bills','PATCH',{is_active:false},`?id=eq.${id}`);await loadBills();await loadBillPayments();}catch(e){alert(e.message);}}
 
-// ==================== WEEKLY ENTRY ====================
-
 function getWednesdays(){
     const weds=[];
     const start=new Date('2024-06-05T12:00:00');
@@ -1012,7 +948,6 @@ function populateWeekDropdown(){
     thisWed.setDate(today.getDate()+diff);
     const y=thisWed.getFullYear(), m=String(thisWed.getMonth()+1).padStart(2,'0'), dd=String(thisWed.getDate()).padStart(2,'0');
     const thisWedStr=`${y}-${m}-${dd}`;
-
     sel.innerHTML=weds.reverse().map(w=>{
         const dt=new Date(w+'T12:00:00');
         const label=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
@@ -1037,7 +972,6 @@ async function onWeekChange(){
     if(!loaded){
         await autoFillFromPrior();
     }
-    // Always fill loans from schedule (skips accounts that already have data from saved week)
     await autoFillLoans(document.getElementById('entry-date').value, loaded);
     if(loaded){
         await fetchLoanDueDates(document.getElementById('entry-date').value);
@@ -1058,7 +992,6 @@ function autoDefaultBOA(){
     if(bI && pI){
         const bal=parseFloat(bI.value)||0;
         const pay=parseFloat(pI.value)||0;
-        // Only auto-fill if payment is 0 or empty and balance exists
         if(bal>0 && pay===0) pI.value=bal;
     }
     calcWeekly();
@@ -1070,7 +1003,6 @@ function updateTaxDueDates(){
     const weekDate=new Date(dt+'T12:00:00');
     const taxes=accounts.filter(a=>a.account_type==='tax_debt');
     taxes.forEach(a=>{
-        // Find matching bill by name
         const bill=bills.find(b=>b.name.toLowerCase().includes(a.name.toLowerCase())||
             (a.name.toLowerCase().includes('fed')&&b.name.toLowerCase().includes('irs'))||
             (a.name.toLowerCase().includes('pa')&&b.name.toLowerCase().includes('pa')));
@@ -1087,14 +1019,11 @@ async function calcCCSpent(){
     const d=new Date(dt+'T12:00:00');
     d.setDate(d.getDate()-7);
     const priorWeek=d.toISOString().split('T')[0];
-
     const ccs=accounts.filter(a=>a.account_type==='credit_card');
     if(!ccs.length)return;
-
     try{
         const priorEntries=await supaFetch('finance_weekly_entries','GET',null,
             `?entry_date=eq.${priorWeek}&account_id=in.(${ccs.map(a=>a.id).join(',')})`);
-
         priorCCEndings={};
         ccs.forEach(a=>{
             const prior=priorEntries?.find(e=>e.account_id===a.id);
@@ -1114,7 +1043,6 @@ function updateCCSpentDisplay(){
         const diff=thisStart-priorEnding;
         const spent=diff>0?diff:0;
         totalSpent+=spent;
-        // Update per-line indicator
         const spentEl=document.querySelector(`.cc-spent[data-cc-id="${a.id}"]`);
         if(spentEl){
             if(spent>0) spentEl.textContent=`(+${fmt(spent)} spent)`;
@@ -1151,7 +1079,6 @@ async function loadWeekData(){
 }
 
 async function autoFillFromPrior(){
-    // Auto-fill tax balances from prior week's ending
     const dt=document.getElementById('entry-date').value;
     if(!dt)return;
     const d=new Date(dt+'T12:00:00');
@@ -1161,7 +1088,6 @@ async function autoFillFromPrior(){
     try{
         const prevEntries=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${prevWed}`);
         if(!prevEntries?.length)return;
-        // Fill tax account balances with prior ending
         const taxAccs=accounts.filter(a=>a.account_type==='tax_debt');
         prevEntries.forEach(e=>{
             const isTax=taxAccs.some(a=>a.id===e.account_id);
@@ -1175,8 +1101,8 @@ async function autoFillFromPrior(){
 }
 
 let calculatedBillTotal=0;
-let priorCCEndings={}; // account_id -> ending balance from prior week
-let loanDueDates={}; // account_id -> next due date string
+let priorCCEndings={};
+let loanDueDates={};
 
 async function autoFillLoans(weekStr, hasSavedData){
     if(!weekStr)return;
@@ -1186,32 +1112,22 @@ async function autoFillLoans(weekStr, hasSavedData){
     const priorWed=new Date(weekDate);
     priorWed.setDate(priorWed.getDate()-7);
     const priorWedStr=priorWed.toISOString().split('T')[0];
-    const wkEnd=nextWed.toISOString().split('T')[0];
-
     try{
         const weekPayments=await supaFetch('finance_loan_schedules','GET',null,
             `?due_date=gt.${priorWedStr}&due_date=lte.${weekStr}&order=due_date`);
-
         const loanAccounts=accounts.filter(a=>a.account_type==='loan');
-
         for(const a of loanAccounts){
             const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
             const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
             if(!bI||!pI)continue;
-
-            // Skip if this account already has saved data
             const existingBal=parseFloat(bI.value)||0;
             const existingPay=parseFloat(pI.value)||0;
             if(hasSavedData && (existingBal!==0 || existingPay!==0)) continue;
-
-            // Balance: latest schedule entry on or before this Wed
             const balEntries=await supaFetch('finance_loan_schedules','GET',null,
                 `?account_id=eq.${a.id}&due_date=lte.${weekStr}&order=due_date.desc&limit=1`);
             if(balEntries?.length){
                 bI.value=balEntries[0].balance_after;
             }
-
-            // Payments due this week for this account
             const dueThisWeek=weekPayments?.filter(p=>p.account_id===a.id)||[];
             if(dueThisWeek.length){
                 const totalPay=dueThisWeek.reduce((s,p)=>s+parseFloat(p.payment_amount),0);
@@ -1219,8 +1135,6 @@ async function autoFillLoans(weekStr, hasSavedData){
                 loanDueDates[a.id]=dueThisWeek[0].due_date;
             }
         }
-
-        // Also fetch next upcoming due date for each loan (for label display)
         for(const a of loanAccounts){
             if(!loanDueDates[a.id]){
                 const next=await supaFetch('finance_loan_schedules','GET',null,
@@ -1234,7 +1148,6 @@ async function autoFillLoans(weekStr, hasSavedData){
 }
 
 function updateDueDateLabels(){
-    const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     accounts.forEach(a=>{
         const dd=loanDueDates[a.id];
@@ -1265,17 +1178,14 @@ async function fetchLoanDueDates(weekStr){
     const priorWed=new Date(weekStr+'T12:00:00');
     priorWed.setDate(priorWed.getDate()-7);
     const priorWedStr=priorWed.toISOString().split('T')[0];
-
     const loanAccounts=accounts.filter(a=>a.account_type==='loan');
     try{
-        // Check for payments due this week
         const weekPayments=await supaFetch('finance_loan_schedules','GET',null,
             `?due_date=gt.${priorWedStr}&due_date=lte.${weekStr}&order=due_date`);
         loanAccounts.forEach(a=>{
             const due=weekPayments?.find(p=>p.account_id===a.id);
             if(due) loanDueDates[a.id]=due.due_date;
         });
-        // For any without, get next upcoming
         for(const a of loanAccounts){
             if(!loanDueDates[a.id]){
                 const next=await supaFetch('finance_loan_schedules','GET',null,
@@ -1287,7 +1197,6 @@ async function fetchLoanDueDates(weekStr){
     }catch(e){console.error('Fetch loan due dates:',e);}
 }
 
-// Helper: get Wednesdays for a given month (and one before/after for edge cases)
 function getMonthWednesdays(monthKey){
     const [y,m]=monthKey.split('-').map(Number);
     const weds=[];
@@ -1323,12 +1232,10 @@ function ordSuffix(n){
     return 'th';
 }
 
-// Bill grid columns: paid | name | due | week | paid date | amount | this week
 const billGridCols='28px 1fr 60px 110px 100px 95px 90px';
-
 let billSortCol='due', billSortAsc=true;
 let billFilters={name:'',paid:'all',week:'all'};
-let allBillData=[]; // populated by loadWeeklyBills, used for filtering/sorting
+let allBillData=[];
 
 async function loadWeeklyBills(){
     const dt=document.getElementById('entry-date').value;
@@ -1341,6 +1248,7 @@ async function loadWeeklyBills(){
     let payments=[];
     try{ payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${mkCurrent}`); }catch(e){payments=[];}
 
+    // Hide bills tracked in debt sub-rows above (IRS, Side by Side, Kubota, Prudential, PA Tax)
     const HIDDEN_FROM_BILLS_SECTION=['irs','side by side','kubota','prudential','pa tax'];
     const allBills=bills.filter(b=>{
         if(!b.due_day)return false;
@@ -1349,7 +1257,6 @@ async function loadWeeklyBills(){
     });
     const wednesdays=getMonthWednesdays(mkCurrent);
 
-    // Build data array
     allBillData=allBills.map(b=>{
         const billMonth=mkCurrent;
         const p=payments.find(x=>x.bill_id===b.id && x.bill_month===billMonth);
@@ -1361,10 +1268,9 @@ async function loadWeeklyBills(){
         return {bill:b, billMonth, amt, paid, paidDate, weekAssigned, isThisWeek, wednesdays};
     });
 
-    // Also populate debt bill sub-rows (loans/taxes at top)
     loadDebtBillRows(payments,mkCurrent,wednesdays,currentWeek);
-
     renderBillsTable();
+    // Silently auto-match paid bills from transactions
     autoMatchBillsFromTransactions();
 }
 
@@ -1394,7 +1300,6 @@ function loadDebtBillRows(payments,mkCurrent,wednesdays,currentWeek){
             }).join('');
         }
 
-        // Auto-save handlers
         if(checkbox && !checkbox._billBound){
             checkbox._billBound=true;
             checkbox.addEventListener('change',()=>{
@@ -1411,7 +1316,6 @@ function loadDebtBillRows(payments,mkCurrent,wednesdays,currentWeek){
             weekSel._billBound=true;
             weekSel.addEventListener('change',()=>{
                 autoSaveDebtBill(billId,mkCurrent,row);
-                // If week matches current, fill payment; otherwise clear it
                 const acctId=row.dataset.acctId;
                 const payInput=document.querySelector(`input[data-id="${acctId}"][data-f="pay"]`);
                 if(payInput){
@@ -1437,7 +1341,6 @@ async function autoSaveDebtBill(billId,billMonth,row){
     const weekAssigned=weekSel?.value||null;
     const bill=bills.find(b=>b.id===billId);
     const amt=bill?.expected_amount||0;
-
     try{
         const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
         const data={is_paid:isPaid, paid_date:isPaid?paidDate:null, week_assigned:weekAssigned, actual_amount:amt};
@@ -1451,16 +1354,23 @@ async function autoSaveDebtBill(billId,billMonth,row){
     }catch(e){console.error('Auto-save debt bill error:',e);}
 }
 
+// ==================== AUTO-MATCH BILLS FROM TRANSACTIONS ====================
+// For each unpaid bill (main section + debt sub-rows), scan transactions in ±7 days
+// of the due date. If a matching transaction is found, auto-mark as paid.
 const BILL_MATCH_RULES=[
+    // Electric - match FIRSTENERGY by last 4 of account number
     {billMatch:n=>n.includes('electric')&&n.includes('landlord'), vendor:'FIRSTENERGY', last4:'2667'},
     {billMatch:n=>n.includes('electric')&&n.includes('101'), vendor:'FIRSTENERGY', last4:'8516'},
     {billMatch:n=>n.includes('electric')&&n.includes('201')&&!n.includes('202'), vendor:'FIRSTENERGY', last4:'4092'},
     {billMatch:n=>n.includes('electric')&&(n.includes('202')||n.includes('3c')), vendor:'FIRSTENERGY', last4:'8532'},
+    // Allstate insurance
     {billMatch:n=>n.includes('car insurance'), vendor:'ALLSTATE', last4:'4897'},
     {billMatch:n=>n.includes('umbrella'), vendor:'ALLSTATE', last4:'0947'},
+    // Life insurance
     {billMatch:n=>n.includes('life insurance 1'), vendor:'NAT BEN'},
     {billMatch:n=>n.includes('life insurance 2'), vendor:'AMERICAN GEN'},
     {billMatch:n=>n.includes('life insurance 3'), amountExact:145.50},
+    // Debt-tracked bills (in the debt sub-rows above the main section)
     {billMatch:n=>n.includes('side by side'), vendor:'HONDA', last4:'8127'},
     {billMatch:n=>n.includes('kubota'), vendor:'KUBOTA'},
     {billMatch:n=>n.includes('prudential'), vendor:'EMPOWER'},
@@ -1470,7 +1380,9 @@ const BILL_MATCH_RULES=[
 async function autoMatchBillsFromTransactions(){
     const unpaid=[];
     if(allBillData&&allBillData.length){
-        allBillData.filter(d=>!d.paid).forEach(d=>unpaid.push({bill:d.bill, billMonth:d.billMonth, weekAssigned:d.weekAssigned, dataRef:d}));
+        allBillData.filter(d=>!d.paid).forEach(d=>{
+            unpaid.push({bill:d.bill, billMonth:d.billMonth, weekAssigned:d.weekAssigned, dataRef:d});
+        });
     }
     document.querySelectorAll('.debt-bill-row').forEach(row=>{
         const billId=row.dataset.debtBillId;
@@ -1485,39 +1397,69 @@ async function autoMatchBillsFromTransactions(){
         unpaid.push({bill, billMonth, weekAssigned:weekStr, rowRef:row});
     });
     if(!unpaid.length)return;
+
     let mainSectionUpdated=false, matchCount=0;
     for(const item of unpaid){
         const name=(item.bill.name||'').toLowerCase();
         const rule=BILL_MATCH_RULES.find(r=>r.billMatch(name));
         if(!rule)continue;
+
+        // Build ±7 day window around due date in this bill's month
         const [y,m]=item.billMonth.split('-').map(Number);
         const dueDate=new Date(y,m-1,Math.min(item.bill.due_day||15,28));
         const from=new Date(dueDate); from.setDate(from.getDate()-7);
         const to=new Date(dueDate); to.setDate(to.getDate()+7);
         const fromStr=from.toISOString().split('T')[0];
         const toStr=to.toISOString().split('T')[0];
+
         try{
             let query=`?transaction_date=gte.${fromStr}&transaction_date=lte.${toStr}&amount=lt.0&order=transaction_date.desc`;
             if(rule.vendor) query+=`&description=ilike.*${encodeURIComponent(rule.vendor)}*`;
             const txns=await supaFetch('finance_transactions','GET',null,query);
             if(!txns?.length)continue;
+
             let match=null;
-            if(rule.last4) match=txns.find(t=>(t.description||'').includes(rule.last4));
-            else if(rule.amountExact) match=txns.find(t=>Math.abs(Math.abs(parseFloat(t.amount))-rule.amountExact)<0.5);
-            else match=txns[0];
+            if(rule.last4){
+                match=txns.find(t=>(t.description||'').includes(rule.last4));
+            } else if(rule.amountExact){
+                match=txns.find(t=>Math.abs(Math.abs(parseFloat(t.amount))-rule.amountExact)<0.5);
+            } else {
+                match=txns[0];
+            }
             if(!match)continue;
+
             const paidDate=match.transaction_date;
             const paidAmt=Math.abs(parseFloat(match.amount));
+
             const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${item.bill.id}&bill_month=eq.${item.billMonth}`);
             const data={is_paid:true, paid_date:paidDate, actual_amount:paidAmt, week_assigned:item.weekAssigned};
-            if(existing?.length) await supaFetch('finance_bill_payments','PATCH',data,`?id=eq.${existing[0].id}`);
-            else await supaFetch('finance_bill_payments','POST',{bill_id:item.bill.id, bill_month:item.billMonth, ...data});
-            if(item.dataRef){ item.dataRef.paid=true; item.dataRef.paidDate=paidDate; item.dataRef.amt=paidAmt; mainSectionUpdated=true; }
+            if(existing?.length){
+                await supaFetch('finance_bill_payments','PATCH',data,`?id=eq.${existing[0].id}`);
+            }else{
+                await supaFetch('finance_bill_payments','POST',{bill_id:item.bill.id, bill_month:item.billMonth, ...data});
+            }
+
+            if(item.dataRef){
+                item.dataRef.paid=true;
+                item.dataRef.paidDate=paidDate;
+                item.dataRef.amt=paidAmt;
+                item.dataRef.confirmed=true;
+                mainSectionUpdated=true;
+            }
             if(item.rowRef){
                 const cb=item.rowRef.querySelector('.debt-bill-paid');
                 const di=item.rowRef.querySelector('.debt-bill-date');
                 if(cb) cb.checked=true;
                 if(di){ di.value=paidDate; di.className='debt-bill-date paid-date-confirmed'; }
+                // Add confirmed badge to debt bill row
+                if(!item.rowRef.querySelector('.confirmed-badge')){
+                    const badge=document.createElement('span');
+                    badge.className='confirmed-badge';
+                    badge.style.cssText='font-size:0.6rem;background:rgba(39,174,96,0.15);color:#27ae60;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:600;';
+                    badge.textContent='Confirmed';
+                    item.rowRef.querySelector('span')?.before(badge);
+                    if(!item.rowRef.querySelector('.confirmed-badge')) item.rowRef.appendChild(badge);
+                }
             }
             matchCount++;
         }catch(e){console.error('Auto-match error for',item.bill.name,e);}
@@ -1535,7 +1477,6 @@ function renderBillsTable(){
     section.style.display='';
     totalRow.style.display='flex';
 
-    // Filter
     let filtered=allBillData.slice();
     if(billFilters.name){
         const q=billFilters.name.toLowerCase();
@@ -1545,7 +1486,6 @@ function renderBillsTable(){
     if(billFilters.paid==='unpaid') filtered=filtered.filter(d=>!d.paid);
     if(billFilters.week==='this') filtered=filtered.filter(d=>d.weekAssigned===currentWeek);
 
-    // Sort
     filtered.sort((a,b)=>{
         let va,vb;
         if(billSortCol==='name'){va=a.bill.name;vb=b.bill.name;return billSortAsc?va.localeCompare(vb):vb.localeCompare(va);}
@@ -1567,10 +1507,8 @@ function renderBillsTable(){
         <span style="font-size:0.8rem;color:var(--sage-400);">${paidCount} of ${allBillData.length} paid</span>
     </div>`;
 
-    // Sort indicator
     const sortArrow=(col)=>billSortCol===col?(billSortAsc?' ↑':' ↓'):'';
 
-    // Header row (clickable for sort)
     html+=`<div class="bills-table-header" style="grid-template-columns:${billGridCols};">
         <div onclick="sortBills('paid')">✓${sortArrow('paid')}</div>
         <div onclick="sortBills('name')">Bill${sortArrow('name')}</div>
@@ -1581,7 +1519,6 @@ function renderBillsTable(){
         <div onclick="sortBills('thisweek')" style="text-align:right;color:var(--sage-700);">This Wk${sortArrow('thisweek')}</div>
     </div>`;
 
-    // Filter row
     html+=`<div class="bills-filter-row" style="grid-template-columns:${billGridCols};">
         <div><select id="bf-paid" onchange="billFilters.paid=this.value;renderBillsTable();" style="width:100%;">
             <option value="all" ${billFilters.paid==='all'?'selected':''}>All</option>
@@ -1599,7 +1536,6 @@ function renderBillsTable(){
         <div></div>
     </div>`;
 
-    // Data rows
     calculatedBillTotal=0;
     let monthTotal=0, paidTotal=0;
 
@@ -1623,6 +1559,7 @@ function renderBillsTable(){
             <div><input type="checkbox" class="check-paid" ${d.paid?'checked':''} onchange="autoSaveBillField('${b.id}','${d.billMonth}',this)" style="accent-color:var(--sage-500);width:18px;height:18px;cursor:pointer;"></div>
             <div>
                 <span style="font-weight:600;font-size:0.88rem;${d.paid?'text-decoration:line-through;color:var(--sage-400);':''}">${b.name}</span>
+                ${d.confirmed?'<span style="font-size:0.6rem;background:rgba(39,174,96,0.15);color:#27ae60;padding:1px 5px;border-radius:3px;margin-left:3px;font-weight:600;">Confirmed</span>':''}
                 ${b.is_auto_pay?'<span style="font-size:0.6rem;background:rgba(122,144,97,0.15);color:var(--sage-600);padding:1px 4px;border-radius:3px;margin-left:3px;">Auto</span>':''}
                 ${b.is_variable_amount?'<span style="font-size:0.6rem;background:rgba(192,57,43,0.1);color:var(--dusty-rose);padding:1px 4px;border-radius:3px;margin-left:3px;">~</span>':''}
             </div>
@@ -1634,7 +1571,6 @@ function renderBillsTable(){
         </div>`;
     });
 
-    // This Week total row
     const remaining=monthTotal-paidTotal;
     html+=`<div style="display:grid;grid-template-columns:${billGridCols};gap:6px;align-items:center;padding:10px 0 4px;border-top:2px solid var(--sage-300);margin-top:4px;font-size:0.85rem;font-weight:600;">
         <div></div>
@@ -1647,7 +1583,6 @@ function renderBillsTable(){
     </div>`;
 
     list.innerHTML=html;
-
     document.getElementById('bills-override-total').value=calculatedBillTotal.toFixed(2);
     calcWeekly();
 }
@@ -1658,7 +1593,6 @@ function sortBills(col){
     renderBillsTable();
 }
 
-// Auto-save any bill field change
 async function autoSaveBillField(billId,billMonth,el){
     const row=el.closest('.bill-row');
     if(!row) return;
@@ -1669,12 +1603,8 @@ async function autoSaveBillField(billId,billMonth,el){
     const isPaid=checkbox?.checked||false;
     const weekAssigned=weekSel?.value||null;
     const amt=parseFloat(amtInput?.value)||0;
-
-    // Auto-fill date when checking paid
     if(isPaid && !dateInput.value) dateInput.value=new Date().toISOString().split('T')[0];
     const paidDate=dateInput?.value||null;
-
-    // Update data array for re-render
     const d=allBillData.find(x=>x.bill.id===billId && x.billMonth===billMonth);
     if(d){
         d.paid=isPaid;
@@ -1683,8 +1613,6 @@ async function autoSaveBillField(billId,billMonth,el){
         d.amt=amt;
         d.isThisWeek=(d.weekAssigned===document.getElementById('entry-date').value);
     }
-
-    // Save to DB
     try{
         const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
         const data={is_paid:isPaid, actual_amount:amt, paid_date:isPaid?paidDate:null, week_assigned:weekAssigned};
@@ -1693,12 +1621,9 @@ async function autoSaveBillField(billId,billMonth,el){
         }else{
             await supaFetch('finance_bill_payments','POST',{bill_id:billId, bill_month:billMonth, ...data});
         }
-        // Flash green on the row
         row.classList.add('bill-autosave-flash');
         setTimeout(()=>row.classList.remove('bill-autosave-flash'),700);
     }catch(e){console.error('Auto-save bill error:',e);}
-
-    // Re-render to update this-week column and totals
     renderBillsTable();
 }
 
@@ -1717,13 +1642,10 @@ function resetBillTotal(){
     calcWeekly();
 }
 
-// Keep toggleWeeklyBillPaid for compatibility but redirect to auto-save
 async function toggleWeeklyBillPaid(billId,billMonth,isPaid,checkbox){
     autoSaveBillField(billId,billMonth,checkbox);
 }
-async function saveWeeklyBill(billId,billMonth){
-    // No longer needed — auto-save handles it
-}
+async function saveWeeklyBill(billId,billMonth){}
 
 function buildWeeklyForm(){
     const c=document.getElementById('weekly-entries');
@@ -1737,7 +1659,6 @@ function buildWeeklyForm(){
     const skipIds=new Set([pnc?.id,rental?.id,...ccs.map(a=>a.id),...taxes.map(a=>a.id),...loans.map(a=>a.id)].filter(Boolean));
     const recurringAcc=accounts.find(a=>a.name.toLowerCase().includes('recurring'));
     if(recurringAcc) skipIds.add(recurringAcc.id);
-    const other=accounts.filter(a=>!skipIds.has(a.id));
 
     let h=`<div class="entry-row header"><div>Account</div><div style="text-align:right">Balance</div><div style="text-align:right">Payment</div><div style="text-align:right">Ending</div></div>`;
 
@@ -1751,7 +1672,6 @@ function buildWeeklyForm(){
         </div>
         <div style="font-size:0.75rem;color:var(--sage-400);padding:2px 0 6px;font-style:italic;">↑ Auto-totals from all payments + bills + other below</div>`;
 
-        // Other PNC Payments (dynamic rows)
         h+=`<div class="section-divider" style="font-size:0.9rem;">💸 Other PNC Payments</div>`;
         h+=`<div id="other-pnc-rows"></div>`;
         h+=`<div style="display:flex;gap:8px;align-items:center;padding:4px 0 12px;">
@@ -1761,16 +1681,27 @@ function buildWeeklyForm(){
     }
 
     if(ccs.length){
+        const HIDDEN_CCS=['hd cc','lowes cc'];
+        const visibleCCs=ccs.filter(a=>!HIDDEN_CCS.some(h=>a.name.toLowerCase().includes(h)));
+        const hiddenCCs=ccs.filter(a=>HIDDEN_CCS.some(h=>a.name.toLowerCase().includes(h)));
         h+=`<div class="section-divider">💳 Credit Cards</div>`;
-        ccs.forEach(a=>{h+=ccEntryRow(a);});
+        visibleCCs.forEach(a=>{h+=ccEntryRow(a);});
+        if(hiddenCCs.length){
+            h+=`<div style="padding:4px 0;">
+                <button class="btn btn-small btn-secondary" onclick="const el=document.getElementById('hidden-cc-section');el.style.display=el.style.display==='none'?'block':'none';this.textContent=el.style.display==='none'?'Show ${hiddenCCs.length} more cards ▸':'Hide extra cards ▾';" style="font-size:0.75rem;padding:4px 10px;">Show ${hiddenCCs.length} more cards ▸</button>
+            </div>
+            <div id="hidden-cc-section" style="display:none;">`;
+            hiddenCCs.forEach(a=>{h+=ccEntryRow(a);});
+            h+=`</div>`;
+        }
         h+=sumRow('cc','CC Total');
     }
 
-    if(taxes.length){
-        h+=`<div class="section-divider">🏛️ Tax Debts</div>`;
+    const taxAndLoans=[...taxes,...loans];
+    if(taxAndLoans.length){
+        h+=`<div class="section-divider">🏛️ Tax & Loans</div>`;
         taxes.forEach(a=>{
             h+=entryRow(a,true);
-            // Bill tracking sub-row
             const matchBill=bills.find(b=>b.name.toLowerCase().includes(a.name.toLowerCase().replace(' debt','').replace(' payment','').trim()) || a.name.toLowerCase().includes(b.name.toLowerCase().replace(' payment','').trim()));
             if(matchBill){
                 h+=`<div class="debt-bill-row" data-debt-bill-id="${matchBill.id}" data-acct-id="${a.id}">
@@ -1781,14 +1712,9 @@ function buildWeeklyForm(){
                 </div>`;
             }
         });
-        h+=sumRow('tax','Tax Total');
-    }
-
-    if(loans.length){
-        h+=`<div class="section-divider">🏦 Loans</div>`;
+        // Loans are in the same section now
         loans.forEach(a=>{
             h+=entryRow(a,true);
-            // Bill tracking sub-row
             const matchBill=bills.find(b=>{
                 const bn=b.name.toLowerCase(), an=a.name.toLowerCase();
                 return bn.includes(an.split(' ')[0]) || an.includes(bn.split(' ')[0]);
@@ -1813,7 +1739,7 @@ function buildWeeklyForm(){
                 </div>`;
             }
         });
-        h+=sumRow('loan','Loan Total');
+        h+=sumRow('taxloan','Tax & Loans Total');
     }
 
     if(rental){
@@ -1821,7 +1747,6 @@ function buildWeeklyForm(){
         h+=entryRow(rental,false);
     }
 
-    // All Monthly Bills - filled by loadWeeklyBills
     h+=`<div class="section-divider" id="weekly-bills-section" style="display:none;">📋 All Monthly Bills</div>`;
     h+=`<div id="weekly-bills-list"></div>`;
     h+=`<div id="weekly-bills-total-row" style="display:none;display:flex;align-items:center;gap:12px;margin:8px 0 12px;padding-top:8px;border-top:2px solid var(--sage-300);">
@@ -1860,7 +1785,6 @@ function autoPayBOA(balInput){
     if(payInput) payInput.value=balInput.value;
 }
 
-// Other PNC Payments
 let otherPNCCounter=0;
 function addOtherPNC(desc='',amt=''){
     otherPNCCounter++;
@@ -1932,7 +1856,6 @@ function calcWeekly(){
     let ccBal=0,ccPay=0,ccEnd=0, taxBal=0,taxPay=0,taxEnd=0, loanBal=0,loanPay=0,loanEnd=0;
     let pncAutoPayTotal=0;
     let rentalIncome=0;
-
     const pncAcc=accounts.find(a=>a.name.toLowerCase().includes('pnc'));
     const rentalAcc=accounts.find(a=>a.name.toLowerCase().includes('rental'));
     const billsTotal=parseFloat(document.getElementById('bills-override-total')?.value)||0;
@@ -1942,55 +1865,43 @@ function calcWeekly(){
         const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
         const eD=document.querySelector(`div[data-id="${a.id}"][data-f="end"]`);
         if(!bI)return;
-
         if(pncAcc && a.id===pncAcc.id){
             pncBal=parseFloat(bI.value)||0;
             return;
         }
-
         const bal=parseFloat(bI.value)||0, pay=parseFloat(pI.value)||0;
-
-        // Rental: payment is income (bal + pay)
         if(rentalAcc && a.id===rentalAcc.id){
             const end=bal+pay;
             eD.textContent=fmt(end); eD.className=`calc ${end<0?'negative':''}`;
             rentalIncome+=pay;
             return;
         }
-
-        // Include extra payment for Prudential loan
         let extraForThis=0;
         if(a.name.toLowerCase().includes('prudential')){
             extraForThis=parseFloat(document.getElementById('prudential-extra')?.value)||0;
         }
         const end=bal-pay-extraForThis;
         eD.textContent=fmt(end); eD.className=`calc ${end<0?'negative':''}`;
-
         if(a.is_debt){totalDebt+=end; totalDebtPay+=pay;}
-
         if(a.pays_from && a.pays_from.toLowerCase().includes('pnc') && pay>0){
             pncAutoPayTotal+=pay;
         }
-
         if(a.account_type==='credit_card'){ccBal+=bal;ccPay+=pay;ccEnd+=end;}
         if(a.account_type==='tax_debt'){taxBal+=bal;taxPay+=pay;taxEnd+=end;}
         if(a.is_debt&&a.account_type==='loan'){loanBal+=bal;loanPay+=pay;loanEnd+=end;}
     });
 
-    // PNC: subtract expenses, add rental income
     if(pncAcc){
         const otherPNC=getOtherPNCTotal();
-        const extraPay=parseFloat(document.getElementById('prudential-extra')?.value)||0;
-        const totalOut=pncAutoPayTotal+billsTotal+otherPNC+extraPay;
+        // Extra payment is NOT added here — it's already included in Other PNC Payments
+        const totalOut=pncAutoPayTotal+billsTotal+otherPNC;
         const pncPayInput=document.querySelector(`input[data-id="${pncAcc.id}"][data-f="pay"]`);
         const pncEndDiv=document.querySelector(`div[data-id="${pncAcc.id}"][data-f="end"]`);
         const netOut=totalOut+rentalIncome;
         if(pncPayInput) pncPayInput.value=netOut.toFixed(2);
         const pncEnding=pncBal-netOut;
         if(pncEndDiv){pncEndDiv.textContent=fmt(pncEnding);pncEndDiv.className=`calc ${pncEnding<0?'negative':''}`;}
-
         const afterAll=pncEnding-500;
-
         document.getElementById('we-after-reserve').textContent=fmt(afterAll);
         document.getElementById('we-after-reserve').className=`value ${afterAll>=0?'positive':'negative'}`;
         document.getElementById('we-bills-total').textContent=fmt(billsTotal);
@@ -1998,8 +1909,7 @@ function calcWeekly(){
 
     const setSum=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=fmt(val);};
     setSum('sum-cc-bal',ccBal);setSum('sum-cc-pay',ccPay);setSum('sum-cc-end',ccEnd);
-    setSum('sum-tax-bal',taxBal);setSum('sum-tax-pay',taxPay);setSum('sum-tax-end',taxEnd);
-    setSum('sum-loan-bal',loanBal);setSum('sum-loan-pay',loanPay);setSum('sum-loan-end',loanEnd);
+    setSum('sum-taxloan-bal',taxBal+loanBal);setSum('sum-taxloan-pay',taxPay+loanPay);setSum('sum-taxloan-end',taxEnd+loanEnd);
 
     document.getElementById('we-total-debt').textContent=fmt(totalDebt);
     document.getElementById('we-total-payments').textContent=fmt(totalDebtPay);
@@ -2009,7 +1919,6 @@ function calcWeekly(){
 async function loadPreviousWeek(){
     const currentDate=document.getElementById('entry-date').value;
     if(!currentDate)return;
-    // Find the Wednesday before this one
     const d=new Date(currentDate+'T00:00:00');
     d.setDate(d.getDate()-7);
     const prevWed=d.toISOString().split('T')[0];
@@ -2046,8 +1955,6 @@ async function saveWeeklyEntries(){
     try{
         await supaFetch('finance_weekly_entries','DELETE',null,`?entry_date=eq.${dt}`);
         await supaFetch('finance_weekly_entries','POST',entries);
-
-        // Also save all bill edits
         const billRows=document.querySelectorAll('#weekly-bills-list [data-bill-id]');
         const billPairs=new Set();
         billRows.forEach(el=>{
@@ -2067,13 +1974,8 @@ async function saveWeeklyEntries(){
                 saveBillPayment(billId,billMonth,amt,paidDate,isPaid,weekAssigned);
             }
         });
-
-        // Save other PNC payments
         await saveOtherPNC(dt);
-
-        // Save extra loan payment and recalculate schedule
         const extraMsg=await saveExtraPayment(dt);
-
         alert('Week saved!' + (extraMsg||''));
     }catch(e){alert('Error: '+e.message);}
 }
@@ -2091,65 +1993,47 @@ async function saveBillPayment(billId,billMonth,amt,paidDate,isPaid,weekAssigned
     }catch(e){console.error('Bill save error:',e);}
 }
 
-// ==================== EXTRA LOAN PAYMENTS ====================
-
 async function previewExtraPayment(){
     const extraInput=document.getElementById('prudential-extra');
     const impactDiv=document.getElementById('extra-pay-impact');
     const detailsDiv=document.getElementById('extra-impact-details');
     const extraAmt=parseFloat(extraInput?.value)||0;
-    
     if(extraAmt<=0){impactDiv.style.display='none';return;}
     impactDiv.style.display='block';
     detailsDiv.innerHTML='Calculating...';
-    
     const accountId=extraInput.dataset.acctId;
     const weekStr=document.getElementById('entry-date').value;
     if(!accountId||!weekStr)return;
-    
     try{
         const acct=accounts.find(a=>a.id===accountId);
         if(!acct)return;
-        
-        // Get full current schedule
         const schedule=await supaFetch('finance_loan_schedules','GET',null,
             `?account_id=eq.${accountId}&order=due_date`);
         if(!schedule?.length){detailsDiv.innerHTML='No schedule found.';return;}
-        
-        // Find current position - latest payment on or before this week
         let currentIdx=-1;
         for(let i=schedule.length-1;i>=0;i--){
             if(schedule[i].due_date<=weekStr){currentIdx=i;break;}
         }
-        
         const currentBal=currentIdx>=0?parseFloat(schedule[currentIdx].balance_after):parseFloat(acct.starting_balance);
         const monthlyRate=(acct.interest_rate||0)/100/12;
         const monthlyPayment=acct.min_payment;
         const originalPayoff=schedule[schedule.length-1].due_date;
         const remainingPayments=schedule.length-(currentIdx+1);
-        
-        // Calculate original remaining interest
         let origInterest=0;
         for(let i=currentIdx+1;i<schedule.length;i++){
             origInterest+=parseFloat(schedule[i].interest)||0;
         }
-        
-        // Simulate with extra payment
         let newBal=Math.max(0,currentBal-extraAmt);
         let newPayments=0, newInterest=0;
         let simBal=newBal;
         let lastDate='';
         const nextDueIdx=currentIdx+1;
-        
         if(simBal<=0){
             detailsDiv.innerHTML=`<strong style="color:var(--green-soft);">🎉 This would pay off the loan!</strong>`;
             return;
         }
-        
         for(let i=0;i<remainingPayments+60;i++){
             if(simBal<=0)break;
-            const dt=new Date(schedule[Math.min(nextDueIdx+i,schedule.length-1)]?.due_date+'T12:00:00'||new Date());
-            if(i>=1){dt.setMonth(dt.getMonth()+i);}
             if(nextDueIdx+i<schedule.length){
                 lastDate=schedule[nextDueIdx+i].due_date;
             } else {
@@ -2157,7 +2041,6 @@ async function previewExtraPayment(){
                 base.setMonth(base.getMonth()+i);
                 lastDate=base.toISOString().split('T')[0];
             }
-            
             const interest=Math.round(simBal*monthlyRate*100)/100;
             newInterest+=interest;
             let princ=monthlyPayment-interest;
@@ -2165,14 +2048,11 @@ async function previewExtraPayment(){
             simBal=Math.max(0,Math.round((simBal-princ)*100)/100);
             newPayments++;
         }
-        
         const savedPayments=remainingPayments-newPayments;
         const savedInterest=origInterest-newInterest;
         const origDate=new Date(originalPayoff+'T12:00:00');
         const newDate=new Date(lastDate+'T12:00:00');
-        
         const fmtDate=d=>d.toLocaleDateString('en-US',{month:'short',year:'numeric'});
-        
         let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">`;
         html+=`<div>Original payoff: <strong>${fmtDate(origDate)}</strong></div>`;
         html+=`<div>New payoff: <strong style="color:var(--green-soft);">${fmtDate(newDate)}</strong></div>`;
@@ -2191,18 +2071,11 @@ async function saveExtraPayment(dt){
     const extraAmt=parseFloat(extraInput?.value)||0;
     const accountId=extraInput?.dataset?.acctId;
     if(!accountId||!dt)return '';
-    
-    // Delete any existing extra payment for this week
     try{
         await supaFetch('finance_extra_payments','DELETE',null,`?account_id=eq.${accountId}&entry_date=eq.${dt}`);
     }catch(e){}
-    
     if(extraAmt<=0)return '';
-    
-    // Save the extra payment record
     await supaFetch('finance_extra_payments','POST',{account_id:accountId,entry_date:dt,amount:extraAmt});
-    
-    // Recalculate the amortization schedule
     return await recalculateLoanSchedule(accountId,dt,extraAmt);
 }
 
@@ -2210,35 +2083,23 @@ async function recalculateLoanSchedule(accountId,weekStr,extraAmt){
     try{
         const acct=accounts.find(a=>a.id===accountId);
         if(!acct)return;
-        
-        // Get full current schedule
         const schedule=await supaFetch('finance_loan_schedules','GET',null,
             `?account_id=eq.${accountId}&order=due_date`);
         if(!schedule?.length)return;
-        
-        // Find current position
         let currentIdx=-1;
         for(let i=schedule.length-1;i>=0;i--){
             if(schedule[i].due_date<=weekStr){currentIdx=i;break;}
         }
-        
         const currentBal=currentIdx>=0?parseFloat(schedule[currentIdx].balance_after):parseFloat(acct.starting_balance);
         const monthlyRate=(acct.interest_rate||0)/100/12;
         const monthlyPayment=acct.min_payment;
-        
-        // Apply extra payment to principal
         let newBal=Math.max(0,currentBal-extraAmt);
-        
-        // Delete all future schedule entries (after current position)
         const futurePayments=schedule.filter(s=>s.due_date>weekStr);
         if(futurePayments.length){
             await supaFetch('finance_loan_schedules','DELETE',null,
                 `?account_id=eq.${accountId}&due_date=gt.${weekStr}`);
         }
-        
-        // Rebuild future schedule from new balance
         if(newBal<=0){
-            // Loan is paid off! Update the current entry's balance_after
             if(currentIdx>=0){
                 await supaFetch('finance_loan_schedules','PATCH',
                     {balance_after:0},
@@ -2247,36 +2108,27 @@ async function recalculateLoanSchedule(accountId,weekStr,extraAmt){
             alert(`🎉 Prudential Loan will be paid off with this extra payment!\nSchedule updated.`);
             return '';
         }
-        
         const nextPayNum=(currentIdx>=0?schedule[currentIdx].payment_number:0)+1;
         const nextDueDate=futurePayments.length?futurePayments[0].due_date:null;
-        
         if(!nextDueDate)return '';
-        
         let bal=newBal;
         const newRows=[];
         let payNum=nextPayNum;
-        
-        for(let i=0;i<600;i++){  // safety limit
+        for(let i=0;i<600;i++){
             if(bal<=0)break;
-            
             const dt=new Date(nextDueDate+'T00:00:00');
             dt.setMonth(dt.getMonth()+i);
             const dateStr=dt.toISOString().split('T')[0];
-            
             const interest=Math.round(bal*monthlyRate*100)/100;
             let payAmt=monthlyPayment;
             let princ=payAmt-interest;
-            
             if(princ>=bal){
                 princ=bal;
                 payAmt=Math.round((bal+interest)*100)/100;
             } else {
                 princ=Math.round(princ*100)/100;
             }
-            
             const newBalAfter=Math.max(0,Math.round((bal-princ)*100)/100);
-            
             newRows.push({
                 account_id:accountId,
                 payment_number:payNum,
@@ -2286,22 +2138,16 @@ async function recalculateLoanSchedule(accountId,weekStr,extraAmt){
                 principal:princ,
                 balance_after:newBalAfter
             });
-            
             bal=newBalAfter;
             payNum++;
         }
-        
-        // Insert new schedule in batches
         for(let i=0;i<newRows.length;i+=50){
             await supaFetch('finance_loan_schedules','POST',newRows.slice(i,i+50));
         }
-        
         const origPayoff=schedule[schedule.length-1].due_date;
         const newPayoff=newRows.length?newRows[newRows.length-1].due_date:origPayoff;
         const fmtD=d=>new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'long',year:'numeric'});
-        
         return `\n\n📊 Prudential schedule recalculated!\nExtra payment: ${fmt(extraAmt)}\nNew payoff: ${fmtD(newPayoff)}\nPayments remaining: ${newRows.length}`;
-        
     }catch(e){
         console.error('Recalculate schedule:',e);
         return '\n\n⚠️ Error recalculating schedule: '+e.message;
@@ -2314,7 +2160,6 @@ async function loadExtraPayment(){
     if(!dt||!extraInput)return;
     const accountId=extraInput.dataset.acctId;
     if(!accountId)return;
-    
     try{
         const rows=await supaFetch('finance_extra_payments','GET',null,
             `?account_id=eq.${accountId}&entry_date=eq.${dt}`);
@@ -2328,30 +2173,24 @@ async function loadExtraPayment(){
     }catch(e){console.error('Load extra payment:',e);}
 }
 
-// ==================== HISTORY ====================
 let historyEntries=[], historyOrdered=[], historyDates=[], historyAccMap={};
-let visibleCols=new Set(); // account IDs that are visible
+let visibleCols=new Set();
 
 async function loadHistory(){
     try{
         historyEntries=await supaFetch('finance_weekly_entries','GET',null,'?order=entry_date.desc');
         if(!historyEntries?.length){document.getElementById('history-empty').style.display='block';document.getElementById('history-head').innerHTML='';document.getElementById('history-body').innerHTML='';return;}
         document.getElementById('history-empty').style.display='none';
-
         const allAcc=[...accounts,...closedAccounts];
         historyAccMap={};
         allAcc.forEach(a=>historyAccMap[a.id]=a);
-
         historyDates=[...new Set(historyEntries.map(e=>e.entry_date))];
         const accIds=[...new Set(historyEntries.map(e=>e.account_id))];
         historyOrdered=accIds.map(id=>historyAccMap[id]).filter(Boolean).sort((a,b)=>{
             if(a.is_debt!==b.is_debt)return a.is_debt?-1:1;
             return(a.display_order||0)-(b.display_order||0);
         });
-
-        // Init visible columns (all on first load)
         if(visibleCols.size===0) historyOrdered.forEach(a=>visibleCols.add(a.id));
-
         buildColumnPicker();
         renderHistory();
     }catch(e){console.error('History:',e);}
@@ -2398,18 +2237,12 @@ function resetHistoryFilters(){
 function renderHistory(){
     const fromDate=document.getElementById('hist-from').value;
     const toDate=document.getElementById('hist-to').value;
-
-    // Filter dates
     let dates=historyDates;
     if(fromDate) dates=dates.filter(d=>d>=fromDate);
     if(toDate) dates=dates.filter(d=>d<=toDate);
-
-    // Visible accounts
     const shown=historyOrdered.filter(a=>visibleCols.has(a.id));
     const hasDebt=shown.some(a=>a.is_debt);
-
     document.getElementById('history-head').innerHTML=`<tr><th>Date</th>${shown.map(a=>`<th class="amount">${a.name}</th>`).join('')}${hasDebt?'<th class="amount">Total Debt</th>':''}</tr>`;
-
     document.getElementById('history-body').innerHTML=dates.map((date,i)=>{
         const week=historyEntries.filter(e=>e.entry_date===date), eMap={};
         week.forEach(e=>eMap[e.account_id]=e);
@@ -2419,7 +2252,6 @@ function renderHistory(){
             if(e){if(a.is_debt)debt+=e.ending_balance;return`<td class="amount">${fmt(e.ending_balance)}</td>`;}
             return`<td class="amount" style="color:var(--sage-300)">-</td>`;
         }).join('');
-
         let prevDebt=0, debtCell='';
         if(hasDebt){
             const nextIdx=historyDates.indexOf(dates[i])+1;
@@ -2430,41 +2262,31 @@ function renderHistory(){
             const chg=nextIdx<historyDates.length?debt-prevDebt:0;
             debtCell=`<td class="amount">${fmt(debt)}${chg!==0?`<br><small class="${chg<0?'positive':'negative'}">${chg<0?'▼':'▲'} ${fmt(Math.abs(chg))}</small>`:''}</td>`;
         }
-
         return`<tr><td><strong>${fmtShort(date)}</strong></td>${cells}${debtCell}</tr>`;
     }).join('');
 }
 
-// ==================== AI CATEGORIZATION ====================
 let aiSuggestions=[];
 
 async function aiCategorize(){
     if(!txnData.length)return alert('No transactions loaded.');
-    
     const btn=document.getElementById('btn-ai-cat');
     btn.disabled=true;
     btn.textContent='🤖 Working...';
-    
     const cats=getCatOptions();
     const allAcc=[...accounts,...closedAccounts];
     const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
-    
-    // Build transaction list for AI - batch in chunks of 50
     aiSuggestions=[];
     const batchSize=50;
-    
     try{
         for(let i=0;i<txnData.length;i+=batchSize){
             const batch=txnData.slice(i,i+batchSize);
             btn.textContent=`🤖 ${Math.min(i+batchSize,txnData.length)}/${txnData.length}...`;
-            
             const txnList=batch.map(t=>{
                 const acctName=accMap[t.account_id]?.name||'Unknown';
                 return `ID:${t.id} | Account:${acctName} | ${t.transaction_date} | ${t.description} | ${t.amount<0?'-':''}$${Math.abs(t.amount).toFixed(2)} | Current:${t.category||'Uncategorized'}`;
             }).join('\n');
-            
             const prompt=`You are categorizing bank transactions. Assign each transaction one category from this list ONLY:\n${cats.join(', ')}\n\nRules:\n- ALL transactions from "BOA CC" account must be "Girls"\n- DraftKings = "Draftkings"\n- Zelle with Colette or Martin = "Internal Transfer"\n- Online Transfer / Online Banking Transfer = "Internal Transfer"\n- FID BKG SVC LLC or Fidelity = "Kids Retirement"\n- Grocery stores (ShopRite, Walmart, Aldi) = "Groceries"\n- Gas stations (Wawa, Sheetz, Sunoco) = "Auto"\n- Zaritza = "Rent Payment"\n- Use your best judgment for the rest based on the description\n\nTransactions:\n${txnList}\n\nRespond with ONLY a JSON array of objects, no markdown, no backticks. Each object: {"id": number, "category": "string"}\nExample: [{"id":123,"category":"Groceries"},{"id":456,"category":"Auto"}]`;
-            
             const response=await fetch('https://api.anthropic.com/v1/messages',{
                 method:'POST',
                 headers:{'Content-Type':'application/json'},
@@ -2474,11 +2296,9 @@ async function aiCategorize(){
                     messages:[{role:'user',content:prompt}]
                 })
             });
-            
             const data=await response.json();
             const text=data.content?.map(c=>c.text||'').join('')||'';
             const clean=text.replace(/```json|```/g,'').trim();
-            
             try{
                 const results=JSON.parse(clean);
                 aiSuggestions.push(...results);
@@ -2486,7 +2306,6 @@ async function aiCategorize(){
                 console.error('Parse error for batch:',e,clean);
             }
         }
-        
         showAIReview();
     }catch(e){
         alert('AI error: '+e.message);
@@ -2501,31 +2320,22 @@ function showAIReview(){
     const allAcc=[...accounts,...closedAccounts];
     const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
     const cats=getCatOptions();
-    
-    // Build a map of suggestions
     const sugMap={};
     aiSuggestions.forEach(s=>sugMap[s.id]=s.category);
-    
-    // Count changes
     let changed=0,same=0;
     txnData.forEach(t=>{
         if(sugMap[t.id]&&sugMap[t.id]!==t.category)changed++;
         else same++;
     });
-    
     document.getElementById('ai-review-status').textContent=`${changed} changes suggested, ${same} unchanged`;
-    
     const catOptions=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
-    
     let html=`<div style="font-size:0.75rem;display:grid;grid-template-columns:30px 80px 1fr 130px 30px 130px;gap:6px;align-items:center;padding:6px 0;font-weight:600;color:var(--sage-600);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--sage-300);position:sticky;top:0;background:var(--cream);z-index:1;">
         <div>✓</div><div>Date</div><div>Description</div><div>Current</div><div>→</div><div>Suggested</div>
     </div>`;
-    
     txnData.forEach(t=>{
         const sug=sugMap[t.id]||t.category||'Uncategorized';
         const isChanged=sug!==t.category;
         const desc=(t.description||'').length>40?(t.description||'').substring(0,40)+'…':(t.description||'');
-        
         html+=`<div style="display:grid;grid-template-columns:30px 80px 1fr 130px 30px 130px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--sage-100);${isChanged?'background:rgba(122,144,97,0.06);':'opacity:0.5;'}" data-ai-id="${t.id}">
             <div><input type="checkbox" ${isChanged?'checked':''} class="ai-check" data-ai-id="${t.id}" style="accent-color:var(--sage-500);width:16px;height:16px;cursor:pointer;"></div>
             <div style="font-size:0.8rem;white-space:nowrap;">${t.transaction_date}</div>
@@ -2537,7 +2347,6 @@ function showAIReview(){
             </select></div>
         </div>`;
     });
-    
     document.getElementById('ai-review-list').innerHTML=html;
     document.getElementById('modal-ai-review').classList.add('active');
 }
@@ -2546,7 +2355,6 @@ async function applyAISuggestions(){
     const btn=document.getElementById('btn-ai-apply');
     btn.disabled=true;
     btn.textContent='Saving...';
-    
     const updates=[];
     document.querySelectorAll('.ai-check:checked').forEach(cb=>{
         const id=parseInt(cb.dataset.aiId);
@@ -2556,23 +2364,19 @@ async function applyAISuggestions(){
             updates.push({id,category:sel.value});
         }
     });
-    
     if(!updates.length){
         closeModal('modal-ai-review');
         btn.disabled=false;
         btn.textContent='✅ Apply All';
         return;
     }
-    
     try{
-        // Batch update in groups of 20
         for(let i=0;i<updates.length;i+=20){
             const batch=updates.slice(i,i+20);
             for(const u of batch){
                 await supaFetch('finance_transactions','PATCH',{category:u.category},`?id=eq.${u.id}`);
             }
         }
-        
         closeModal('modal-ai-review');
         await loadTransactions();
         await loadCategoryFilter();
@@ -2585,632 +2389,367 @@ async function applyAISuggestions(){
     }
 }
 
-// ==================== INIT ====================
-// ==================== DASHBOARD ====================
-let dashWeekOffset=new Date().getDay()===3?0:-1;
+// ============ DASHBOARD ============
+let dashWeekOffset=0;
 
-function getDashWeekRange(offset=0){
+function getDashWeekRange(offset){
     const today=new Date();
-    const dayOfWeek=today.getDay();
-    const diff=dayOfWeek<=3?3-dayOfWeek:10-dayOfWeek;
+    const day=today.getDay();
+    const diff=day>=3?day-3:day+4;
     const thisWed=new Date(today);
-    thisWed.setDate(today.getDate()+diff);
-    thisWed.setDate(thisWed.getDate()+(offset*7));
-    const prevWed=new Date(thisWed);
-    prevWed.setDate(prevWed.getDate()-7);
-    const twoWeeksAgo=new Date(thisWed);
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate()-14);
-    const f=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    return {
-        start:f(prevWed), end:f(thisWed),
-        twoWkStart:f(twoWeeksAgo),
-        label:prevWed.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+thisWed.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-    };
+    thisWed.setDate(today.getDate()-diff);
+    thisWed.setHours(0,0,0,0);
+    const end=new Date(thisWed);
+    end.setDate(end.getDate()-(offset*7));
+    const start=new Date(end);
+    start.setDate(start.getDate()-7);
+    return {start,end};
 }
 
 function shiftDashWeek(dir){
     dashWeekOffset+=dir;
+    if(dashWeekOffset<0) dashWeekOffset=0;
     loadDashboard();
 }
 
+function setTileWithChange(elId,current,prior,isDebt){
+    const el=document.getElementById(elId);
+    if(!el)return;
+    const chg=current-(prior||0);
+    let html=`<div>${fmt(current)}</div>`;
+    if(prior!==null && prior!==undefined && Math.abs(chg)>=0.01){
+        const isGood=isDebt?chg<0:chg>0;
+        const arrow=chg<0?'▼':'▲';
+        const color=isGood?'#6dd59a':'#e88';
+        html+=`<div style="font-size:0.7rem;color:${color};font-weight:500;margin-top:2px;">${arrow} ${fmt(Math.abs(chg))}</div>`;
+    }
+    el.innerHTML=html;
+}
+
 async function loadDashboard(){
+    const {start,end}=getDashWeekRange(dashWeekOffset);
+    const endStr=end.toISOString().split('T')[0];
+    const startStr=start.toISOString().split('T')[0];
+    const labelEl=document.getElementById('dash-week-label');
+    if(labelEl){
+        const fmtD=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        labelEl.textContent=`Week of ${fmtD(start)} – ${fmtD(end)}${dashWeekOffset===0?' (current)':''}`;
+    }
+
+    // Load transactions for week
+    let txns=[];
     try{
-        const week=getDashWeekRange(dashWeekOffset);
-        document.getElementById('dash-week-label').textContent=week.label;
+        txns=await supaFetch('finance_transactions','GET',null,
+            `?transaction_date=gt.${startStr}&transaction_date=lte.${endStr}&order=transaction_date.desc`)||[];
+    }catch(e){console.error('Dash txns:',e);}
 
-        const allAcc=[...accounts,...closedAccounts];
-        const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
-        const ccAccs=accounts.filter(a=>a.account_type==='credit_card');
-        const boaAcc=ccAccs.find(a=>a.name?.toLowerCase().includes('boa'));
-        const taxAccs=accounts.filter(a=>a.account_type==='tax_debt');
-        const loanAccs=accounts.filter(a=>a.account_type==='loan');
+    // Load weekly entries for this week's debt tiles
+    let weekEntries=[];
+    try{
+        weekEntries=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${endStr}`)||[];
+    }catch(e){}
+    const priorEnd=new Date(end); priorEnd.setDate(priorEnd.getDate()-7);
+    const priorEndStr=priorEnd.toISOString().split('T')[0];
+    let priorEntries=[];
+    try{
+        priorEntries=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${priorEndStr}`)||[];
+    }catch(e){}
 
-        // === 1. BOA spending from weekly entries (start - prior end) ===
-        let boaSpent=0;
-        if(boaAcc){
-            // Get entries within this 2-week window
-            const rows=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${boaAcc.id}&entry_date=gt.${week.start}&entry_date=lte.${week.end}&order=entry_date`);
-            if(rows?.length){
-                // Get the ending balance from the week before the window
-                const prior=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${boaAcc.id}&entry_date=lte.${week.start}&order=entry_date.desc&limit=1`);
-                const prevEnd=prior?.length?parseFloat(prior[0].ending_balance)||0:0;
-                // Sum up spending across all weeks in window
-                let lastEnd=prevEnd;
-                rows.forEach(r=>{
-                    const thisStart=parseFloat(r.starting_balance)||0;
-                    const spent=Math.max(0,thisStart-lastEnd);
-                    boaSpent+=spent;
-                    lastEnd=parseFloat(r.ending_balance)||0;
-                });
-            }
-        }
+    // Spending cards (3)
+    const ccIds=accounts.filter(a=>a.account_type==='credit_card').map(a=>a.id);
+    const pncIds=accounts.filter(a=>a.account_type==='bank'&&a.name.toLowerCase().includes('pnc')).map(a=>a.id);
+    const boa=accounts.find(a=>a.name.toLowerCase().includes('boa')&&a.account_type==='credit_card');
 
-        // === 1b. BOA Girls transactions (for the table - last 2 weeks) ===
-        let boaGirlsTxns=[];
-        if(boaAcc){
-            const txns=await supaFetch('finance_transactions','GET',null,
-                `?account_id=eq.${boaAcc.id}&category=eq.Girls&transaction_date=gt.${week.twoWkStart}&transaction_date=lte.${week.end}&amount=lt.0&order=transaction_date.desc`);
-            if(txns?.length) boaGirlsTxns=txns;
-        }
+    const ccSpend=txns.filter(t=>ccIds.includes(t.account_id)&&parseFloat(t.amount)<0)
+        .reduce((s,t)=>s+Math.abs(parseFloat(t.amount)),0);
+    const pncSpend=txns.filter(t=>pncIds.includes(t.account_id)&&parseFloat(t.amount)<0)
+        .reduce((s,t)=>s+Math.abs(parseFloat(t.amount)),0);
+    const boaSpend=boa?txns.filter(t=>t.account_id===boa.id&&parseFloat(t.amount)<0)
+        .reduce((s,t)=>s+Math.abs(parseFloat(t.amount)),0):0;
 
-        // === 2. All other CC spending (from weekly entries: start - prior end) ===
-        let otherCCSpent=0;
-        for(const cc of ccAccs){
-            if(boaAcc && cc.id===boaAcc.id) continue;
-            const rows=await supaFetch('finance_weekly_entries','GET',null,
-                `?account_id=eq.${cc.id}&entry_date=gt.${week.start}&entry_date=lte.${week.end}&order=entry_date`);
-            if(rows?.length){
-                const prior=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${cc.id}&entry_date=lte.${week.start}&order=entry_date.desc&limit=1`);
-                const prevEnd=prior?.length?parseFloat(prior[0].ending_balance)||0:0;
-                let lastEnd=prevEnd;
-                rows.forEach(r=>{
-                    const thisStart=parseFloat(r.starting_balance)||0;
-                    const spent=Math.max(0,thisStart-lastEnd);
-                    otherCCSpent+=spent;
-                    lastEnd=parseFloat(r.ending_balance)||0;
-                });
-            }
-        }
-
-        // === 3. All debt from weekly entries for this week and prior week ===
-        const toyNames=['kubota','side by side'];
-        async function getDebtFromEntries(asOfDate){
-            let cc=0, tax=0, prud=0, toys=0;
-            for(const a of ccAccs){
-                let rows=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
-                if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
-                cc+=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
-            }
-            for(const a of taxAccs){
-                let rows=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
-                if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
-                tax+=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
-            }
-            for(const a of loanAccs){
-                let rows=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&entry_date=eq.${asOfDate}`);
-                if(!rows?.length) rows=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&entry_date=lte.${asOfDate}&order=entry_date.desc&limit=1`);
-                const val=rows?.length?parseFloat(rows[0].ending_balance)||0:0;
-                const n=a.name?.toLowerCase()||'';
-                if(n.includes('prudential')) prud+=val;
-                else if(toyNames.some(t=>n.includes(t))) toys+=val;
-                else prud+=val; // default other loans to prudential bucket
-            }
-            return {cc, tax, prud, toys, total: cc+tax+prud+toys};
-        }
-
-        const thisWeek=await getDebtFromEntries(week.end);
-        const priorWeek=await getDebtFromEntries(week.start);
-        const debtDiff=thisWeek.total-priorWeek.total;
-
-        // Populate tiles with inline changes
-        function setTileWithChange(elId, thisVal, priorVal){
-            const el=document.getElementById(elId);
-            const diff=thisVal-priorVal;
-            let changeHtml='';
-            if(diff!==0){
-                const color=diff<0?'#69db7c':'#ff8787';
-                const arrow=diff<0?'▼':'▲';
-                const sign=diff>0?'+':'';
-                changeHtml=`<div style="font-size:0.7rem;margin-top:4px;color:${color};font-weight:600;">${arrow} ${sign}${fmt(Math.abs(diff))}</div>`;
-            }
-            el.innerHTML=`${fmt(thisVal)}${changeHtml}`;
-        }
-        setTileWithChange('dash-cc-debt',thisWeek.cc,priorWeek.cc);
-        setTileWithChange('dash-prud-debt',thisWeek.prud,priorWeek.prud);
-        setTileWithChange('dash-taxtoys-debt',thisWeek.tax+thisWeek.toys,priorWeek.tax+priorWeek.toys);
-        setTileWithChange('dash-total-debt',thisWeek.total,priorWeek.total);
-
-        // === Spend cards ===
-        const card=(label,value,icon,extraClass='')=>`
-            <div style="background:white;padding:20px;border-radius:12px;text-align:center;border:2px solid var(--sage-200);">
-                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-500);">${icon} ${label}</div>
-                <div style="font-size:1.6rem;font-weight:700;font-family:'Crimson Pro',serif;margin-top:6px;color:var(--sage-700);${extraClass}">${value}</div>
+    const cards=document.getElementById('dash-cards');
+    if(cards){
+        cards.innerHTML=`
+            <div class="dash-card" onclick="switchTab('transactions');document.getElementById('txn-filter-from').value='${startStr}';document.getElementById('txn-filter-to').value='${endStr}';loadTransactions();" style="background:white;border-radius:12px;padding:16px;border:1px solid var(--sage-200);cursor:pointer;">
+                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-500);margin-bottom:4px;">CC Spending</div>
+                <div style="font-family:'Crimson Pro',serif;font-size:1.5rem;color:var(--charcoal);">${fmt(ccSpend)}</div>
+            </div>
+            <div class="dash-card" onclick="switchTab('transactions');document.getElementById('txn-filter-from').value='${startStr}';document.getElementById('txn-filter-to').value='${endStr}';loadTransactions();" style="background:white;border-radius:12px;padding:16px;border:1px solid var(--sage-200);cursor:pointer;">
+                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-500);margin-bottom:4px;">PNC Spending</div>
+                <div style="font-family:'Crimson Pro',serif;font-size:1.5rem;color:var(--charcoal);">${fmt(pncSpend)}</div>
+            </div>
+            <div class="dash-card" onclick="switchTab('transactions');document.getElementById('txn-filter-from').value='${startStr}';document.getElementById('txn-filter-to').value='${endStr}';loadTransactions();" style="background:white;border-radius:12px;padding:16px;border:1px solid var(--sage-200);cursor:pointer;">
+                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--sage-500);margin-bottom:4px;">Girls (BOA)</div>
+                <div style="font-family:'Crimson Pro',serif;font-size:1.5rem;color:var(--charcoal);">${fmt(boaSpend)}</div>
             </div>`;
+    }
 
-        const diffSign=debtDiff>0?'+':'';
-        const diffColor=debtDiff>0?'color:#c0392b;':'color:#27ae60;';
-        const diffIcon=debtDiff>0?'🔴':'🟢';
-
-        document.getElementById('dash-cards').innerHTML=
-            card('BOA Spent',fmt(boaSpent),'👧')+
-            card('Other CC Spent',fmt(otherCCSpent),'💳')+
-            card('Debt Change',diffSign+fmt(Math.abs(debtDiff)),diffIcon,diffColor);
-
-        // === 5. Charges over $200 - last 2 weeks ===
-        const bigCharges=await supaFetch('finance_transactions','GET',null,
-            `?transaction_date=gt.${week.twoWkStart}&transaction_date=lte.${week.end}&order=transaction_date.desc`);
-        const excludeCats=['internal transfer','girls','cc payment','cc payments'];
-        const over200=(bigCharges||[]).filter(t=>{
-            const amt=parseFloat(t.amount)||0;
-            const cat=(t.category||'').toLowerCase().trim();
-            return amt<0 && Math.abs(amt)>=200 && !excludeCats.includes(cat);
-        }).sort((a,b)=>Math.abs(parseFloat(b.amount)||0)-Math.abs(parseFloat(a.amount)||0));
-
-        // === BUILD $200+ TABLE ===
-        const bigEl=document.getElementById('dash-big-charges');
-        if(over200.length){
-            let tbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">🔴 Charges Over $200 <span style="font-size:0.8rem;font-weight:400;color:var(--sage-400);">(last 2 weeks)</span></h3>
-                <div class="table-scroll"><table class="data-table"><thead><tr>
-                    <th>Description</th><th>Category</th><th style="text-align:right;">Amount</th><th class="dash-hide-sm">Account</th><th class="dash-hide-sm">Date</th>
-                </tr></thead><tbody>`;
-            over200.forEach(t=>{
-                const acctName=accMap[t.account_id]?.name||'?';
-                tbl+=`<tr>
-                    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.description||'').replace(/"/g,'&quot;')}">${t.description||''}</td>
-                    <td><span class="badge" style="background:var(--sage-100);color:var(--sage-600);">${t.category||'—'}</span></td>
-                    <td style="text-align:right;font-weight:600;">${fmt(Math.abs(parseFloat(t.amount)||0))}</td>
-                    <td class="dash-hide-sm" style="font-size:0.8rem;">${acctName}</td>
-                    <td class="dash-hide-sm" style="white-space:nowrap;">${t.transaction_date}</td>
-                </tr>`;
-            });
-            tbl+=`</tbody></table></div>`;
-            bigEl.innerHTML=tbl;
-        }else{
-            bigEl.innerHTML='';
-        }
-
-        // === BUILD BOA GIRLS TABLE ===
-        const boaEl=document.getElementById('dash-boa-girls');
-        if(boaGirlsTxns.length){
-            let tbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">👧 BOA Girls Charges <span style="font-size:0.8rem;font-weight:400;color:var(--sage-400);">(last 2 weeks)</span></h3>
-                <div class="table-scroll"><table class="data-table"><thead><tr>
-                    <th>Description</th><th style="text-align:right;">Amount</th><th class="dash-hide-sm">Date</th>
-                </tr></thead><tbody>`;
-            let girlsTotal=0;
-            boaGirlsTxns.forEach(t=>{
-                const amt=Math.abs(parseFloat(t.amount)||0);
-                girlsTotal+=amt;
-                tbl+=`<tr>
-                    <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.description||'').replace(/"/g,'&quot;')}">${t.description||''}</td>
-                    <td style="text-align:right;font-weight:600;">${fmt(amt)}</td>
-                    <td class="dash-hide-sm" style="white-space:nowrap;">${t.transaction_date}</td>
-                </tr>`;
-            });
-            tbl+=`<tr style="font-weight:700;border-top:2px solid var(--sage-500);">
-                <td style="text-align:right;">Total</td>
-                <td style="text-align:right;">${fmt(girlsTotal)}</td>
-                <td class="dash-hide-sm"></td>
-            </tr></tbody></table></div>`;
-            boaEl.innerHTML=tbl;
-        }else{
-            boaEl.innerHTML='';
-        }
-
-        // === BUILD ACCOUNT BALANCES TABLE (PNC Checking & Rental) ===
-        const acctEl=document.getElementById('dash-accounts-table');
-        const trackNames=['pnc checking','rental account'];
-        const trackAccts=allAcc.filter(a=>trackNames.some(n=>a.name.toLowerCase()===n));
-        if(trackAccts.length){
-            let atbl=`<h3 style="font-family:'Crimson Pro',serif;font-size:1.1rem;color:var(--sage-700);margin-bottom:10px;">💰 Account Balances</h3>
-                <div class="table-scroll"><table class="data-table"><thead><tr>
-                    <th>Account</th><th style="text-align:right;">Balance</th><th>As Of</th>
-                </tr></thead><tbody>`;
-            for(const a of trackAccts){
-                let entry=await supaFetch('finance_weekly_entries','GET',null,
-                    `?account_id=eq.${a.id}&order=entry_date.desc&limit=1`);
-                let bal=0, asOf='—';
-                if(entry?.length){
-                    bal=parseFloat(entry[0].ending_balance)||0;
-                    const dt=new Date(entry[0].entry_date+'T12:00:00');
-                    asOf=dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-                }
-                atbl+=`<tr>
-                    <td style="font-weight:500;">${a.name}</td>
-                    <td style="text-align:right;font-weight:600;color:${bal>=0?'var(--green-soft)':'var(--red-soft)'};">${fmt(bal)}</td>
-                    <td style="color:var(--sage-400);font-size:0.85rem;">${asOf}</td>
-                </tr>`;
-            }
-            atbl+=`</tbody></table></div>`;
-            acctEl.innerHTML=atbl;
-        }else{
-            acctEl.innerHTML='';
-        }
-
-    }catch(e){console.error('Dashboard:',e);}
-}
-
-// ==================== CSV PARSING HELPERS ====================
-
-function detectCSVFormat(headers){
-    const h=headers.map(c=>c.trim().toLowerCase());
-    if(h.includes('reference number')&&h.includes('payee')) return 'boa';
-    if(h.includes('details')&&h.includes('posting date')&&h.includes('type')) return 'chase_checking';
-    if(h.includes('category')&&h.includes('post date')) return 'chase';
-    if(h.includes('transaction description')&&h.includes('balance')) return 'pnc';
-    if(h[0]==='date'&&h[1]==='description'&&h[2]==='amount'&&h[3]&&h[3].includes('running')) return 'boa_checking';
-    return 'unknown';
-}
-
-// Map accounts to expected CSV formats
-const accountFormatMap={};
-function buildAccountFormatMap(){
-    const allAcc=[...accounts,...closedAccounts];
-    allAcc.forEach(a=>{
-        const n=a.name.toLowerCase();
-        if(n.includes('family cc')||n.includes('prime')||n.includes('chase cc')) accountFormatMap[a.id]='chase';
-        else if(n==='boa cc') accountFormatMap[a.id]='boa';
-        else if(n.includes('pnc')) accountFormatMap[a.id]='pnc';
-        else if(n==='boa checking') accountFormatMap[a.id]='boa_checking';
-        else if(n.includes('rental')) accountFormatMap[a.id]='chase_checking';
+    // Debt tiles
+    const accMap={};accounts.forEach(a=>accMap[a.id]=a);
+    let ccDebt=0,ccPrior=0,prudDebt=0,prudPrior=0,taxToysDebt=0,taxToysPrior=0;
+    weekEntries.forEach(e=>{
+        const a=accMap[e.account_id];if(!a)return;
+        if(a.account_type==='credit_card') ccDebt+=parseFloat(e.ending_balance)||0;
+        if(a.name.toLowerCase().includes('prudential')) prudDebt+=parseFloat(e.ending_balance)||0;
+        if(a.account_type==='tax_debt'||(a.account_type==='loan'&&!a.name.toLowerCase().includes('prudential'))) taxToysDebt+=parseFloat(e.ending_balance)||0;
     });
+    priorEntries.forEach(e=>{
+        const a=accMap[e.account_id];if(!a)return;
+        if(a.account_type==='credit_card') ccPrior+=parseFloat(e.ending_balance)||0;
+        if(a.name.toLowerCase().includes('prudential')) prudPrior+=parseFloat(e.ending_balance)||0;
+        if(a.account_type==='tax_debt'||(a.account_type==='loan'&&!a.name.toLowerCase().includes('prudential'))) taxToysPrior+=parseFloat(e.ending_balance)||0;
+    });
+    const totalDebt=ccDebt+prudDebt+taxToysDebt;
+    const totalPrior=ccPrior+prudPrior+taxToysPrior;
+    setTileWithChange('dash-cc-debt',ccDebt,ccPrior,true);
+    setTileWithChange('dash-prud-debt',prudDebt,prudPrior,true);
+    setTileWithChange('dash-taxtoys-debt',taxToysDebt,taxToysPrior,true);
+    setTileWithChange('dash-total-debt',totalDebt,totalPrior,true);
+
+    // Big charges table ($200+)
+    const bigCharges=txns.filter(t=>Math.abs(parseFloat(t.amount))>=200);
+    const bigEl=document.getElementById('dash-big-charges');
+    if(bigEl){
+        if(bigCharges.length){
+            bigEl.innerHTML=`<h3 style="font-family:'Crimson Pro',serif;color:var(--sage-700);font-size:1.1rem;margin-bottom:10px;">💰 Charges $200+</h3>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th>Date</th><th>Description</th><th class="dash-hide-sm">Account</th><th class="amount">Amount</th></tr></thead>
+                <tbody>${bigCharges.map(t=>`<tr>
+                    <td style="white-space:nowrap;">${fmtShort(t.transaction_date)}</td>
+                    <td>${(t.description||'').substring(0,60)}</td>
+                    <td class="dash-hide-sm">${accMap[t.account_id]?.name||'-'}</td>
+                    <td class="amount ${parseFloat(t.amount)<0?'negative':'positive'}">${fmt(t.amount)}</td>
+                </tr>`).join('')}</tbody></table></div>`;
+        } else bigEl.innerHTML='';
+    }
+
+    // BOA Girls table
+    const girlsEl=document.getElementById('dash-boa-girls');
+    if(girlsEl && boa){
+        const girlsTxns=txns.filter(t=>t.account_id===boa.id);
+        if(girlsTxns.length){
+            girlsEl.innerHTML=`<h3 style="font-family:'Crimson Pro',serif;color:var(--sage-700);font-size:1.1rem;margin-bottom:10px;">👧 Girls (BOA) Transactions</h3>
+                <div class="table-scroll"><table class="data-table"><thead><tr><th>Date</th><th>Description</th><th class="amount">Amount</th></tr></thead>
+                <tbody>${girlsTxns.map(t=>`<tr>
+                    <td style="white-space:nowrap;">${fmtShort(t.transaction_date)}</td>
+                    <td>${(t.description||'').substring(0,60)}</td>
+                    <td class="amount ${parseFloat(t.amount)<0?'negative':'positive'}">${fmt(t.amount)}</td>
+                </tr>`).join('')}</tbody></table></div>`;
+        } else girlsEl.innerHTML='';
+    }
+
+    // Accounts table
+    const accEl=document.getElementById('dash-accounts-table');
+    if(accEl){
+        const shown=accounts.filter(a=>a.name.toLowerCase()!=='recurring bills');
+        const accHtml=shown.map(a=>{
+            const e=weekEntries.find(x=>x.account_id===a.id);
+            const p=priorEntries.find(x=>x.account_id===a.id);
+            const bal=e?parseFloat(e.ending_balance)||0:0;
+            const pBal=p?parseFloat(p.ending_balance)||0:0;
+            const chg=bal-pBal;
+            const isGood=a.is_debt?chg<0:chg>0;
+            const arrow=Math.abs(chg)>=0.01?(chg<0?'▼':'▲'):'';
+            const color=arrow?(isGood?'var(--green-soft)':'var(--red-soft)'):'var(--sage-300)';
+            return `<tr><td><strong>${a.name}</strong></td>
+                <td class="amount">${fmt(bal)}</td>
+                <td class="amount" style="color:${color};font-size:0.85rem;">${arrow} ${arrow?fmt(Math.abs(chg)):'—'}</td></tr>`;
+        }).join('');
+        accEl.innerHTML=`<h3 style="font-family:'Crimson Pro',serif;color:var(--sage-700);font-size:1.1rem;margin-bottom:10px;">🏦 Account Balances</h3>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>Account</th><th class="amount">Balance</th><th class="amount">Change</th></tr></thead>
+            <tbody>${accHtml}</tbody></table></div>`;
+    }
+}
+
+// ============ CSV IMPORT ============
+let accountFormatMap={};
+
+function buildAccountFormatMap(){
+    accountFormatMap={};
+    accounts.forEach(a=>{
+        const name=a.name.toLowerCase();
+        if(name.includes('chase')) accountFormatMap[a.id]='chase';
+        else if(name.includes('boa')||name.includes('bank of america')) accountFormatMap[a.id]='boa';
+        else if(name.includes('pnc')) accountFormatMap[a.id]='pnc';
+    });
+}
+
+function detectCSVFormat(text){
+    const firstLine=(text.split('\n')[0]||'').toLowerCase();
+    if(firstLine.includes('posting date')&&firstLine.includes('payee')) return 'pnc';
+    if(firstLine.includes('transaction date')&&firstLine.includes('post date')) return 'chase';
+    if(firstLine.includes('posted date')&&firstLine.includes('payee')) return 'boa';
+    if(firstLine.includes('date')&&firstLine.includes('description')) return 'generic';
+    return 'unknown';
 }
 
 function parseCSVLine(line){
     const result=[];
-    let current='';
-    let inQuotes=false;
+    let current='',inQuotes=false;
     for(let i=0;i<line.length;i++){
         const c=line[i];
-        if(c==='"'){inQuotes=!inQuotes;}
-        else if(c===','&&!inQuotes){result.push(current.trim());current='';}
-        else{current+=c;}
+        if(c==='"'){
+            if(inQuotes && line[i+1]==='"'){current+='"';i++;}
+            else inQuotes=!inQuotes;
+        } else if(c===',' && !inQuotes){
+            result.push(current);current='';
+        } else current+=c;
     }
-    result.push(current.trim());
+    result.push(current);
     return result;
 }
 
-function parsePNCAmount(str){
-    if(!str)return 0;
-    const clean=str.replace(/[$,\s"]/g,'');
-    if(clean.startsWith('-')) return parseFloat(clean);
-    if(clean.startsWith('+')) return parseFloat(clean);
-    return parseFloat(clean)||0;
+function parsePNCAmount(s){
+    s=(s||'').trim();
+    if(!s) return 0;
+    return parseFloat(s.replace(/[$,]/g,''))||0;
 }
 
-function parseDate(str){
-    if(!str)return null;
-    const s=str.replace(/"/g,'').trim();
-    if(s.toUpperCase().startsWith('PENDING')) return null;
-    if(s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
-    const m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if(m) return `${m[3]}-${m[1]}-${m[2]}`;
-    return null;
+function parseDate(s){
+    if(!s) return null;
+    s=s.trim().replace(/"/g,'');
+    const parts=s.split(/[\/\-]/);
+    if(parts.length!==3) return null;
+    let [a,b,c]=parts;
+    if(c.length===2) c='20'+c;
+    if(a.length===4) return `${a}-${b.padStart(2,'0')}-${c.padStart(2,'0')}`;
+    return `${c}-${a.padStart(2,'0')}-${b.padStart(2,'0')}`;
 }
 
 function guessCategory(desc){
-    if(!desc)return 'Uncategorized';
-    const upper=desc.toUpperCase();
-    if(upper.includes('ONLINE TRANSFER')||upper.includes('ONLINE BANKING TRANSFER')) return 'Internal Transfer';
-    if(upper.includes('FID BKG SVC LLC')||upper.includes('FIDELITY')) return 'Kids Retirement';
-    for(const rule of categoryRules){
-        if(upper.includes(rule.pattern.toUpperCase())) return rule.category;
-    }
+    const d=(desc||'').toLowerCase();
+    if(d.includes('shoprite')||d.includes('walmart')||d.includes('aldi')||d.includes('wegmans')) return 'Groceries';
+    if(d.includes('wawa')||d.includes('sheetz')||d.includes('sunoco')||d.includes('gas')) return 'Auto';
+    if(d.includes('draftkings')) return 'Draftkings';
+    if(d.includes('zaritza')) return 'Rent Payment';
+    if(d.includes('fid bkg svc')||d.includes('fidelity')) return 'Kids Retirement';
+    if(d.includes('zelle')||d.includes('online transfer')||d.includes('online banking transfer')) return 'Internal Transfer';
     return 'Uncategorized';
 }
 
-function hashTxn(date,desc,amount,ref){
-    const key=ref?`${ref}`:`${date}|${desc}|${amount}`;
-    let h=0;
-    for(let i=0;i<key.length;i++){h=((h<<5)-h)+key.charCodeAt(i);h|=0;}
-    return Math.abs(h).toString(36);
+async function hashTxn(acctId,date,desc,amt){
+    const str=`${acctId}|${date}|${(desc||'').trim().toLowerCase()}|${Math.round(amt*100)/100}`;
+    const buf=new TextEncoder().encode(str);
+    const hash=await crypto.subtle.digest('SHA-256',buf);
+    return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-// ==================== IMPORT TAB ====================
-let categoryRules=[];
-let txnData=[];
-let lastImport=null;
-let txnSort={col:'transaction_date',dir:'desc'};
-let txnSelected=new Set();
-let financeCategories=[];
-
-async function loadFinanceCategories(){
-    try{
-        financeCategories=await supaFetch('finance_categories','GET',null,'?order=sort_order');
-    }catch(e){financeCategories=[];console.error('Load categories:',e);}
-}
-
+// ============ IMPORT TAB ============
 function initImportTab(){
     buildAccountFormatMap();
     loadImportChecklist();
 }
 
-const weeklyImportAccounts=['BOA CC','BOA Checking','PNC Checking','PNC 1407','Family CC','Chase CC','Prime'];
-
 async function loadImportChecklist(){
     const el=document.getElementById('import-checklist');
     if(!el)return;
-    if(!accounts.length){el.innerHTML='<p style="color:var(--sage-400);">Loading accounts...</p>';return;}
-    el.innerHTML='<p style="color:var(--sage-400);">Checking...</p>';
-
-    // Get current week range (Wed to Wed)
-    const today=new Date();
-    const dayOfWeek=today.getDay();
-    const diff=dayOfWeek<=3?3-dayOfWeek:10-dayOfWeek;
-    const thisWed=new Date(today);
-    thisWed.setDate(today.getDate()+diff);
-    const prevWed=new Date(thisWed);
-    prevWed.setDate(prevWed.getDate()-7);
-    const fmtD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const start=fmtD(prevWed);
-    const end=fmtD(thisWed);
-    const weekLabel=prevWed.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+thisWed.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-
-    const allAcc=[...accounts,...closedAccounts];
-    let html=`<div style="font-size:0.8rem;color:var(--sage-400);margin-bottom:10px;">Week of ${weekLabel}</div>`;
-    let doneCount=0;
-
-    for(const name of weeklyImportAccounts){
-        const acc=allAcc.find(a=>a.name.toLowerCase()===name.toLowerCase());
-        let done=false;
-        let latestDate='';
-        if(acc){
-            try{
-                // Always get latest transaction date for this account
-                const latest=await supaFetch('finance_transactions','GET',null,
-                    `?account_id=eq.${acc.id}&order=transaction_date.desc&limit=1`);
-                if(latest?.length) latestDate=latest[0].transaction_date;
-
-                // Check if there are transactions this week
-                const txns=await supaFetch('finance_transactions','GET',null,
-                    `?account_id=eq.${acc.id}&transaction_date=gt.${start}&transaction_date=lte.${end}&limit=1`);
-                if(txns?.length) done=true;
-            }catch(e){console.error('Checklist error for',name,e);}
-        }
-        if(done) doneCount++;
-        const icon=done?'✅':'⬜';
-        const dateHint=latestDate?`<span style="color:${done?'var(--sage-400)':'var(--dusty-rose)'};font-size:0.75rem;margin-left:auto;">latest: ${latestDate}</span>`:'';
-        const nameStyle=done?'color:var(--sage-400);text-decoration:line-through;':'color:var(--charcoal);font-weight:500;';
-        html+=`<div style="padding:8px 12px;border-bottom:1px solid var(--sage-100);display:flex;align-items:center;gap:10px;">
-            <span style="font-size:1.1rem;">${icon}</span>
-            <span style="${nameStyle}">${name}</span>
-            ${dateHint}
-        </div>`;
+    const {end}=getDashWeekRange(0);
+    const priorWed=new Date(end); priorWed.setDate(priorWed.getDate()-7);
+    const priorStr=priorWed.toISOString().split('T')[0];
+    const endStr=end.toISOString().split('T')[0];
+    const shown=accounts.filter(a=>{
+        const n=a.name.toLowerCase();
+        return n.includes('chase')||n.includes('boa')||n.includes('pnc');
+    });
+    const rows=[];
+    for(const a of shown){
+        let count=0;
+        try{
+            const txns=await supaFetch('finance_transactions','GET',null,
+                `?account_id=eq.${a.id}&transaction_date=gt.${priorStr}&transaction_date=lte.${endStr}`);
+            count=txns?.length||0;
+        }catch(e){}
+        rows.push({name:a.name,count});
     }
-
-    const allDone=doneCount===weeklyImportAccounts.length;
-    const summary=allDone
-        ?`<div style="padding:12px;margin-top:12px;background:rgba(39,174,96,0.1);border-radius:8px;color:var(--green-soft);font-weight:600;text-align:center;">🎉 All imports done for this week!</div>`
-        :`<div style="padding:10px;margin-top:12px;background:rgba(192,57,43,0.08);border-radius:8px;color:var(--dusty-rose);font-size:0.85rem;text-align:center;">${weeklyImportAccounts.length-doneCount} remaining</div>`;
-
-    el.innerHTML=html+summary;
+    el.innerHTML=rows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:${r.count>0?'rgba(39,174,96,0.08)':'rgba(192,57,43,0.05)'};border-radius:6px;margin-bottom:4px;">
+        <span>${r.count>0?'✅':'⚠️'} <strong>${r.name}</strong></span>
+        <span style="color:var(--sage-500);font-size:0.85rem;">${r.count} txns this week</span>
+    </div>`).join('');
 }
 
+function dzOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function dzLeave(e){e.currentTarget.classList.remove('drag-over');}
 function dzDropSingle(e){
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
-    const files=e.dataTransfer.files;
-    for(const file of files) autoDetectAndImport(file);
+    const files=Array.from(e.dataTransfer.files).filter(f=>f.name.toLowerCase().endsWith('.csv'));
+    files.forEach(f=>autoDetectAndImport(f));
 }
 function dzFileSelectSingle(e){
-    const files=e.target.files;
-    for(const file of files) autoDetectAndImport(file);
+    const files=Array.from(e.target.files).filter(f=>f.name.toLowerCase().endsWith('.csv'));
+    files.forEach(f=>autoDetectAndImport(f));
     e.target.value='';
 }
 
 async function autoDetectAndImport(file){
     const log=document.getElementById('import-log');
-    const entryId='imp-'+Date.now();
-    log.insertAdjacentHTML('afterbegin',`<div id="${entryId}" style="padding:12px;margin-bottom:8px;border-radius:8px;background:var(--sage-50);border:1px solid var(--sage-200);">
-        <strong>${file.name}</strong> — <span class="imp-status">Reading...</span></div>`);
-    const statusEl=document.querySelector(`#${entryId} .imp-status`);
-    
-    buildAccountFormatMap();
-    const importAccounts=[...accounts,...closedAccounts];
-    const importNames=['family cc','prime','chase cc','boa cc','pnc checking','rental account','pnc 1407','boa checking'];
-    const eligible=importAccounts.filter(a=>importNames.includes(a.name.toLowerCase()));
-    
-    const text=await file.text();
-    const lines=text.split('\n').filter(l=>l.trim());
-    if(lines.length<2){statusEl.textContent='File appears empty.';statusEl.style.color='#c44';return;}
-    
-    // Find header row
-    let headerIdx=0;
-    for(let i=0;i<Math.min(lines.length,15);i++){
-        const test=parseCSVLine(lines[i]).map(c=>c.trim().toLowerCase());
-        if(test[0]==='date'&&test[1]==='description'&&test[2]==='amount'&&test[3]&&test[3].includes('running')){
-            headerIdx=i;break;
-        }
-    }
-    const headers=parseCSVLine(lines[headerIdx]);
-    const detectedFormat=detectCSVFormat(headers);
-    
-    if(detectedFormat==='unknown'){
-        statusEl.innerHTML='❌ Unrecognized CSV format';statusEl.style.color='#c44';return;
-    }
-    
-    // Find matching accounts by format
-    const formatMatches=eligible.filter(a=>accountFormatMap[a.id]===detectedFormat);
-    
-    if(!formatMatches.length){
-        statusEl.innerHTML=`❌ No account set up for this format (${detectedFormat})`;statusEl.style.color='#c44';return;
-    }
-    
-    // Narrow down by last 4 digits in filename or file content
-    let match=null;
-    if(formatMatches.length===1){
-        match=formatMatches[0];
-    } else {
-        // Check last 4 in filename first, then file content
-        for(const a of formatMatches){
-            if(a.last_4&&file.name.includes(a.last_4)){match=a;break;}
-        }
-        if(!match && formatMatches.length===1){
-            // Only check text content if there's one possible match
-            // (avoids cross-matching between PNC Checking and PNC 1407 via transfer descriptions)
-            if(formatMatches[0].last_4 && text.includes(formatMatches[0].last_4)){
-                match=formatMatches[0];
-            }
-        }
-        if(!match){
-            // Can't determine — show clickable account buttons
-            const btns=formatMatches.map(a=>{
-                const label=`${a.name}${a.last_4?' (••'+a.last_4+')':''}`;
-                return `<button onclick="pickImportAccount('${entryId}','${a.id}')" style="padding:8px 16px;margin:4px;border-radius:8px;border:1px solid var(--sage-400);background:white;color:var(--sage-700);cursor:pointer;font-family:'Karla',sans-serif;font-size:0.85rem;">${label}</button>`;
-            }).join('');
-            statusEl.innerHTML=`Which account? ${btns}`;
-            statusEl.style.color='var(--sage-600)';
-            // Store file for later
-            window._pendingImportFile=file;
-            window._pendingImportEntry=entryId;
+    const logRow=document.createElement('div');
+    logRow.style.cssText='padding:10px 14px;background:white;border-radius:6px;margin-bottom:6px;border:1px solid var(--sage-200);';
+    logRow.innerHTML=`📄 <strong>${file.name}</strong> <span style="color:var(--sage-500);font-size:0.85rem;">reading...</span>`;
+    log.prepend(logRow);
+    try{
+        const text=await file.text();
+        const format=detectCSVFormat(text);
+        if(format==='unknown'){
+            logRow.innerHTML=`❌ <strong>${file.name}</strong> <span style="color:var(--red-soft);">unknown format</span>`;
             return;
         }
+        const matches=accounts.filter(a=>accountFormatMap[a.id]===format);
+        if(!matches.length){
+            logRow.innerHTML=`❌ <strong>${file.name}</strong> <span style="color:var(--red-soft);">no ${format} account</span>`;
+            return;
+        }
+        if(matches.length===1){
+            await importCSVForAccountSingle(text,matches[0].id,file.name,logRow);
+        } else {
+            const opts=matches.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+            logRow.innerHTML=`🤔 <strong>${file.name}</strong> <select id="picker-${file.name.replace(/\W/g,'')}" style="margin-left:8px;padding:4px;">${opts}</select>
+                <button class="btn btn-small btn-primary" onclick="pickImportAccount('${file.name.replace(/\W/g,'')}','${btoa(text).substring(0,100)}...')">Import</button>`;
+            logRow._text=text;
+            logRow._filename=file.name;
+        }
+    }catch(e){
+        logRow.innerHTML=`❌ <strong>${file.name}</strong> <span style="color:var(--red-soft);">${e.message}</span>`;
     }
-    
-    statusEl.innerHTML=`Matched → <strong>${match.name}</strong>${match.last_4?' (••'+match.last_4+')':''} · Importing...`;
-    statusEl.style.color='var(--sage-600)';
-    
-    // Run the import
-    await importCSVForAccountSingle(file,match.id,entryId,statusEl);
 }
 
-async function pickImportAccount(entryId,accountId){
-    const file=window._pendingImportFile;
-    if(!file)return;
-    const statusEl=document.querySelector(`#${entryId} .imp-status`);
-    const allAcc=[...accounts,...closedAccounts];
-    const acc=allAcc.find(a=>a.id===accountId);
-    statusEl.innerHTML=`Matched → <strong>${acc?.name||'Account'}</strong> · Importing...`;
-    statusEl.style.color='var(--sage-600)';
-    await importCSVForAccountSingle(file,accountId,entryId,statusEl);
-}
-
-async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
-    if(!categoryRules.length){
-        try{categoryRules=await supaFetch('finance_category_rules','GET',null,'?order=pattern');}catch(e){categoryRules=[];}
-    }
-    
-    const text=await file.text();
+async function importCSVForAccountSingle(text,accountId,filename,logRow){
+    const format=detectCSVFormat(text);
     const lines=text.split('\n').filter(l=>l.trim());
-    
-    let headerIdx=0;
-    for(let i=0;i<Math.min(lines.length,15);i++){
-        const test=parseCSVLine(lines[i]).map(c=>c.trim().toLowerCase());
-        if(test[0]==='date'&&test[1]==='description'&&test[2]==='amount'&&test[3]&&test[3].includes('running')){
-            headerIdx=i;break;
-        }
-    }
-    const headers=parseCSVLine(lines[headerIdx]);
-    const format=detectCSVFormat(headers);
-    
-    const txns=[];
-    for(let i=headerIdx+1;i<lines.length;i++){
+    if(lines.length<2){logRow.innerHTML=`⚠️ <strong>${filename}</strong> <span>no data</span>`;return;}
+    const rows=[];
+    for(let i=1;i<lines.length;i++){
         const cols=parseCSVLine(lines[i]);
-        if(cols.length<3)continue;
-        let txn={account_id:accountId};
-        
+        let date=null,desc='',amt=0;
         if(format==='chase'){
-            txn.transaction_date=parseDate(cols[0]);
-            txn.post_date=parseDate(cols[1]);
-            txn.description=cols[2]||'';
-            txn.category=cols[3]||'Uncategorized';
-            txn.amount=parseFloat(cols[5])||0;
-            txn.memo=cols[6]||null;
-            txn.dedup_hash=hashTxn(txn.transaction_date,txn.description,txn.amount);
+            date=parseDate(cols[0]);
+            desc=cols[2]||'';
+            amt=parseFloat(cols[5])||0;
         } else if(format==='boa'){
-            txn.transaction_date=parseDate(cols[0]);
-            txn.post_date=parseDate(cols[0]);
-            txn.description=(cols[2]||'').trim();
-            txn.address=(cols[3]||'').trim();
-            txn.amount=parseFloat(cols[4])||0;
-            txn.reference_number=cols[1]||'';
-            txn.category='Girls';
-            txn.dedup_hash=hashTxn(null,null,null,txn.reference_number);
+            date=parseDate(cols[0]);
+            desc=cols[1]||'';
+            amt=parseFloat((cols[2]||'').replace(/[$,"]/g,''))||0;
         } else if(format==='pnc'){
-            txn.transaction_date=parseDate(cols[0]);
-            if(!txn.transaction_date)continue;
-            txn.description=(cols[1]||'').trim();
-            txn.amount=parsePNCAmount(cols[2]);
-            txn.raw_balance=cols[3]||'';
-            txn.category=guessCategory(txn.description);
-            txn.dedup_hash=hashTxn(txn.transaction_date,txn.description,txn.amount);
-        } else if(format==='boa_checking'){
-            txn.transaction_date=parseDate(cols[0]);
-            if(!txn.transaction_date)continue;
-            txn.description=(cols[1]||'').trim();
-            if(txn.description.toLowerCase().includes('beginning balance'))continue;
-            txn.amount=parsePNCAmount(cols[2]);
-            txn.raw_balance=cols[3]||'';
-            txn.category=guessCategory(txn.description);
-            txn.dedup_hash=hashTxn(txn.transaction_date,txn.description,txn.amount);
-        } else if(format==='chase_checking'){
-            txn.transaction_date=parseDate(cols[1]);
-            if(!txn.transaction_date)continue;
-            txn.description=(cols[2]||'').trim();
-            txn.amount=parsePNCAmount(cols[3]);
-            txn.raw_balance=cols[5]||'';
-            txn.category=guessCategory(txn.description);
-            txn.dedup_hash=hashTxn(txn.transaction_date,txn.description,txn.amount);
+            date=parseDate(cols[0]);
+            desc=cols[1]||'';
+            const wd=parsePNCAmount(cols[2]);
+            const dep=parsePNCAmount(cols[3]);
+            amt=dep>0?dep:-wd;
         }
-        
-        if(!txn.transaction_date)continue;
-        if(!txn.category) txn.category=guessCategory(txn.description);
-        txns.push(txn);
+        if(!date||(!desc && amt===0)) continue;
+        desc=desc.replace(/^"|"$/g,'').trim();
+        const hash=await hashTxn(accountId,date,desc,amt);
+        rows.push({
+            account_id:accountId,transaction_date:date,description:desc,
+            amount:amt,category:guessCategory(desc),dedup_hash:hash
+        });
     }
-    
-    // Check for duplicates
-    let existingHashes=new Set();
-    try{
-        const hashList=txns.map(t=>t.dedup_hash).filter(Boolean);
-        const batchSize2=100;
-        for(let i=0;i<hashList.length;i+=batchSize2){
-            const batch=hashList.slice(i,i+batchSize2);
-            const hashData=await supaFetch('finance_transactions','GET',null,`?dedup_hash=in.(${batch.map(h=>'"'+h+'"').join(',')})&select=dedup_hash`);
-            if(Array.isArray(hashData)) hashData.forEach(r=>existingHashes.add(r.dedup_hash));
-        }
-    }catch(e){console.error('Hash fetch error:',e);}
-    
-    const newTxns=txns.filter(t=>!existingHashes.has(t.dedup_hash));
-    // Also deduplicate within the CSV itself
-    const seenHashes=new Set();
-    const dedupedTxns=newTxns.filter(t=>{
-        if(seenHashes.has(t.dedup_hash))return false;
-        seenHashes.add(t.dedup_hash);
-        return true;
-    });
-    const skipped=txns.length-dedupedTxns.length;
-    let imported=0;
-    const importedIds=[];
-    
-    if(dedupedTxns.length===0){
-        statusEl.innerHTML=`✅ <strong>0</strong> new · <strong>${skipped}</strong> skipped`;
-        statusEl.style.color='#2e7d32';
-        return;
-    }
-    
+    if(!rows.length){logRow.innerHTML=`⚠️ <strong>${filename}</strong> <span>no valid rows</span>`;return;}
+    let inserted=0,skipped=0;
     const batchSize=50;
-    for(let i=0;i<dedupedTxns.length;i+=batchSize){
-        const batch=dedupedTxns.slice(i,i+batchSize);
+    for(let i=0;i<rows.length;i+=batchSize){
+        const batch=rows.slice(i,i+batchSize);
         try{
-            const clean=batch.map(t=>{
-                const c={...t};
-                Object.keys(c).forEach(k=>{if(c[k]===null||c[k]===undefined||c[k]==='')delete c[k];});
-                if(!c.category)c.category='Uncategorized';
-                return c;
-            });
-            // Ensure all objects have the same keys (Supabase requirement)
-            const allKeys=new Set();
-            clean.forEach(c=>Object.keys(c).forEach(k=>allKeys.add(k)));
-            clean.forEach(c=>allKeys.forEach(k=>{if(!(k in c))c[k]=null;}));
-            const resp=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?on_conflict=dedup_hash`,{
+            const res=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?on_conflict=dedup_hash`,{
                 method:'POST',
                 headers:{
                     'apikey':SUPABASE_KEY,
@@ -3218,387 +2757,223 @@ async function importCSVForAccountSingle(file,accountId,entryId,statusEl){
                     'Content-Type':'application/json',
                     'Prefer':'return=representation,resolution=ignore-duplicates'
                 },
-                body:JSON.stringify(clean)
+                body:JSON.stringify(batch)
             });
-            if(!resp.ok){const errBody=await resp.text();throw new Error(errBody||resp.statusText||`HTTP ${resp.status}`);}
-            const data=await resp.json();
-            if(Array.isArray(data)){imported+=data.length;importedIds.push(...data.map(d=>d.id));}
-        }catch(e){console.error('Batch error:',e);statusEl.innerHTML=`❌ Error: ${e.message}`;statusEl.style.color='#c44';return;}
+            if(res.ok){
+                const saved=await res.json();
+                inserted+=saved.length;
+                skipped+=batch.length-saved.length;
+            }
+        }catch(e){console.error('Import batch:',e);}
     }
-    
-    lastImport={ids:importedIds,accountId,count:imported,entryId};
-    
-    const allAcc=[...accounts,...closedAccounts];
-    const acc=allAcc.find(a=>a.id===accountId);
-    statusEl.innerHTML=`✅ → <strong>${acc?.name||'Account'}</strong> · <strong>${imported}</strong> new · <strong>${skipped}</strong> skipped <button onclick="undoImport('${entryId}')" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid #c44;background:white;color:#c44;cursor:pointer;font-size:0.8rem;">↩ Undo</button> <button onclick="showReassign('${entryId}')" style="margin-left:4px;padding:4px 10px;border-radius:6px;border:1px solid var(--sage-500);background:white;color:var(--sage-700);cursor:pointer;font-size:0.8rem;">🔀 Move</button>`;
-    statusEl.style.color='#2e7d32';
+    logRow.innerHTML=`✅ <strong>${filename}</strong> <span style="color:var(--green-soft);">${inserted} imported, ${skipped} duplicates</span>`;
     loadImportChecklist();
 }
 
-function dzOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
-function dzLeave(e){e.currentTarget.classList.remove('drag-over');}
-
-// ==================== TRANSACTIONS TAB ====================
-
-async function undoImport(entryId){
-    if(!lastImport||!lastImport.ids.length)return;
-    if(!confirm(`Undo import of ${lastImport.count} transactions?`))return;
-    try{
-        for(let i=0;i<lastImport.ids.length;i+=50){
-            const batch=lastImport.ids.slice(i,i+50);
-            const idList=batch.map(id=>`"${id}"`).join(',');
-            await supaFetch('finance_transactions','DELETE',null,`?id=in.(${idList})`);
-        }
-        const entry=document.getElementById(entryId||lastImport.entryId);
-        if(entry){
-            const st=entry.querySelector('.imp-status');
-            if(st){st.style.color='#c44';st.innerHTML=`↩ <strong>${lastImport.count}</strong> transactions removed`;}
-        }
-        lastImport=null;
-        loadImportChecklist();
-    }catch(e){alert('Undo failed: '+e.message);}
+async function pickImportAccount(fnKey,textPreview){
+    const picker=document.getElementById(`picker-${fnKey}`);
+    const logRow=picker.closest('div');
+    const accId=picker.value;
+    await importCSVForAccountSingle(logRow._text,accId,logRow._filename,logRow);
 }
 
-function showReassign(entryId){
-    if(!lastImport||!lastImport.ids.length)return;
-    const allAcc=[...accounts,...closedAccounts];
-    const importNames=['family cc','prime','chase cc','boa cc','pnc checking','pnc 1407','boa checking','rental account'];
-    const eligible=allAcc.filter(a=>importNames.includes(a.name.toLowerCase())&&a.id!==lastImport.accountId);
-    const entry=document.getElementById(entryId);
-    const st=entry?.querySelector('.imp-status');
-    if(!st)return;
-    const btns=eligible.map(a=>
-        `<button onclick="doReassign('${entryId}','${a.id}')" style="padding:6px 12px;margin:3px;border-radius:6px;border:1px solid var(--sage-400);background:white;color:var(--sage-700);cursor:pointer;font-size:0.8rem;">${a.name}</button>`
-    ).join('');
-    st.innerHTML=`Move ${lastImport.count} transactions to:<br>${btns}`;
-    st.style.color='var(--sage-600)';
-}
+// ============ TRANSACTIONS ============
+let txnData=[],txnSort={col:'transaction_date',asc:false},txnSelected=new Set();
+let financeCategories=[];
+let editingCatTxnId=null;
 
-async function doReassign(entryId,newAccountId){
-    if(!lastImport||!lastImport.ids.length)return;
-    const entry=document.getElementById(entryId);
-    const st=entry?.querySelector('.imp-status');
+async function loadFinanceCategories(){
     try{
-        for(let i=0;i<lastImport.ids.length;i+=50){
-            const batch=lastImport.ids.slice(i,i+50);
-            const idList=batch.map(id=>`"${id}"`).join(',');
-            await supaFetch('finance_transactions','PATCH',{account_id:newAccountId},`?id=in.(${idList})`);
-        }
-        const allAcc=[...accounts,...closedAccounts];
-        const newAcc=allAcc.find(a=>a.id===newAccountId);
-        lastImport.accountId=newAccountId;
-        if(st){
-            st.style.color='#2e7d32';
-            st.innerHTML=`✅ Moved to <strong>${newAcc?.name||'Account'}</strong> · <strong>${lastImport.count}</strong> transactions`;
-        }
-        loadImportChecklist();
-    }catch(e){
-        if(st){st.style.color='#c44';st.innerHTML=`❌ Move failed: ${e.message}`;}
+        const rows=await supaFetch('finance_categories','GET',null,'?order=name');
+        financeCategories=(rows||[]).map(r=>r.name);
+    }catch(e){financeCategories=[];}
+    if(!financeCategories.length){
+        financeCategories=['Groceries','Auto','Girls','Draftkings','Rent Payment','Kids Retirement','Internal Transfer','Utilities','Insurance','Dining','Shopping','Medical','Other','Uncategorized'];
     }
+}
+
+function getCatOptions(){
+    return financeCategories.slice();
 }
 
 async function initTransactions(){
-    const allAcc=[...accounts,...closedAccounts];
-    const filterSel=document.getElementById('txn-filter-account');
-    filterSel.innerHTML='<option value="">All Accounts</option>'+allAcc.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
-    
-    if(!categoryRules.length){
-        try{categoryRules=await supaFetch('finance_category_rules','GET',null,'?order=pattern');}catch(e){categoryRules=[];}
-    }
-    
-    populateBulkCatDropdown();
-    await loadTransactions();
+    await loadFinanceCategories();
+    const accSel=document.getElementById('txn-filter-account');
+    accSel.innerHTML='<option value="">All Accounts</option>'+accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
     await loadCategoryFilter();
     await loadVendorFilter();
+    populateBulkCatDropdown();
+    loadTransactions();
 }
 
 async function loadCategoryFilter(){
-    try{
-        const sel=document.getElementById('txn-filter-category');
-        sel.innerHTML='<option value="">All Categories</option>'+getCatOptions().map(c=>`<option value="${c}">${c}</option>`).join('');
-    }catch(e){}
+    const sel=document.getElementById('txn-filter-category');
+    sel.innerHTML='<option value="">All Categories</option>'+financeCategories.map(c=>`<option value="${c}">${c}</option>`).join('');
 }
 
 async function loadVendorFilter(){
+    const sel=document.getElementById('txn-filter-vendor');
     try{
-        const txns=await supaFetch('finance_transactions','GET',null,'?select=description&order=description');
-        const vendors={};
-        txns.forEach(t=>{
-            if(!t.description)return;
-            let v=t.description.split(/\s{2,}|\d{4,}/)[0].trim();
-            v=v.replace(/[#*]+.*$/,'').trim();
-            if(v.length>=3) vendors[v]=(vendors[v]||0)+1;
-        });
-        const sorted=Object.entries(vendors).sort((a,b)=>b[1]-a[1]).slice(0,50);
-        const sel=document.getElementById('txn-filter-vendor');
-        sel.innerHTML='<option value="">All Vendors</option>'+sorted.map(([v,c])=>`<option value="${v}">${v} (${c})</option>`).join('');
+        const txns=await supaFetch('finance_transactions','GET',null,'?select=description&limit=1000');
+        const vendors=[...new Set((txns||[]).map(t=>(t.description||'').split(/\s+/).slice(0,2).join(' ')))].sort();
+        sel.innerHTML='<option value="">All Vendors</option>'+vendors.slice(0,100).map(v=>`<option value="${v}">${v}</option>`).join('');
     }catch(e){}
 }
 
+function populateBulkCatDropdown(){
+    const sel=document.getElementById('txn-bulk-category');
+    if(!sel)return;
+    sel.innerHTML='<option value="">Pick category...</option>'+financeCategories.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
 async function loadTransactions(){
-    const acct=document.getElementById('txn-filter-account')?.value||'';
-    const cat=document.getElementById('txn-filter-category')?.value||'';
-    const vendor=document.getElementById('txn-filter-vendor')?.value||'';
-    const search=document.getElementById('txn-search')?.value?.trim()||'';
-    const fromDate=document.getElementById('txn-filter-from')?.value||'';
-    const toDate=document.getElementById('txn-filter-to')?.value||'';
-    
-    let query='?order=transaction_date.desc,id.desc&limit=300';
-    if(acct) query+=`&account_id=eq.${acct}`;
-    if(cat) query+=`&category=eq.${encodeURIComponent(cat)}`;
-    if(fromDate) query+=`&transaction_date=gte.${fromDate}`;
-    if(toDate) query+=`&transaction_date=lte.${toDate}`;
-    if(search) query+=`&description=ilike.*${encodeURIComponent(search)}*`;
-    if(vendor) query+=`&description=ilike.*${encodeURIComponent(vendor)}*`;
-    
+    const accId=document.getElementById('txn-filter-account').value;
+    const cat=document.getElementById('txn-filter-category').value;
+    const vendor=document.getElementById('txn-filter-vendor').value;
+    const from=document.getElementById('txn-filter-from').value;
+    const to=document.getElementById('txn-filter-to').value;
+    const search=document.getElementById('txn-search').value;
+    let q='?order=transaction_date.desc&limit=500';
+    if(accId) q+=`&account_id=eq.${accId}`;
+    if(cat) q+=`&category=eq.${encodeURIComponent(cat)}`;
+    if(from) q+=`&transaction_date=gte.${from}`;
+    if(to) q+=`&transaction_date=lte.${to}`;
+    if(search) q+=`&description=ilike.*${encodeURIComponent(search)}*`;
     try{
-        txnData=await supaFetch('finance_transactions','GET',null,query);
-    }catch(e){txnData=[];console.error('Load txns:',e);}
-    
-    txnSelected.clear();
-    renderTransactions();
+        txnData=await supaFetch('finance_transactions','GET',null,q)||[];
+        if(vendor){txnData=txnData.filter(t=>(t.description||'').toLowerCase().startsWith(vendor.toLowerCase()));}
+        renderTransactions();
+    }catch(e){console.error('Load txns:',e);}
 }
 
 function renderTransactions(){
     const wrap=document.getElementById('txn-table-wrap');
-    const allAcc=[...accounts,...closedAccounts];
-    const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
-    
-    if(!txnData.length){
-        wrap.innerHTML='<p style="color:var(--sage-400);padding:16px;">No transactions found. Go to the Import tab to upload CSVs!</p>';
-        document.getElementById('txn-summary').textContent='';
-        document.getElementById('txn-bulk-bar').style.display='none';
-        return;
-    }
-    
-    // Sort data
-    const sorted=[...txnData].sort((a,b)=>{
-        let va,vb;
-        if(txnSort.col==='transaction_date'){va=a.transaction_date||'';vb=b.transaction_date||'';}
-        else if(txnSort.col==='account'){va=accMap[a.account_id]?.name||'';vb=accMap[b.account_id]?.name||'';}
-        else if(txnSort.col==='description'){va=(a.description||'').toLowerCase();vb=(b.description||'').toLowerCase();}
-        else if(txnSort.col==='category'){va=(a.category||'').toLowerCase();vb=(b.category||'').toLowerCase();}
-        else if(txnSort.col==='amount'){va=a.amount||0;vb=b.amount||0;return txnSort.dir==='asc'?va-vb:vb-va;}
-        if(va<vb)return txnSort.dir==='asc'?-1:1;
-        if(va>vb)return txnSort.dir==='asc'?1:-1;
-        return 0;
+    const summary=document.getElementById('txn-summary');
+    if(!txnData.length){wrap.innerHTML='<p style="color:var(--sage-500);text-align:center;padding:20px;">No transactions match.</p>';summary.textContent='';return;}
+    const total=txnData.reduce((s,t)=>s+parseFloat(t.amount||0),0);
+    const neg=txnData.filter(t=>parseFloat(t.amount)<0).reduce((s,t)=>s+Math.abs(parseFloat(t.amount)),0);
+    summary.textContent=`${txnData.length} txns • Out: ${fmt(neg)} • Net: ${fmt(total)}`;
+    const sorted=txnData.slice().sort((a,b)=>{
+        const va=a[txnSort.col],vb=b[txnSort.col];
+        const cmp=va<vb?-1:va>vb?1:0;
+        return txnSort.asc?cmp:-cmp;
     });
-    
-    let totalSpend=0,totalIncome=0;
-    txnData.forEach(t=>{
-        if(t.amount<0)totalSpend+=t.amount;
-        else totalIncome+=t.amount;
-    });
-    document.getElementById('txn-summary').innerHTML=
-        `${txnData.length} txns &nbsp;|&nbsp; <span style="color:#c44">${fmt(Math.abs(totalSpend))} out</span> &nbsp;|&nbsp; <span style="color:#4a7c3f">${fmt(totalIncome)} in</span>`;
-    
-    // Bulk bar
+    const accMap={};[...accounts,...closedAccounts].forEach(a=>accMap[a.id]=a);
     const bulkBar=document.getElementById('txn-bulk-bar');
-    if(txnSelected.size>0){
+    if(txnSelected.size){
         bulkBar.style.display='flex';
         document.getElementById('txn-bulk-count').textContent=`${txnSelected.size} selected`;
-    } else {
-        bulkBar.style.display='none';
-    }
-    
-    const arrow=col=>{
-        if(txnSort.col!==col)return' <span style="opacity:0.3;font-size:0.7rem;">⇅</span>';
-        return txnSort.dir==='asc'?' ↑':' ↓';
-    };
-    const thStyle='cursor:pointer;user-select:none;';
-    
-    const allChecked=sorted.length>0&&sorted.every(t=>txnSelected.has(t.id));
-    let html=`<table class="data-table" style="width:100%;">
-        <thead><tr>
-            <th style="width:30px;"><input type="checkbox" ${allChecked?'checked':''} onchange="toggleAllTxn(this.checked)" style="accent-color:var(--sage-500);width:16px;height:16px;cursor:pointer;"></th>
-            <th style="${thStyle}" onclick="sortTxn('transaction_date')">Date${arrow('transaction_date')}</th>
-            <th style="${thStyle}" onclick="sortTxn('account')">Account${arrow('account')}</th>
-            <th style="${thStyle}" onclick="sortTxn('description')">Description${arrow('description')}</th>
-            <th style="${thStyle}" onclick="sortTxn('category')">Category${arrow('category')}</th>
-            <th style="${thStyle}text-align:right;" onclick="sortTxn('amount')">Amount${arrow('amount')}</th>
-        </tr></thead><tbody>`;
-    
+    } else bulkBar.style.display='none';
+    let html=`<table class="data-table"><thead><tr>
+        <th><input type="checkbox" onchange="toggleAllTxn(this.checked)" ${txnSelected.size===txnData.length?'checked':''} style="accent-color:var(--sage-500);"></th>
+        <th onclick="sortTxn('transaction_date')" style="cursor:pointer">Date</th>
+        <th onclick="sortTxn('description')" style="cursor:pointer">Description</th>
+        <th>Account</th>
+        <th onclick="sortTxn('category')" style="cursor:pointer">Category</th>
+        <th class="amount" onclick="sortTxn('amount')" style="cursor:pointer">Amount</th>
+    </tr></thead><tbody>`;
     sorted.forEach(t=>{
-        const acctName=accMap[t.account_id]?.name||'?';
-        const shortAcct=acctName.length>12?acctName.substring(0,12)+'…':acctName;
-        const isNeg=t.amount<0;
-        const catStyle=t.category==='Uncategorized'?'background:#ffeeba;color:#856404;':'';
-        const checked=txnSelected.has(t.id)?'checked':'';
-        html+=`<tr style="${checked?'background:rgba(122,144,97,0.12);':''}">
-            <td><input type="checkbox" ${checked} onchange="toggleTxnSelect(${t.id},this.checked)" style="accent-color:var(--sage-500);width:16px;height:16px;cursor:pointer;"></td>
-            <td style="white-space:nowrap;font-size:0.8rem;">${t.transaction_date}</td>
-            <td style="font-size:0.75rem;color:var(--sage-500);" title="${acctName}">${shortAcct}</td>
-            <td style="font-size:0.8rem;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(t.description||'').replace(/"/g,'&quot;')}">${t.description||''}</td>
-            <td><span class="badge" style="cursor:pointer;${catStyle}" onclick="editCategory(${t.id},'${(t.description||'').replace(/'/g,"\\'")}','${t.category}')" title="Click to change">${t.category||'—'}</span></td>
-            <td style="text-align:right;font-weight:600;color:${isNeg?'var(--sage-700)':'#4a7c3f'};white-space:nowrap;">${isNeg?'-':''}${fmt(Math.abs(t.amount))}</td>
+        html+=`<tr>
+            <td><input type="checkbox" onchange="toggleTxnSelect(${t.id},this.checked)" ${txnSelected.has(t.id)?'checked':''} style="accent-color:var(--sage-500);"></td>
+            <td style="white-space:nowrap;">${fmtShort(t.transaction_date)}</td>
+            <td>${(t.description||'').substring(0,80)}</td>
+            <td style="font-size:0.8rem;color:var(--sage-500);">${accMap[t.account_id]?.name||'-'}</td>
+            <td><a href="javascript:void(0)" onclick="editCategory(${t.id},'${(t.description||'').replace(/'/g,'').substring(0,40)}')" style="color:var(--sage-600);">${t.category||'Set...'}</a></td>
+            <td class="amount ${parseFloat(t.amount)<0?'negative':'positive'}">${fmt(t.amount)}</td>
         </tr>`;
     });
-    
-    html+=`</tbody></table>`;
+    html+='</tbody></table>';
     wrap.innerHTML=html;
 }
 
 function sortTxn(col){
-    if(txnSort.col===col){txnSort.dir=txnSort.dir==='asc'?'desc':'asc';}
-    else{txnSort.col=col;txnSort.dir=col==='amount'?'desc':'asc';}
+    if(txnSort.col===col) txnSort.asc=!txnSort.asc;
+    else {txnSort.col=col;txnSort.asc=true;}
     renderTransactions();
-}
-
-function exportTxnCSV(){
-    if(!txnData.length){alert('No transactions to export.');return;}
-    const allAcc=[...accounts,...closedAccounts];
-    const accMap={};allAcc.forEach(a=>accMap[a.id]=a);
-
-    // Use same sort as displayed
-    const sorted=[...txnData].sort((a,b)=>{
-        let va,vb;
-        if(txnSort.col==='transaction_date'){va=a.transaction_date||'';vb=b.transaction_date||'';}
-        else if(txnSort.col==='account'){va=accMap[a.account_id]?.name||'';vb=accMap[b.account_id]?.name||'';}
-        else if(txnSort.col==='description'){va=(a.description||'').toLowerCase();vb=(b.description||'').toLowerCase();}
-        else if(txnSort.col==='category'){va=(a.category||'').toLowerCase();vb=(b.category||'').toLowerCase();}
-        else if(txnSort.col==='amount'){va=a.amount||0;vb=b.amount||0;return txnSort.dir==='asc'?va-vb:vb-va;}
-        if(va<vb)return txnSort.dir==='asc'?-1:1;
-        if(va>vb)return txnSort.dir==='asc'?1:-1;
-        return 0;
-    });
-
-    const esc=v=>{const s=String(v??'');return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s;};
-    const rows=[['Date','Account','Description','Category','Amount']];
-    sorted.forEach(t=>{
-        rows.push([
-            t.transaction_date||'',
-            accMap[t.account_id]?.name||'',
-            t.description||'',
-            t.category||'',
-            t.amount!=null?t.amount.toFixed(2):''
-        ]);
-    });
-    const csv=rows.map(r=>r.map(esc).join(',')).join('\n');
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    const from=document.getElementById('txn-filter-from')?.value||'';
-    const to=document.getElementById('txn-filter-to')?.value||'';
-    a.download=`transactions${from?'_'+from:''}${to?'_to_'+to:''}.csv`;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }
 
 function toggleTxnSelect(id,checked){
-    if(checked)txnSelected.add(id);else txnSelected.delete(id);
+    if(checked) txnSelected.add(id); else txnSelected.delete(id);
     renderTransactions();
 }
-
 function toggleAllTxn(checked){
-    if(checked){txnData.forEach(t=>txnSelected.add(t.id));}
-    else{txnSelected.clear();}
+    txnSelected.clear();
+    if(checked) txnData.forEach(t=>txnSelected.add(t.id));
     renderTransactions();
 }
 
 async function bulkApplyCategory(){
     const cat=document.getElementById('txn-bulk-category').value;
-    if(!cat)return alert('Pick a category first.');
-    if(!txnSelected.size)return;
-    
-    const count=txnSelected.size;
-    if(!confirm(`Set ${count} transaction${count>1?'s':''} to "${cat}"?`))return;
-    
+    if(!cat)return alert('Pick a category.');
+    if(!confirm(`Apply "${cat}" to ${txnSelected.size} transactions?`))return;
     try{
-        const ids=[...txnSelected];
-        // Batch in groups of 20
-        for(let i=0;i<ids.length;i+=20){
-            const batch=ids.slice(i,i+20);
-            const idList=batch.join(',');
-            await supaFetch('finance_transactions','PATCH',{category:cat},`?id=in.(${idList})`);
+        for(const id of txnSelected){
+            await supaFetch('finance_transactions','PATCH',{category:cat},`?id=eq.${id}`);
         }
-        
         txnSelected.clear();
-        document.getElementById('txn-bulk-category').value='';
         await loadTransactions();
-        await loadCategoryFilter();
     }catch(e){alert('Error: '+e.message);}
 }
 
-let editingCatTxnId=null;
-let editingCatDesc='';
-
-function getCatOptions(){
-    return financeCategories.map(c=>c.name);
+function exportTxnCSV(){
+    if(!txnData.length)return;
+    const accMap={};[...accounts,...closedAccounts].forEach(a=>accMap[a.id]=a);
+    const rows=[['Date','Description','Account','Category','Amount']];
+    txnData.forEach(t=>{
+        rows.push([t.transaction_date,(t.description||'').replace(/,/g,';'),accMap[t.account_id]?.name||'',t.category||'',t.amount]);
+    });
+    const csv=rows.map(r=>r.join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
-function populateBulkCatDropdown(){
-    const sel=document.getElementById('txn-bulk-category');
-    sel.innerHTML='<option value="">Pick category...</option>'+getCatOptions().map(c=>`<option value="${c}">${c}</option>`).join('');
-}
-
-function editCategory(txnId,description,currentCat){
+function editCategory(txnId,descShort){
     editingCatTxnId=txnId;
-    editingCatDesc=description;
-    document.getElementById('modal-cat-desc').textContent=description;
-    document.getElementById('modal-cat-new').value='';
-    
+    document.getElementById('modal-cat-desc').textContent=descShort;
     const list=document.getElementById('modal-cat-list');
-    list.innerHTML=getCatOptions().map(c=>{
-        const isActive=c===currentCat;
-        return `<div onclick="applyCategory('${c.replace(/'/g,"\\'")}')" style="padding:10px 14px;cursor:pointer;border-radius:8px;margin-bottom:4px;font-size:0.9rem;transition:all 0.15s;
-            ${isActive?'background:var(--sage-500);color:white;font-weight:600;':'background:var(--sage-50);color:var(--charcoal);'}
-            " onmouseover="this.style.background='${isActive?'var(--sage-600)':'var(--sage-100)'}'" 
-            onmouseout="this.style.background='${isActive?'var(--sage-500)':'var(--sage-50)'}'">
-            ${c}${isActive?' ✓':''}
-        </div>`;
-    }).join('');
-    
+    list.innerHTML=financeCategories.map(c=>`<div onclick="applyCategory('${c.replace(/'/g,"\\'")}')" style="padding:8px 12px;cursor:pointer;border-radius:6px;margin-bottom:2px;" onmouseover="this.style.background='var(--sage-100)'" onmouseout="this.style.background=''">${c}</div>`).join('');
+    document.getElementById('modal-cat-new').value='';
     document.getElementById('modal-category').classList.add('active');
 }
 
-async function applyCategory(newCat){
-    if(!editingCatTxnId)return;
+async function applyCategory(cat){
     try{
-        await supaFetch('finance_transactions','PATCH',{category:newCat},`?id=eq.${editingCatTxnId}`);
-        
-        const vendor=editingCatDesc.split(/\s{2,}|\d/)[0].trim().toUpperCase();
-        if(vendor.length>=3){
-            try{
-                await supaFetch('finance_category_rules','POST',{pattern:vendor,category:newCat});
-                categoryRules=await supaFetch('finance_category_rules','GET',null,'?order=pattern');
-            }catch(e){}
-        }
-        
+        await supaFetch('finance_transactions','PATCH',{category:cat},`?id=eq.${editingCatTxnId}`);
         closeModal('modal-category');
         await loadTransactions();
-        await loadCategoryFilter();
     }catch(e){alert('Error: '+e.message);}
 }
 
 async function addNewCategory(){
     const name=document.getElementById('modal-cat-new').value.trim();
     if(!name)return;
-    
-    // Check if it already exists
-    if(financeCategories.some(c=>c.name.toLowerCase()===name.toLowerCase())){
-        alert('That category already exists!');
-        return;
-    }
-    
     try{
-        const maxOrder=financeCategories.length?Math.max(...financeCategories.map(c=>c.sort_order)):0;
-        await supaFetch('finance_categories','POST',{name:name,sort_order:maxOrder+1});
-        await loadFinanceCategories();
-        
-        // If we're in the single-edit modal, refresh it and auto-apply
-        if(editingCatTxnId){
-            applyCategory(name);
-        } else {
-            // Refresh the bulk dropdown
-            populateBulkCatDropdown();
-        }
-    }catch(e){alert('Error adding category: '+e.message);}
+        await supaFetch('finance_categories','POST',{name});
+        financeCategories.push(name);
+        financeCategories.sort();
+        await loadCategoryFilter();
+        populateBulkCatDropdown();
+        applyCategory(name);
+    }catch(e){
+        // If table doesn't exist, just use it locally
+        financeCategories.push(name);
+        financeCategories.sort();
+        applyCategory(name);
+    }
 }
 
+// ============ INIT ============
 async function init(){
     await loadFinanceCategories();
-    await loadAccounts(); await loadBills(); await loadBillPayments();
+    await loadAccounts();
+    await loadBills();
+    await loadBillPayments();
+    populateWeekDropdown();
     loadDashboard();
 }
 init();
