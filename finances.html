@@ -1893,8 +1893,8 @@ function calcWeekly(){
 
     if(pncAcc){
         const otherPNC=getOtherPNCTotal();
-        // Extra payment is NOT added here — it's already included in Other PNC Payments
-        const totalOut=pncAutoPayTotal+billsTotal+otherPNC;
+        const extraPay=parseFloat(document.getElementById('prudential-extra')?.value)||0;
+        const totalOut=pncAutoPayTotal+billsTotal+otherPNC+extraPay;
         const pncPayInput=document.querySelector(`input[data-id="${pncAcc.id}"][data-f="pay"]`);
         const pncEndDiv=document.querySelector(`div[data-id="${pncAcc.id}"][data-f="end"]`);
         const netOut=totalOut+rentalIncome;
