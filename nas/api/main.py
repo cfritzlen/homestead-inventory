@@ -235,7 +235,7 @@ async def ai_chat(request: Request):
     async with httpx.AsyncClient(timeout=120) as client:
         try:
             resp = await client.post(f"{OLLAMA_URL}/api/generate", json={
-                "model": "llama3.1:8b",
+                "model": "llama3.2:3b",
                 "prompt": full_prompt,
                 "stream": False,
                 "options": {"num_predict": max_tokens},
@@ -243,6 +243,8 @@ async def ai_chat(request: Request):
             resp.raise_for_status()
             data = resp.json()
             return {"content": [{"text": data.get("response", "")}]}
+        except httpx.ConnectError:
+            raise HTTPException(503, "AI offline — Raspberry Pi not reachable")
         except Exception as e:
             raise HTTPException(503, f"AI service unavailable: {e}")
 

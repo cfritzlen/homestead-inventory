@@ -25,7 +25,7 @@ services:
     container_name: homestead-api
     environment:
       DATABASE_URL: postgresql+asyncpg://homestead:${DB_PASSWORD}@postgres:5432/homestead
-      OLLAMA_URL: http://ollama:11434
+      OLLAMA_URL: http://${PI_HOST:-192.168.1.200}:11434
       UNIFI_API_KEY: ${UNIFI_API_KEY}
       UNIFI_HOST: ${UNIFI_HOST:-192.168.1.1}
       REOLINK_HOST: ${REOLINK_HOST:-192.168.1.65}
@@ -63,11 +63,6 @@ services:
       - "8554:8554"
     restart: unless-stopped
 
-  ollama:
-    image: ollama/ollama
-    container_name: homestead-ollama
-    volumes:
-      - ./ollama-data:/root/.ollama
-    ports:
-      - "11434:11434"
-    restart: unless-stopped
+  # Ollama runs on Raspberry Pi 5 (8GB) at PI_HOST, not on the NAS.
+  # Install on Pi: curl -fsSL https://ollama.com/install.sh | sh
+  # Then: ollama pull llama3.2:3b
