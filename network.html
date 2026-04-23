@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Monitor — Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        :root{
+            --sage-50:#f6f7f3;--sage-100:#e8ebe0;--sage-200:#d4dac5;--sage-300:#b8c5a3;--sage-400:#98ab7e;
+            --sage-500:#7a9061;--sage-600:#5f734c;--sage-700:#4a5a3b;--sage-800:#3d4a32;
+            --cream:#ece8dd;--taupe:#c4b5a4;--dusty-sage:#a4ac95;--mauve:#a88479;--charcoal:#4a4d47;--dusty-rose:#9b7269;
+        }
+        body{font-family:'Karla',sans-serif;background:var(--charcoal);min-height:100vh;color:var(--cream);}
+        .top-bar{display:flex;align-items:center;padding:16px 24px;background:rgba(0,0,0,0.2);}
+        .top-bar a{color:var(--taupe);text-decoration:none;font-size:0.95rem;transition:color 0.2s;}
+        .top-bar a:hover{color:var(--cream);}
+        .main-content{padding:24px 20px 60px;max-width:1200px;margin:0 auto;}
+        header{text-align:center;margin-bottom:24px;}
+        header .icon{font-size:2.5rem;margin-bottom:8px;}
+        h1{font-family:'Crimson Pro',serif;font-size:2.6rem;font-weight:300;letter-spacing:1px;margin-bottom:4px;}
+        .subtitle{font-size:1rem;color:var(--taupe);}
+
+        .status-bar{display:flex;justify-content:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+        .status-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.15);border-radius:20px;padding:6px 14px;font-size:0.82rem;color:var(--taupe);}
+        .status-dot{width:8px;height:8px;border-radius:50%;background:#66BB6A;animation:pulse 2s infinite;}
+        .status-dot.offline{background:var(--dusty-rose);animation:none;}
+        @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+        /* Setup overlay */
+        .setup-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100;}
+        .setup-box{background:var(--charcoal);border:1px solid rgba(236,232,221,0.2);border-radius:16px;padding:40px;max-width:440px;width:90%;text-align:center;}
+        .setup-box h2{font-family:'Crimson Pro',serif;font-size:1.8rem;font-weight:300;margin-bottom:8px;}
+        .setup-box p{color:var(--taupe);font-size:0.9rem;margin-bottom:20px;line-height:1.5;}
+        .setup-box input{width:100%;padding:12px 16px;border-radius:10px;border:1px solid rgba(236,232,221,0.2);background:rgba(236,232,221,0.08);color:var(--cream);font-family:'Karla';font-size:0.95rem;margin-bottom:12px;outline:none;}
+        .setup-box input:focus{border-color:var(--sage-400);}
+        .setup-box button{width:100%;padding:12px;border:none;border-radius:10px;background:var(--sage-500);color:white;font-family:'Karla';font-size:1rem;font-weight:600;cursor:pointer;transition:background 0.2s;}
+        .setup-box button:hover{background:var(--sage-600);}
+        .setup-box .hint{font-size:0.78rem;color:var(--dusty-sage);margin-top:12px;}
+
+        /* Summary cards */
+        .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:28px;}
+        .summary-card{background:rgba(236,232,221,0.08);border:1px solid rgba(236,232,221,0.1);border-radius:14px;padding:20px;text-align:center;}
+        .summary-card .value{font-family:'Crimson Pro',serif;font-size:2.4rem;font-weight:600;color:var(--cream);}
+        .summary-card .label{font-size:0.82rem;color:var(--taupe);margin-top:4px;}
+
+        /* Filter tabs */
+        .filter-bar{display:flex;justify-content:center;gap:4px;margin-bottom:20px;background:rgba(236,232,221,0.1);border-radius:10px;padding:4px;width:fit-content;margin-left:auto;margin-right:auto;flex-wrap:wrap;}
+        .filter-btn{border:none;background:transparent;color:var(--taupe);padding:8px 18px;border-radius:8px;cursor:pointer;font-family:'Karla';font-size:0.85rem;font-weight:500;transition:all 0.2s;}
+        .filter-btn.active{background:rgba(236,232,221,0.95);color:var(--sage-700);box-shadow:0 2px 8px rgba(0,0,0,0.15);}
+        .filter-btn:hover:not(.active){color:var(--cream);}
+
+        /* Client table */
+        .clients-table{width:100%;border-collapse:collapse;}
+        .clients-table th{text-align:left;padding:10px 12px;font-size:0.78rem;font-weight:600;color:var(--dusty-sage);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid rgba(236,232,221,0.1);}
+        .clients-table td{padding:12px;font-size:0.9rem;border-bottom:1px solid rgba(236,232,221,0.06);color:var(--cream);}
+        .clients-table tr:hover td{background:rgba(236,232,221,0.04);}
+        .conn-badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:0.75rem;font-weight:600;}
+        .conn-badge.wifi{background:rgba(102,187,106,0.15);color:#66BB6A;}
+        .conn-badge.wired{background:rgba(77,208,225,0.15);color:#4DD0E1;}
+        .signal-bar{display:inline-flex;align-items:flex-end;gap:2px;height:16px;}
+        .signal-bar span{width:4px;border-radius:1px;background:rgba(236,232,221,0.15);}
+        .signal-bar span.filled{background:#66BB6A;}
+        .signal-bar span:nth-child(1){height:4px;}
+        .signal-bar span:nth-child(2){height:7px;}
+        .signal-bar span:nth-child(3){height:10px;}
+        .signal-bar span:nth-child(4){height:14px;}
+        .hostname{font-weight:500;}
+        .mac{font-size:0.78rem;color:var(--taupe);font-family:monospace;}
+        .traffic{font-size:0.82rem;color:var(--taupe);}
+
+        /* Refresh button */
+        .refresh-btn{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:var(--sage-500);border:none;color:white;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.3);transition:all 0.2s;display:flex;align-items:center;justify-content:center;}
+        .refresh-btn:hover{background:var(--sage-600);transform:scale(1.05);}
+        .refresh-btn.spinning{animation:spin 1s linear infinite;}
+        @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+        .error-msg{text-align:center;padding:40px;color:var(--dusty-rose);}
+        .error-msg p{margin-bottom:8px;}
+        .error-msg .detail{font-size:0.85rem;color:var(--taupe);}
+
+        .table-wrap{overflow-x:auto;}
+
+        @media(max-width:768px){
+            h1{font-size:2rem;}
+            .main-content{padding:16px 12px 80px;}
+            .summary-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+            .summary-card .value{font-size:1.8rem;}
+            .clients-table th,.clients-table td{padding:8px 6px;font-size:0.8rem;}
+            .col-mac,.col-signal,.col-uptime{display:none;}
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar"><a href="index.html">← Back to Hub</a></div>
+
+    <div class="main-content">
+        <header>
+            <div class="icon">🌐</div>
+            <h1>Network Monitor</h1>
+            <p class="subtitle">UniFi Dream Router — Connected Clients</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-pill"><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting...</span></div>
+            <div class="status-pill" id="lastUpdated">—</div>
+        </div>
+
+        <div class="summary-grid" id="summaryGrid">
+            <div class="summary-card"><div class="value" id="totalClients">—</div><div class="label">Total Devices</div></div>
+            <div class="summary-card"><div class="value" id="wifiClients">—</div><div class="label">WiFi</div></div>
+            <div class="summary-card"><div class="value" id="wiredClients">—</div><div class="label">Wired</div></div>
+            <div class="summary-card"><div class="value" id="totalTraffic">—</div><div class="label">Total Traffic</div></div>
+        </div>
+
+        <div class="filter-bar">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="wifi">WiFi</button>
+            <button class="filter-btn" data-filter="wired">Wired</button>
+        </div>
+
+        <div class="table-wrap">
+            <table class="clients-table">
+                <thead>
+                    <tr>
+                        <th>Device</th>
+                        <th>IP</th>
+                        <th class="col-mac">MAC</th>
+                        <th>Type</th>
+                        <th class="col-signal">Signal</th>
+                        <th>Traffic</th>
+                        <th class="col-uptime">Uptime</th>
+                    </tr>
+                </thead>
+                <tbody id="clientsBody"></tbody>
+            </table>
+        </div>
+
+        <div class="error-msg" id="errorMsg" style="display:none;"></div>
+    </div>
+
+    <button class="refresh-btn" id="refreshBtn" title="Refresh">&#x21bb;</button>
+
+    <!-- Setup overlay (shown if no API key stored) -->
+    <div class="setup-overlay" id="setupOverlay" style="display:none;">
+        <div class="setup-box">
+            <h2>Connect to UniFi</h2>
+            <p>Enter your UniFi API key to start monitoring.<br>It will be stored only in this browser.</p>
+            <input type="password" id="apiKeyInput" placeholder="Paste your API key">
+            <input type="text" id="hostInput" placeholder="Router IP (default: 192.168.1.1)" value="192.168.1.1">
+            <button id="saveKeyBtn">Connect</button>
+            <p class="hint">Find your API key in UniFi Settings → API</p>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'unifi_api_key';
+        const HOST_KEY = 'unifi_host';
+
+        function getConfig() {
+            return {
+                apiKey: localStorage.getItem(STORAGE_KEY),
+                host: localStorage.getItem(HOST_KEY) || '192.168.1.1'
+            };
+        }
+
+        // Setup
+        const overlay = document.getElementById('setupOverlay');
+        const { apiKey } = getConfig();
+        if (!apiKey) overlay.style.display = 'flex';
+
+        document.getElementById('saveKeyBtn').addEventListener('click', () => {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            const host = document.getElementById('hostInput').value.trim() || '192.168.1.1';
+            if (!key) return;
+            localStorage.setItem(STORAGE_KEY, key);
+            localStorage.setItem(HOST_KEY, host);
+            overlay.style.display = 'none';
+            fetchClients();
+        });
+
+        // Formatting helpers
+        function formatBytes(b) {
+            const units = ['B','KB','MB','GB','TB'];
+            let i = 0;
+            while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
+            return b.toFixed(1) + ' ' + units[i];
+        }
+
+        function formatUptime(sec) {
+            const d = Math.floor(sec / 86400);
+            const h = Math.floor((sec % 86400) / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const parts = [];
+            if (d) parts.push(d + 'd');
+            if (h) parts.push(h + 'h');
+            parts.push(m + 'm');
+            return parts.join(' ');
+        }
+
+        function signalBars(signal) {
+            if (signal === undefined || signal === null) return '—';
+            const s = Math.abs(signal);
+            const level = s <= 50 ? 4 : s <= 60 ? 3 : s <= 70 ? 2 : s <= 80 ? 1 : 0;
+            let html = '<div class="signal-bar">';
+            for (let i = 1; i <= 4; i++) {
+                html += '<span' + (i <= level ? ' class="filled"' : '') + '></span>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        // Fetch clients
+        let currentFilter = 'all';
+
+        async function fetchClients() {
+            const { apiKey, host } = getConfig();
+            if (!apiKey) { overlay.style.display = 'flex'; return; }
+
+            const btn = document.getElementById('refreshBtn');
+            btn.classList.add('spinning');
+            document.getElementById('statusText').textContent = 'Fetching...';
+
+            try {
+                const resp = await fetch(`https://${host}/proxy/network/api/s/default/stat/sta`, {
+                    headers: { 'X-API-KEY': apiKey, 'Accept': 'application/json' }
+                });
+
+                if (!resp.ok) {
+                    if (resp.status === 401) throw new Error('Invalid API key. Check Settings → API in UniFi.');
+                    throw new Error('API returned ' + resp.status);
+                }
+
+                const json = await resp.json();
+                const clients = json.data || [];
+                renderClients(clients);
+
+                document.getElementById('statusDot').classList.remove('offline');
+                document.getElementById('statusText').textContent = 'Connected';
+                document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+                document.getElementById('errorMsg').style.display = 'none';
+            } catch (err) {
+                document.getElementById('statusDot').classList.add('offline');
+                document.getElementById('statusText').textContent = 'Offline';
+                document.getElementById('errorMsg').style.display = 'block';
+                document.getElementById('errorMsg').innerHTML =
+                    '<p>' + err.message + '</p>' +
+                    '<p class="detail">Make sure you\'re on your home network and the API key is correct.</p>' +
+                    '<p class="detail" style="margin-top:12px;"><a href="#" onclick="resetKey()" style="color:var(--sage-400);">Change API Key</a></p>';
+            } finally {
+                btn.classList.remove('spinning');
+            }
+        }
+
+        function renderClients(clients) {
+            // Sort by total traffic descending
+            clients.sort((a, b) => ((b.tx_bytes||0) + (b.rx_bytes||0)) - ((a.tx_bytes||0) + (a.rx_bytes||0)));
+
+            const wifi = clients.filter(c => !c.is_wired);
+            const wired = clients.filter(c => c.is_wired);
+            const totalBytes = clients.reduce((s, c) => s + (c.tx_bytes||0) + (c.rx_bytes||0), 0);
+
+            document.getElementById('totalClients').textContent = clients.length;
+            document.getElementById('wifiClients').textContent = wifi.length;
+            document.getElementById('wiredClients').textContent = wired.length;
+            document.getElementById('totalTraffic').textContent = formatBytes(totalBytes);
+
+            const filtered = currentFilter === 'all' ? clients :
+                             currentFilter === 'wifi' ? wifi : wired;
+
+            const tbody = document.getElementById('clientsBody');
+            tbody.innerHTML = filtered.map(c => {
+                const name = c.hostname || c.name || c.oui || 'Unknown';
+                const ip = c.ip || '—';
+                const mac = c.mac || '—';
+                const isWired = c.is_wired;
+                const tx = c.tx_bytes || 0;
+                const rx = c.rx_bytes || 0;
+                const uptime = c.uptime || 0;
+
+                return `<tr>
+                    <td><span class="hostname">${escapeHtml(name)}</span></td>
+                    <td>${escapeHtml(ip)}</td>
+                    <td class="col-mac"><span class="mac">${escapeHtml(mac)}</span></td>
+                    <td><span class="conn-badge ${isWired ? 'wired' : 'wifi'}">${isWired ? 'Wired' : 'WiFi'}</span></td>
+                    <td class="col-signal">${isWired ? '—' : signalBars(c.signal)}</td>
+                    <td class="traffic">↑${formatBytes(tx)} ↓${formatBytes(rx)}</td>
+                    <td class="col-uptime">${formatUptime(uptime)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        function resetKey() {
+            localStorage.removeItem(STORAGE_KEY);
+            overlay.style.display = 'flex';
+        }
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                fetchClients();
+            });
+        });
+
+        // Refresh button
+        document.getElementById('refreshBtn').addEventListener('click', fetchClients);
+
+        // Auto-refresh every 30 seconds
+        if (getConfig().apiKey) fetchClients();
+        setInterval(() => { if (getConfig().apiKey) fetchClients(); }, 30000);
+    </script>
+</body>
+</html>
