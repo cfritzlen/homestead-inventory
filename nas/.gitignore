@@ -1,0 +1,10 @@
+# Personal data exports — never commit
+exported-data/
+
+# Docker volumes
+postgres-data/
+ollama-data/
+receipts/
+
+# Secrets
+.env

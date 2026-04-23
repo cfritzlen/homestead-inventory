@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: homestead-db
+    environment:
+      POSTGRES_DB: homestead
+      POSTGRES_USER: homestead
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homestead"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./api
+    container_name: homestead-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://homestead:${DB_PASSWORD}@postgres:5432/homestead
+      OLLAMA_URL: http://ollama:11434
+      UNIFI_API_KEY: ${UNIFI_API_KEY}
+      UNIFI_HOST: ${UNIFI_HOST:-192.168.1.1}
+      REOLINK_HOST: ${REOLINK_HOST:-192.168.1.65}
+      REOLINK_USER: ${REOLINK_USER:-admin}
+      REOLINK_PASS: ${REOLINK_PASS:-}
+    volumes:
+      - ./receipts:/app/receipts
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: homestead-web
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./libs:/usr/share/nginx/html/libs:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  go2rtc:
+    image: alexxit/go2rtc
+    container_name: homestead-camera
+    volumes:
+      - ./go2rtc:/config
+    ports:
+      - "1984:1984"
+      - "8554:8554"
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    container_name: homestead-ollama
+    volumes:
+      - ./ollama-data:/root/.ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
