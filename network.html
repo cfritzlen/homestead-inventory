@@ -142,44 +142,7 @@
 
     <button class="refresh-btn" id="refreshBtn" title="Refresh">&#x21bb;</button>
 
-    <!-- Setup overlay (shown if no API key stored) -->
-    <div class="setup-overlay" id="setupOverlay" style="display:none;">
-        <div class="setup-box">
-            <h2>Connect to UniFi</h2>
-            <p>Enter your UniFi API key to start monitoring.<br>It will be stored only in this browser.</p>
-            <input type="password" id="apiKeyInput" placeholder="Paste your API key">
-            <input type="text" id="hostInput" placeholder="Router IP (default: 192.168.1.1)" value="192.168.1.1">
-            <button id="saveKeyBtn">Connect</button>
-            <p class="hint">Find your API key in UniFi Settings → API</p>
-        </div>
-    </div>
-
     <script>
-        const STORAGE_KEY = 'unifi_api_key';
-        const HOST_KEY = 'unifi_host';
-
-        function getConfig() {
-            return {
-                apiKey: localStorage.getItem(STORAGE_KEY),
-                host: localStorage.getItem(HOST_KEY) || '192.168.1.1'
-            };
-        }
-
-        // Setup
-        const overlay = document.getElementById('setupOverlay');
-        const { apiKey } = getConfig();
-        if (!apiKey) overlay.style.display = 'flex';
-
-        document.getElementById('saveKeyBtn').addEventListener('click', () => {
-            const key = document.getElementById('apiKeyInput').value.trim();
-            const host = document.getElementById('hostInput').value.trim() || '192.168.1.1';
-            if (!key) return;
-            localStorage.setItem(STORAGE_KEY, key);
-            localStorage.setItem(HOST_KEY, host);
-            overlay.style.display = 'none';
-            fetchClients();
-        });
-
         // Formatting helpers
         function formatBytes(b) {
             const units = ['B','KB','MB','GB','TB'];
@@ -211,50 +174,50 @@
             return html;
         }
 
-        // Fetch clients
+        function escapeHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        // Fetch from static JSON file
         let currentFilter = 'all';
 
         async function fetchClients() {
-            const { apiKey, host } = getConfig();
-            if (!apiKey) { overlay.style.display = 'flex'; return; }
-
             const btn = document.getElementById('refreshBtn');
             btn.classList.add('spinning');
             document.getElementById('statusText').textContent = 'Fetching...';
 
             try {
-                const resp = await fetch(`https://${host}/proxy/network/api/s/default/stat/sta`, {
-                    headers: { 'X-API-KEY': apiKey, 'Accept': 'application/json' }
-                });
+                const resp = await fetch('network-data.json?' + Date.now());
+                if (!resp.ok) throw new Error('No data yet — run fetch-network.py to generate it.');
 
-                if (!resp.ok) {
-                    if (resp.status === 401) throw new Error('Invalid API key. Check Settings → API in UniFi.');
-                    throw new Error('API returned ' + resp.status);
-                }
-
-                const json = await resp.json();
-                const clients = json.data || [];
+                const data = await resp.json();
+                const clients = data.clients || [];
                 renderClients(clients);
 
+                const updated = new Date(data.updated);
+                const ago = Math.round((Date.now() - updated.getTime()) / 60000);
+                const agoText = ago < 1 ? 'just now' : ago + 'm ago';
+
                 document.getElementById('statusDot').classList.remove('offline');
-                document.getElementById('statusText').textContent = 'Connected';
-                document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+                document.getElementById('statusText').textContent = 'Last snapshot';
+                document.getElementById('lastUpdated').textContent = updated.toLocaleString() + ' (' + agoText + ')';
                 document.getElementById('errorMsg').style.display = 'none';
             } catch (err) {
                 document.getElementById('statusDot').classList.add('offline');
-                document.getElementById('statusText').textContent = 'Offline';
+                document.getElementById('statusText').textContent = 'No data';
                 document.getElementById('errorMsg').style.display = 'block';
                 document.getElementById('errorMsg').innerHTML =
                     '<p>' + err.message + '</p>' +
-                    '<p class="detail">Make sure you\'re on your home network and the API key is correct.</p>' +
-                    '<p class="detail" style="margin-top:12px;"><a href="#" onclick="resetKey()" style="color:var(--sage-400);">Change API Key</a></p>';
+                    '<p class="detail">Run: UNIFI_API_KEY=your-key python fetch-network.py</p>' +
+                    '<p class="detail">Then commit and push network-data.json</p>';
             } finally {
                 btn.classList.remove('spinning');
             }
         }
 
         function renderClients(clients) {
-            // Sort by total traffic descending
             clients.sort((a, b) => ((b.tx_bytes||0) + (b.rx_bytes||0)) - ((a.tx_bytes||0) + (a.rx_bytes||0)));
 
             const wifi = clients.filter(c => !c.is_wired);
@@ -271,7 +234,7 @@
 
             const tbody = document.getElementById('clientsBody');
             tbody.innerHTML = filtered.map(c => {
-                const name = c.hostname || c.name || c.oui || 'Unknown';
+                const name = c.hostname || 'Unknown';
                 const ip = c.ip || '—';
                 const mac = c.mac || '—';
                 const isWired = c.is_wired;
@@ -291,17 +254,6 @@
             }).join('');
         }
 
-        function escapeHtml(str) {
-            const d = document.createElement('div');
-            d.textContent = str;
-            return d.innerHTML;
-        }
-
-        function resetKey() {
-            localStorage.removeItem(STORAGE_KEY);
-            overlay.style.display = 'flex';
-        }
-
         // Filter buttons
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -315,9 +267,8 @@
         // Refresh button
         document.getElementById('refreshBtn').addEventListener('click', fetchClients);
 
-        // Auto-refresh every 30 seconds
-        if (getConfig().apiKey) fetchClients();
-        setInterval(() => { if (getConfig().apiKey) fetchClients(); }, 30000);
+        // Load on page open
+        fetchClients();
     </script>
 </body>
 </html>

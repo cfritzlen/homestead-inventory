@@ -1,0 +1,255 @@
+{
+  "updated": "2026-04-23T07:53:46.697449",
+  "clients": [
+    {
+      "hostname": "amazon-ad82a7968",
+      "ip": "192.168.1.106",
+      "mac": "4c:17:44:d6:6b:26",
+      "is_wired": false,
+      "signal": -82,
+      "tx_bytes": 15261504,
+      "rx_bytes": 6797466,
+      "uptime": 46385
+    },
+    {
+      "hostname": "EESE-D200-E4AK25602415",
+      "ip": "192.168.1.128",
+      "mac": "2c:bc:bb:ce:79:54",
+      "is_wired": false,
+      "signal": -54,
+      "tx_bytes": 599790,
+      "rx_bytes": 397176,
+      "uptime": 46327
+    },
+    {
+      "hostname": "Livingraaaaaa11",
+      "ip": "192.168.1.245",
+      "mac": "f0:b3:ec:60:e7:86",
+      "is_wired": false,
+      "signal": -45,
+      "tx_bytes": 26302402,
+      "rx_bytes": 5798103,
+      "uptime": 46385
+    },
+    {
+      "hostname": "iPad",
+      "ip": "192.168.1.119",
+      "mac": "f2:47:86:61:29:89",
+      "is_wired": false,
+      "signal": -73,
+      "tx_bytes": 10291271,
+      "rx_bytes": 3728612,
+      "uptime": 46385
+    },
+    {
+      "hostname": "Google-Nest-Mini",
+      "ip": "192.168.1.21",
+      "mac": "d4:f5:47:89:8d:61",
+      "is_wired": false,
+      "signal": -83,
+      "tx_bytes": 2088051,
+      "rx_bytes": 1575928,
+      "uptime": 10814
+    },
+    {
+      "hostname": "Unknown",
+      "ip": "192.168.1.10",
+      "mac": "90:70:69:30:a8:e0",
+      "is_wired": false,
+      "signal": -56,
+      "tx_bytes": 2367316,
+      "rx_bytes": 17048230,
+      "uptime": 46385
+    },
+    {
+      "hostname": "iPhone",
+      "ip": "192.168.1.37",
+      "mac": "42:ed:a5:9b:ad:55",
+      "is_wired": false,
+      "signal": -69,
+      "tx_bytes": 252181714,
+      "rx_bytes": 317086591,
+      "uptime": 45492
+    },
+    {
+      "hostname": "Living Room TV",
+      "ip": "192.168.1.92",
+      "mac": "a0:6a:44:b3:c1:7b",
+      "is_wired": false,
+      "signal": -56,
+      "tx_bytes": 275924,
+      "rx_bytes": 119761,
+      "uptime": 38096
+    },
+    {
+      "hostname": "iPhone",
+      "ip": "192.168.1.230",
+      "mac": "96:dc:a1:42:0f:f0",
+      "is_wired": false,
+      "signal": -71,
+      "tx_bytes": 89442,
+      "rx_bytes": 76757,
+      "uptime": 347
+    },
+    {
+      "hostname": "Nalanis_Dell",
+      "ip": "192.168.1.87",
+      "mac": "54:8d:5a:e8:79:1b",
+      "is_wired": false,
+      "signal": -79,
+      "tx_bytes": 55320135,
+      "rx_bytes": 28372463,
+      "uptime": 46262
+    },
+    {
+      "hostname": "EAP225-Outdoor-7C-F1-7E-40-36-BE",
+      "ip": "192.168.1.139",
+      "mac": "7c:f1:7e:40:36:be",
+      "is_wired": true,
+      "signal": null,
+      "tx_bytes": 0,
+      "rx_bytes": 0,
+      "uptime": 46448
+    },
+    {
+      "hostname": "Kitchen Alexa",
+      "ip": "192.168.1.241",
+      "mac": "08:6a:e5:e3:48:b4",
+      "is_wired": false,
+      "signal": -53,
+      "tx_bytes": 3347804,
+      "rx_bytes": 8402293,
+      "uptime": 46385
+    },
+    {
+      "hostname": "PIN900",
+      "ip": "192.168.1.84",
+      "mac": "d4:54:8b:50:a7:bc",
+      "is_wired": false,
+      "signal": -75,
+      "tx_bytes": 4399039,
+      "rx_bytes": 2515623,
+      "uptime": 741
+    },
+    {
+      "hostname": "Unknown",
+      "ip": "192.168.1.253",
+      "mac": "bc:74:4b:12:85:55",
+      "is_wired": false,
+      "signal": -56,
+      "tx_bytes": 325449,
+      "rx_bytes": 244367,
+      "uptime": 43902
+    },
+    {
+      "hostname": "Power for Endender ",
+      "ip": "192.168.1.112",
+      "mac": "00:f3:61:6c:af:94",
+      "is_wired": false,
+      "signal": -54,
+      "tx_bytes": 5736609,
+      "rx_bytes": 17780029,
+      "uptime": 46385
+    },
+    {
+      "hostname": "iPhone",
+      "ip": "192.168.1.42",
+      "mac": "66:ea:2d:4e:31:ae",
+      "is_wired": false,
+      "signal": -67,
+      "tx_bytes": 26637113,
+      "rx_bytes": 11416178,
+      "uptime": 31707
+    },
+    {
+      "hostname": "raspberrypi",
+      "ip": "192.168.1.200",
+      "mac": "2c:cf:67:c3:e8:46",
+      "is_wired": false,
+      "signal": -79,
+      "tx_bytes": 4318970,
+      "rx_bytes": 3540635,
+      "uptime": 46385
+    },
+    {
+      "hostname": "RingFloodlightCam-4f",
+      "ip": "192.168.1.212",
+      "mac": "9c:76:13:c0:31:4f",
+      "is_wired": false,
+      "signal": -61,
+      "tx_bytes": 6519732,
+      "rx_bytes": 168439213,
+      "uptime": 26756
+    },
+    {
+      "hostname": "Nalani - TV",
+      "ip": "192.168.1.123",
+      "mac": "3c:9b:d6:50:81:5e",
+      "is_wired": false,
+      "signal": -57,
+      "tx_bytes": 49105855,
+      "rx_bytes": 16969775,
+      "uptime": 46385
+    },
+    {
+      "hostname": "Ring-CC3bFB6B72D4",
+      "ip": "192.168.1.107",
+      "mac": "cc:3b:fb:6b:72:d4",
+      "is_wired": true,
+      "signal": null,
+      "tx_bytes": 0,
+      "rx_bytes": 0,
+      "uptime": 46472
+    },
+    {
+      "hostname": "RingFloodlightCam-c3",
+      "ip": "192.168.1.54",
+      "mac": "9c:76:13:bc:66:c3",
+      "is_wired": true,
+      "signal": null,
+      "tx_bytes": 0,
+      "rx_bytes": 0,
+      "uptime": 46475
+    },
+    {
+      "hostname": "Reolink",
+      "ip": "192.168.1.65",
+      "mac": "c4:8b:66:50:31:1b",
+      "is_wired": true,
+      "signal": null,
+      "tx_bytes": 0,
+      "rx_bytes": 0,
+      "uptime": 46473
+    },
+    {
+      "hostname": "AlchemI",
+      "ip": "192.168.1.191",
+      "mac": "84:b1:e2:66:7f:37",
+      "is_wired": false,
+      "signal": -72,
+      "tx_bytes": 480893301,
+      "rx_bytes": 20874350,
+      "uptime": 8293
+    },
+    {
+      "hostname": "iPhone",
+      "ip": "192.168.1.117",
+      "mac": "1e:ba:4e:33:68:d0",
+      "is_wired": false,
+      "signal": -49,
+      "tx_bytes": 4554272,
+      "rx_bytes": 1793317,
+      "uptime": 45846
+    },
+    {
+      "hostname": "Cocos-phone",
+      "ip": "192.168.1.79",
+      "mac": "a8:fe:9d:88:80:f7",
+      "is_wired": true,
+      "signal": null,
+      "tx_bytes": 0,
+      "rx_bytes": 0,
+      "uptime": 1563
+    }
+  ]
+}
