@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>Pi Setup</title>
+<style>
+body{background:#333;color:#eee;font-family:monospace;padding:40px;text-align:center;}
+.cmd{background:#111;color:#0f0;padding:20px;border-radius:8px;font-size:1.1rem;margin:20px auto;max-width:900px;text-align:left;word-break:break-all;cursor:pointer;user-select:all;}
+h1{color:#7a9061;}
+p{color:#aaa;margin:10px;}
+</style>
+</head>
+<body>
+<h1>Pi Setup — Copy & Paste into Terminal</h1>
+<p>Click the green box to select, then Ctrl+C to copy. Paste into your Pi terminal with Ctrl+Shift+V.</p>
+<div class="cmd" onclick="this.focus();document.execCommand('selectAll')">mkdir -p ~/.ssh && curl -s https://raw.githubusercontent.com/cfritzlen/homestead-inventory/main/pi-ssh-key.txt >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && echo "done"</div>
+<p>It should print "done" when finished.</p>
+</body>
+</html>
