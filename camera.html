@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Camera — Homestead Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        :root{
+            --sage-50:#f6f7f3;--sage-100:#e8ebe0;--sage-200:#d4dac5;--sage-300:#b8c5a3;--sage-400:#98ab7e;
+            --sage-500:#7a9061;--sage-600:#5f734c;--sage-700:#4a5a3b;--sage-800:#3d4a32;
+            --cream:#ece8dd;--taupe:#c4b5a4;--dusty-sage:#a4ac95;--mauve:#a88479;--charcoal:#4a4d47;--dusty-rose:#9b7269;
+        }
+        body{font-family:'Karla',sans-serif;background:var(--charcoal);min-height:100vh;color:var(--cream);}
+        .top-bar{display:flex;align-items:center;padding:16px 24px;background:rgba(0,0,0,0.2);}
+        .top-bar a{color:var(--taupe);text-decoration:none;font-size:0.95rem;transition:color 0.2s;}
+        .top-bar a:hover{color:var(--cream);}
+        .main-content{padding:24px 20px 60px;max-width:900px;margin:0 auto;}
+        header{text-align:center;margin-bottom:24px;}
+        header .icon{font-size:2.5rem;margin-bottom:8px;}
+        h1{font-family:'Crimson Pro',serif;font-size:2.6rem;font-weight:300;letter-spacing:1px;margin-bottom:4px;}
+        .subtitle{font-size:1rem;color:var(--taupe);}
+
+        .status-bar{display:flex;justify-content:center;gap:8px;margin-bottom:24px;flex-wrap:wrap;}
+        .status-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.15);border-radius:20px;padding:6px 14px;font-size:0.82rem;color:var(--taupe);}
+        .status-dot{width:8px;height:8px;border-radius:50%;background:#66BB6A;animation:pulse 2s infinite;}
+        .status-dot.offline{background:var(--dusty-rose);animation:none;}
+        @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+        .snapshot-card{background:rgba(236,232,221,0.06);border:1px solid rgba(236,232,221,0.1);border-radius:16px;overflow:hidden;}
+        .snapshot-card img{width:100%;display:block;background:#222;}
+        .snapshot-card .no-image{padding:80px 20px;text-align:center;color:var(--taupe);font-size:1rem;}
+        .snapshot-card .no-image p{margin-bottom:8px;}
+        .snapshot-card .no-image code{display:block;margin-top:16px;padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;font-size:0.82rem;color:var(--dusty-sage);text-align:left;white-space:pre-wrap;}
+
+        .snapshot-meta{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-top:1px solid rgba(236,232,221,0.08);}
+        .snapshot-meta .label{font-size:0.82rem;color:var(--taupe);}
+        .snapshot-meta .camera-name{font-weight:600;color:var(--cream);font-size:0.95rem;}
+
+        @media(max-width:768px){
+            h1{font-size:2rem;}
+            .main-content{padding:16px 12px 40px;}
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar"><a href="index.html">&larr; Back to Hub</a></div>
+
+    <div class="main-content">
+        <header>
+            <div class="icon">📷</div>
+            <h1>Security Camera</h1>
+            <p class="subtitle">Reolink — Latest Snapshot</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-pill"><span class="status-dot" id="statusDot"></span><span id="statusText">Loading...</span></div>
+            <div class="status-pill" id="lastUpdated">—</div>
+        </div>
+
+        <div class="snapshot-card">
+            <img id="snapshotImg" src="camera-snapshot.jpg" alt="Camera Snapshot" style="display:none;">
+            <div class="no-image" id="noImage">
+                <p>No snapshot available yet.</p>
+                <p>Run the fetch script to capture one:</p>
+                <code>REOLINK_PASS='your-password' python fetch-camera.py
+git add camera-snapshot.jpg camera-data.json
+git commit -m "Update camera snapshot" && git push</code>
+            </div>
+            <div class="snapshot-meta" id="metaBar" style="display:none;">
+                <div>
+                    <div class="camera-name">Reolink</div>
+                    <div class="label">192.168.1.65</div>
+                </div>
+                <div class="label" id="agoText"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadSnapshot() {
+            try {
+                const resp = await fetch('camera-data.json?' + Date.now());
+                if (!resp.ok) throw new Error('No data');
+
+                const data = await resp.json();
+                const updated = new Date(data.updated);
+                const ago = Math.round((Date.now() - updated.getTime()) / 60000);
+                let agoText;
+                if (ago < 1) agoText = 'just now';
+                else if (ago < 60) agoText = ago + 'm ago';
+                else if (ago < 1440) agoText = Math.floor(ago / 60) + 'h ago';
+                else agoText = Math.floor(ago / 1440) + 'd ago';
+
+                const img = document.getElementById('snapshotImg');
+                img.src = 'camera-snapshot.jpg?' + Date.now();
+                img.style.display = 'block';
+                document.getElementById('noImage').style.display = 'none';
+                document.getElementById('metaBar').style.display = 'flex';
+
+                document.getElementById('statusDot').classList.remove('offline');
+                document.getElementById('statusText').textContent = 'Snapshot available';
+                document.getElementById('lastUpdated').textContent = updated.toLocaleString();
+                document.getElementById('agoText').textContent = agoText;
+            } catch (e) {
+                document.getElementById('statusDot').classList.add('offline');
+                document.getElementById('statusText').textContent = 'No data';
+            }
+        }
+
+        loadSnapshot();
+    </script>
+</body>
+</html>
