@@ -353,6 +353,23 @@ CREATE TABLE brain_memories (
 
 CREATE TABLE prediction_trades (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    platform TEXT,
+    ticker TEXT,
+    title TEXT,
+    side TEXT,
+    price NUMERIC,
+    contracts INTEGER,
+    status TEXT,
+    order_id TEXT,
+    ai_reasoning TEXT,
+    profit_loss NUMERIC DEFAULT 0,
+    closes_at TIMESTAMPTZ,
+    settled_at TIMESTAMPTZ,
+    total_cost NUMERIC,
+    payout_if_win NUMERIC,
+    payout_if_lose NUMERIC DEFAULT 0,
+    current_price NUMERIC,
+    cost NUMERIC,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

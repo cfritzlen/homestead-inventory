@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head><title>Fix Prediction Trades</title>
+<style>
+body{background:#333;color:#eee;font-family:monospace;padding:40px;max-width:900px;margin:0 auto;}
+.cmd{background:#111;color:#0f0;padding:20px;border-radius:8px;font-size:0.95rem;margin:20px 0;text-align:left;white-space:pre-wrap;cursor:pointer;user-select:all;line-height:1.6;}
+h1{color:#7a9061;font-size:1.5rem;}
+h2{color:#c4b5a4;font-size:1.1rem;margin-top:30px;}
+p{color:#aaa;margin:10px 0;line-height:1.5;}
+.warn{color:#9b7269;}
+</style>
+</head>
+<body>
+<h1>Prediction Agent Fixes</h1>
+<p>Run these in the <a href="https://supabase.com/dashboard/project/jzpipxvxrtdhmsdkveog/sql/new" style="color:#7a9061;">Supabase SQL Editor</a>. Click each box to select, then copy.</p>
+
+<h2>1. Add order_id column to prediction_trades</h2>
+<p>This lets the settlement code verify if orders actually filled.</p>
+<div class="cmd" onclick="this.focus();document.execCommand('selectAll')">ALTER TABLE prediction_trades ADD COLUMN IF NOT EXISTS order_id TEXT;</div>
+
+<h2>2. Fix the phantom $53.35 "win"</h2>
+<p class="warn">This trade (NO on DHS funding at 3¢ × 55 contracts) never actually filled on Kalshi.</p>
+<div class="cmd" onclick="this.focus();document.execCommand('selectAll')">UPDATE prediction_trades
+SET status = 'expired', profit_loss = 0
+WHERE id = '5e42fd59-8eec-40d4-bad4-212a37a8e386';</div>
+
+<h2>3. Verify the fix</h2>
+<div class="cmd" onclick="this.focus();document.execCommand('selectAll')">SELECT ticker, side, price, contracts, status, profit_loss
+FROM prediction_trades
+WHERE ticker = 'KXDHSFUND-26APR22'
+ORDER BY created_at;</div>
+
+<p style="margin-top:30px;">After running all 3, you can delete this page — it's temporary.</p>
+</body>
+</html>
