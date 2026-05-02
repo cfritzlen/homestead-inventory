@@ -274,9 +274,18 @@
         }
 
         // === INLINE FEED ===
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
         function startStream(camera) {
             const video = document.getElementById('video-' + camera);
-            connectWSMSE(video, camera, () => fallbackToSnapshot(camera));
+            if (isIOS) {
+                // iPhone: use direct MP4 stream URL (Safari plays H.265 natively)
+                video.src = `${API_BASE}/api/go2rtc/api/stream.mp4?src=${camera}`;
+                video.play().catch(() => {});
+                setTimeout(() => { if (video.readyState < 2) fallbackToSnapshot(camera); }, 10000);
+            } else {
+                connectWSMSE(video, camera, () => fallbackToSnapshot(camera));
+            }
         }
 
         function fallbackToSnapshot(camera) {
@@ -390,16 +399,24 @@
             document.body.style.overflow = 'hidden';
             const vid = document.getElementById('zoomVideo');
             vid.controls = false; vid.loop = false; vid.muted = true;
-            zoomWs = connectWSMSE(vid, camera, () => {
-                document.getElementById('zoomError').textContent = 'Could not connect to stream';
-                document.getElementById('zoomError').style.display = 'block';
-            });
             vid.addEventListener('loadedmetadata', function onMeta() {
                 zoomState.videoW = vid.videoWidth || 2688;
                 zoomState.videoH = vid.videoHeight || 1520;
                 zoomFit();
                 vid.removeEventListener('loadedmetadata', onMeta);
             });
+            if (isIOS) {
+                vid.src = `${API_BASE}/api/go2rtc/api/stream.mp4?src=${camera}`;
+                vid.play().catch(() => {});
+                setTimeout(() => {
+                    if (vid.readyState < 2) { document.getElementById('zoomError').textContent = 'Stream failed to load'; document.getElementById('zoomError').style.display = 'block'; }
+                }, 10000);
+            } else {
+                zoomWs = connectWSMSE(vid, camera, () => {
+                    document.getElementById('zoomError').textContent = 'Could not connect to stream';
+                    document.getElementById('zoomError').style.display = 'block';
+                });
+            }
         }
 
         function openClip(eventId, label, camera) {
