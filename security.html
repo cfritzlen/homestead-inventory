@@ -465,7 +465,7 @@
             // Use full-res snapshot (h=1520)
             function refresh() {
                 if (!zoomState.camera) return;
-                img.src = `${API_BASE}/api/${camera}/latest.jpg?h=1520&ts=${Date.now()}`;
+                img.src = `/snapshot/${camera}.jpg?ts=${Date.now()}`;
             }
             img.onload = function() {
                 if (!zoomState.videoW || zoomState.videoW === 2688) {
