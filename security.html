@@ -82,22 +82,23 @@
         .log{margin-top:16px;background:rgba(0,0,0,0.2);border-radius:12px;padding:14px;max-height:120px;overflow-y:auto;font-size:0.75rem;color:var(--dusty-sage);font-family:monospace;}
         .log .entry{padding:2px 0;border-bottom:1px solid rgba(236,232,221,0.05);}
 
-        /* --- Zoom Button on Feed --- */
+        /* --- Fullscreen Button on Feed --- */
         .zoom-btn{position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.6);border:none;color:var(--cream);padding:6px 10px;border-radius:8px;font-size:0.9rem;cursor:pointer;z-index:2;transition:background 0.2s;}
         .zoom-btn:hover{background:rgba(0,0,0,0.8);}
 
-        /* --- Fullscreen Modal --- */
-        .zoom-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:1000;flex-direction:column;}
+        /* --- Fullscreen Live Modal --- */
+        .zoom-modal{display:none;position:fixed;inset:0;background:#000;z-index:1000;flex-direction:column;}
         .zoom-modal.open{display:flex;}
-        .zoom-modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;flex-shrink:0;}
+        .zoom-modal-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;flex-shrink:0;background:rgba(0,0,0,0.8);z-index:2;}
         .zoom-modal-header .cam-name{font-family:'Crimson Pro',serif;font-size:1.2rem;color:var(--cream);}
         .zoom-modal-header .res-label{font-size:0.75rem;color:var(--taupe);margin-left:10px;}
         .zoom-close{background:none;border:1px solid rgba(236,232,221,0.3);color:var(--cream);padding:8px 16px;border-radius:8px;font-size:0.9rem;cursor:pointer;font-family:'Karla',sans-serif;}
         .zoom-close:hover{background:rgba(236,232,221,0.1);}
-        .zoom-container{flex:1;overflow:hidden;position:relative;touch-action:none;cursor:grab;}
+        .zoom-container{flex:1;overflow:hidden;position:relative;touch-action:none;cursor:grab;display:flex;align-items:center;justify-content:center;}
         .zoom-container.grabbing{cursor:grabbing;}
-        .zoom-container img{position:absolute;top:50%;left:50%;transform-origin:0 0;max-width:none;transition:none;}
-        .zoom-controls{display:flex;justify-content:center;gap:8px;padding:12px;flex-shrink:0;}
+        .zoom-container video{transform-origin:0 0;position:absolute;top:0;left:0;}
+        .zoom-stream-error{position:absolute;color:var(--taupe);font-size:0.9rem;text-align:center;z-index:1;}
+        .zoom-controls{display:flex;justify-content:center;gap:8px;padding:10px;flex-shrink:0;background:rgba(0,0,0,0.8);}
         .zoom-ctrl{background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.2);color:var(--cream);padding:8px 16px;border-radius:8px;font-size:0.9rem;cursor:pointer;font-family:'Karla',sans-serif;}
         .zoom-ctrl:hover{background:rgba(236,232,221,0.2);}
         .zoom-ctrl.active{background:var(--sage-600);border-color:var(--sage-500);}
@@ -193,20 +194,20 @@
         <div class="log" id="log"></div>
     </div>
 
-    <!-- Fullscreen Zoom Modal -->
+    <!-- Fullscreen Live Stream Modal -->
     <div class="zoom-modal" id="zoomModal">
         <div class="zoom-modal-header">
-            <div><span class="cam-name" id="zoomCamName"></span><span class="res-label">2688x1520 — pinch or scroll to zoom, drag to pan</span></div>
+            <div><span class="cam-name" id="zoomCamName"></span><span class="res-label">2688x1520 live — scroll/pinch to zoom, drag to pan</span></div>
             <button class="zoom-close" onclick="closeZoom()">Close</button>
         </div>
         <div class="zoom-container" id="zoomContainer">
-            <img id="zoomImg" alt="Full resolution">
+            <video id="zoomVideo" autoplay muted playsinline></video>
+            <div class="zoom-stream-error" id="zoomError" style="display:none;">Stream failed — trying to reconnect...</div>
         </div>
         <div class="zoom-controls">
             <button class="zoom-ctrl" onclick="zoomTo(1)">Fit</button>
             <button class="zoom-ctrl" onclick="zoomTo(2)">2x</button>
             <button class="zoom-ctrl" onclick="zoomTo(4)">4x (Full)</button>
-            <button class="zoom-ctrl" id="zoomRefreshBtn" onclick="refreshZoomImg()">Refresh</button>
         </div>
     </div>
 
@@ -484,60 +485,168 @@
             log(seconds > 0 ? 'Timer set to ' + seconds + 's' : 'Timer off — stay on');
         }
 
-        // === FULLSCREEN ZOOM ===
-        let zoomState = { scale: 1, x: 0, y: 0, camera: null };
+        // === FULLSCREEN LIVE STREAM ===
+        let zoomState = { scale: 1, x: 0, y: 0, camera: null, videoW: 2688, videoH: 1520 };
         let dragState = { active: false, startX: 0, startY: 0, origX: 0, origY: 0 };
         let pinchStart = 0;
+        let zoomAbortCtrl = null;
 
         function openZoom(camera) {
             zoomState.camera = camera;
             document.getElementById('zoomCamName').textContent = camera.replace('_', ' ').toUpperCase();
-            const img = document.getElementById('zoomImg');
-            img.src = `http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/${camera}/latest.jpg?h=1520&ts=${Date.now()}`;
-            img.onload = () => zoomTo(1);
             document.getElementById('zoomModal').classList.add('open');
+            document.getElementById('zoomError').style.display = 'none';
             document.body.style.overflow = 'hidden';
+            startZoomStream(camera);
         }
 
         function closeZoom() {
             document.getElementById('zoomModal').classList.remove('open');
             document.body.style.overflow = '';
             zoomState.camera = null;
+            // Stop the stream
+            if (zoomAbortCtrl) { zoomAbortCtrl.abort(); zoomAbortCtrl = null; }
+            const vid = document.getElementById('zoomVideo');
+            vid.pause();
+            vid.removeAttribute('src');
+            vid.load();
         }
 
-        function refreshZoomImg() {
-            if (!zoomState.camera) return;
-            const img = document.getElementById('zoomImg');
-            img.src = `http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/${zoomState.camera}/latest.jpg?h=1520&ts=${Date.now()}`;
+        function startZoomStream(camera) {
+            const video = document.getElementById('zoomVideo');
+            const errorEl = document.getElementById('zoomError');
+
+            if (!('MediaSource' in window)) {
+                errorEl.textContent = 'Browser does not support live streaming';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            const ms = new MediaSource();
+            video.src = URL.createObjectURL(ms);
+
+            ms.addEventListener('sourceopen', () => {
+                zoomAbortCtrl = new AbortController();
+                const url = `http://${FRIGATE_HOST}:${GO2RTC_PORT}/api/stream.mp4?src=${camera}`;
+
+                fetch(url, { signal: zoomAbortCtrl.signal }).then(response => {
+                    const reader = response.body.getReader();
+                    let sourceBuffer;
+                    let queue = [];
+                    let appending = false;
+
+                    function appendNext() {
+                        if (queue.length === 0 || appending) return;
+                        if (sourceBuffer.updating) return;
+                        appending = true;
+                        const chunk = queue.shift();
+                        try { sourceBuffer.appendBuffer(chunk); } catch(e) {}
+                    }
+
+                    function pump() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) return;
+                            if (!sourceBuffer) {
+                                try {
+                                    sourceBuffer = ms.addSourceBuffer('video/mp4; codecs="hev1.1.6.L150.B0"');
+                                    sourceBuffer.addEventListener('updateend', () => {
+                                        appending = false;
+                                        if (sourceBuffer.buffered.length > 0) {
+                                            const end = sourceBuffer.buffered.end(0);
+                                            const start = sourceBuffer.buffered.start(0);
+                                            if (end - start > 10) {
+                                                try { sourceBuffer.remove(start, end - 5); } catch(e) {}
+                                            }
+                                        }
+                                        appendNext();
+                                    });
+                                } catch(e) {
+                                    // H.265 not supported in MSE, try H.264 fallback
+                                    try {
+                                        sourceBuffer = ms.addSourceBuffer('video/mp4; codecs="avc1.640029"');
+                                        sourceBuffer.addEventListener('updateend', () => {
+                                            appending = false;
+                                            if (sourceBuffer.buffered.length > 0) {
+                                                const end = sourceBuffer.buffered.end(0);
+                                                const start = sourceBuffer.buffered.start(0);
+                                                if (end - start > 10) {
+                                                    try { sourceBuffer.remove(start, end - 5); } catch(e) {}
+                                                }
+                                            }
+                                            appendNext();
+                                        });
+                                    } catch(e2) {
+                                        errorEl.textContent = 'Browser cannot decode this stream — try Chrome or Edge';
+                                        errorEl.style.display = 'block';
+                                        return;
+                                    }
+                                }
+                            }
+                            queue.push(value);
+                            appendNext();
+                            pump();
+                        }).catch(() => {});
+                    }
+                    pump();
+
+                    // Once video starts playing, fit it
+                    video.addEventListener('loadedmetadata', () => {
+                        zoomState.videoW = video.videoWidth || 2688;
+                        zoomState.videoH = video.videoHeight || 1520;
+                        zoomFit();
+                        errorEl.style.display = 'none';
+                    }, { once: true });
+
+                    // Fallback if no metadata after 6s
+                    setTimeout(() => {
+                        if (video.readyState < 2 && zoomState.camera) {
+                            errorEl.textContent = 'Stream loading slowly — waiting...';
+                            errorEl.style.display = 'block';
+                        }
+                    }, 6000);
+
+                }).catch((err) => {
+                    if (err.name !== 'AbortError') {
+                        errorEl.textContent = 'Could not connect to stream';
+                        errorEl.style.display = 'block';
+                    }
+                });
+            });
+        }
+
+        function zoomFit() {
+            const container = document.getElementById('zoomContainer');
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+            const fitScale = Math.min(cw / zoomState.videoW, ch / zoomState.videoH);
+            zoomState.scale = fitScale;
+            const sw = zoomState.videoW * fitScale;
+            const sh = zoomState.videoH * fitScale;
+            zoomState.x = (cw - sw) / 2;
+            zoomState.y = (ch - sh) / 2;
+            applyZoom();
         }
 
         function zoomTo(level) {
             const container = document.getElementById('zoomContainer');
-            const img = document.getElementById('zoomImg');
             const cw = container.clientWidth;
             const ch = container.clientHeight;
-
-            // "Fit" means scale image to fit container
-            const fitScale = Math.min(cw / img.naturalWidth, ch / img.naturalHeight);
-
+            const fitScale = Math.min(cw / zoomState.videoW, ch / zoomState.videoH);
             zoomState.scale = fitScale * level;
-            const sw = img.naturalWidth * zoomState.scale;
-            const sh = img.naturalHeight * zoomState.scale;
+            const sw = zoomState.videoW * zoomState.scale;
+            const sh = zoomState.videoH * zoomState.scale;
             zoomState.x = (cw - sw) / 2;
             zoomState.y = (ch - sh) / 2;
             applyZoom();
-
             document.querySelectorAll('.zoom-ctrl').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
+            if (event && event.target) event.target.classList.add('active');
         }
 
         function applyZoom() {
-            const img = document.getElementById('zoomImg');
-            img.style.width = (img.naturalWidth * zoomState.scale) + 'px';
-            img.style.height = (img.naturalHeight * zoomState.scale) + 'px';
-            img.style.top = '0';
-            img.style.left = '0';
-            img.style.transform = `translate(${zoomState.x}px, ${zoomState.y}px)`;
+            const vid = document.getElementById('zoomVideo');
+            vid.style.width = (zoomState.videoW * zoomState.scale) + 'px';
+            vid.style.height = (zoomState.videoH * zoomState.scale) + 'px';
+            vid.style.transform = `translate(${zoomState.x}px, ${zoomState.y}px)`;
         }
 
         // Mouse wheel zoom
@@ -547,12 +656,9 @@
             const rect = container.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
-
             const prevScale = zoomState.scale;
             const delta = e.deltaY > 0 ? 0.85 : 1.18;
             zoomState.scale = Math.max(0.1, Math.min(20, zoomState.scale * delta));
-
-            // Zoom toward cursor
             zoomState.x = mx - (mx - zoomState.x) * (zoomState.scale / prevScale);
             zoomState.y = my - (my - zoomState.y) * (zoomState.scale / prevScale);
             applyZoom();
@@ -606,21 +712,19 @@
             const now = Date.now();
             if (now - lastTap < 300) {
                 const container = document.getElementById('zoomContainer');
-                const img = document.getElementById('zoomImg');
-                const fitScale = Math.min(container.clientWidth / img.naturalWidth, container.clientHeight / img.naturalHeight);
+                const fitScale = Math.min(container.clientWidth / zoomState.videoW, container.clientHeight / zoomState.videoH);
                 if (zoomState.scale > fitScale * 1.5) {
-                    zoomState.scale = fitScale;
-                    zoomState.x = (container.clientWidth - img.naturalWidth * fitScale) / 2;
-                    zoomState.y = (container.clientHeight - img.naturalHeight * fitScale) / 2;
+                    zoomFit();
                 } else {
+                    const prevScale = zoomState.scale;
                     zoomState.scale = fitScale * 4;
                     const rect = container.getBoundingClientRect();
                     const tx = (e.changedTouches[0] ? e.changedTouches[0].clientX : rect.width / 2) - rect.left;
                     const ty = (e.changedTouches[0] ? e.changedTouches[0].clientY : rect.height / 2) - rect.top;
-                    zoomState.x = tx - (tx - zoomState.x) * (zoomState.scale / (fitScale));
-                    zoomState.y = ty - (ty - zoomState.y) * (zoomState.scale / (fitScale));
+                    zoomState.x = tx - (tx - zoomState.x) * (zoomState.scale / prevScale);
+                    zoomState.y = ty - (ty - zoomState.y) * (zoomState.scale / prevScale);
+                    applyZoom();
                 }
-                applyZoom();
             }
             lastTap = now;
         });
