@@ -291,7 +291,7 @@
             const img = document.getElementById('img-' + camera);
             const errorDiv = document.getElementById('error-' + camera);
             video.style.display = 'none';
-            errorDiv.style.display = 'block';
+            if (!isIOS) errorDiv.style.display = 'block';
             img.style.display = 'block';
             function refresh() { img.src = `${API_BASE}/api/${camera}/latest.jpg?ts=${Date.now()}`; }
             refresh();
