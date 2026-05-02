@@ -328,16 +328,28 @@
         function renderEvents(events) {
             const list = document.getElementById('eventsList');
             const noEvents = document.getElementById('noEvents');
-            if (!events || events.length === 0) { noEvents.style.display = 'block'; return; }
+            // Clear previous event cards but keep noEvents div
+            list.querySelectorAll('.event-card').forEach(c => c.remove());
+            if (!events || events.length === 0) { noEvents.textContent = 'No events yet — detections will appear here'; noEvents.style.display = 'block'; return; }
             const filtered = eventFilter === 'all' ? events : events.filter(ev => ev.label === eventFilter);
-            if (filtered.length === 0) { noEvents.textContent = 'No ' + eventFilter + ' events'; noEvents.style.display = 'block'; list.querySelectorAll('.event-card').forEach(c => c.remove()); return; }
+            if (filtered.length === 0) { noEvents.textContent = 'No ' + eventFilter + ' events found'; noEvents.style.display = 'block'; return; }
             noEvents.style.display = 'none';
             events = filtered;
-            list.innerHTML = events.map(ev => {
+            list.insertAdjacentHTML('beforeend', events.map(ev => {
                 const time = new Date(ev.start_time * 1000);
                 const ago = timeAgo(time);
                 const score = ev.data && ev.data.top_score ? Math.round(ev.data.top_score * 100) + '%' : '';
                 const thumbUrl = `${API_BASE}/api/events/${ev.id}/thumbnail.jpg`;
+                if (isIOS) {
+                    return `<a class="event-card" href="${API_BASE}/api/events/${ev.id}/clip.mp4" target="_blank" style="text-decoration:none;">
+                        <img class="event-thumb" src="${thumbUrl}" alt="${ev.label}" onerror="this.style.display='none'">
+                        <div class="event-info">
+                            <div class="event-label">${ev.label}${score ? `<span class="score">${score}</span>` : ''}</div>
+                            <div class="event-time">${ago} — ${time.toLocaleTimeString()}</div>
+                            <div class="event-camera">${ev.camera}</div>
+                        </div>
+                    </a>`;
+                }
                 return `<div class="event-card" onclick="openClip('${ev.id}', '${ev.label}', '${ev.camera}')">
                     <img class="event-thumb" src="${thumbUrl}" alt="${ev.label}" onerror="this.style.display='none'">
                     <div class="event-info">
@@ -346,7 +358,7 @@
                         <div class="event-camera">${ev.camera}</div>
                     </div>
                 </div>`;
-            }).join('');
+            }).join(''));
         }
 
         function timeAgo(date) {
@@ -440,12 +452,7 @@
             vid.muted = true;
             vid.playsInline = true;
             vid.src = `${API_BASE}/api/events/${eventId}/clip.mp4`;
-            if (isIOS) {
-                // On iPhone: open clip URL directly in a new tab (native player)
-                window.open(`${API_BASE}/api/events/${eventId}/clip.mp4`, '_blank');
-                closeZoom();
-                return;
-            } else {
+            {
                 vid.controls = false;
                 vid.play();
                 vid.addEventListener('loadedmetadata', function onMeta() {
@@ -554,12 +561,20 @@
         window.addEventListener('mouseup', () => { dragState.active = false; zc.classList.remove('grabbing'); });
 
         // Touch pinch + pan
+        let touchMoved = false;
+        let lastTap = 0;
         zc.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) pinchStart = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            else if (e.touches.length === 1) dragState = { active: true, startX: e.touches[0].clientX, startY: e.touches[0].clientY, origX: zoomState.x, origY: zoomState.y };
+            touchMoved = false;
+            if (e.touches.length === 2) {
+                pinchStart = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                dragState.active = false;
+            } else if (e.touches.length === 1) {
+                dragState = { active: true, startX: e.touches[0].clientX, startY: e.touches[0].clientY, origX: zoomState.x, origY: zoomState.y };
+            }
         }, { passive: true });
         zc.addEventListener('touchmove', (e) => {
             e.preventDefault();
+            touchMoved = true;
             if (e.touches.length === 2 && pinchStart > 0) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                 const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - zc.getBoundingClientRect().left;
@@ -575,19 +590,32 @@
                 applyZoom();
             }
         }, { passive: false });
-        zc.addEventListener('touchend', () => { dragState.active = false; pinchStart = 0; });
-
-        // Double-tap zoom toggle
-        let lastTap = 0;
         zc.addEventListener('touchend', (e) => {
-            const now = Date.now();
-            if (now - lastTap < 300) {
-                const c = document.getElementById('zoomContainer');
-                const fitScale = Math.min(c.clientWidth / zoomState.videoW, c.clientHeight / zoomState.videoH);
-                if (zoomState.scale > fitScale * 1.5) zoomFit();
-                else { const prev = zoomState.scale; zoomState.scale = fitScale * 4; const rect = c.getBoundingClientRect(); const tx = (e.changedTouches[0] ? e.changedTouches[0].clientX : rect.width/2) - rect.left; const ty = (e.changedTouches[0] ? e.changedTouches[0].clientY : rect.height/2) - rect.top; zoomState.x = tx - (tx - zoomState.x) * (zoomState.scale / prev); zoomState.y = ty - (ty - zoomState.y) * (zoomState.scale / prev); applyZoom(); }
+            const wasDrag = touchMoved;
+            dragState.active = false;
+            pinchStart = 0;
+
+            // Double-tap zoom (only if finger didn't move)
+            if (!wasDrag && e.touches.length === 0) {
+                const now = Date.now();
+                if (now - lastTap < 300) {
+                    const c = document.getElementById('zoomContainer');
+                    const fitScale = Math.min(c.clientWidth / zoomState.videoW, c.clientHeight / zoomState.videoH);
+                    if (zoomState.scale > fitScale * 1.5) {
+                        zoomFit();
+                    } else {
+                        const prev = zoomState.scale;
+                        zoomState.scale = fitScale * 4;
+                        const rect = c.getBoundingClientRect();
+                        const tx = (e.changedTouches[0] ? e.changedTouches[0].clientX : rect.width / 2) - rect.left;
+                        const ty = (e.changedTouches[0] ? e.changedTouches[0].clientY : rect.height / 2) - rect.top;
+                        zoomState.x = tx - (tx - zoomState.x) * (zoomState.scale / prev);
+                        zoomState.y = ty - (ty - zoomState.y) * (zoomState.scale / prev);
+                        applyZoom();
+                    }
+                }
+                lastTap = now;
             }
-            lastTap = now;
         });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZoom(); });
 
