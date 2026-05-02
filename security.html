@@ -421,18 +421,36 @@
             document.getElementById('zoomModal').classList.add('open');
             document.getElementById('zoomError').style.display = 'none';
             document.getElementById('zoomControls').style.display = 'none';
-            document.getElementById('clipControls').style.display = 'flex';
+            document.getElementById('clipControls').style.display = isIOS ? 'none' : 'flex';
             document.body.style.overflow = 'hidden';
             const vid = document.getElementById('zoomVideo');
-            vid.controls = false; vid.loop = true; vid.muted = false;
+            const img = document.getElementById('zoomImg');
+            img.style.display = 'none';
+            vid.style.display = 'block';
+            vid.loop = true;
+            vid.muted = true;
+            vid.playsInline = true;
             vid.src = `${API_BASE}/api/events/${eventId}/clip.mp4`;
-            vid.play();
-            vid.addEventListener('loadedmetadata', function onMeta() {
-                zoomState.videoW = vid.videoWidth || 1920;
-                zoomState.videoH = vid.videoHeight || 1080;
-                zoomFit();
-                vid.removeEventListener('loadedmetadata', onMeta);
-            });
+            if (isIOS) {
+                // On iPhone: use native controls, position video normally
+                vid.controls = true;
+                vid.style.position = 'relative';
+                vid.style.width = '100%';
+                vid.style.height = '100%';
+                vid.style.objectFit = 'contain';
+                vid.style.transform = 'none';
+                vid.load();
+                vid.play().catch(() => {});
+            } else {
+                vid.controls = false;
+                vid.play();
+                vid.addEventListener('loadedmetadata', function onMeta() {
+                    zoomState.videoW = vid.videoWidth || 1920;
+                    zoomState.videoH = vid.videoHeight || 1080;
+                    zoomFit();
+                    vid.removeEventListener('loadedmetadata', onMeta);
+                });
+            }
             if (clipTimerInterval) clearInterval(clipTimerInterval);
             clipTimerInterval = setInterval(updateClipTime, 250);
         }
@@ -469,6 +487,10 @@
             if (zoomSnapInterval) { clearInterval(zoomSnapInterval); zoomSnapInterval = null; }
             const vid = document.getElementById('zoomVideo');
             vid.style.display = 'block';
+            vid.controls = false;
+            vid.style.position = 'absolute';
+            vid.style.width = ''; vid.style.height = '';
+            vid.style.objectFit = ''; vid.style.transform = '';
             vid.pause(); vid.removeAttribute('src'); vid.load();
             const img = document.getElementById('zoomImg');
             img.style.display = 'none'; img.removeAttribute('src');
