@@ -182,6 +182,7 @@
         </div>
         <div class="zoom-container" id="zoomContainer">
             <video id="zoomVideo" autoplay muted playsinline></video>
+            <img id="zoomImg" style="display:none;position:absolute;top:0;left:0;transform-origin:0 0;" alt="Live snapshot">
             <div class="zoom-stream-error" id="zoomError" style="display:none;"></div>
         </div>
         <div class="zoom-controls" id="zoomControls">
@@ -279,10 +280,7 @@
         function startStream(camera) {
             const video = document.getElementById('video-' + camera);
             if (isIOS) {
-                // iPhone: use direct MP4 stream URL (Safari plays H.265 natively)
-                video.src = `${API_BASE}/api/go2rtc/api/stream.mp4?src=${camera}`;
-                video.play().catch(() => {});
-                setTimeout(() => { if (video.readyState < 2) fallbackToSnapshot(camera); }, 10000);
+                fallbackToSnapshot(camera);
             } else {
                 connectWSMSE(video, camera, () => fallbackToSnapshot(camera));
             }
@@ -406,11 +404,7 @@
                 vid.removeEventListener('loadedmetadata', onMeta);
             });
             if (isIOS) {
-                vid.src = `${API_BASE}/api/go2rtc/api/stream.mp4?src=${camera}`;
-                vid.play().catch(() => {});
-                setTimeout(() => {
-                    if (vid.readyState < 2) { document.getElementById('zoomError').textContent = 'Stream failed to load'; document.getElementById('zoomError').style.display = 'block'; }
-                }, 10000);
+                startZoomSnapshots(camera);
             } else {
                 zoomWs = connectWSMSE(vid, camera, () => {
                     document.getElementById('zoomError').textContent = 'Could not connect to stream';
@@ -443,14 +437,41 @@
             clipTimerInterval = setInterval(updateClipTime, 250);
         }
 
+        let zoomSnapInterval = null;
+
+        function startZoomSnapshots(camera) {
+            const vid = document.getElementById('zoomVideo');
+            const img = document.getElementById('zoomImg');
+            vid.style.display = 'none';
+            img.style.display = 'block';
+            // Use full-res snapshot (h=1520)
+            function refresh() {
+                if (!zoomState.camera) return;
+                img.src = `${API_BASE}/api/${camera}/latest.jpg?h=1520&ts=${Date.now()}`;
+            }
+            img.onload = function() {
+                if (!zoomState.videoW || zoomState.videoW === 2688) {
+                    zoomState.videoW = img.naturalWidth;
+                    zoomState.videoH = img.naturalHeight;
+                    zoomFit();
+                }
+            };
+            refresh();
+            zoomSnapInterval = setInterval(refresh, 500);
+        }
+
         function closeZoom() {
             document.getElementById('zoomModal').classList.remove('open');
             document.body.style.overflow = '';
             zoomState.camera = null; zoomMode = 'live';
             if (zoomWs) { zoomWs.close(); zoomWs = null; }
             if (clipTimerInterval) { clearInterval(clipTimerInterval); clipTimerInterval = null; }
+            if (zoomSnapInterval) { clearInterval(zoomSnapInterval); zoomSnapInterval = null; }
             const vid = document.getElementById('zoomVideo');
+            vid.style.display = 'block';
             vid.pause(); vid.removeAttribute('src'); vid.load();
+            const img = document.getElementById('zoomImg');
+            img.style.display = 'none'; img.removeAttribute('src');
         }
 
         function clipTogglePlay() { const v = document.getElementById('zoomVideo'); if (v.paused) { v.play(); document.getElementById('clipPlayPause').textContent = 'Pause'; } else { v.pause(); document.getElementById('clipPlayPause').textContent = 'Play'; } }
@@ -477,10 +498,13 @@
             if (event && event.target) event.target.classList.add('active');
         }
         function applyZoom() {
+            const w = (zoomState.videoW * zoomState.scale) + 'px';
+            const h = (zoomState.videoH * zoomState.scale) + 'px';
+            const t = `translate(${zoomState.x}px, ${zoomState.y}px)`;
             const v = document.getElementById('zoomVideo');
-            v.style.width = (zoomState.videoW * zoomState.scale) + 'px';
-            v.style.height = (zoomState.videoH * zoomState.scale) + 'px';
-            v.style.transform = `translate(${zoomState.x}px, ${zoomState.y}px)`;
+            v.style.width = w; v.style.height = h; v.style.transform = t;
+            const img = document.getElementById('zoomImg');
+            img.style.width = w; img.style.height = h; img.style.transform = t;
         }
 
         // Wheel zoom
