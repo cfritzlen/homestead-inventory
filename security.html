@@ -409,14 +409,8 @@
                 zoomFit();
                 vid.removeEventListener('loadedmetadata', onMeta);
             });
-            if (isIOS) {
-                startZoomSnapshots(camera);
-            } else {
-                zoomWs = connectWSMSE(vid, camera, () => {
-                    document.getElementById('zoomError').textContent = 'Could not connect to stream';
-                    document.getElementById('zoomError').style.display = 'block';
-                });
-            }
+            // Full res uses high-quality snapshots (2688x1520) — works on all browsers
+            startZoomSnapshots(camera);
         }
 
         function openClip(eventId, label, camera) {
