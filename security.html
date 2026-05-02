@@ -102,6 +102,9 @@
         .zoom-ctrl{background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.2);color:var(--cream);padding:8px 16px;border-radius:8px;font-size:0.9rem;cursor:pointer;font-family:'Karla',sans-serif;}
         .zoom-ctrl:hover{background:rgba(236,232,221,0.2);}
         .zoom-ctrl.active{background:var(--sage-600);border-color:var(--sage-500);}
+        .clip-controls{display:flex;justify-content:center;align-items:center;gap:8px;padding:10px;flex-shrink:0;background:rgba(0,0,0,0.8);}
+        .clip-sep{color:rgba(236,232,221,0.2);margin:0 4px;}
+        .clip-time{font-size:0.78rem;color:var(--taupe);margin-left:8px;font-family:monospace;}
 
         @media(max-width:768px){
             h1{font-size:2rem;}
@@ -194,29 +197,38 @@
         <div class="log" id="log"></div>
     </div>
 
-    <!-- Fullscreen Live Stream Modal -->
+    <!-- Fullscreen Zoom Modal (live stream + clip review) -->
     <div class="zoom-modal" id="zoomModal">
         <div class="zoom-modal-header">
-            <div><span class="cam-name" id="zoomCamName"></span><span class="res-label">2688x1520 live — scroll/pinch to zoom, drag to pan</span></div>
+            <div><span class="cam-name" id="zoomCamName"></span><span class="res-label" id="zoomResLabel">scroll/pinch to zoom, drag to pan</span></div>
             <button class="zoom-close" onclick="closeZoom()">Close</button>
         </div>
         <div class="zoom-container" id="zoomContainer">
             <video id="zoomVideo" autoplay muted playsinline></video>
             <div class="zoom-stream-error" id="zoomError" style="display:none;">Stream failed — trying to reconnect...</div>
         </div>
-        <div class="zoom-controls">
+        <div class="zoom-controls" id="zoomControls">
             <button class="zoom-ctrl" onclick="zoomTo(1)">Fit</button>
             <button class="zoom-ctrl" onclick="zoomTo(2)">2x</button>
             <button class="zoom-ctrl" onclick="zoomTo(4)">4x (Full)</button>
+        </div>
+        <div class="clip-controls" id="clipControls" style="display:none;">
+            <button class="zoom-ctrl" onclick="zoomTo(1)">Fit</button>
+            <button class="zoom-ctrl" onclick="zoomTo(2)">2x</button>
+            <button class="zoom-ctrl" onclick="zoomTo(4)">4x</button>
+            <span class="clip-sep">|</span>
+            <button class="zoom-ctrl" onclick="clipSkip(-5)">-5s</button>
+            <button class="zoom-ctrl" id="clipPlayPause" onclick="clipTogglePlay()">Pause</button>
+            <button class="zoom-ctrl" onclick="clipSkip(5)">+5s</button>
+            <span class="clip-time" id="clipTime">0:00 / 0:00</span>
         </div>
     </div>
 
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <script>
         // === CONFIG ===
-        const FRIGATE_HOST = '192.168.1.200';
-        const FRIGATE_PORT = 5000;
-        const GO2RTC_PORT = 8971;
+        // All /api/ requests go through the hub-server proxy (same origin, no CORS)
+        const API_BASE = '';  // same origin — hub-server proxies /api/* to Frigate
         const MQTT_WS = 'ws://192.168.1.200:9001';
         const ALARM_TOPIC = 'homestead/alarm/trigger';
         const CAMERAS = ['coop_a'];
@@ -237,7 +249,7 @@
             video.src = URL.createObjectURL(ms);
 
             ms.addEventListener('sourceopen', () => {
-                const url = `http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/go2rtc/api/stream.mp4?src=${camera}`;
+                const url = `${API_BASE}/api/go2rtc/api/stream.mp4?src=${camera}`;
                 fetch(url).then(response => {
                     const reader = response.body.getReader();
                     let sourceBuffer;
@@ -304,7 +316,7 @@
             img.style.display = 'block';
 
             function refreshSnapshot() {
-                img.src = `http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/${camera}/latest.jpg?ts=${Date.now()}`;
+                img.src = `${API_BASE}/api/${camera}/latest.jpg?ts=${Date.now()}`;
             }
             refreshSnapshot();
             setInterval(refreshSnapshot, 2000);
@@ -312,12 +324,12 @@
 
         // === EVENTS ===
         function loadEvents() {
-            fetch(`http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/events?limit=20&has_clip=1`)
+            fetch(`${API_BASE}/api/events?limit=20&has_clip=1`)
                 .then(r => r.json())
                 .then(events => renderEvents(events))
                 .catch(() => {
                     // Try without has_clip filter
-                    fetch(`http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/events?limit=20`)
+                    fetch(`${API_BASE}/api/events?limit=20`)
                         .then(r => r.json())
                         .then(events => renderEvents(events))
                         .catch(() => {});
@@ -338,17 +350,17 @@
                 const time = new Date(ev.start_time * 1000);
                 const ago = timeAgo(time);
                 const score = ev.data && ev.data.top_score ? Math.round(ev.data.top_score * 100) + '%' : '';
-                const thumbUrl = `http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/events/${ev.id}/thumbnail.jpg`;
-                const clipUrl = `http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/events/${ev.id}/clip.mp4`;
+                const thumbUrl = `${API_BASE}/api/events/${ev.id}/thumbnail.jpg`;
+                const clipUrl = `${API_BASE}/api/events/${ev.id}/clip.mp4`;
 
-                return `<a class="event-card" href="${clipUrl}" target="_blank">
+                return `<div class="event-card" onclick="openClip('${ev.id}', '${ev.label}', '${ev.camera}')">
                     <img class="event-thumb" src="${thumbUrl}" alt="${ev.label}" onerror="this.style.display='none'">
                     <div class="event-info">
                         <div class="event-label">${ev.label}${score ? `<span class="score">${score}</span>` : ''}</div>
                         <div class="event-time">${ago} — ${time.toLocaleTimeString()}</div>
                         <div class="event-camera">${ev.camera}</div>
                     </div>
-                </a>`;
+                </div>`;
             }).join('');
         }
 
@@ -362,7 +374,7 @@
 
         // === FRIGATE STATUS ===
         function checkFrigate() {
-            fetch(`http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/version`)
+            fetch(`${API_BASE}/api/version`)
                 .then(r => r.ok ? r.text() : Promise.reject())
                 .then(v => {
                     document.getElementById('frigateDot').className = 'status-dot connected';
@@ -491,25 +503,97 @@
         let pinchStart = 0;
         let zoomAbortCtrl = null;
 
+        let zoomMode = 'live'; // 'live' or 'clip'
+        let clipTimerInterval = null;
+
         function openZoom(camera) {
+            zoomMode = 'live';
             zoomState.camera = camera;
             document.getElementById('zoomCamName').textContent = camera.replace('_', ' ').toUpperCase();
+            document.getElementById('zoomResLabel').textContent = '2688x1520 live — scroll/pinch to zoom, drag to pan';
             document.getElementById('zoomModal').classList.add('open');
             document.getElementById('zoomError').style.display = 'none';
+            document.getElementById('zoomControls').style.display = 'flex';
+            document.getElementById('clipControls').style.display = 'none';
             document.body.style.overflow = 'hidden';
+            const vid = document.getElementById('zoomVideo');
+            vid.controls = false;
+            vid.loop = false;
+            vid.muted = true;
             startZoomStream(camera);
+        }
+
+        function openClip(eventId, label, camera) {
+            zoomMode = 'clip';
+            zoomState.camera = camera;
+            document.getElementById('zoomCamName').textContent = label.toUpperCase() + ' — ' + camera.replace('_', ' ');
+            document.getElementById('zoomResLabel').textContent = 'clip review — scroll/pinch to zoom, drag to pan';
+            document.getElementById('zoomModal').classList.add('open');
+            document.getElementById('zoomError').style.display = 'none';
+            document.getElementById('zoomControls').style.display = 'none';
+            document.getElementById('clipControls').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            const vid = document.getElementById('zoomVideo');
+            vid.controls = false;
+            vid.loop = true;
+            vid.muted = false;
+            vid.src = `${API_BASE}/api/events/${eventId}/clip.mp4`;
+            vid.play();
+
+            vid.addEventListener('loadedmetadata', function onMeta() {
+                zoomState.videoW = vid.videoWidth || 1920;
+                zoomState.videoH = vid.videoHeight || 1080;
+                zoomFit();
+                vid.removeEventListener('loadedmetadata', onMeta);
+            });
+
+            // Update time display
+            if (clipTimerInterval) clearInterval(clipTimerInterval);
+            clipTimerInterval = setInterval(updateClipTime, 250);
         }
 
         function closeZoom() {
             document.getElementById('zoomModal').classList.remove('open');
             document.body.style.overflow = '';
             zoomState.camera = null;
-            // Stop the stream
+            zoomMode = 'live';
             if (zoomAbortCtrl) { zoomAbortCtrl.abort(); zoomAbortCtrl = null; }
+            if (clipTimerInterval) { clearInterval(clipTimerInterval); clipTimerInterval = null; }
             const vid = document.getElementById('zoomVideo');
             vid.pause();
             vid.removeAttribute('src');
             vid.load();
+        }
+
+        function clipTogglePlay() {
+            const vid = document.getElementById('zoomVideo');
+            if (vid.paused) {
+                vid.play();
+                document.getElementById('clipPlayPause').textContent = 'Pause';
+            } else {
+                vid.pause();
+                document.getElementById('clipPlayPause').textContent = 'Play';
+            }
+        }
+
+        function clipSkip(seconds) {
+            const vid = document.getElementById('zoomVideo');
+            vid.currentTime = Math.max(0, Math.min(vid.duration || 0, vid.currentTime + seconds));
+        }
+
+        function updateClipTime() {
+            const vid = document.getElementById('zoomVideo');
+            if (!vid.duration) return;
+            const cur = formatTime(vid.currentTime);
+            const dur = formatTime(vid.duration);
+            document.getElementById('clipTime').textContent = cur + ' / ' + dur;
+        }
+
+        function formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return m + ':' + (sec < 10 ? '0' : '') + sec;
         }
 
         function startZoomStream(camera) {
@@ -527,7 +611,7 @@
 
             ms.addEventListener('sourceopen', () => {
                 zoomAbortCtrl = new AbortController();
-                const url = `http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/go2rtc/api/stream.mp4?src=${camera}`;
+                const url = `${API_BASE}/api/go2rtc/api/stream.mp4?src=${camera}`;
 
                 fetch(url, { signal: zoomAbortCtrl.signal }).then(response => {
                     const reader = response.body.getReader();
