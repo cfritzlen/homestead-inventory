@@ -234,17 +234,37 @@
         const CAMERAS = ['coop_a'];
         const EVENT_POLL_MS = 15000;
 
-        // === LIVE STREAM (MSE) ===
-        function startMSE(camera) {
+        // === LIVE STREAM ===
+        // Safari/iPhone: use HLS (native). Chrome/others: use MSE.
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
+                         (/iPad|iPhone|iPod/.test(navigator.userAgent));
+
+        function startStream(camera) {
             const video = document.getElementById('video-' + camera);
             const img = document.getElementById('img-' + camera);
             const errorDiv = document.getElementById('error-' + camera);
 
-            if (!('MediaSource' in window)) {
-                fallbackToSnapshot(camera);
+            if (isSafari) {
+                // HLS — native in Safari/iOS
+                video.src = `${API_BASE}/api/go2rtc/api/stream.m3u8?src=${camera}`;
+                video.play().catch(() => {});
+                setTimeout(() => {
+                    if (video.readyState < 2) fallbackToSnapshot(camera);
+                }, 8000);
                 return;
             }
 
+            if (!('MediaSource' in window)) {
+                // Try HLS as fallback before snapshots
+                video.src = `${API_BASE}/api/go2rtc/api/stream.m3u8?src=${camera}`;
+                video.play().catch(() => fallbackToSnapshot(camera));
+                setTimeout(() => {
+                    if (video.readyState < 2) fallbackToSnapshot(camera);
+                }, 8000);
+                return;
+            }
+
+            // MSE for Chrome/Edge/Firefox
             const ms = new MediaSource();
             video.src = URL.createObjectURL(ms);
 
@@ -276,7 +296,6 @@
                                     sourceBuffer = ms.addSourceBuffer('video/mp4; codecs="avc1.640029"');
                                     sourceBuffer.addEventListener('updateend', () => {
                                         appending = false;
-                                        // Keep buffer from growing too large
                                         if (sourceBuffer.buffered.length > 0) {
                                             const end = sourceBuffer.buffered.end(0);
                                             const start = sourceBuffer.buffered.start(0);
@@ -300,7 +319,6 @@
                 }).catch(() => fallbackToSnapshot(camera));
             });
 
-            // If video fails to play after 5s, fallback
             setTimeout(() => {
                 if (video.readyState < 2) fallbackToSnapshot(camera);
             }, 5000);
@@ -600,9 +618,22 @@
             const video = document.getElementById('zoomVideo');
             const errorEl = document.getElementById('zoomError');
 
-            if (!('MediaSource' in window)) {
-                errorEl.textContent = 'Browser does not support live streaming';
-                errorEl.style.display = 'block';
+            // HLS for Safari/iPhone, MSE for Chrome/Edge
+            if (isSafari || !('MediaSource' in window)) {
+                video.src = `${API_BASE}/api/go2rtc/api/stream.m3u8?src=${camera}`;
+                video.play().catch(() => {});
+                video.addEventListener('loadedmetadata', () => {
+                    zoomState.videoW = video.videoWidth || 2688;
+                    zoomState.videoH = video.videoHeight || 1520;
+                    zoomFit();
+                    errorEl.style.display = 'none';
+                }, { once: true });
+                setTimeout(() => {
+                    if (video.readyState < 2 && zoomState.camera) {
+                        errorEl.textContent = 'Stream loading slowly — waiting...';
+                        errorEl.style.display = 'block';
+                    }
+                }, 8000);
                 return;
             }
 
@@ -632,7 +663,7 @@
                             if (done) return;
                             if (!sourceBuffer) {
                                 try {
-                                    sourceBuffer = ms.addSourceBuffer('video/mp4; codecs="hev1.1.6.L150.B0"');
+                                    sourceBuffer = ms.addSourceBuffer('video/mp4; codecs="avc1.640029"');
                                     sourceBuffer.addEventListener('updateend', () => {
                                         appending = false;
                                         if (sourceBuffer.buffered.length > 0) {
@@ -644,26 +675,10 @@
                                         }
                                         appendNext();
                                     });
-                                } catch(e) {
-                                    // H.265 not supported in MSE, try H.264 fallback
-                                    try {
-                                        sourceBuffer = ms.addSourceBuffer('video/mp4; codecs="avc1.640029"');
-                                        sourceBuffer.addEventListener('updateend', () => {
-                                            appending = false;
-                                            if (sourceBuffer.buffered.length > 0) {
-                                                const end = sourceBuffer.buffered.end(0);
-                                                const start = sourceBuffer.buffered.start(0);
-                                                if (end - start > 10) {
-                                                    try { sourceBuffer.remove(start, end - 5); } catch(e) {}
-                                                }
-                                            }
-                                            appendNext();
-                                        });
-                                    } catch(e2) {
-                                        errorEl.textContent = 'Browser cannot decode this stream — try Chrome or Edge';
-                                        errorEl.style.display = 'block';
-                                        return;
-                                    }
+                                } catch (e) {
+                                    errorEl.textContent = 'Browser cannot decode this stream';
+                                    errorEl.style.display = 'block';
+                                    return;
                                 }
                             }
                             queue.push(value);
@@ -673,7 +688,6 @@
                     }
                     pump();
 
-                    // Once video starts playing, fit it
                     video.addEventListener('loadedmetadata', () => {
                         zoomState.videoW = video.videoWidth || 2688;
                         zoomState.videoH = video.videoHeight || 1520;
@@ -681,7 +695,6 @@
                         errorEl.style.display = 'none';
                     }, { once: true });
 
-                    // Fallback if no metadata after 6s
                     setTimeout(() => {
                         if (video.readyState < 2 && zoomState.camera) {
                             errorEl.textContent = 'Stream loading slowly — waiting...';
@@ -819,7 +832,7 @@
         // === INIT ===
         checkFrigate();
         connectMQTT();
-        CAMERAS.forEach(cam => startMSE(cam));
+        CAMERAS.forEach(cam => startStream(cam));
         loadEvents();
         setInterval(loadEvents, EVENT_POLL_MS);
         setInterval(checkFrigate, 30000);
