@@ -237,7 +237,7 @@
             video.src = URL.createObjectURL(ms);
 
             ms.addEventListener('sourceopen', () => {
-                const url = `http://${FRIGATE_HOST}:${GO2RTC_PORT}/api/stream.mp4?src=${camera}`;
+                const url = `http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/go2rtc/api/stream.mp4?src=${camera}`;
                 fetch(url).then(response => {
                     const reader = response.body.getReader();
                     let sourceBuffer;
@@ -527,7 +527,7 @@
 
             ms.addEventListener('sourceopen', () => {
                 zoomAbortCtrl = new AbortController();
-                const url = `http://${FRIGATE_HOST}:${GO2RTC_PORT}/api/stream.mp4?src=${camera}`;
+                const url = `http://${FRIGATE_HOST}:${FRIGATE_PORT}/api/go2rtc/api/stream.mp4?src=${camera}`;
 
                 fetch(url, { signal: zoomAbortCtrl.signal }).then(response => {
                     const reader = response.body.getReader();
