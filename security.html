@@ -462,17 +462,19 @@
             const img = document.getElementById('zoomImg');
             vid.style.display = 'none';
             img.style.display = 'block';
-            // Use full-res snapshot (h=1520)
+            let firstLoad = true;
             function refresh() {
                 if (!zoomState.camera) return;
                 img.src = `/snapshot/${camera}.jpg?ts=${Date.now()}`;
             }
             img.onload = function() {
-                if (!zoomState.videoW || zoomState.videoW === 2688) {
+                if (firstLoad) {
+                    firstLoad = false;
                     zoomState.videoW = img.naturalWidth;
                     zoomState.videoH = img.naturalHeight;
                     zoomFit();
                 }
+                applyZoom();
             };
             refresh();
             zoomSnapInterval = setInterval(refresh, 500);
