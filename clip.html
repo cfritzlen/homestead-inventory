@@ -11,7 +11,7 @@
         .bar a{color:#c4b5a4;text-decoration:none;font-size:0.9rem;}
         .bar .title{color:#ece8dd;font-family:serif;font-size:1.1rem;}
         video{flex:1;width:100%;object-fit:contain;background:#000;}
-        .loading{flex:1;display:flex;align-items:center;justify-content:center;color:#c4b5a4;font-size:1rem;}
+        .status{flex:1;display:flex;align-items:center;justify-content:center;color:#c4b5a4;font-size:1rem;}
     </style>
 </head>
 <body>
@@ -20,48 +20,36 @@
         <span class="title" id="title">Clip</span>
         <span></span>
     </div>
-    <div class="loading" id="loading">Loading clip...</div>
+    <div class="status" id="status">Loading clip...</div>
     <video id="player" controls playsinline loop style="display:none;"></video>
     <script>
         const params = new URLSearchParams(location.search);
         const id = params.get('id');
         const label = params.get('label') || '';
         const camera = params.get('camera') || '';
+        const status = document.getElementById('status');
+        const player = document.getElementById('player');
 
         if (id) {
             document.getElementById('title').textContent = (label + ' — ' + camera).toUpperCase();
 
-            const player = document.getElementById('player');
-            const loading = document.getElementById('loading');
-
-            player.addEventListener('error', () => {
-                loading.textContent = 'Playback error: ' + (player.error ? player.error.message : 'unknown');
-                loading.style.display = 'flex';
-            });
-
-            player.addEventListener('canplay', () => {
-                loading.style.display = 'none';
-                player.style.display = 'block';
-            });
-
-            // Try direct src first (works on most browsers)
-            player.src = '/api/events/' + id + '/clip.mp4';
-            player.load();
-
-            // If direct fails after 5s, try blob approach
-            setTimeout(() => {
-                if (player.readyState < 2 && !player.error) {
-                    loading.textContent = 'Buffering clip...';
-                    fetch('/api/events/' + id + '/clip.mp4')
-                        .then(r => r.arrayBuffer())
-                        .then(buf => {
-                            const blob = new Blob([buf], { type: 'video/mp4' });
-                            player.src = URL.createObjectURL(blob);
-                            player.load();
-                        })
-                        .catch(() => { loading.textContent = 'Failed to load clip'; });
-                }
-            }, 5000);
+            // Request H.264 conversion (returns cached if already done)
+            status.textContent = 'Converting clip for playback...';
+            fetch('/convert?id=' + encodeURIComponent(id))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.ready) {
+                        player.src = data.url;
+                        player.style.display = 'block';
+                        status.style.display = 'none';
+                        player.play().catch(() => {});
+                    } else {
+                        status.textContent = 'Conversion failed';
+                    }
+                })
+                .catch(() => {
+                    status.textContent = 'Failed to load clip';
+                });
         }
     </script>
 </body>
