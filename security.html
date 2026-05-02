@@ -341,7 +341,7 @@
                 const score = ev.data && ev.data.top_score ? Math.round(ev.data.top_score * 100) + '%' : '';
                 const thumbUrl = `${API_BASE}/api/events/${ev.id}/thumbnail.jpg`;
                 if (isIOS) {
-                    return `<a class="event-card" href="${API_BASE}/api/events/${ev.id}/clip.mp4" target="_blank" style="text-decoration:none;">
+                    return `<a class="event-card" href="clip.html?id=${ev.id}&label=${ev.label}&camera=${ev.camera}" style="text-decoration:none;">
                         <img class="event-thumb" src="${thumbUrl}" alt="${ev.label}" onerror="this.style.display='none'">
                         <div class="event-info">
                             <div class="event-label">${ev.label}${score ? `<span class="score">${score}</span>` : ''}</div>

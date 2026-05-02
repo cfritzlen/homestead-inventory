@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clip — Homestead Hub</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{background:#000;min-height:100vh;display:flex;flex-direction:column;}
+        .bar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(0,0,0,0.8);}
+        .bar a{color:#c4b5a4;text-decoration:none;font-family:sans-serif;font-size:0.9rem;}
+        .bar .title{color:#ece8dd;font-family:serif;font-size:1.1rem;}
+        video{flex:1;width:100%;object-fit:contain;background:#000;}
+    </style>
+</head>
+<body>
+    <div class="bar">
+        <a href="javascript:history.back()">&larr; Back</a>
+        <span class="title" id="title">Clip</span>
+        <span></span>
+    </div>
+    <video id="player" controls autoplay playsinline loop muted>
+        Your browser does not support video.
+    </video>
+    <script>
+        const params = new URLSearchParams(location.search);
+        const id = params.get('id');
+        const label = params.get('label') || '';
+        const camera = params.get('camera') || '';
+        if (id) {
+            document.getElementById('player').src = '/api/events/' + id + '/clip.mp4';
+            document.getElementById('title').textContent = label.toUpperCase() + ' — ' + camera;
+        }
+    </script>
+</body>
+</html>
