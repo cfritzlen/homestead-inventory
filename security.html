@@ -396,6 +396,12 @@
             document.getElementById('clipControls').style.display = 'none';
             document.body.style.overflow = 'hidden';
             const vid = document.getElementById('zoomVideo');
+            const img = document.getElementById('zoomImg');
+            img.style.display = 'none';
+            vid.style.display = 'block';
+            vid.style.position = 'absolute';
+            vid.style.width = ''; vid.style.height = '';
+            vid.style.objectFit = ''; vid.style.transform = '';
             vid.controls = false; vid.loop = false; vid.muted = true;
             vid.addEventListener('loadedmetadata', function onMeta() {
                 zoomState.videoW = vid.videoWidth || 2688;
