@@ -19,7 +19,7 @@
         <span class="title" id="title">Clip</span>
         <span></span>
     </div>
-    <video id="player" controls autoplay playsinline loop muted>
+    <video id="player" controls playsinline loop preload="auto">
         Your browser does not support video.
     </video>
     <script>
@@ -28,8 +28,10 @@
         const label = params.get('label') || '';
         const camera = params.get('camera') || '';
         if (id) {
-            document.getElementById('player').src = '/api/events/' + id + '/clip.mp4';
+            const player = document.getElementById('player');
+            player.src = '/api/events/' + id + '/clip.mp4';
             document.getElementById('title').textContent = label.toUpperCase() + ' — ' + camera;
+            player.load();
         }
     </script>
 </body>
