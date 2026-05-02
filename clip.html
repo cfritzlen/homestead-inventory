@@ -6,32 +6,45 @@
     <title>Clip — Homestead Hub</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
-        body{background:#000;min-height:100vh;display:flex;flex-direction:column;}
+        body{background:#000;min-height:100vh;display:flex;flex-direction:column;font-family:sans-serif;}
         .bar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(0,0,0,0.8);}
-        .bar a{color:#c4b5a4;text-decoration:none;font-family:sans-serif;font-size:0.9rem;}
+        .bar a{color:#c4b5a4;text-decoration:none;font-size:0.9rem;}
         .bar .title{color:#ece8dd;font-family:serif;font-size:1.1rem;}
         video{flex:1;width:100%;object-fit:contain;background:#000;}
+        .loading{flex:1;display:flex;align-items:center;justify-content:center;color:#c4b5a4;font-size:1rem;}
     </style>
 </head>
 <body>
     <div class="bar">
-        <a href="javascript:history.back()">&larr; Back</a>
+        <a href="security.html">&larr; Back</a>
         <span class="title" id="title">Clip</span>
         <span></span>
     </div>
-    <video id="player" controls playsinline loop preload="auto">
-        Your browser does not support video.
-    </video>
+    <div class="loading" id="loading">Loading clip...</div>
+    <video id="player" controls playsinline loop style="display:none;"></video>
     <script>
         const params = new URLSearchParams(location.search);
         const id = params.get('id');
         const label = params.get('label') || '';
         const camera = params.get('camera') || '';
+
         if (id) {
-            const player = document.getElementById('player');
-            player.src = '/api/events/' + id + '/clip.mp4';
-            document.getElementById('title').textContent = label.toUpperCase() + ' — ' + camera;
-            player.load();
+            document.getElementById('title').textContent = (label + ' — ' + camera).toUpperCase();
+
+            // Fetch clip as blob so Safari can play it with range requests
+            fetch('/api/events/' + id + '/clip.mp4')
+                .then(r => r.blob())
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const player = document.getElementById('player');
+                    player.src = url;
+                    player.style.display = 'block';
+                    document.getElementById('loading').style.display = 'none';
+                    player.play().catch(() => {});
+                })
+                .catch(() => {
+                    document.getElementById('loading').textContent = 'Failed to load clip';
+                });
         }
     </script>
 </body>
