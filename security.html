@@ -31,7 +31,6 @@
         .section-title{font-family:'Crimson Pro',serif;font-size:1.6rem;font-weight:400;margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(236,232,221,0.1);}
         .section-title:first-of-type{margin-top:0;}
 
-        /* --- Live Feed --- */
         .feed-grid{display:grid;grid-template-columns:1fr;gap:16px;}
         .feed-card{background:rgba(236,232,221,0.06);border:1px solid rgba(236,232,221,0.1);border-radius:16px;overflow:hidden;position:relative;}
         .feed-card .camera-label{position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.6);padding:4px 12px;border-radius:8px;font-size:0.82rem;color:var(--cream);z-index:2;display:flex;align-items:center;gap:6px;}
@@ -44,9 +43,8 @@
         .feed-meta .frigate-link{font-size:0.78rem;color:var(--sage-400);text-decoration:none;}
         .feed-meta .frigate-link:hover{color:var(--cream);}
 
-        /* --- Events --- */
         .events-list{display:flex;flex-direction:column;gap:10px;}
-        .event-card{display:flex;align-items:center;gap:14px;background:rgba(236,232,221,0.06);border:1px solid rgba(236,232,221,0.1);border-radius:12px;padding:12px 16px;text-decoration:none;color:var(--cream);transition:background 0.2s;}
+        .event-card{display:flex;align-items:center;gap:14px;background:rgba(236,232,221,0.06);border:1px solid rgba(236,232,221,0.1);border-radius:12px;padding:12px 16px;cursor:pointer;color:var(--cream);transition:background 0.2s;}
         .event-card:hover{background:rgba(236,232,221,0.1);}
         .event-thumb{width:80px;height:56px;border-radius:8px;object-fit:cover;background:#222;flex-shrink:0;}
         .event-info{flex:1;min-width:0;}
@@ -56,37 +54,29 @@
         .event-camera{font-size:0.78rem;color:var(--dusty-sage);}
         .no-events{text-align:center;padding:32px;color:var(--taupe);font-size:0.9rem;}
 
-        /* --- Alarm Controls --- */
         .alarm-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
         .control-card{background:rgba(236,232,221,0.06);border:1px solid rgba(236,232,221,0.1);border-radius:16px;padding:20px;display:flex;align-items:center;justify-content:space-between;}
         .control-label{display:flex;align-items:center;gap:10px;}
         .control-label .ctrl-icon{font-size:1.6rem;}
         .control-label .name{font-family:'Crimson Pro',serif;font-size:1.2rem;font-weight:400;color:var(--cream);}
         .control-label .desc{font-size:0.75rem;color:var(--taupe);margin-top:2px;}
-
         .toggle-btn{width:54px;height:28px;border-radius:14px;border:none;cursor:pointer;position:relative;transition:background 0.3s;background:rgba(236,232,221,0.15);flex-shrink:0;}
         .toggle-btn::after{content:'';position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:var(--cream);transition:transform 0.3s;}
         .toggle-btn.on{background:var(--sage-500);}
         .toggle-btn.on::after{transform:translateX(26px);}
-
         .panic-btn{grid-column:1/-1;padding:22px;border-radius:16px;border:2px solid var(--dusty-rose);background:rgba(155,114,105,0.15);color:var(--dusty-rose);font-family:'Crimson Pro',serif;font-size:1.6rem;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:1px;}
         .panic-btn:hover{background:rgba(155,114,105,0.3);border-color:var(--cream);color:var(--cream);}
         .panic-btn:active,.panic-btn.active{background:var(--dusty-rose);color:white;border-color:var(--dusty-rose);}
-
         .timer-section{grid-column:1/-1;text-align:center;margin-top:4px;}
         .timer-label{font-size:0.78rem;color:var(--taupe);margin-bottom:6px;}
         .timer-options{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;}
         .timer-opt{background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.15);border-radius:10px;padding:6px 14px;font-size:0.82rem;color:var(--taupe);cursor:pointer;transition:all 0.2s;font-family:'Karla',sans-serif;}
         .timer-opt:hover,.timer-opt.selected{background:rgba(236,232,221,0.2);color:var(--cream);border-color:rgba(236,232,221,0.3);}
-
         .log{margin-top:16px;background:rgba(0,0,0,0.2);border-radius:12px;padding:14px;max-height:120px;overflow-y:auto;font-size:0.75rem;color:var(--dusty-sage);font-family:monospace;}
         .log .entry{padding:2px 0;border-bottom:1px solid rgba(236,232,221,0.05);}
 
-        /* --- Fullscreen Button on Feed --- */
         .zoom-btn{position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.6);border:none;color:var(--cream);padding:6px 10px;border-radius:8px;font-size:0.9rem;cursor:pointer;z-index:2;transition:background 0.2s;}
         .zoom-btn:hover{background:rgba(0,0,0,0.8);}
-
-        /* --- Fullscreen Live Modal --- */
         .zoom-modal{display:none;position:fixed;inset:0;background:#000;z-index:1000;flex-direction:column;}
         .zoom-modal.open{display:flex;}
         .zoom-modal-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;flex-shrink:0;background:rgba(0,0,0,0.8);z-index:2;}
@@ -130,7 +120,6 @@
             <div class="status-pill"><span class="status-dot" id="mqttDot"></span><span id="mqttStatus">MQTT...</span></div>
         </div>
 
-        <!-- LIVE FEEDS -->
         <div class="section-title">Live Cameras</div>
         <div class="feed-grid" id="feedGrid">
             <div class="feed-card" id="feed-coop_a">
@@ -149,39 +138,28 @@
             </div>
         </div>
 
-        <!-- RECENT EVENTS -->
         <div class="section-title">Recent Events</div>
         <div class="events-list" id="eventsList">
             <div class="no-events" id="noEvents">No events yet — detections will appear here</div>
         </div>
 
-        <!-- ALARM CONTROLS -->
         <div class="section-title">Alarm Control</div>
         <div class="alarm-grid">
             <div class="control-card">
                 <div class="control-label">
                     <div class="ctrl-icon">💡</div>
-                    <div>
-                        <div class="name">Floodlight</div>
-                        <div class="desc">Plug 2 — deer deterrent</div>
-                    </div>
+                    <div><div class="name">Floodlight</div><div class="desc">Plug 2 — deer deterrent</div></div>
                 </div>
                 <button class="toggle-btn" id="lightToggle" onclick="toggleLight()"></button>
             </div>
-
             <div class="control-card">
                 <div class="control-label">
                     <div class="ctrl-icon">🔊</div>
-                    <div>
-                        <div class="name">Siren</div>
-                        <div class="desc">Plug 1 — predator alarm</div>
-                    </div>
+                    <div><div class="name">Siren</div><div class="desc">Plug 1 — predator alarm</div></div>
                 </div>
                 <button class="toggle-btn" id="sirenToggle" onclick="toggleSiren()"></button>
             </div>
-
             <button class="panic-btn" id="panicBtn" onclick="panic()">FULL ALARM</button>
-
             <div class="timer-section">
                 <div class="timer-label">Auto-off timer</div>
                 <div class="timer-options">
@@ -193,19 +171,18 @@
                 </div>
             </div>
         </div>
-
         <div class="log" id="log"></div>
     </div>
 
-    <!-- Fullscreen Zoom Modal (live stream + clip review) -->
+    <!-- Fullscreen Modal -->
     <div class="zoom-modal" id="zoomModal">
         <div class="zoom-modal-header">
-            <div><span class="cam-name" id="zoomCamName"></span><span class="res-label" id="zoomResLabel">scroll/pinch to zoom, drag to pan</span></div>
+            <div><span class="cam-name" id="zoomCamName"></span><span class="res-label" id="zoomResLabel"></span></div>
             <button class="zoom-close" onclick="closeZoom()">Close</button>
         </div>
         <div class="zoom-container" id="zoomContainer">
             <video id="zoomVideo" autoplay muted playsinline></video>
-            <div class="zoom-stream-error" id="zoomError" style="display:none;">Stream failed — trying to reconnect...</div>
+            <div class="zoom-stream-error" id="zoomError" style="display:none;"></div>
         </div>
         <div class="zoom-controls" id="zoomControls">
             <button class="zoom-ctrl" onclick="zoomTo(1)">Fit</button>
@@ -227,150 +204,117 @@
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <script>
         // === CONFIG ===
-        // All /api/ requests go through the hub-server proxy (same origin, no CORS)
-        const API_BASE = '';  // same origin — hub-server proxies /api/* to Frigate
+        const API_BASE = '';
         const MQTT_WS = 'ws://192.168.1.200:9001';
         const ALARM_TOPIC = 'homestead/alarm/trigger';
         const CAMERAS = ['coop_a'];
         const EVENT_POLL_MS = 15000;
 
-        // === LIVE STREAM ===
-        // Safari/iPhone: use HLS (native). Chrome/others: use MSE.
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
-                         (/iPad|iPhone|iPod/.test(navigator.userAgent));
+        // === WEBSOCKET MSE STREAM (same method as Frigate UI — works on all browsers) ===
+        function connectWSMSE(video, camera, onFail) {
+            const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProto}//${location.host}/live/mse/api/ws?src=${camera}`;
+            const ws = new WebSocket(wsUrl);
+            ws.binaryType = 'arraybuffer';
+            let ms, sourceBuffer, queue = [], appending = false;
 
+            ws.onopen = () => {
+                ms = new MediaSource();
+                video.src = URL.createObjectURL(ms);
+                ms.addEventListener('sourceopen', () => {});
+            };
+
+            ws.onmessage = (ev) => {
+                if (typeof ev.data === 'string') {
+                    // First text message is the codec mime type from go2rtc
+                    ms.addEventListener('sourceopen', () => {
+                        try {
+                            sourceBuffer = ms.addSourceBuffer(ev.data);
+                            sourceBuffer.mode = 'segments';
+                            sourceBuffer.addEventListener('updateend', () => {
+                                appending = false;
+                                if (sourceBuffer.buffered.length > 0) {
+                                    const end = sourceBuffer.buffered.end(0);
+                                    const start = sourceBuffer.buffered.start(0);
+                                    if (end - start > 10) {
+                                        try { sourceBuffer.remove(start, end - 5); } catch(e) {}
+                                    }
+                                }
+                                flushQueue();
+                            });
+                        } catch(e) { if (onFail) onFail(); }
+                    });
+                    // If sourceopen already fired
+                    if (ms.readyState === 'open' && !sourceBuffer) {
+                        try {
+                            sourceBuffer = ms.addSourceBuffer(ev.data);
+                            sourceBuffer.mode = 'segments';
+                            sourceBuffer.addEventListener('updateend', () => {
+                                appending = false;
+                                if (sourceBuffer.buffered.length > 0) {
+                                    const end = sourceBuffer.buffered.end(0);
+                                    const start = sourceBuffer.buffered.start(0);
+                                    if (end - start > 10) {
+                                        try { sourceBuffer.remove(start, end - 5); } catch(e) {}
+                                    }
+                                }
+                                flushQueue();
+                            });
+                        } catch(e) { if (onFail) onFail(); }
+                    }
+                    return;
+                }
+                if (sourceBuffer) { queue.push(ev.data); flushQueue(); }
+            };
+
+            function flushQueue() {
+                if (!sourceBuffer || appending || queue.length === 0 || sourceBuffer.updating) return;
+                appending = true;
+                try { sourceBuffer.appendBuffer(queue.shift()); } catch(e) { appending = false; }
+            }
+
+            ws.onerror = () => { if (onFail) onFail(); };
+            ws.onclose = () => {};
+            setTimeout(() => { if (video.readyState < 2) { ws.close(); if (onFail) onFail(); } }, 10000);
+            video._ws = ws;
+            return ws;
+        }
+
+        // === INLINE FEED ===
         function startStream(camera) {
             const video = document.getElementById('video-' + camera);
-            const img = document.getElementById('img-' + camera);
-            const errorDiv = document.getElementById('error-' + camera);
-
-            if (isSafari) {
-                // HLS — native in Safari/iOS
-                video.src = `${API_BASE}/api/go2rtc/api/stream.m3u8?src=${camera}`;
-                video.play().catch(() => {});
-                setTimeout(() => {
-                    if (video.readyState < 2) fallbackToSnapshot(camera);
-                }, 8000);
-                return;
-            }
-
-            if (!('MediaSource' in window)) {
-                // Try HLS as fallback before snapshots
-                video.src = `${API_BASE}/api/go2rtc/api/stream.m3u8?src=${camera}`;
-                video.play().catch(() => fallbackToSnapshot(camera));
-                setTimeout(() => {
-                    if (video.readyState < 2) fallbackToSnapshot(camera);
-                }, 8000);
-                return;
-            }
-
-            // MSE for Chrome/Edge/Firefox
-            const ms = new MediaSource();
-            video.src = URL.createObjectURL(ms);
-
-            ms.addEventListener('sourceopen', () => {
-                const url = `${API_BASE}/api/go2rtc/api/stream.mp4?src=${camera}`;
-                fetch(url).then(response => {
-                    const reader = response.body.getReader();
-                    let sourceBuffer;
-                    let queue = [];
-                    let appending = false;
-
-                    function appendNext() {
-                        if (queue.length === 0 || appending) return;
-                        if (sourceBuffer.updating) return;
-                        appending = true;
-                        const chunk = queue.shift();
-                        try {
-                            sourceBuffer.appendBuffer(chunk);
-                        } catch (e) {
-                            fallbackToSnapshot(camera);
-                        }
-                    }
-
-                    function pump() {
-                        reader.read().then(({ done, value }) => {
-                            if (done) return;
-                            if (!sourceBuffer) {
-                                try {
-                                    sourceBuffer = ms.addSourceBuffer('video/mp4; codecs="avc1.640029"');
-                                    sourceBuffer.addEventListener('updateend', () => {
-                                        appending = false;
-                                        if (sourceBuffer.buffered.length > 0) {
-                                            const end = sourceBuffer.buffered.end(0);
-                                            const start = sourceBuffer.buffered.start(0);
-                                            if (end - start > 10) {
-                                                try { sourceBuffer.remove(start, end - 5); } catch(e) {}
-                                            }
-                                        }
-                                        appendNext();
-                                    });
-                                } catch (e) {
-                                    fallbackToSnapshot(camera);
-                                    return;
-                                }
-                            }
-                            queue.push(value);
-                            appendNext();
-                            pump();
-                        }).catch(() => fallbackToSnapshot(camera));
-                    }
-                    pump();
-                }).catch(() => fallbackToSnapshot(camera));
-            });
-
-            setTimeout(() => {
-                if (video.readyState < 2) fallbackToSnapshot(camera);
-            }, 5000);
+            connectWSMSE(video, camera, () => fallbackToSnapshot(camera));
         }
 
         function fallbackToSnapshot(camera) {
             const video = document.getElementById('video-' + camera);
             const img = document.getElementById('img-' + camera);
             const errorDiv = document.getElementById('error-' + camera);
-
             video.style.display = 'none';
             errorDiv.style.display = 'block';
             img.style.display = 'block';
-
-            function refreshSnapshot() {
-                img.src = `${API_BASE}/api/${camera}/latest.jpg?ts=${Date.now()}`;
-            }
-            refreshSnapshot();
-            setInterval(refreshSnapshot, 2000);
+            function refresh() { img.src = `${API_BASE}/api/${camera}/latest.jpg?ts=${Date.now()}`; }
+            refresh();
+            setInterval(refresh, 2000);
         }
 
         // === EVENTS ===
         function loadEvents() {
             fetch(`${API_BASE}/api/events?limit=20&has_clip=1`)
-                .then(r => r.json())
-                .then(events => renderEvents(events))
-                .catch(() => {
-                    // Try without has_clip filter
-                    fetch(`${API_BASE}/api/events?limit=20`)
-                        .then(r => r.json())
-                        .then(events => renderEvents(events))
-                        .catch(() => {});
-                });
+                .then(r => r.json()).then(renderEvents)
+                .catch(() => fetch(`${API_BASE}/api/events?limit=20`).then(r => r.json()).then(renderEvents).catch(() => {}));
         }
 
         function renderEvents(events) {
             const list = document.getElementById('eventsList');
             const noEvents = document.getElementById('noEvents');
-
-            if (!events || events.length === 0) {
-                noEvents.style.display = 'block';
-                return;
-            }
+            if (!events || events.length === 0) { noEvents.style.display = 'block'; return; }
             noEvents.style.display = 'none';
-
             list.innerHTML = events.map(ev => {
                 const time = new Date(ev.start_time * 1000);
                 const ago = timeAgo(time);
                 const score = ev.data && ev.data.top_score ? Math.round(ev.data.top_score * 100) + '%' : '';
                 const thumbUrl = `${API_BASE}/api/events/${ev.id}/thumbnail.jpg`;
-                const clipUrl = `${API_BASE}/api/events/${ev.id}/clip.mp4`;
-
                 return `<div class="event-card" onclick="openClip('${ev.id}', '${ev.label}', '${ev.camera}')">
                     <img class="event-thumb" src="${thumbUrl}" alt="${ev.label}" onerror="this.style.display='none'">
                     <div class="event-info">
@@ -392,181 +336,99 @@
 
         // === FRIGATE STATUS ===
         function checkFrigate() {
-            fetch(`${API_BASE}/api/version`)
-                .then(r => r.ok ? r.text() : Promise.reject())
-                .then(v => {
-                    document.getElementById('frigateDot').className = 'status-dot connected';
-                    document.getElementById('frigateStatus').textContent = 'Frigate ' + v.replace(/"/g, '');
-                })
-                .catch(() => {
-                    document.getElementById('frigateDot').className = 'status-dot';
-                    document.getElementById('frigateStatus').textContent = 'Frigate offline';
-                });
+            fetch(`${API_BASE}/api/version`).then(r => r.ok ? r.text() : Promise.reject()).then(v => {
+                document.getElementById('frigateDot').className = 'status-dot connected';
+                document.getElementById('frigateStatus').textContent = 'Frigate ' + v.replace(/"/g, '');
+            }).catch(() => {
+                document.getElementById('frigateDot').className = 'status-dot';
+                document.getElementById('frigateStatus').textContent = 'Frigate offline';
+            });
         }
 
-        // === MQTT + ALARM CONTROLS ===
-        let client;
-        let lightOn = false, sirenOn = false;
-        let timerDuration = 30;
-        let lightTimer = null, sirenTimer = null;
+        // === MQTT + ALARM ===
+        let client, lightOn = false, sirenOn = false, timerDuration = 30, lightTimer = null, sirenTimer = null;
 
         function log(msg) {
             const el = document.getElementById('log');
-            const time = new Date().toLocaleTimeString();
-            el.innerHTML = `<div class="entry">${time} — ${msg}</div>` + el.innerHTML;
+            el.innerHTML = `<div class="entry">${new Date().toLocaleTimeString()} — ${msg}</div>` + el.innerHTML;
         }
 
         function connectMQTT() {
             client = mqtt.connect(MQTT_WS);
-            client.on('connect', () => {
-                document.getElementById('mqttDot').className = 'status-dot connected';
-                document.getElementById('mqttStatus').textContent = 'MQTT connected';
-                log('MQTT connected');
-            });
-            client.on('error', () => {
-                document.getElementById('mqttDot').className = 'status-dot';
-                document.getElementById('mqttStatus').textContent = 'MQTT error';
-            });
-            client.on('close', () => {
-                document.getElementById('mqttDot').className = 'status-dot';
-                document.getElementById('mqttStatus').textContent = 'MQTT disconnected';
-            });
+            client.on('connect', () => { document.getElementById('mqttDot').className = 'status-dot connected'; document.getElementById('mqttStatus').textContent = 'MQTT connected'; log('MQTT connected'); });
+            client.on('error', () => { document.getElementById('mqttDot').className = 'status-dot'; document.getElementById('mqttStatus').textContent = 'MQTT error'; });
+            client.on('close', () => { document.getElementById('mqttDot').className = 'status-dot'; document.getElementById('mqttStatus').textContent = 'MQTT disconnected'; });
         }
 
-        function send(action) {
-            if (client && client.connected) {
-                client.publish(ALARM_TOPIC, action);
-                log('Sent: ' + action);
-            } else {
-                log('MQTT not connected — retrying...');
-                connectMQTT();
-            }
-        }
+        function send(action) { if (client && client.connected) { client.publish(ALARM_TOPIC, action); log('Sent: ' + action); } else { log('MQTT not connected'); connectMQTT(); } }
 
         function toggleLight() {
-            if (lightOn) {
-                send('light_off'); lightOn = false;
-                document.getElementById('lightToggle').classList.remove('on');
-                clearTimeout(lightTimer); log('Light OFF');
-            } else {
-                send('light_on'); lightOn = true;
-                document.getElementById('lightToggle').classList.add('on');
-                log('Light ON');
-                if (timerDuration > 0) {
-                    lightTimer = setTimeout(() => {
-                        send('light_off'); lightOn = false;
-                        document.getElementById('lightToggle').classList.remove('on');
-                        log('Light auto-off');
-                    }, timerDuration * 1000);
-                }
-            }
+            if (lightOn) { send('light_off'); lightOn = false; document.getElementById('lightToggle').classList.remove('on'); clearTimeout(lightTimer); log('Light OFF'); }
+            else { send('light_on'); lightOn = true; document.getElementById('lightToggle').classList.add('on'); log('Light ON');
+                if (timerDuration > 0) { lightTimer = setTimeout(() => { send('light_off'); lightOn = false; document.getElementById('lightToggle').classList.remove('on'); log('Light auto-off'); }, timerDuration * 1000); } }
         }
-
         function toggleSiren() {
-            if (sirenOn) {
-                send('siren_off'); sirenOn = false;
-                document.getElementById('sirenToggle').classList.remove('on');
-                clearTimeout(sirenTimer); log('Siren OFF');
-            } else {
-                send('siren_on'); sirenOn = true;
-                document.getElementById('sirenToggle').classList.add('on');
-                log('Siren ON');
-                if (timerDuration > 0) {
-                    sirenTimer = setTimeout(() => {
-                        send('siren_off'); sirenOn = false;
-                        document.getElementById('sirenToggle').classList.remove('on');
-                        log('Siren auto-off');
-                    }, timerDuration * 1000);
-                }
-            }
+            if (sirenOn) { send('siren_off'); sirenOn = false; document.getElementById('sirenToggle').classList.remove('on'); clearTimeout(sirenTimer); log('Siren OFF'); }
+            else { send('siren_on'); sirenOn = true; document.getElementById('sirenToggle').classList.add('on'); log('Siren ON');
+                if (timerDuration > 0) { sirenTimer = setTimeout(() => { send('siren_off'); sirenOn = false; document.getElementById('sirenToggle').classList.remove('on'); log('Siren auto-off'); }, timerDuration * 1000); } }
         }
-
         function panic() {
             const btn = document.getElementById('panicBtn');
-            if (lightOn && sirenOn) {
-                send('all_off'); lightOn = false; sirenOn = false;
-                document.getElementById('lightToggle').classList.remove('on');
-                document.getElementById('sirenToggle').classList.remove('on');
-                btn.classList.remove('active');
-                clearTimeout(lightTimer); clearTimeout(sirenTimer);
-                log('FULL ALARM OFF');
-            } else {
-                send('all_on'); lightOn = true; sirenOn = true;
-                document.getElementById('lightToggle').classList.add('on');
-                document.getElementById('sirenToggle').classList.add('on');
-                btn.classList.add('active');
-                log('FULL ALARM ON');
-                if (timerDuration > 0) {
-                    lightTimer = setTimeout(() => {
-                        send('all_off'); lightOn = false; sirenOn = false;
-                        document.getElementById('lightToggle').classList.remove('on');
-                        document.getElementById('sirenToggle').classList.remove('on');
-                        btn.classList.remove('active');
-                        log('Full alarm auto-off');
-                    }, timerDuration * 1000);
-                }
-            }
+            if (lightOn && sirenOn) { send('all_off'); lightOn = false; sirenOn = false; document.getElementById('lightToggle').classList.remove('on'); document.getElementById('sirenToggle').classList.remove('on'); btn.classList.remove('active'); clearTimeout(lightTimer); clearTimeout(sirenTimer); log('FULL ALARM OFF'); }
+            else { send('all_on'); lightOn = true; sirenOn = true; document.getElementById('lightToggle').classList.add('on'); document.getElementById('sirenToggle').classList.add('on'); btn.classList.add('active'); log('FULL ALARM ON');
+                if (timerDuration > 0) { lightTimer = setTimeout(() => { send('all_off'); lightOn = false; sirenOn = false; document.getElementById('lightToggle').classList.remove('on'); document.getElementById('sirenToggle').classList.remove('on'); btn.classList.remove('active'); log('Full alarm auto-off'); }, timerDuration * 1000); } }
         }
+        function setTimer(seconds) { timerDuration = seconds; document.querySelectorAll('.timer-opt').forEach(el => el.classList.remove('selected')); event.target.classList.add('selected'); log(seconds > 0 ? 'Timer set to ' + seconds + 's' : 'Timer off'); }
 
-        function setTimer(seconds) {
-            timerDuration = seconds;
-            document.querySelectorAll('.timer-opt').forEach(el => el.classList.remove('selected'));
-            event.target.classList.add('selected');
-            log(seconds > 0 ? 'Timer set to ' + seconds + 's' : 'Timer off — stay on');
-        }
-
-        // === FULLSCREEN LIVE STREAM ===
+        // === FULLSCREEN ZOOM ===
         let zoomState = { scale: 1, x: 0, y: 0, camera: null, videoW: 2688, videoH: 1520 };
         let dragState = { active: false, startX: 0, startY: 0, origX: 0, origY: 0 };
-        let pinchStart = 0;
-        let zoomAbortCtrl = null;
-
-        let zoomMode = 'live'; // 'live' or 'clip'
-        let clipTimerInterval = null;
+        let pinchStart = 0, zoomWs = null, zoomMode = 'live', clipTimerInterval = null;
 
         function openZoom(camera) {
             zoomMode = 'live';
             zoomState.camera = camera;
             document.getElementById('zoomCamName').textContent = camera.replace('_', ' ').toUpperCase();
-            document.getElementById('zoomResLabel').textContent = '2688x1520 live — scroll/pinch to zoom, drag to pan';
+            document.getElementById('zoomResLabel').textContent = ' — 2688x1520 live — zoom & pan';
             document.getElementById('zoomModal').classList.add('open');
             document.getElementById('zoomError').style.display = 'none';
             document.getElementById('zoomControls').style.display = 'flex';
             document.getElementById('clipControls').style.display = 'none';
             document.body.style.overflow = 'hidden';
             const vid = document.getElementById('zoomVideo');
-            vid.controls = false;
-            vid.loop = false;
-            vid.muted = true;
-            startZoomStream(camera);
+            vid.controls = false; vid.loop = false; vid.muted = true;
+            zoomWs = connectWSMSE(vid, camera, () => {
+                document.getElementById('zoomError').textContent = 'Could not connect to stream';
+                document.getElementById('zoomError').style.display = 'block';
+            });
+            vid.addEventListener('loadedmetadata', function onMeta() {
+                zoomState.videoW = vid.videoWidth || 2688;
+                zoomState.videoH = vid.videoHeight || 1520;
+                zoomFit();
+                vid.removeEventListener('loadedmetadata', onMeta);
+            });
         }
 
         function openClip(eventId, label, camera) {
             zoomMode = 'clip';
             zoomState.camera = camera;
             document.getElementById('zoomCamName').textContent = label.toUpperCase() + ' — ' + camera.replace('_', ' ');
-            document.getElementById('zoomResLabel').textContent = 'clip review — scroll/pinch to zoom, drag to pan';
+            document.getElementById('zoomResLabel').textContent = ' — clip review — zoom & pan';
             document.getElementById('zoomModal').classList.add('open');
             document.getElementById('zoomError').style.display = 'none';
             document.getElementById('zoomControls').style.display = 'none';
             document.getElementById('clipControls').style.display = 'flex';
             document.body.style.overflow = 'hidden';
-
             const vid = document.getElementById('zoomVideo');
-            vid.controls = false;
-            vid.loop = true;
-            vid.muted = false;
+            vid.controls = false; vid.loop = true; vid.muted = false;
             vid.src = `${API_BASE}/api/events/${eventId}/clip.mp4`;
             vid.play();
-
             vid.addEventListener('loadedmetadata', function onMeta() {
                 zoomState.videoW = vid.videoWidth || 1920;
                 zoomState.videoH = vid.videoHeight || 1080;
                 zoomFit();
                 vid.removeEventListener('loadedmetadata', onMeta);
             });
-
-            // Update time display
             if (clipTimerInterval) clearInterval(clipTimerInterval);
             clipTimerInterval = setInterval(updateClipTime, 250);
         }
@@ -574,227 +436,77 @@
         function closeZoom() {
             document.getElementById('zoomModal').classList.remove('open');
             document.body.style.overflow = '';
-            zoomState.camera = null;
-            zoomMode = 'live';
-            if (zoomAbortCtrl) { zoomAbortCtrl.abort(); zoomAbortCtrl = null; }
+            zoomState.camera = null; zoomMode = 'live';
+            if (zoomWs) { zoomWs.close(); zoomWs = null; }
             if (clipTimerInterval) { clearInterval(clipTimerInterval); clipTimerInterval = null; }
             const vid = document.getElementById('zoomVideo');
-            vid.pause();
-            vid.removeAttribute('src');
-            vid.load();
+            vid.pause(); vid.removeAttribute('src'); vid.load();
         }
 
-        function clipTogglePlay() {
-            const vid = document.getElementById('zoomVideo');
-            if (vid.paused) {
-                vid.play();
-                document.getElementById('clipPlayPause').textContent = 'Pause';
-            } else {
-                vid.pause();
-                document.getElementById('clipPlayPause').textContent = 'Play';
-            }
-        }
-
-        function clipSkip(seconds) {
-            const vid = document.getElementById('zoomVideo');
-            vid.currentTime = Math.max(0, Math.min(vid.duration || 0, vid.currentTime + seconds));
-        }
-
-        function updateClipTime() {
-            const vid = document.getElementById('zoomVideo');
-            if (!vid.duration) return;
-            const cur = formatTime(vid.currentTime);
-            const dur = formatTime(vid.duration);
-            document.getElementById('clipTime').textContent = cur + ' / ' + dur;
-        }
-
-        function formatTime(s) {
-            const m = Math.floor(s / 60);
-            const sec = Math.floor(s % 60);
-            return m + ':' + (sec < 10 ? '0' : '') + sec;
-        }
-
-        function startZoomStream(camera) {
-            const video = document.getElementById('zoomVideo');
-            const errorEl = document.getElementById('zoomError');
-
-            // HLS for Safari/iPhone, MSE for Chrome/Edge
-            if (isSafari || !('MediaSource' in window)) {
-                video.src = `${API_BASE}/api/go2rtc/api/stream.m3u8?src=${camera}`;
-                video.play().catch(() => {});
-                video.addEventListener('loadedmetadata', () => {
-                    zoomState.videoW = video.videoWidth || 2688;
-                    zoomState.videoH = video.videoHeight || 1520;
-                    zoomFit();
-                    errorEl.style.display = 'none';
-                }, { once: true });
-                setTimeout(() => {
-                    if (video.readyState < 2 && zoomState.camera) {
-                        errorEl.textContent = 'Stream loading slowly — waiting...';
-                        errorEl.style.display = 'block';
-                    }
-                }, 8000);
-                return;
-            }
-
-            const ms = new MediaSource();
-            video.src = URL.createObjectURL(ms);
-
-            ms.addEventListener('sourceopen', () => {
-                zoomAbortCtrl = new AbortController();
-                const url = `${API_BASE}/api/go2rtc/api/stream.mp4?src=${camera}`;
-
-                fetch(url, { signal: zoomAbortCtrl.signal }).then(response => {
-                    const reader = response.body.getReader();
-                    let sourceBuffer;
-                    let queue = [];
-                    let appending = false;
-
-                    function appendNext() {
-                        if (queue.length === 0 || appending) return;
-                        if (sourceBuffer.updating) return;
-                        appending = true;
-                        const chunk = queue.shift();
-                        try { sourceBuffer.appendBuffer(chunk); } catch(e) {}
-                    }
-
-                    function pump() {
-                        reader.read().then(({ done, value }) => {
-                            if (done) return;
-                            if (!sourceBuffer) {
-                                try {
-                                    sourceBuffer = ms.addSourceBuffer('video/mp4; codecs="avc1.640029"');
-                                    sourceBuffer.addEventListener('updateend', () => {
-                                        appending = false;
-                                        if (sourceBuffer.buffered.length > 0) {
-                                            const end = sourceBuffer.buffered.end(0);
-                                            const start = sourceBuffer.buffered.start(0);
-                                            if (end - start > 10) {
-                                                try { sourceBuffer.remove(start, end - 5); } catch(e) {}
-                                            }
-                                        }
-                                        appendNext();
-                                    });
-                                } catch (e) {
-                                    errorEl.textContent = 'Browser cannot decode this stream';
-                                    errorEl.style.display = 'block';
-                                    return;
-                                }
-                            }
-                            queue.push(value);
-                            appendNext();
-                            pump();
-                        }).catch(() => {});
-                    }
-                    pump();
-
-                    video.addEventListener('loadedmetadata', () => {
-                        zoomState.videoW = video.videoWidth || 2688;
-                        zoomState.videoH = video.videoHeight || 1520;
-                        zoomFit();
-                        errorEl.style.display = 'none';
-                    }, { once: true });
-
-                    setTimeout(() => {
-                        if (video.readyState < 2 && zoomState.camera) {
-                            errorEl.textContent = 'Stream loading slowly — waiting...';
-                            errorEl.style.display = 'block';
-                        }
-                    }, 6000);
-
-                }).catch((err) => {
-                    if (err.name !== 'AbortError') {
-                        errorEl.textContent = 'Could not connect to stream';
-                        errorEl.style.display = 'block';
-                    }
-                });
-            });
-        }
+        function clipTogglePlay() { const v = document.getElementById('zoomVideo'); if (v.paused) { v.play(); document.getElementById('clipPlayPause').textContent = 'Pause'; } else { v.pause(); document.getElementById('clipPlayPause').textContent = 'Play'; } }
+        function clipSkip(s) { const v = document.getElementById('zoomVideo'); v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + s)); }
+        function updateClipTime() { const v = document.getElementById('zoomVideo'); if (!v.duration) return; document.getElementById('clipTime').textContent = fmt(v.currentTime) + ' / ' + fmt(v.duration); }
+        function fmt(s) { const m = Math.floor(s/60), sec = Math.floor(s%60); return m + ':' + (sec < 10 ? '0' : '') + sec; }
 
         function zoomFit() {
-            const container = document.getElementById('zoomContainer');
-            const cw = container.clientWidth;
-            const ch = container.clientHeight;
-            const fitScale = Math.min(cw / zoomState.videoW, ch / zoomState.videoH);
+            const c = document.getElementById('zoomContainer');
+            const fitScale = Math.min(c.clientWidth / zoomState.videoW, c.clientHeight / zoomState.videoH);
             zoomState.scale = fitScale;
-            const sw = zoomState.videoW * fitScale;
-            const sh = zoomState.videoH * fitScale;
-            zoomState.x = (cw - sw) / 2;
-            zoomState.y = (ch - sh) / 2;
+            zoomState.x = (c.clientWidth - zoomState.videoW * fitScale) / 2;
+            zoomState.y = (c.clientHeight - zoomState.videoH * fitScale) / 2;
             applyZoom();
         }
-
         function zoomTo(level) {
-            const container = document.getElementById('zoomContainer');
-            const cw = container.clientWidth;
-            const ch = container.clientHeight;
-            const fitScale = Math.min(cw / zoomState.videoW, ch / zoomState.videoH);
+            const c = document.getElementById('zoomContainer');
+            const fitScale = Math.min(c.clientWidth / zoomState.videoW, c.clientHeight / zoomState.videoH);
             zoomState.scale = fitScale * level;
-            const sw = zoomState.videoW * zoomState.scale;
-            const sh = zoomState.videoH * zoomState.scale;
-            zoomState.x = (cw - sw) / 2;
-            zoomState.y = (ch - sh) / 2;
+            zoomState.x = (c.clientWidth - zoomState.videoW * zoomState.scale) / 2;
+            zoomState.y = (c.clientHeight - zoomState.videoH * zoomState.scale) / 2;
             applyZoom();
             document.querySelectorAll('.zoom-ctrl').forEach(b => b.classList.remove('active'));
             if (event && event.target) event.target.classList.add('active');
         }
-
         function applyZoom() {
-            const vid = document.getElementById('zoomVideo');
-            vid.style.width = (zoomState.videoW * zoomState.scale) + 'px';
-            vid.style.height = (zoomState.videoH * zoomState.scale) + 'px';
-            vid.style.transform = `translate(${zoomState.x}px, ${zoomState.y}px)`;
+            const v = document.getElementById('zoomVideo');
+            v.style.width = (zoomState.videoW * zoomState.scale) + 'px';
+            v.style.height = (zoomState.videoH * zoomState.scale) + 'px';
+            v.style.transform = `translate(${zoomState.x}px, ${zoomState.y}px)`;
         }
 
-        // Mouse wheel zoom
+        // Wheel zoom
         document.getElementById('zoomContainer').addEventListener('wheel', (e) => {
             e.preventDefault();
-            const container = document.getElementById('zoomContainer');
-            const rect = container.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-            const prevScale = zoomState.scale;
-            const delta = e.deltaY > 0 ? 0.85 : 1.18;
-            zoomState.scale = Math.max(0.1, Math.min(20, zoomState.scale * delta));
-            zoomState.x = mx - (mx - zoomState.x) * (zoomState.scale / prevScale);
-            zoomState.y = my - (my - zoomState.y) * (zoomState.scale / prevScale);
+            const rect = document.getElementById('zoomContainer').getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const prev = zoomState.scale;
+            zoomState.scale = Math.max(0.1, Math.min(20, zoomState.scale * (e.deltaY > 0 ? 0.85 : 1.18)));
+            zoomState.x = mx - (mx - zoomState.x) * (zoomState.scale / prev);
+            zoomState.y = my - (my - zoomState.y) * (zoomState.scale / prev);
             applyZoom();
         }, { passive: false });
 
-        // Mouse drag to pan
+        // Drag pan
         const zc = document.getElementById('zoomContainer');
-        zc.addEventListener('mousedown', (e) => {
-            dragState = { active: true, startX: e.clientX, startY: e.clientY, origX: zoomState.x, origY: zoomState.y };
-            zc.classList.add('grabbing');
-        });
-        window.addEventListener('mousemove', (e) => {
-            if (!dragState.active) return;
-            zoomState.x = dragState.origX + (e.clientX - dragState.startX);
-            zoomState.y = dragState.origY + (e.clientY - dragState.startY);
-            applyZoom();
-        });
+        zc.addEventListener('mousedown', (e) => { dragState = { active: true, startX: e.clientX, startY: e.clientY, origX: zoomState.x, origY: zoomState.y }; zc.classList.add('grabbing'); });
+        window.addEventListener('mousemove', (e) => { if (!dragState.active) return; zoomState.x = dragState.origX + (e.clientX - dragState.startX); zoomState.y = dragState.origY + (e.clientY - dragState.startY); applyZoom(); });
         window.addEventListener('mouseup', () => { dragState.active = false; zc.classList.remove('grabbing'); });
 
-        // Touch: pinch to zoom + drag to pan
+        // Touch pinch + pan
         zc.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) {
-                pinchStart = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            } else if (e.touches.length === 1) {
-                dragState = { active: true, startX: e.touches[0].clientX, startY: e.touches[0].clientY, origX: zoomState.x, origY: zoomState.y };
-            }
+            if (e.touches.length === 2) pinchStart = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            else if (e.touches.length === 1) dragState = { active: true, startX: e.touches[0].clientX, startY: e.touches[0].clientY, origX: zoomState.x, origY: zoomState.y };
         }, { passive: true });
         zc.addEventListener('touchmove', (e) => {
             e.preventDefault();
             if (e.touches.length === 2 && pinchStart > 0) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - zc.getBoundingClientRect().left;
-                const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - zc.getBoundingClientRect().top;
-                const prevScale = zoomState.scale;
-                zoomState.scale = Math.max(0.1, Math.min(20, zoomState.scale * (dist / pinchStart)));
-                zoomState.x = midX - (midX - zoomState.x) * (zoomState.scale / prevScale);
-                zoomState.y = midY - (midY - zoomState.y) * (zoomState.scale / prevScale);
-                pinchStart = dist;
-                applyZoom();
+                const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - zc.getBoundingClientRect().left;
+                const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - zc.getBoundingClientRect().top;
+                const prev = zoomState.scale;
+                zoomState.scale = Math.max(0.1, Math.min(20, prev * (dist / pinchStart)));
+                zoomState.x = mx - (mx - zoomState.x) * (zoomState.scale / prev);
+                zoomState.y = my - (my - zoomState.y) * (zoomState.scale / prev);
+                pinchStart = dist; applyZoom();
             } else if (e.touches.length === 1 && dragState.active) {
                 zoomState.x = dragState.origX + (e.touches[0].clientX - dragState.startX);
                 zoomState.y = dragState.origY + (e.touches[0].clientY - dragState.startY);
@@ -803,30 +515,18 @@
         }, { passive: false });
         zc.addEventListener('touchend', () => { dragState.active = false; pinchStart = 0; });
 
-        // Double-tap to toggle between fit and 4x
+        // Double-tap zoom toggle
         let lastTap = 0;
         zc.addEventListener('touchend', (e) => {
             const now = Date.now();
             if (now - lastTap < 300) {
-                const container = document.getElementById('zoomContainer');
-                const fitScale = Math.min(container.clientWidth / zoomState.videoW, container.clientHeight / zoomState.videoH);
-                if (zoomState.scale > fitScale * 1.5) {
-                    zoomFit();
-                } else {
-                    const prevScale = zoomState.scale;
-                    zoomState.scale = fitScale * 4;
-                    const rect = container.getBoundingClientRect();
-                    const tx = (e.changedTouches[0] ? e.changedTouches[0].clientX : rect.width / 2) - rect.left;
-                    const ty = (e.changedTouches[0] ? e.changedTouches[0].clientY : rect.height / 2) - rect.top;
-                    zoomState.x = tx - (tx - zoomState.x) * (zoomState.scale / prevScale);
-                    zoomState.y = ty - (ty - zoomState.y) * (zoomState.scale / prevScale);
-                    applyZoom();
-                }
+                const c = document.getElementById('zoomContainer');
+                const fitScale = Math.min(c.clientWidth / zoomState.videoW, c.clientHeight / zoomState.videoH);
+                if (zoomState.scale > fitScale * 1.5) zoomFit();
+                else { const prev = zoomState.scale; zoomState.scale = fitScale * 4; const rect = c.getBoundingClientRect(); const tx = (e.changedTouches[0] ? e.changedTouches[0].clientX : rect.width/2) - rect.left; const ty = (e.changedTouches[0] ? e.changedTouches[0].clientY : rect.height/2) - rect.top; zoomState.x = tx - (tx - zoomState.x) * (zoomState.scale / prev); zoomState.y = ty - (ty - zoomState.y) * (zoomState.scale / prev); applyZoom(); }
             }
             lastTap = now;
         });
-
-        // Escape key to close
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZoom(); });
 
         // === INIT ===
