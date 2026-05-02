@@ -31,20 +31,37 @@
         if (id) {
             document.getElementById('title').textContent = (label + ' — ' + camera).toUpperCase();
 
-            // Fetch clip as blob so Safari can play it with range requests
-            fetch('/api/events/' + id + '/clip.mp4')
-                .then(r => r.blob())
-                .then(blob => {
-                    const url = URL.createObjectURL(blob);
-                    const player = document.getElementById('player');
-                    player.src = url;
-                    player.style.display = 'block';
-                    document.getElementById('loading').style.display = 'none';
-                    player.play().catch(() => {});
-                })
-                .catch(() => {
-                    document.getElementById('loading').textContent = 'Failed to load clip';
-                });
+            const player = document.getElementById('player');
+            const loading = document.getElementById('loading');
+
+            player.addEventListener('error', () => {
+                loading.textContent = 'Playback error: ' + (player.error ? player.error.message : 'unknown');
+                loading.style.display = 'flex';
+            });
+
+            player.addEventListener('canplay', () => {
+                loading.style.display = 'none';
+                player.style.display = 'block';
+            });
+
+            // Try direct src first (works on most browsers)
+            player.src = '/api/events/' + id + '/clip.mp4';
+            player.load();
+
+            // If direct fails after 5s, try blob approach
+            setTimeout(() => {
+                if (player.readyState < 2 && !player.error) {
+                    loading.textContent = 'Buffering clip...';
+                    fetch('/api/events/' + id + '/clip.mp4')
+                        .then(r => r.arrayBuffer())
+                        .then(buf => {
+                            const blob = new Blob([buf], { type: 'video/mp4' });
+                            player.src = URL.createObjectURL(blob);
+                            player.load();
+                        })
+                        .catch(() => { loading.textContent = 'Failed to load clip'; });
+                }
+            }, 5000);
         }
     </script>
 </body>
