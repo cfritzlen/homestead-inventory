@@ -216,62 +216,55 @@
             const wsUrl = `${wsProto}//${location.host}/live/mse/api/ws?src=${camera}`;
             const ws = new WebSocket(wsUrl);
             ws.binaryType = 'arraybuffer';
+
             let ms, sourceBuffer, queue = [], appending = false;
+            let codecMime = null;
+            let sourceOpen = false;
 
-            ws.onopen = () => {
-                ms = new MediaSource();
-                video.src = URL.createObjectURL(ms);
-                ms.addEventListener('sourceopen', () => {});
-            };
-
-            ws.onmessage = (ev) => {
-                if (typeof ev.data === 'string') {
-                    // First text message is the codec mime type from go2rtc
-                    ms.addEventListener('sourceopen', () => {
-                        try {
-                            sourceBuffer = ms.addSourceBuffer(ev.data);
-                            sourceBuffer.mode = 'segments';
-                            sourceBuffer.addEventListener('updateend', () => {
-                                appending = false;
-                                if (sourceBuffer.buffered.length > 0) {
-                                    const end = sourceBuffer.buffered.end(0);
-                                    const start = sourceBuffer.buffered.start(0);
-                                    if (end - start > 10) {
-                                        try { sourceBuffer.remove(start, end - 5); } catch(e) {}
-                                    }
-                                }
-                                flushQueue();
-                            });
-                        } catch(e) { if (onFail) onFail(); }
+            function initSourceBuffer() {
+                if (sourceBuffer || !codecMime || !sourceOpen) return;
+                try {
+                    sourceBuffer = ms.addSourceBuffer(codecMime);
+                    sourceBuffer.mode = 'segments';
+                    sourceBuffer.addEventListener('updateend', () => {
+                        appending = false;
+                        if (sourceBuffer.buffered.length > 0) {
+                            const end = sourceBuffer.buffered.end(0);
+                            const start = sourceBuffer.buffered.start(0);
+                            if (end - start > 10) {
+                                try { sourceBuffer.remove(start, end - 5); } catch(e) {}
+                            }
+                        }
+                        flushQueue();
                     });
-                    // If sourceopen already fired
-                    if (ms.readyState === 'open' && !sourceBuffer) {
-                        try {
-                            sourceBuffer = ms.addSourceBuffer(ev.data);
-                            sourceBuffer.mode = 'segments';
-                            sourceBuffer.addEventListener('updateend', () => {
-                                appending = false;
-                                if (sourceBuffer.buffered.length > 0) {
-                                    const end = sourceBuffer.buffered.end(0);
-                                    const start = sourceBuffer.buffered.start(0);
-                                    if (end - start > 10) {
-                                        try { sourceBuffer.remove(start, end - 5); } catch(e) {}
-                                    }
-                                }
-                                flushQueue();
-                            });
-                        } catch(e) { if (onFail) onFail(); }
-                    }
-                    return;
-                }
-                if (sourceBuffer) { queue.push(ev.data); flushQueue(); }
-            };
+                    flushQueue();
+                } catch(e) { if (onFail) onFail(); }
+            }
 
             function flushQueue() {
                 if (!sourceBuffer || appending || queue.length === 0 || sourceBuffer.updating) return;
                 appending = true;
                 try { sourceBuffer.appendBuffer(queue.shift()); } catch(e) { appending = false; }
             }
+
+            ws.onopen = () => {
+                ms = new MediaSource();
+                video.src = URL.createObjectURL(ms);
+                ms.addEventListener('sourceopen', () => {
+                    sourceOpen = true;
+                    initSourceBuffer();
+                });
+            };
+
+            ws.onmessage = (ev) => {
+                if (typeof ev.data === 'string') {
+                    codecMime = ev.data;
+                    initSourceBuffer();
+                    return;
+                }
+                queue.push(ev.data);
+                flushQueue();
+            };
 
             ws.onerror = () => { if (onFail) onFail(); };
             ws.onclose = () => {};
