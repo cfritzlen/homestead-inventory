@@ -36,20 +36,40 @@
         .feed-card .camera-label{position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.6);padding:4px 12px;border-radius:8px;font-size:0.82rem;color:var(--cream);z-index:2;display:flex;align-items:center;gap:6px;}
         .feed-card .camera-label .live-dot{width:6px;height:6px;border-radius:50%;background:#f44336;animation:pulse 1.5s infinite;}
         .feed-card video,.feed-card img{width:100%;display:block;background:#1a1a1a;min-height:200px;object-fit:contain;}
-        .feed-card .feed-error{padding:60px 20px;text-align:center;color:var(--taupe);font-size:0.9rem;display:none;}
+        .feed-card .feed-error{display:none;font-size:0.72rem;color:var(--dusty-rose);margin-left:8px;}
+        .feed-card.offline{cursor:pointer;}
+        .feed-card.offline video,.feed-card.offline img,.feed-card.offline .zoom-btn{display:none !important;}
+        .feed-card.offline .feed-offline-bar{display:flex;}
+        .feed-offline-bar{display:none;align-items:center;justify-content:center;padding:24px;color:var(--taupe);font-size:0.85rem;gap:6px;}
         .feed-meta{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid rgba(236,232,221,0.08);}
         .feed-meta .name{font-weight:600;color:var(--cream);font-size:0.95rem;}
         .feed-meta .detail{font-size:0.78rem;color:var(--taupe);}
         .feed-meta .frigate-link{font-size:0.78rem;color:var(--sage-400);text-decoration:none;}
         .feed-meta .frigate-link:hover{color:var(--cream);}
 
-        .event-filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
-        .filter-btn{background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.15);border-radius:10px;padding:6px 16px;font-size:0.85rem;color:var(--taupe);cursor:pointer;transition:all 0.2s;font-family:'Karla',sans-serif;}
-        .filter-btn:hover{background:rgba(236,232,221,0.2);color:var(--cream);}
-        .filter-btn.active{background:var(--sage-600);border-color:var(--sage-500);color:var(--cream);}
+        .event-filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+        .filter-select{background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.15);border-radius:10px;padding:6px 12px;font-size:0.85rem;color:var(--cream);font-family:'Karla',sans-serif;-webkit-appearance:none;appearance:none;cursor:pointer;outline:none;}
+        .filter-select option{background:var(--charcoal);color:var(--cream);}
         .events-list{display:flex;flex-direction:column;gap:10px;}
-        .event-card{display:flex;align-items:center;gap:14px;background:rgba(236,232,221,0.06);border:1px solid rgba(236,232,221,0.1);border-radius:12px;padding:12px 16px;cursor:pointer;color:var(--cream);transition:background 0.2s;}
+        .event-card{display:flex;align-items:center;gap:14px;background:rgba(236,232,221,0.06);border:1px solid rgba(236,232,221,0.1);border-radius:12px;padding:12px 16px;cursor:pointer;color:var(--cream);transition:background 0.2s;position:relative;}
         .event-card:hover{background:rgba(236,232,221,0.1);}
+        .event-card.reviewed{opacity:0.6;}
+        .event-card.favorite{border-color:var(--sage-400);}
+        .event-actions{display:flex;gap:4px;flex-shrink:0;margin-left:auto;}
+        .event-action-btn{background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.12);border-radius:6px;padding:4px 8px;font-size:0.75rem;color:var(--taupe);cursor:pointer;font-family:'Karla',sans-serif;transition:all 0.2s;}
+        .event-action-btn:hover{background:rgba(236,232,221,0.2);color:var(--cream);}
+        .event-action-btn.active{background:var(--sage-600);border-color:var(--sage-500);color:var(--cream);}
+        .event-action-btn.fav-active{background:rgba(155,114,105,0.3);border-color:var(--dusty-rose);color:var(--dusty-rose);}
+        .event-action-btn.train-good{background:rgba(102,187,106,0.3);border-color:#66BB6A;color:#66BB6A;}
+        .event-action-btn.train-bad{background:rgba(239,83,80,0.3);border-color:#EF5350;color:#EF5350;}
+        .verdict-badge{padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:6px;font-weight:600;}
+        .verdict-badge.good{background:rgba(102,187,106,0.3);color:#66BB6A;}
+        .verdict-badge.bad{background:rgba(239,83,80,0.3);color:#EF5350;}
+        .train-label-badge{padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:4px;background:rgba(168,132,121,0.3);color:var(--mauve);}
+        .train-select{background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.12);border-radius:6px;padding:3px 6px;font-size:0.72rem;color:var(--taupe);font-family:'Karla',sans-serif;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;}
+        .train-select option{background:var(--charcoal);color:var(--cream);}
+        .train-select.labeled{border-color:var(--mauve);color:var(--mauve);}
+        .unreviewed-badge{background:var(--dusty-rose);color:white;font-size:0.72rem;padding:2px 7px;border-radius:10px;margin-left:8px;font-weight:600;}
         .event-thumb{width:80px;height:56px;border-radius:8px;object-fit:cover;background:#222;flex-shrink:0;}
         .event-info{flex:1;min-width:0;}
         .event-label{font-weight:600;font-size:0.95rem;text-transform:capitalize;}
@@ -57,6 +77,23 @@
         .event-time{font-size:0.78rem;color:var(--taupe);margin-top:2px;}
         .event-camera{font-size:0.78rem;color:var(--dusty-sage);}
         .no-events{text-align:center;padding:32px;color:var(--taupe);font-size:0.9rem;}
+
+        .stills-viewer{background:rgba(236,232,221,0.06);border:1px solid rgba(236,232,221,0.1);border-radius:16px;overflow:hidden;}
+        .stills-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(236,232,221,0.08);}
+        .stills-header .cam-tabs{display:flex;gap:6px;}
+        .stills-header .cam-tab{background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.15);border-radius:8px;padding:4px 12px;font-size:0.82rem;color:var(--taupe);cursor:pointer;font-family:'Karla',sans-serif;}
+        .stills-header .cam-tab.active{background:var(--sage-600);border-color:var(--sage-500);color:var(--cream);}
+        .stills-display{position:relative;background:#111;min-height:200px;display:flex;align-items:center;justify-content:center;}
+        .stills-display img{width:100%;display:block;object-fit:contain;}
+        .stills-display .no-stills{color:var(--taupe);font-size:0.9rem;padding:40px;}
+        .stills-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;gap:8px;}
+        .stills-nav button{background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.15);border-radius:8px;padding:8px 16px;color:var(--cream);cursor:pointer;font-family:'Karla',sans-serif;font-size:0.85rem;}
+        .stills-nav button:hover{background:rgba(236,232,221,0.2);}
+        .stills-nav button:disabled{opacity:0.3;cursor:default;}
+        .stills-scrubber{flex:1;margin:0 8px;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:rgba(236,232,221,0.15);outline:none;}
+        .stills-scrubber::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--sage-500);cursor:pointer;}
+        .stills-info{text-align:center;font-size:0.78rem;color:var(--taupe);padding:0 16px 10px;}
+        .stills-play-btn{background:var(--sage-600) !important;border-color:var(--sage-500) !important;}
 
         .alarm-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
         .control-card{background:rgba(236,232,221,0.06);border:1px solid rgba(236,232,221,0.1);border-radius:16px;padding:20px;display:flex;align-items:center;justify-content:space-between;}
@@ -83,7 +120,11 @@
         .zoom-btn:hover{background:rgba(0,0,0,0.8);}
         .zoom-modal{display:none;position:fixed;inset:0;background:#000;z-index:1000;flex-direction:column;}
         .zoom-modal.open{display:flex;}
-        .zoom-modal-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;flex-shrink:0;background:rgba(0,0,0,0.8);z-index:2;}
+        .zoom-modal-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;flex-shrink:0;background:rgba(0,0,0,0.8);z-index:2;gap:8px;}
+        .zoom-nav-btns{display:flex;gap:6px;}
+        .zoom-nav-btn{background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.2);color:var(--cream);padding:6px 14px;border-radius:8px;font-size:0.85rem;cursor:pointer;font-family:'Karla',sans-serif;}
+        .zoom-nav-btn:hover:not(:disabled){background:rgba(236,232,221,0.2);}
+        .zoom-nav-btn:disabled{opacity:0.3;cursor:default;}
         .zoom-modal-header .cam-name{font-family:'Crimson Pro',serif;font-size:1.2rem;color:var(--cream);}
         .zoom-modal-header .res-label{font-size:0.75rem;color:var(--taupe);margin-left:10px;}
         .zoom-close{background:none;border:1px solid rgba(236,232,221,0.3);color:var(--cream);padding:8px 16px;border-radius:8px;font-size:0.9rem;cursor:pointer;font-family:'Karla',sans-serif;}
@@ -127,33 +168,106 @@
         <div class="section-title">Live Cameras</div>
         <div class="feed-grid" id="feedGrid">
             <div class="feed-card" id="feed-coop_a">
-                <div class="camera-label"><span class="live-dot"></span> coop_a</div>
+                <div class="camera-label"><span class="live-dot"></span> Well <span class="feed-error" id="error-coop_a">snapshots only</span></div>
                 <button class="zoom-btn" onclick="openZoom('coop_a')">Full Res</button>
                 <video id="video-coop_a" autoplay muted playsinline></video>
-                <img id="img-coop_a" style="display:none;" alt="coop_a snapshot">
-                <div class="feed-error" id="error-coop_a">Stream unavailable — using snapshots</div>
+                <img id="img-coop_a" style="display:none;" alt="Well snapshot">
+                <div class="feed-offline-bar">Camera offline</div>
                 <div class="feed-meta">
                     <div>
-                        <div class="name">Coop A</div>
-                        <div class="detail">Empiretech 4MP — 192.168.1.108</div>
+                        <div class="name">Well</div>
+                        <div class="detail">Empiretech 4MP — 192.168.1.151</div>
+                    </div>
+                    <a class="frigate-link" href="http://192.168.1.200:5000" target="_blank">Open Frigate &rarr;</a>
+                </div>
+            </div>
+            <div class="feed-card" id="feed-coop_b">
+                <div class="camera-label"><span class="live-dot"></span> Yard <span class="feed-error" id="error-coop_b">snapshots only</span></div>
+                <button class="zoom-btn" onclick="openZoom('coop_b')">Full Res</button>
+                <video id="video-coop_b" autoplay muted playsinline></video>
+                <img id="img-coop_b" style="display:none;" alt="Yard snapshot">
+                <div class="feed-offline-bar">Camera offline</div>
+                <div class="feed-meta">
+                    <div>
+                        <div class="name">Yard</div>
+                        <div class="detail">Empiretech 4MP — 192.168.1.150</div>
                     </div>
                     <a class="frigate-link" href="http://192.168.1.200:5000" target="_blank">Open Frigate &rarr;</a>
                 </div>
             </div>
         </div>
 
-        <div class="section-title">Recent Events</div>
+        <div class="section-title">Alarm Control</div>
+        <div class="control-card" id="autoAlarmCard" style="margin-bottom:12px;">
+            <div class="control-label">
+                <div class="ctrl-icon">🛡</div>
+                <div><div class="name">Auto Alarm</div><div class="desc" id="autoAlarmDesc">Frigate detections trigger alarm</div></div>
+            </div>
+            <button class="toggle-btn on" id="autoAlarmToggle" onclick="toggleAutoAlarm()"></button>
+        </div>
+
+        <div class="section-title">Recent Events <span class="unreviewed-badge" id="unreviewedBadge" style="display:none;">0</span></div>
         <div class="event-filters" id="eventFilters">
-            <button class="filter-btn active" onclick="setEventFilter('all',this)">All</button>
-            <button class="filter-btn" onclick="setEventFilter('person',this)">Person</button>
-            <button class="filter-btn" onclick="setEventFilter('dog',this)">Dog</button>
-            <button class="filter-btn" onclick="setEventFilter('cat',this)">Cat</button>
+            <select class="filter-select" id="filterType" onchange="applyFilters()">
+                <option value="all">All Types</option>
+                <option value="person">Person</option>
+                <option value="fox">Fox</option>
+                <option value="dog">Dog</option>
+                <option value="cat">Cat</option>
+                <option value="bird">Bird</option>
+                <option value="ai">AI Detections</option>
+            </select>
+            <select class="filter-select" id="filterDate" onchange="applyFilters()">
+                <option value="all">All Dates</option>
+                <option value="today" selected>Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">This Week</option>
+            </select>
+            <select class="filter-select" id="filterCamera" onchange="applyFilters()">
+                <option value="all">All Cameras</option>
+                <option value="coop_a">Well</option>
+                <option value="coop_b">Yard</option>
+            </select>
+            <select class="filter-select" id="filterStatus" onchange="applyFilters()">
+                <option value="all">All Status</option>
+                <option value="unreviewed" selected>Unreviewed</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="favorite">Favorites</option>
+                <option value="train_good">Training: Good</option>
+                <option value="train_bad">Training: False Positive</option>
+                <option value="unlabeled">Unlabeled (needs verdict)</option>
+            </select>
         </div>
         <div class="events-list" id="eventsList">
             <div class="no-events" id="noEvents">No events yet — detections will appear here</div>
         </div>
 
-        <div class="section-title">Alarm Control</div>
+        <div class="section-title">Stills Review <span style="font-size:0.8rem;color:var(--taupe);font-weight:400;">(5:00–6:30 AM)</span></div>
+        <div class="stills-viewer" id="stillsViewer">
+            <div class="stills-header">
+                <div class="cam-tabs">
+                    <button class="cam-tab active" onclick="setStillsCam('coop_a',this)">Well</button>
+                    <button class="cam-tab" onclick="setStillsCam('coop_b',this)">Yard</button>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <button class="cam-tab stills-play-btn" id="stillsPlayBtn" onclick="toggleStillsPlay()">Play</button>
+                    <span style="font-size:0.78rem;color:var(--taupe);" id="stillsCount">0 stills</span>
+                </div>
+            </div>
+            <div class="stills-display" id="stillsDisplay">
+                <div class="no-stills" id="noStills">No stills captured yet — captures run 6:00–7:30 AM</div>
+                <img id="stillsImg" style="display:none;" alt="Still capture">
+            </div>
+            <div class="stills-nav" id="stillsNav" style="display:none;">
+                <button onclick="stillsStep(-10)">-10</button>
+                <button onclick="stillsStep(-1)">Prev</button>
+                <input type="range" class="stills-scrubber" id="stillsScrubber" min="0" max="0" value="0" oninput="stillsSeek(this.value)">
+                <button onclick="stillsStep(1)">Next</button>
+                <button onclick="stillsStep(10)">+10</button>
+            </div>
+            <div class="stills-info" id="stillsInfo"></div>
+        </div>
+
         <div class="alarm-grid">
             <div class="control-card">
                 <div class="control-label">
@@ -187,8 +301,22 @@
     <!-- Fullscreen Modal -->
     <div class="zoom-modal" id="zoomModal">
         <div class="zoom-modal-header">
-            <div><span class="cam-name" id="zoomCamName"></span><span class="res-label" id="zoomResLabel"></span></div>
-            <button class="zoom-close" onclick="closeZoom()">Close</button>
+            <div class="zoom-nav-btns" id="zoomNavBtns" style="display:none;">
+                <button class="zoom-nav-btn" id="zoomPrevBtn" onclick="navEvent(-1)">Prev</button>
+            </div>
+            <div style="text-align:center;flex:1;"><span class="cam-name" id="zoomCamName"></span><span class="res-label" id="zoomResLabel"></span></div>
+            <div style="display:flex;gap:6px;align-items:center;">
+                <div class="zoom-nav-btns" id="zoomNavBtns2" style="display:none;">
+                    <button class="zoom-nav-btn" id="zoomNextBtn" onclick="navEvent(1)">Next</button>
+                </div>
+                <select class="train-select" id="zoomTrainLabel" style="display:none;font-size:0.82rem;padding:6px 10px;border-radius:8px;" onchange="setZoomTrainLabel(this.value)">
+                    <option value="">Label...</option>
+                </select>
+                <button class="zoom-nav-btn" id="zoomTrainGood" style="display:none;font-size:0.85rem;" onclick="setZoomVerdict('confirmed')" title="Good detection — use for training">Good</button>
+                <button class="zoom-nav-btn" id="zoomTrainBad" style="display:none;font-size:0.85rem;" onclick="setZoomVerdict('false_positive')" title="False positive — use for training">Bad</button>
+                <button class="zoom-nav-btn" id="zoomFavBtn" style="display:none;font-size:1.1rem;" onclick="toggleZoomFav()">☆</button>
+                <button class="zoom-close" onclick="closeZoom()">Close</button>
+            </div>
         </div>
         <div class="zoom-container" id="zoomContainer">
             <video id="zoomVideo" autoplay muted playsinline></video>
@@ -218,13 +346,25 @@
         const API_BASE = '';
         const MQTT_WS = 'ws://192.168.1.200:9001';
         const ALARM_TOPIC = 'homestead/alarm/trigger';
-        const CAMERAS = ['coop_a'];
+        const CAMERAS = ['coop_a', 'coop_b'];
+        const CAM_NAMES = { coop_a: 'Well', coop_b: 'Yard' };
         const EVENT_POLL_MS = 15000;
+        const REVIEW_API = 'http://' + location.hostname + ':8081';
+
+        // Training labels for custom model
+        const TRAIN_LABELS = {
+            my_duck: 'My Duck', my_chicken: 'My Chicken', my_dog: 'My Dog', my_person: 'My Person',
+            fox: 'Fox', coyote: 'Coyote', raccoon: 'Raccoon', hawk: 'Hawk',
+            squirrel: 'Squirrel', rabbit: 'Rabbit', deer: 'Deer',
+            unknown_dog: 'Unknown Dog', unknown_person: 'Unknown Person', unknown_animal: 'Unknown Animal',
+            nothing: 'Nothing (FP)', ir_light: 'IR Light', shadow: 'Shadow/Glare'
+        };
+        const TRAIN_LABEL_OPTIONS = Object.entries(TRAIN_LABELS).map(([v, t]) => ({v, t}));
 
         // === WEBSOCKET MSE STREAM (same method as Frigate UI — works on all browsers) ===
         function connectWSMSE(video, camera, onFail) {
             const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${wsProto}//${location.host}/live/mse/api/ws?src=${camera}`;
+            const wsUrl = `ws://${location.hostname}:5000/live/mse/api/ws?src=${camera}`;
             const ws = new WebSocket(wsUrl);
             ws.binaryType = 'arraybuffer';
 
@@ -292,7 +432,17 @@
             if (isIOS) {
                 fallbackToSnapshot(camera);
             } else {
-                connectWSMSE(video, camera, () => fallbackToSnapshot(camera));
+                // Use go2rtc fMP4 stream directly — works with H.264 in all browsers
+                const streamUrl = `http://${location.hostname}:1984/api/stream.mp4?src=${camera}`;
+                video.src = streamUrl;
+                video.play().catch(() => {});
+                // If it doesn't start playing within 8s, fall back to snapshots
+                setTimeout(() => {
+                    if (video.readyState < 2) {
+                        console.log(camera + ': fMP4 stream failed, falling back to snapshots');
+                        fallbackToSnapshot(camera);
+                    }
+                }, 8000);
             }
         }
 
@@ -300,65 +450,184 @@
             const video = document.getElementById('video-' + camera);
             const img = document.getElementById('img-' + camera);
             const errorDiv = document.getElementById('error-' + camera);
+            const card = document.getElementById('feed-' + camera);
             video.style.display = 'none';
-            if (!isIOS) errorDiv.style.display = 'block';
+            if (!isIOS) errorDiv.style.display = 'inline';
             img.style.display = 'block';
-            function refresh() { img.src = `${API_BASE}/api/${camera}/latest.jpg?ts=${Date.now()}`; }
+            let failCount = 0;
+            function refresh() {
+                const testImg = new Image();
+                testImg.onload = () => { failCount = 0; card.classList.remove('offline'); img.src = testImg.src; };
+                testImg.onerror = () => { failCount++; if (failCount > 3) card.classList.add('offline'); };
+                testImg.src = `${API_BASE}/api/${camera}/latest.jpg?ts=${Date.now()}`;
+            }
             refresh();
-            setInterval(refresh, 2000);
+            setInterval(refresh, 500);
         }
 
         // === EVENTS ===
-        let eventFilter = 'all';
         let cachedEvents = [];
+        let reviewState = {};
 
-        function setEventFilter(type, el) {
-            eventFilter = type;
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            el.classList.add('active');
+        function applyFilters() { renderEvents(cachedEvents); }
+
+        function loadReviewState() {
+            fetch(`${REVIEW_API}/review-state`)
+                .then(r => r.json())
+                .then(state => { reviewState = state || {}; renderEvents(cachedEvents); })
+                .catch(() => {});
+        }
+
+        function setReviewFlag(eventId, field, value, el) {
+            if (window.event) window.event.stopPropagation();
+            if (!reviewState[eventId]) reviewState[eventId] = {};
+            reviewState[eventId][field] = value;
+            fetch(`${REVIEW_API}/review-state`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: eventId, [field]: value })
+            }).catch(() => {});
             renderEvents(cachedEvents);
         }
 
         function loadEvents() {
-            fetch(`${API_BASE}/api/events?limit=50&has_clip=1`)
-                .then(r => r.json()).then(events => { cachedEvents = events; renderEvents(events); })
-                .catch(() => fetch(`${API_BASE}/api/events?limit=50`).then(r => r.json()).then(events => { cachedEvents = events; renderEvents(events); }).catch(() => {}));
+            const frigateP = fetch(`${API_BASE}/api/events?limit=50&has_clip=1`)
+                .then(r => r.json())
+                .catch(() => fetch(`${API_BASE}/api/events?limit=50`).then(r => r.json()).catch(() => []));
+            const aiP = fetch(`${API_BASE}/ai-events/events.json`)
+                .then(r => r.json()).catch(() => []);
+            Promise.all([frigateP, aiP]).then(([frigateEvents, aiEvents]) => {
+                // Normalize AI events to look like Frigate events
+                const normalizedAI = (aiEvents || []).map(e => ({
+                    id: e.id,
+                    camera: e.camera,
+                    label: e.animals && e.animals[0] ? e.animals[0].type : 'unknown',
+                    start_time: e.timestamp,
+                    has_clip: !!e.clip,
+                    has_snapshot: true,
+                    source: 'ai',
+                    ai_snapshot: `${API_BASE}/ai-events/${e.snapshot}`,
+                    ai_clip: e.clip || null,
+                    ai_summary: e.summary,
+                    ai_animals: e.animals,
+                    data: { top_score: e.animals && e.animals[0] ? (e.animals[0].confidence === 'high' ? 0.95 : e.animals[0].confidence === 'medium' ? 0.75 : 0.5) : 0 }
+                }));
+                // Merge and sort by time descending
+                const all = [...(frigateEvents || []), ...normalizedAI];
+                all.sort((a, b) => b.start_time - a.start_time);
+                cachedEvents = all;
+                renderEvents(all);
+            });
         }
 
         function renderEvents(events) {
             const list = document.getElementById('eventsList');
             const noEvents = document.getElementById('noEvents');
-            // Clear previous event cards but keep noEvents div
             list.querySelectorAll('.event-card').forEach(c => c.remove());
-            if (!events || events.length === 0) { noEvents.textContent = 'No events yet — detections will appear here'; noEvents.style.display = 'block'; return; }
-            const filtered = eventFilter === 'all' ? events : events.filter(ev => ev.label === eventFilter);
-            if (filtered.length === 0) { noEvents.textContent = 'No ' + eventFilter + ' events found'; noEvents.style.display = 'block'; return; }
+            if (!events || events.length === 0) { noEvents.textContent = 'No events yet — detections will appear here'; noEvents.style.display = 'block'; updateBadge(events); return; }
+
+            const typeF = document.getElementById('filterType').value;
+            const dateF = document.getElementById('filterDate').value;
+            const camF = document.getElementById('filterCamera').value;
+            const statusF = document.getElementById('filterStatus').value;
+
+            let filtered = events;
+            if (typeF === 'ai') filtered = filtered.filter(ev => ev.source === 'ai');
+            else if (typeF !== 'all') filtered = filtered.filter(ev => ev.label === typeF);
+            if (camF !== 'all') filtered = filtered.filter(ev => ev.camera === camF);
+            if (dateF !== 'all') {
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
+                const yesterdayStart = todayStart - 86400;
+                const weekStart = todayStart - 6 * 86400;
+                if (dateF === 'today') filtered = filtered.filter(ev => ev.start_time >= todayStart);
+                else if (dateF === 'yesterday') filtered = filtered.filter(ev => ev.start_time >= yesterdayStart && ev.start_time < todayStart);
+                else if (dateF === 'week') filtered = filtered.filter(ev => ev.start_time >= weekStart);
+            }
+            if (statusF === 'unreviewed') filtered = filtered.filter(ev => !reviewState[ev.id] || !reviewState[ev.id].reviewed);
+            else if (statusF === 'reviewed') filtered = filtered.filter(ev => reviewState[ev.id] && reviewState[ev.id].reviewed);
+            else if (statusF === 'favorite') filtered = filtered.filter(ev => reviewState[ev.id] && reviewState[ev.id].favorite);
+            else if (statusF === 'train_good') filtered = filtered.filter(ev => reviewState[ev.id] && reviewState[ev.id].verdict === 'confirmed');
+            else if (statusF === 'train_bad') filtered = filtered.filter(ev => reviewState[ev.id] && reviewState[ev.id].verdict === 'false_positive');
+            else if (statusF === 'unlabeled') filtered = filtered.filter(ev => !reviewState[ev.id] || !reviewState[ev.id].verdict);
+
+            updateBadge(events);
+
+            if (filtered.length === 0) { noEvents.textContent = 'No matching events found'; noEvents.style.display = 'block'; return; }
             noEvents.style.display = 'none';
-            events = filtered;
-            list.insertAdjacentHTML('beforeend', events.map(ev => {
+            // Store filtered list for nav
+            navList = filtered;
+
+            list.insertAdjacentHTML('beforeend', filtered.map((ev, idx) => {
                 const time = new Date(ev.start_time * 1000);
                 const ago = timeAgo(time);
+                const isAI = ev.source === 'ai';
                 const score = ev.data && ev.data.top_score ? Math.round(ev.data.top_score * 100) + '%' : '';
-                const thumbUrl = `${API_BASE}/api/events/${ev.id}/thumbnail.jpg`;
-                if (isIOS) {
-                    return `<a class="event-card" href="clip.html?id=${ev.id}&label=${ev.label}&camera=${ev.camera}" style="text-decoration:none;">
+                const thumbUrl = isAI ? ev.ai_snapshot : `${API_BASE}/api/events/${ev.id}/thumbnail.jpg`;
+                const badge = isAI ? '<span style="background:var(--sage-600);padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:6px;">AI</span>' : '';
+                const subtitle = isAI && ev.ai_summary ? ev.ai_summary : '';
+                const camName = CAM_NAMES[ev.camera] || ev.camera;
+                const clipUrl = ev.ai_clip ? `${API_BASE}/ai-events/${ev.ai_clip}` : null;
+                const rs = reviewState[ev.id] || {};
+                const isReviewed = rs.reviewed;
+                const isFav = rs.favorite;
+                const cardClass = 'event-card' + (isReviewed ? ' reviewed' : '') + (isFav ? ' favorite' : '');
+                const verdict = rs.verdict;
+                const trainLabel = rs.training_label || '';
+                const verdictBadge = verdict === 'confirmed' ? '<span class="verdict-badge good">Good</span>' : verdict === 'false_positive' ? '<span class="verdict-badge bad">FP</span>' : '';
+                const trainLabelBadge = trainLabel ? '<span class="train-label-badge">' + TRAIN_LABELS[trainLabel] + '</span>' : '';
+                const actionBtns = `<div class="event-actions">
+                    <select class="train-select ${trainLabel ? 'labeled' : ''}" onclick="event.stopPropagation()" onchange="setReviewFlag('${ev.id}','training_label',this.value,this)" title="Training label">
+                        <option value="">Label...</option>
+                        ${TRAIN_LABEL_OPTIONS.map(o => '<option value="' + o.v + '"' + (trainLabel === o.v ? ' selected' : '') + '>' + o.t + '</option>').join('')}
+                    </select>
+                    <button class="event-action-btn ${verdict === 'confirmed' ? 'train-good' : ''}" onclick="setReviewFlag('${ev.id}','verdict','${verdict === 'confirmed' ? '' : 'confirmed'}',this)" title="Good detection">&#x2714;</button>
+                    <button class="event-action-btn ${verdict === 'false_positive' ? 'train-bad' : ''}" onclick="setReviewFlag('${ev.id}','verdict','${verdict === 'false_positive' ? '' : 'false_positive'}',this)" title="False positive">&#x2718;</button>
+                    <button class="event-action-btn ${isFav ? 'fav-active' : ''}" onclick="setReviewFlag('${ev.id}','favorite',${!isFav},this)" title="${isFav ? 'Unfavorite' : 'Favorite'}">${isFav ? '★' : '☆'}</button>
+                    <button class="event-action-btn ${isReviewed ? 'active' : ''}" onclick="setReviewFlag('${ev.id}','reviewed',${!isReviewed},this)" title="${isReviewed ? 'Mark unreviewed' : 'Mark reviewed'}">${isReviewed ? '●' : '○'}</button>
+                </div>`;
+                const navClick = `openEventNav(${idx})`;
+                if (isAI) {
+                    return `<div class="${cardClass}" onclick="${navClick}">
                         <img class="event-thumb" src="${thumbUrl}" alt="${ev.label}" onerror="this.style.display='none'">
                         <div class="event-info">
-                            <div class="event-label">${ev.label}${score ? `<span class="score">${score}</span>` : ''}</div>
+                            <div class="event-label">${ev.label}${badge}${verdictBadge}${trainLabelBadge}${score ? '<span class="score">' + score + '</span>' : ''}${clipUrl ? '<span style="background:var(--dusty-rose);padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:6px;">Clip</span>' : ''}</div>
+                            ${subtitle ? '<div class="event-time" style="color:var(--cream);font-size:0.8rem;">' + subtitle + '</div>' : ''}
                             <div class="event-time">${ago} — ${time.toLocaleTimeString()}</div>
-                            <div class="event-camera">${ev.camera}</div>
+                            <div class="event-camera">${camName}</div>
                         </div>
-                    </a>`;
+                        ${actionBtns}
+                    </div>`;
                 }
-                return `<div class="event-card" onclick="openClip('${ev.id}', '${ev.label}', '${ev.camera}')">
+                if (isIOS) {
+                    return `<div class="${cardClass}" onclick="${navClick}">
+                        <img class="event-thumb" src="${thumbUrl}" alt="${ev.label}" onerror="this.style.display='none'">
+                        <div class="event-info">
+                            <div class="event-label">${ev.label}${verdictBadge}${trainLabelBadge}${score ? `<span class="score">${score}</span>` : ''}</div>
+                            <div class="event-time">${ago} — ${time.toLocaleTimeString()}</div>
+                            <div class="event-camera">${camName}</div>
+                        </div>
+                        ${actionBtns}
+                    </div>`;
+                }
+                return `<div class="${cardClass}" onclick="${navClick}">
                     <img class="event-thumb" src="${thumbUrl}" alt="${ev.label}" onerror="this.style.display='none'">
                     <div class="event-info">
-                        <div class="event-label">${ev.label}${score ? `<span class="score">${score}</span>` : ''}</div>
+                        <div class="event-label">${ev.label}${verdictBadge}${trainLabelBadge}${score ? `<span class="score">${score}</span>` : ''}</div>
                         <div class="event-time">${ago} — ${time.toLocaleTimeString()}</div>
-                        <div class="event-camera">${ev.camera}</div>
+                        <div class="event-camera">${camName}</div>
                     </div>
+                    ${actionBtns}
                 </div>`;
             }).join(''));
+        }
+
+        function updateBadge(events) {
+            const badge = document.getElementById('unreviewedBadge');
+            if (!events || events.length === 0) { badge.style.display = 'none'; return; }
+            const count = events.filter(ev => !reviewState[ev.id] || !reviewState[ev.id].reviewed).length;
+            if (count > 0) { badge.textContent = count; badge.style.display = 'inline'; }
+            else { badge.style.display = 'none'; }
         }
 
         function timeAgo(date) {
@@ -390,7 +659,22 @@
 
         function connectMQTT() {
             client = mqtt.connect(MQTT_WS);
-            client.on('connect', () => { document.getElementById('mqttDot').className = 'status-dot connected'; document.getElementById('mqttStatus').textContent = 'MQTT connected'; log('MQTT connected'); });
+            client.on('connect', () => {
+                document.getElementById('mqttDot').className = 'status-dot connected';
+                document.getElementById('mqttStatus').textContent = 'MQTT connected';
+                client.subscribe('homestead/alarm/enabled/state');
+                log('MQTT connected');
+            });
+            client.on('message', (topic, message) => {
+                if (topic === 'homestead/alarm/enabled/state') {
+                    const state = message.toString().trim().toLowerCase();
+                    autoAlarmOn = state === 'on';
+                    const btn = document.getElementById('autoAlarmToggle');
+                    const desc = document.getElementById('autoAlarmDesc');
+                    if (autoAlarmOn) { btn.classList.add('on'); desc.textContent = 'Frigate detections trigger alarm'; }
+                    else { btn.classList.remove('on'); desc.textContent = 'Alarm disabled — detections ignored'; }
+                }
+            });
             client.on('error', () => { document.getElementById('mqttDot').className = 'status-dot'; document.getElementById('mqttStatus').textContent = 'MQTT error'; });
             client.on('close', () => { document.getElementById('mqttDot').className = 'status-dot'; document.getElementById('mqttStatus').textContent = 'MQTT disconnected'; });
         }
@@ -415,29 +699,297 @@
         }
         function setTimer(seconds) { timerDuration = seconds; document.querySelectorAll('.timer-opt').forEach(el => el.classList.remove('selected')); event.target.classList.add('selected'); log(seconds > 0 ? 'Timer set to ' + seconds + 's' : 'Timer off'); }
 
+        // === AUTO ALARM ENABLE/DISABLE ===
+        let autoAlarmOn = true;
+        function toggleAutoAlarm() {
+            autoAlarmOn = !autoAlarmOn;
+            const btn = document.getElementById('autoAlarmToggle');
+            const desc = document.getElementById('autoAlarmDesc');
+            if (autoAlarmOn) {
+                btn.classList.add('on');
+                desc.textContent = 'Frigate detections trigger alarm';
+                send_raw('homestead/alarm/enabled', 'on');
+                log('Auto alarm ENABLED');
+            } else {
+                btn.classList.remove('on');
+                desc.textContent = 'Alarm disabled — detections ignored';
+                send_raw('homestead/alarm/enabled', 'off');
+                log('Auto alarm DISABLED');
+            }
+        }
+        function send_raw(topic, msg) { if (client && client.connected) { client.publish(topic, msg); } }
+
+
+        // === STILLS REVIEW ===
+        let stillsData = [], stillsCam = 'coop_a', stillsIndex = 0, stillsPlaying = false, stillsTimer = null;
+
+        function loadStills() {
+            fetch(`${API_BASE}/ai-events/stills.json`)
+                .then(r => r.json())
+                .then(data => {
+                    stillsData = (data.stills || []).filter(s => s.camera === stillsCam);
+                    renderStills();
+                })
+                .catch(() => { stillsData = []; renderStills(); });
+        }
+
+        function renderStills() {
+            const img = document.getElementById('stillsImg');
+            const noStills = document.getElementById('noStills');
+            const nav = document.getElementById('stillsNav');
+            const info = document.getElementById('stillsInfo');
+            const scrubber = document.getElementById('stillsScrubber');
+            const count = document.getElementById('stillsCount');
+
+            count.textContent = stillsData.length + ' stills';
+
+            if (stillsData.length === 0) {
+                noStills.style.display = 'block';
+                img.style.display = 'none';
+                nav.style.display = 'none';
+                info.textContent = '';
+                return;
+            }
+
+            noStills.style.display = 'none';
+            img.style.display = 'block';
+            nav.style.display = 'flex';
+            scrubber.max = stillsData.length - 1;
+            stillsShow(stillsIndex);
+        }
+
+        function stillsShow(idx) {
+            if (idx < 0) idx = 0;
+            if (idx >= stillsData.length) idx = stillsData.length - 1;
+            stillsIndex = idx;
+
+            const still = stillsData[idx];
+            const img = document.getElementById('stillsImg');
+            const scrubber = document.getElementById('stillsScrubber');
+            const info = document.getElementById('stillsInfo');
+
+            img.src = `${API_BASE}/ai-events/${still.file}`;
+            scrubber.value = idx;
+            const t = new Date(still.timestamp * 1000);
+            info.textContent = `${t.toLocaleTimeString()} — ${idx + 1} of ${stillsData.length} — ${still.camera}`;
+        }
+
+        function stillsStep(n) { stillsShow(stillsIndex + n); }
+        function stillsSeek(val) { stillsShow(parseInt(val)); }
+
+        function setStillsCam(cam, el) {
+            stillsCam = cam;
+            stillsIndex = 0;
+            document.querySelectorAll('.cam-tab').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            loadStills();
+        }
+
+        function toggleStillsPlay() {
+            const btn = document.getElementById('stillsPlayBtn');
+            if (stillsPlaying) {
+                clearInterval(stillsTimer);
+                stillsPlaying = false;
+                btn.textContent = 'Play';
+            } else {
+                stillsPlaying = true;
+                btn.textContent = 'Pause';
+                stillsTimer = setInterval(() => {
+                    if (stillsIndex >= stillsData.length - 1) {
+                        toggleStillsPlay();
+                        return;
+                    }
+                    stillsStep(1);
+                }, 500);
+            }
+        }
+
         // === FULLSCREEN ZOOM ===
         let zoomState = { scale: 1, x: 0, y: 0, camera: null, videoW: 2688, videoH: 1520 };
         let dragState = { active: false, startX: 0, startY: 0, origX: 0, origY: 0 };
         let pinchStart = 0, zoomWs = null, zoomMode = 'live', clipTimerInterval = null;
+        let navList = [], navIndex = -1;
+
+        function getFilteredEvents() {
+            let filtered = cachedEvents;
+            const typeF = document.getElementById('filterType').value;
+            const dateF = document.getElementById('filterDate').value;
+            const camF = document.getElementById('filterCamera').value;
+            const statusF = document.getElementById('filterStatus').value;
+            if (typeF === 'ai') filtered = filtered.filter(ev => ev.source === 'ai');
+            else if (typeF !== 'all') filtered = filtered.filter(ev => ev.label === typeF);
+            if (camF !== 'all') filtered = filtered.filter(ev => ev.camera === camF);
+            if (dateF !== 'all') {
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
+                const yesterdayStart = todayStart - 86400;
+                const weekStart = todayStart - 6 * 86400;
+                if (dateF === 'today') filtered = filtered.filter(ev => ev.start_time >= todayStart);
+                else if (dateF === 'yesterday') filtered = filtered.filter(ev => ev.start_time >= yesterdayStart && ev.start_time < todayStart);
+                else if (dateF === 'week') filtered = filtered.filter(ev => ev.start_time >= weekStart);
+            }
+            if (statusF === 'unreviewed') filtered = filtered.filter(ev => !reviewState[ev.id] || !reviewState[ev.id].reviewed);
+            else if (statusF === 'reviewed') filtered = filtered.filter(ev => reviewState[ev.id] && reviewState[ev.id].reviewed);
+            else if (statusF === 'favorite') filtered = filtered.filter(ev => reviewState[ev.id] && reviewState[ev.id].favorite);
+            else if (statusF === 'train_good') filtered = filtered.filter(ev => reviewState[ev.id] && reviewState[ev.id].verdict === 'confirmed');
+            else if (statusF === 'train_bad') filtered = filtered.filter(ev => reviewState[ev.id] && reviewState[ev.id].verdict === 'false_positive');
+            else if (statusF === 'unlabeled') filtered = filtered.filter(ev => !reviewState[ev.id] || !reviewState[ev.id].verdict);
+            return filtered;
+        }
+
+        function showNavBtns(show) {
+            document.getElementById('zoomNavBtns').style.display = show ? 'flex' : 'none';
+            document.getElementById('zoomNavBtns2').style.display = show ? 'flex' : 'none';
+        }
+
+        function updateNavBtns() {
+            document.getElementById('zoomPrevBtn').disabled = navIndex <= 0;
+            document.getElementById('zoomNextBtn').disabled = navIndex >= navList.length - 1;
+        }
+
+        function openEventByIndex(idx) {
+            if (idx < 0 || idx >= navList.length) return;
+            navIndex = idx;
+            const ev = navList[idx];
+            const isAI = ev.source === 'ai';
+            const clipUrl = ev.ai_clip ? `${API_BASE}/ai-events/${ev.ai_clip}` : null;
+
+            // Close current without resetting nav
+            if (zoomWs) { zoomWs.close(); zoomWs = null; }
+            if (clipTimerInterval) { clearInterval(clipTimerInterval); clipTimerInterval = null; }
+            if (zoomSnapInterval) { clearInterval(zoomSnapInterval); zoomSnapInterval = null; }
+            const vid = document.getElementById('zoomVideo');
+            vid.pause(); vid.removeAttribute('src'); vid.load();
+            const img = document.getElementById('zoomImg');
+            img.removeAttribute('src');
+
+            if (isAI && clipUrl) {
+                openClipDirect(clipUrl, ev.label, ev.camera);
+            } else if (isAI) {
+                openAISnap(ev.ai_snapshot, ev.label, ev.camera);
+            } else {
+                openClip(ev.id, ev.label, ev.camera);
+            }
+            showNavBtns(true);
+            updateNavBtns();
+
+            // Auto-mark as reviewed
+            if (!reviewState[ev.id] || !reviewState[ev.id].reviewed) {
+                setReviewFlag(ev.id, 'reviewed', true);
+            }
+
+            // Show and update fav + training buttons
+            const favBtn = document.getElementById('zoomFavBtn');
+            favBtn.style.display = 'block';
+            document.getElementById('zoomTrainGood').style.display = 'block';
+            document.getElementById('zoomTrainBad').style.display = 'block';
+            document.getElementById('zoomTrainLabel').style.display = 'block';
+            updateZoomFavBtn();
+            updateZoomTrainBtns();
+        }
+
+        function toggleZoomFav() {
+            event.stopPropagation();
+            if (navIndex < 0 || navIndex >= navList.length) return;
+            const ev = navList[navIndex];
+            const isFav = reviewState[ev.id] && reviewState[ev.id].favorite;
+            setReviewFlag(ev.id, 'favorite', !isFav);
+            updateZoomFavBtn();
+        }
+
+        function updateZoomFavBtn() {
+            const favBtn = document.getElementById('zoomFavBtn');
+            if (navIndex < 0 || navIndex >= navList.length) return;
+            const ev = navList[navIndex];
+            const isFav = reviewState[ev.id] && reviewState[ev.id].favorite;
+            favBtn.textContent = isFav ? '★' : '☆';
+            favBtn.style.color = isFav ? 'var(--dusty-rose)' : 'var(--cream)';
+        }
+
+        function navEvent(dir) {
+            event.stopPropagation();
+            openEventByIndex(navIndex + dir);
+        }
+
+        function openEventNav(idx) {
+            navIndex = idx;
+            openEventByIndex(idx);
+            showNavBtns(true);
+            updateNavBtns();
+        }
 
         function openZoom(camera) {
             zoomMode = 'live';
             zoomState.camera = camera;
-            document.getElementById('zoomCamName').textContent = camera.replace('_', ' ').toUpperCase();
+            showNavBtns(false);
+            document.getElementById('zoomFavBtn').style.display = 'none';
+            document.getElementById('zoomTrainGood').style.display = 'none';
+            document.getElementById('zoomTrainBad').style.display = 'none';
+            document.getElementById('zoomTrainLabel').style.display = 'none';
+            document.getElementById('zoomCamName').textContent = CAM_NAMES[camera] || camera;
             document.getElementById('zoomResLabel').textContent = ' — 2688x1520 live — zoom & pan';
             document.getElementById('zoomModal').classList.add('open');
             document.getElementById('zoomError').style.display = 'none';
             document.getElementById('zoomControls').style.display = 'flex';
             document.getElementById('clipControls').style.display = 'none';
             document.body.style.overflow = 'hidden';
-            // Full res uses high-quality snapshots on all browsers
-            startZoomSnapshots(camera);
+            // Use fMP4 stream for smooth full-res video
+            if (isIOS) {
+                startZoomSnapshots(camera);
+            } else {
+                startZoomStream(camera);
+            }
+        }
+
+        function openAISnap(snapUrl, label, camera) {
+            zoomMode = 'live';
+            zoomState.camera = null;
+            document.getElementById('zoomCamName').textContent = label.toUpperCase() + ' — ' + (CAM_NAMES[camera] || camera) + ' (AI)';
+            document.getElementById('zoomResLabel').textContent = ' — AI detection snapshot';
+            document.getElementById('zoomModal').classList.add('open');
+            document.getElementById('zoomError').style.display = 'none';
+            document.getElementById('zoomControls').style.display = 'flex';
+            document.getElementById('clipControls').style.display = 'none';
+            document.body.style.overflow = 'hidden';
+            const video = document.getElementById('zoomVideo');
+            const img = document.getElementById('zoomImg');
+            video.style.display = 'none';
+            img.style.display = 'block';
+            img.src = snapUrl;
+            img.onload = () => { zoomState.videoW = img.naturalWidth; zoomState.videoH = img.naturalHeight; zoomTo(1); };
+        }
+
+        function openClipDirect(clipUrl, label, camera) {
+            zoomMode = 'clip';
+            zoomState.camera = camera;
+            document.getElementById('zoomCamName').textContent = label.toUpperCase() + ' — ' + (CAM_NAMES[camera] || camera) + ' (AI)';
+            document.getElementById('zoomResLabel').textContent = ' — AI clip review';
+            document.getElementById('zoomModal').classList.add('open');
+            document.getElementById('zoomError').style.display = 'none';
+            document.getElementById('zoomControls').style.display = 'none';
+            document.getElementById('clipControls').style.display = isIOS ? 'none' : 'flex';
+            document.body.style.overflow = 'hidden';
+            const vid = document.getElementById('zoomVideo');
+            const img = document.getElementById('zoomImg');
+            img.style.display = 'none';
+            vid.style.display = 'block';
+            vid.loop = true; vid.muted = true; vid.playsInline = true;
+            vid.src = clipUrl;
+            vid.controls = false; vid.play();
+            vid.addEventListener('loadedmetadata', function onMeta() {
+                zoomState.videoW = vid.videoWidth || 1920;
+                zoomState.videoH = vid.videoHeight || 1080;
+                zoomFit();
+                vid.removeEventListener('loadedmetadata', onMeta);
+            });
+            if (clipTimerInterval) clearInterval(clipTimerInterval);
+            clipTimerInterval = setInterval(updateClipTime, 250);
         }
 
         function openClip(eventId, label, camera) {
             zoomMode = 'clip';
             zoomState.camera = camera;
-            document.getElementById('zoomCamName').textContent = label.toUpperCase() + ' — ' + camera.replace('_', ' ');
+            document.getElementById('zoomCamName').textContent = label.toUpperCase() + ' — ' + (CAM_NAMES[camera] || camera);
             document.getElementById('zoomResLabel').textContent = ' — clip review — zoom & pan';
             document.getElementById('zoomModal').classList.add('open');
             document.getElementById('zoomError').style.display = 'none';
@@ -468,6 +1020,30 @@
 
         let zoomSnapInterval = null;
 
+        function startZoomStream(camera) {
+            const vid = document.getElementById('zoomVideo');
+            const img = document.getElementById('zoomImg');
+            img.style.display = 'none';
+            vid.style.display = 'block';
+            vid.muted = true;
+            vid.playsInline = true;
+            vid.loop = false;
+            vid.controls = false;
+            vid.src = `http://${location.hostname}:1984/api/stream.mp4?src=${camera}`;
+            vid.play().catch(() => {});
+            vid.addEventListener('loadedmetadata', function onMeta() {
+                zoomState.videoW = vid.videoWidth || 2688;
+                zoomState.videoH = vid.videoHeight || 1520;
+                zoomFit();
+                vid.removeEventListener('loadedmetadata', onMeta);
+            });
+            setTimeout(() => {
+                if (vid.readyState < 2 && zoomState.camera === camera) {
+                    startZoomSnapshots(camera);
+                }
+            }, 8000);
+        }
+
         function startZoomSnapshots(camera) {
             const vid = document.getElementById('zoomVideo');
             const img = document.getElementById('zoomImg');
@@ -476,7 +1052,7 @@
             let firstLoad = true;
             function refresh() {
                 if (!zoomState.camera) return;
-                img.src = `/snapshot/${camera}.jpg?ts=${Date.now()}`;
+                img.src = `${API_BASE}/api/${camera}/latest.jpg?h=1520&ts=${Date.now()}`;
             }
             img.onload = function() {
                 if (firstLoad) {
@@ -617,14 +1193,60 @@
                 lastTap = now;
             }
         });
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZoom(); });
+        function setZoomVerdict(verdict) {
+            event.stopPropagation();
+            if (navIndex < 0 || navIndex >= navList.length) return;
+            const ev = navList[navIndex];
+            const current = reviewState[ev.id] && reviewState[ev.id].verdict;
+            const newVerdict = current === verdict ? '' : verdict;
+            setReviewFlag(ev.id, 'verdict', newVerdict);
+            updateZoomTrainBtns();
+        }
+
+        function setZoomTrainLabel(label) {
+            if (navIndex < 0 || navIndex >= navList.length) return;
+            const ev = navList[navIndex];
+            setReviewFlag(ev.id, 'training_label', label);
+            updateZoomTrainBtns();
+        }
+
+        function updateZoomTrainBtns() {
+            const goodBtn = document.getElementById('zoomTrainGood');
+            const badBtn = document.getElementById('zoomTrainBad');
+            const labelSel = document.getElementById('zoomTrainLabel');
+            if (navIndex < 0 || navIndex >= navList.length) return;
+            const ev = navList[navIndex];
+            const verdict = reviewState[ev.id] && reviewState[ev.id].verdict;
+            const trainLabel = (reviewState[ev.id] && reviewState[ev.id].training_label) || '';
+            goodBtn.style.background = verdict === 'confirmed' ? 'rgba(102,187,106,0.3)' : '';
+            goodBtn.style.borderColor = verdict === 'confirmed' ? '#66BB6A' : '';
+            goodBtn.style.color = verdict === 'confirmed' ? '#66BB6A' : '';
+            badBtn.style.background = verdict === 'false_positive' ? 'rgba(239,83,80,0.3)' : '';
+            badBtn.style.borderColor = verdict === 'false_positive' ? '#EF5350' : '';
+            badBtn.style.color = verdict === 'false_positive' ? '#EF5350' : '';
+            // Update label dropdown
+            labelSel.innerHTML = '<option value="">Label...</option>' + TRAIN_LABEL_OPTIONS.map(o => '<option value="' + o.v + '"' + (trainLabel === o.v ? ' selected' : '') + '>' + o.t + '</option>').join('');
+            labelSel.className = 'train-select' + (trainLabel ? ' labeled' : '');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeZoom();
+            if (document.getElementById('zoomModal').classList.contains('open') && navList.length > 0) {
+                if (e.key === 'ArrowLeft') navEvent(-1);
+                else if (e.key === 'ArrowRight') navEvent(1);
+            }
+        });
 
         // === INIT ===
         checkFrigate();
         connectMQTT();
         CAMERAS.forEach(cam => startStream(cam));
+        loadReviewState();
         loadEvents();
+        loadStills();
         setInterval(loadEvents, EVENT_POLL_MS);
+        setInterval(loadReviewState, 30000);
+        setInterval(loadStills, 30000);
         setInterval(checkFrigate, 30000);
     </script>
 </body>
