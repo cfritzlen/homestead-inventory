@@ -325,14 +325,35 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
     <div id="tab-import" class="tab-panel">
         <div class="card">
             <h2>📥 Import Transactions</h2>
-            <p style="color:var(--sage-500);font-size:0.85rem;margin-bottom:16px;">Drop any bank CSV below — the app will detect which account it belongs to.</p>
+            <p style="color:var(--sage-500);font-size:0.85rem;margin-bottom:16px;">Drop a bank CSV, pick the account, and Claude will figure out the columns.</p>
             <div id="import-drop" class="drop-zone" style="min-height:160px;padding:32px 24px;text-align:center;"
-                 ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDropSingle(event)">
+                 ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDropCSV(event)">
                 <div style="font-size:2.5rem;margin-bottom:8px;">📄</div>
                 <div class="drop-zone-hint" style="font-size:1rem;">Drop CSV here or click to browse</div>
-                <div style="color:var(--sage-400);font-size:0.8rem;margin-top:8px;">Supports: Chase, BOA, PNC</div>
-                <input type="file" accept=".csv" multiple onchange="dzFileSelectSingle(event)">
+                <input type="file" accept=".csv" onchange="dzFileCSV(event)">
             </div>
+
+            <div id="import-setup" style="display:none;margin-top:16px;">
+                <div style="display:flex;gap:12px;align-items:end;margin-bottom:12px;">
+                    <div class="form-group" style="flex:1;">
+                        <label>Account</label>
+                        <select id="import-account" style="padding:8px;border:1px solid var(--sage-200);border-radius:8px;font-family:'Karla',sans-serif;width:100%;"></select>
+                    </div>
+                    <button class="btn btn-primary" onclick="aiAnalyzeCSV()" id="btn-ai-analyze">🤖 Analyze Columns</button>
+                </div>
+                <div id="import-preview" style="font-size:0.8rem;overflow-x:auto;max-height:200px;overflow-y:auto;border:1px solid var(--sage-200);border-radius:8px;background:white;"></div>
+            </div>
+
+            <div id="import-mapping" style="display:none;margin-top:16px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:8px;padding:16px;">
+                <h3 style="font-size:0.95rem;color:var(--sage-700);margin-bottom:8px;">🤖 Column Mapping</h3>
+                <div id="import-mapping-info" style="font-size:0.85rem;color:var(--sage-600);margin-bottom:12px;"></div>
+                <div id="import-parsed-preview" style="font-size:0.8rem;overflow-x:auto;max-height:250px;overflow-y:auto;border:1px solid var(--sage-200);border-radius:8px;background:white;margin-bottom:12px;"></div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button class="btn btn-primary" onclick="executeImport()" id="btn-execute-import">📥 Import <span id="import-row-count"></span> Transactions</button>
+                    <button class="btn btn-secondary" onclick="resetImport()">Cancel</button>
+                </div>
+            </div>
+
             <div id="import-log" style="margin-top:16px;"></div>
         </div>
 
@@ -340,6 +361,18 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
             <h2>📋 Weekly Import Checklist</h2>
             <p style="color:var(--sage-500);font-size:0.85rem;margin-bottom:12px;">Accounts to import each week — checked when data exists for this period.</p>
             <div id="import-checklist" style="font-size:0.9rem;"></div>
+        </div>
+
+        <div class="card" style="border-top:1px dashed var(--sage-300);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <span style="font-size:0.8rem;color:var(--sage-500);">🔑 Claude API Key</span>
+                    <span id="import-key-status" style="font-size:0.75rem;margin-left:8px;"></span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="password" id="import-api-key" placeholder="sk-ant-..." style="padding:6px 10px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.85rem;width:280px;" oninput="saveImportApiKey()">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -467,6 +500,9 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                 </div>
             </div>
             <div class="form-row">
+                <div class="form-group"><label>Frequency</label>
+                    <select id="bill-frequency"><option value="monthly">Monthly</option><option value="weekly">Weekly</option></select>
+                </div>
                 <div class="form-group"><label>Due Day</label><input type="number" id="bill-due-day" min="1" max="31" placeholder="15"></div>
                 <div class="form-group"><label>Date Varies?</label>
                     <select id="bill-variable-date"><option value="false">No</option><option value="true">Yes</option></select>
@@ -478,7 +514,7 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
             <div class="form-row">
                 <div class="form-group"><label>Pays From</label><input type="text" id="bill-pays-from" placeholder="PNC Checking"></div>
                 <div class="form-group"><label>Category</label>
-                    <select id="bill-category"><option value="loan">Loan</option><option value="electric">Electric</option><option value="insurance">Insurance</option><option value="tax">Tax</option><option value="mortgage">Mortgage</option><option value="phone">Phone</option><option value="internet">Internet</option><option value="subscription">Subscription</option><option value="vehicle">Vehicle</option><option value="other">Other</option></select>
+                    <select id="bill-category"><option value="loan">Loan</option><option value="electric">Electric</option><option value="insurance">Insurance</option><option value="tax">Tax</option><option value="mortgage">Mortgage</option><option value="phone">Phone</option><option value="internet">Internet</option><option value="subscription">Subscription</option><option value="vehicle">Vehicle</option><option value="childcare">Childcare</option><option value="other">Other</option></select>
                 </div>
                 <div class="form-group"><label>Notes</label><input type="text" id="bill-notes" placeholder="Optional"></div>
             </div>
@@ -837,8 +873,8 @@ function renderBills(){
     document.getElementById('bill-month-display').textContent=monthDisplay(currentBillMonth);
     if(!bills.length){container.innerHTML='';empty.style.display='block';return;}
     empty.style.display='none';
-    const catOrder=['loan','electric','insurance','tax','mortgage','phone','internet','subscription','vehicle','other'];
-    const catLabels={loan:'🏦 Loans',electric:'⚡ Electric',insurance:'🛡️ Insurance',tax:'🏛️ Taxes',mortgage:'🏠 Mortgage',phone:'📱 Phone',internet:'🌐 Internet',subscription:'📺 Subscriptions',vehicle:'🚗 Vehicle',other:'📁 Other'};
+    const catOrder=['loan','electric','insurance','tax','mortgage','phone','internet','subscription','vehicle','childcare','other'];
+    const catLabels={loan:'🏦 Loans',electric:'⚡ Electric',insurance:'🛡️ Insurance',tax:'🏛️ Taxes',mortgage:'🏠 Mortgage',phone:'📱 Phone',internet:'🌐 Internet',subscription:'📺 Subscriptions',vehicle:'🚗 Vehicle',childcare:'👶 Childcare',other:'📁 Other'};
     const groups={};
     bills.forEach(b=>{
         const c=b.category||'other';
@@ -850,7 +886,7 @@ function renderBills(){
     catOrder.forEach(cat=>{
         if(!groups[cat])return;
         const catBills=groups[cat];
-        const subtotal=catBills.reduce((s,b)=>s+(parseFloat(b.expected_amount)||0),0);
+        const subtotal=catBills.reduce((s,b)=>{const ea=parseFloat(b.expected_amount)||0;return s+(b.frequency==='weekly'?ea*4:ea);},0);
         grandTotal+=subtotal;
         html+=`<div style="margin-bottom:20px;">
             <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--sage-100);border-radius:8px;margin-bottom:8px;">
@@ -864,9 +900,9 @@ function renderBills(){
             const p=billPayments.find(x=>x.bill_id===b.id);
             html+=`<tr>
                 <td><input type="checkbox" class="check-paid" ${p?.is_paid?'checked':''} ${b.is_auto_pay?'disabled title="Auto"':''} onchange="toggleBillPaid('${b.id}',this.checked)"></td>
-                <td><strong>${b.name}</strong>${b.is_variable_amount?'<br><span class="badge badge-variable">Variable</span>':''}</td>
-                <td>${b.is_variable_date?'Varies':(b.due_day||'-')}</td>
-                <td class="amount">${b.is_variable_amount?'~':''}${fmt(b.expected_amount)}</td>
+                <td><strong>${b.name}</strong>${b.is_variable_amount?'<br><span class="badge badge-variable">Variable</span>':''}${b.frequency==='weekly'?'<br><span class="badge badge-auto" style="background:rgba(52,152,219,0.12);color:#2980b9;">Weekly</span>':''}</td>
+                <td>${b.frequency==='weekly'?'Every wk':(b.is_variable_date?'Varies':(b.due_day||'-'))}</td>
+                <td class="amount">${b.is_variable_amount?'~':''}${fmt(b.expected_amount)}${b.frequency==='weekly'?'<br><span style="font-size:0.7rem;color:var(--sage-400);">/wk</span>':''}</td>
                 <td class="amount">${p?.actual_amount!=null?fmt(p.actual_amount):'-'}${b.is_variable_amount?`<br><button class="btn btn-small btn-secondary" onclick="openAmountModal('${b.id}')">Enter</button>`:''}</td>
                 <td>${b.is_auto_pay?'<span class="badge badge-auto">Auto</span>':''}</td>
                 <td><button class="btn btn-small btn-secondary" onclick="editBill('${b.id}')">Edit</button><button class="btn btn-small btn-danger" onclick="deleteBill('${b.id}')">Del</button></td>
@@ -900,6 +936,7 @@ async function saveBill(){
     const data={name:document.getElementById('bill-name').value.trim(),expected_amount:parseFloat(document.getElementById('bill-amount').value)||0,
         is_variable_amount:document.getElementById('bill-variable-amt').value==='true',due_day:parseInt(document.getElementById('bill-due-day').value)||null,
         is_variable_date:document.getElementById('bill-variable-date').value==='true',is_auto_pay:document.getElementById('bill-autopay').value==='true',
+        frequency:document.getElementById('bill-frequency').value||'monthly',
         pays_from:document.getElementById('bill-pays-from').value.trim(),category:document.getElementById('bill-category').value,notes:document.getElementById('bill-notes').value.trim()};
     if(!data.name)return alert('Enter a name.');
     try{
@@ -913,6 +950,7 @@ function editBill(id){
     document.getElementById('bill-name').value=b.name;document.getElementById('bill-amount').value=b.expected_amount;
     document.getElementById('bill-variable-amt').value=String(b.is_variable_amount);document.getElementById('bill-due-day').value=b.due_day||'';
     document.getElementById('bill-variable-date').value=String(b.is_variable_date);document.getElementById('bill-autopay').value=String(b.is_auto_pay);
+    document.getElementById('bill-frequency').value=b.frequency||'monthly';
     document.getElementById('bill-pays-from').value=b.pays_from||'';document.getElementById('bill-category').value=b.category||'other';
     document.getElementById('bill-notes').value=b.notes||'';document.getElementById('btn-cancel-bill').style.display='inline-block';
     window.scrollTo({top:0,behavior:'smooth'});
@@ -920,7 +958,7 @@ function editBill(id){
 function cancelEditBill(){editingBillId=null;document.getElementById('btn-cancel-bill').style.display='none';clearBillForm();}
 function clearBillForm(){['bill-name','bill-amount','bill-due-day','bill-pays-from','bill-notes'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('bill-variable-amt').value='false';document.getElementById('bill-variable-date').value='false';
-    document.getElementById('bill-autopay').value='false';document.getElementById('bill-category').value='other';}
+    document.getElementById('bill-autopay').value='false';document.getElementById('bill-frequency').value='monthly';document.getElementById('bill-category').value='other';}
 async function deleteBill(id){if(!confirm('Delete?'))return;try{await supaFetch('finance_bills','PATCH',{is_active:false},`?id=eq.${id}`);await loadBills();await loadBillPayments();}catch(e){alert(e.message);}}
 
 function getWednesdays(){
@@ -1246,26 +1284,46 @@ async function loadWeeklyBills(){
     const currentWeek=dt;
 
     let payments=[];
-    try{ payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${mkCurrent}`); }catch(e){payments=[];}
+    try{ payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=gte.${mkCurrent}&bill_month=lte.${mkCurrent.replace('-01','-31')}`); }catch(e){payments=[];}
 
     // Hide bills tracked in debt sub-rows above (IRS, Side by Side, Kubota, Prudential, PA Tax)
     const HIDDEN_FROM_BILLS_SECTION=['irs','side by side','kubota','prudential','pa tax'];
     const allBills=bills.filter(b=>{
-        if(!b.due_day)return false;
+        const isWeekly=(b.frequency==='weekly');
+        if(!isWeekly && !b.due_day)return false;
         const n=(b.name||'').toLowerCase();
         return !HIDDEN_FROM_BILLS_SECTION.some(h=>n.includes(h));
     });
     const wednesdays=getMonthWednesdays(mkCurrent);
 
-    allBillData=allBills.map(b=>{
-        const billMonth=mkCurrent;
-        const p=payments.find(x=>x.bill_id===b.id && x.bill_month===billMonth);
-        const amt=p?.actual_amount||b.expected_amount||0;
-        const paid=p?.is_paid||false;
-        const paidDate=p?.paid_date||'';
-        const weekAssigned=p?.week_assigned||defaultWedForDueDay(b.due_day,billMonth,wednesdays);
-        const isThisWeek=(weekAssigned===currentWeek);
-        return {bill:b, billMonth, amt, paid, paidDate, weekAssigned, isThisWeek, wednesdays};
+    allBillData=[];
+    allBills.forEach(b=>{
+        if(b.frequency==='weekly'){
+            // Weekly bills: one entry per Wednesday in the month
+            wednesdays.forEach(wed=>{
+                const wedDate=new Date(wed+'T12:00:00');
+                const wedMonth=wedDate.getMonth()+1;
+                const mkMonth=parseInt(mkCurrent.split('-')[1]);
+                if(wedMonth!==mkMonth) return; // only Wednesdays in this month
+                const weekBillMonth=wed; // use Wednesday date as bill_month key
+                const p=payments.find(x=>x.bill_id===b.id && x.bill_month===weekBillMonth);
+                const amt=p?.actual_amount||b.expected_amount||0;
+                const paid=p?.is_paid||false;
+                const paidDate=p?.paid_date||'';
+                const weekAssigned=wed;
+                const isThisWeek=(weekAssigned===currentWeek);
+                allBillData.push({bill:b, billMonth:weekBillMonth, amt, paid, paidDate, weekAssigned, isThisWeek, wednesdays, isWeekly:true});
+            });
+        } else {
+            const billMonth=mkCurrent;
+            const p=payments.find(x=>x.bill_id===b.id && x.bill_month===billMonth);
+            const amt=p?.actual_amount||b.expected_amount||0;
+            const paid=p?.is_paid||false;
+            const paidDate=p?.paid_date||'';
+            const weekAssigned=p?.week_assigned||defaultWedForDueDay(b.due_day,billMonth,wednesdays);
+            const isThisWeek=(weekAssigned===currentWeek);
+            allBillData.push({bill:b, billMonth, amt, paid, paidDate, weekAssigned, isThisWeek, wednesdays});
+        }
     });
 
     loadDebtBillRows(payments,mkCurrent,wednesdays,currentWeek);
@@ -1562,8 +1620,9 @@ function renderBillsTable(){
                 ${d.confirmed?'<span style="font-size:0.6rem;background:rgba(39,174,96,0.15);color:#27ae60;padding:1px 5px;border-radius:3px;margin-left:3px;font-weight:600;">Confirmed</span>':''}
                 ${b.is_auto_pay?'<span style="font-size:0.6rem;background:rgba(122,144,97,0.15);color:var(--sage-600);padding:1px 4px;border-radius:3px;margin-left:3px;">Auto</span>':''}
                 ${b.is_variable_amount?'<span style="font-size:0.6rem;background:rgba(192,57,43,0.1);color:var(--dusty-rose);padding:1px 4px;border-radius:3px;margin-left:3px;">~</span>':''}
+                ${d.isWeekly?'<span style="font-size:0.6rem;background:rgba(52,152,219,0.12);color:#2980b9;padding:1px 5px;border-radius:3px;margin-left:3px;font-weight:600;">Weekly</span>':''}
             </div>
-            <div style="font-size:0.8rem;color:var(--sage-500);">${b.due_day}${ordSuffix(b.due_day)}</div>
+            <div style="font-size:0.8rem;color:var(--sage-500);">${d.isWeekly?'Every wk':(b.due_day?b.due_day+ordSuffix(b.due_day):'-')}</div>
             <div><select data-field="week" onchange="autoSaveBillField('${b.id}','${d.billMonth}',this)" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;width:100%;${isThisWeek?'font-weight:600;border-color:var(--sage-400);':''}">${weekOpts}</select></div>
             <div><input type="date" data-field="date" value="${d.paidDate}" onchange="autoSaveBillField('${b.id}','${d.billMonth}',this)" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;width:100%;${d.paid?'':'color:var(--sage-300);'}"></div>
             <div><input type="number" step="0.01" data-field="amount" value="${d.amt.toFixed(2)}" onchange="autoSaveBillField('${b.id}','${d.billMonth}',this)" style="padding:3px 6px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.85rem;text-align:right;width:100%;"></div>
@@ -2287,9 +2346,16 @@ async function aiCategorize(){
                 return `ID:${t.id} | Account:${acctName} | ${t.transaction_date} | ${t.description} | ${t.amount<0?'-':''}$${Math.abs(t.amount).toFixed(2)} | Current:${t.category||'Uncategorized'}`;
             }).join('\n');
             const prompt=`You are categorizing bank transactions. Assign each transaction one category from this list ONLY:\n${cats.join(', ')}\n\nRules:\n- ALL transactions from "BOA CC" account must be "Girls"\n- DraftKings = "Draftkings"\n- Zelle with Colette or Martin = "Internal Transfer"\n- Online Transfer / Online Banking Transfer = "Internal Transfer"\n- FID BKG SVC LLC or Fidelity = "Kids Retirement"\n- Grocery stores (ShopRite, Walmart, Aldi) = "Groceries"\n- Gas stations (Wawa, Sheetz, Sunoco) = "Auto"\n- Zaritza = "Rent Payment"\n- Use your best judgment for the rest based on the description\n\nTransactions:\n${txnList}\n\nRespond with ONLY a JSON array of objects, no markdown, no backticks. Each object: {"id": number, "category": "string"}\nExample: [{"id":123,"category":"Groceries"},{"id":456,"category":"Auto"}]`;
+            const aiKey=getFinanceApiKey();
+            if(!aiKey||!aiKey.startsWith('sk-')){alert('Set your Claude API key in the Import tab first.');btn.disabled=false;btn.textContent='🤖 AI Categorize';return;}
             const response=await fetch('https://api.anthropic.com/v1/messages',{
                 method:'POST',
-                headers:{'Content-Type':'application/json'},
+                headers:{
+                    'Content-Type':'application/json',
+                    'x-api-key':aiKey,
+                    'anthropic-version':'2023-06-01',
+                    'anthropic-dangerous-direct-browser-access':'true'
+                },
                 body:JSON.stringify({
                     model:'claude-sonnet-4-20250514',
                     max_tokens:4000,
@@ -2506,12 +2572,20 @@ async function loadDashboard(){
     setTileWithChange('dash-taxtoys-debt',taxToysDebt,taxToysPrior,true);
     setTileWithChange('dash-total-debt',totalDebt,totalPrior,true);
 
-    // Big charges table ($200+)
-    const bigCharges=txns.filter(t=>Math.abs(parseFloat(t.amount))>=200);
+    // Big charges table ($200+) — last 2 weeks
+    let bigTxns=txns;
+    try{
+        const twoWeekStart=new Date(start);twoWeekStart.setDate(twoWeekStart.getDate()-7);
+        const twoWeekStartStr=twoWeekStart.toISOString().split('T')[0];
+        const allTwoWeek=await supaFetch('finance_transactions','GET',null,
+            `?transaction_date=gt.${twoWeekStartStr}&transaction_date=lte.${endStr}&order=transaction_date.desc`)||[];
+        bigTxns=allTwoWeek;
+    }catch(e){console.error('Big charges 2wk:',e);}
+    const bigCharges=bigTxns.filter(t=>Math.abs(parseFloat(t.amount))>=200);
     const bigEl=document.getElementById('dash-big-charges');
     if(bigEl){
         if(bigCharges.length){
-            bigEl.innerHTML=`<h3 style="font-family:'Crimson Pro',serif;color:var(--sage-700);font-size:1.1rem;margin-bottom:10px;">💰 Charges $200+</h3>
+            bigEl.innerHTML=`<h3 style="font-family:'Crimson Pro',serif;color:var(--sage-700);font-size:1.1rem;margin-bottom:10px;">💰 Last 2 Weeks — Charges $200+</h3>
                 <div class="table-scroll"><table class="data-table"><thead><tr><th>Date</th><th>Description</th><th class="dash-hide-sm">Account</th><th class="amount">Amount</th></tr></thead>
                 <tbody>${bigCharges.map(t=>`<tr>
                     <td style="white-space:nowrap;">${fmtShort(t.transaction_date)}</td>
@@ -2561,26 +2635,7 @@ async function loadDashboard(){
 }
 
 // ============ CSV IMPORT ============
-let accountFormatMap={};
-
-function buildAccountFormatMap(){
-    accountFormatMap={};
-    accounts.forEach(a=>{
-        const name=a.name.toLowerCase();
-        if(name.includes('chase')) accountFormatMap[a.id]='chase';
-        else if(name.includes('boa')||name.includes('bank of america')) accountFormatMap[a.id]='boa';
-        else if(name.includes('pnc')) accountFormatMap[a.id]='pnc';
-    });
-}
-
-function detectCSVFormat(text){
-    const firstLine=(text.split('\n')[0]||'').toLowerCase();
-    if(firstLine.includes('posting date')&&firstLine.includes('payee')) return 'pnc';
-    if(firstLine.includes('transaction date')&&firstLine.includes('post date')) return 'chase';
-    if(firstLine.includes('posted date')&&firstLine.includes('payee')) return 'boa';
-    if(firstLine.includes('date')&&firstLine.includes('description')) return 'generic';
-    return 'unknown';
-}
+let importCSVText='', importCSVFilename='', importParsedRows=[], importColMap=null;
 
 function parseCSVLine(line){
     const result=[];
@@ -2598,12 +2653,6 @@ function parseCSVLine(line){
     return result;
 }
 
-function parsePNCAmount(s){
-    s=(s||'').trim();
-    if(!s) return 0;
-    return parseFloat(s.replace(/[$,]/g,''))||0;
-}
-
 function parseDate(s){
     if(!s) return null;
     s=s.trim().replace(/"/g,'');
@@ -2613,6 +2662,12 @@ function parseDate(s){
     if(c.length===2) c='20'+c;
     if(a.length===4) return `${a}-${b.padStart(2,'0')}-${c.padStart(2,'0')}`;
     return `${c}-${a.padStart(2,'0')}-${b.padStart(2,'0')}`;
+}
+
+function parseAmount(s){
+    s=(s||'').trim().replace(/"/g,'');
+    if(!s) return 0;
+    return parseFloat(s.replace(/[$,]/g,''))||0;
 }
 
 function guessCategory(desc){
@@ -2633,9 +2688,27 @@ async function hashTxn(acctId,date,desc,amt){
     return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+function getFinanceApiKey(){
+    try{return localStorage.getItem('homestead-api-key')||'';}catch(e){return '';}
+}
+function saveImportApiKey(){
+    const key=document.getElementById('import-api-key').value.trim();
+    try{localStorage.setItem('homestead-api-key',key);}catch(e){}
+    updateImportKeyStatus();
+}
+function updateImportKeyStatus(){
+    const el=document.getElementById('import-key-status');
+    const key=getFinanceApiKey();
+    if(el) el.innerHTML=key&&key.startsWith('sk-')?'<span style="color:var(--green-soft);">✓ Set</span>':'<span style="color:var(--dusty-rose);">Not set</span>';
+}
+
 // ============ IMPORT TAB ============
 function initImportTab(){
-    buildAccountFormatMap();
+    const sel=document.getElementById('import-account');
+    sel.innerHTML=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    const saved=getFinanceApiKey();
+    if(saved) document.getElementById('import-api-key').value=saved;
+    updateImportKeyStatus();
     loadImportChecklist();
 }
 
@@ -2646,12 +2719,9 @@ async function loadImportChecklist(){
     const priorWed=new Date(end); priorWed.setDate(priorWed.getDate()-7);
     const priorStr=priorWed.toISOString().split('T')[0];
     const endStr=end.toISOString().split('T')[0];
-    const shown=accounts.filter(a=>{
-        const n=a.name.toLowerCase();
-        return n.includes('chase')||n.includes('boa')||n.includes('pnc');
-    });
     const rows=[];
-    for(const a of shown){
+    for(const a of accounts){
+        if(a.name.toLowerCase()==='recurring bills') continue;
         let count=0;
         try{
             const txns=await supaFetch('finance_transactions','GET',null,
@@ -2668,92 +2738,165 @@ async function loadImportChecklist(){
 
 function dzOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
 function dzLeave(e){e.currentTarget.classList.remove('drag-over');}
-function dzDropSingle(e){
+function dzDropCSV(e){
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
-    const files=Array.from(e.dataTransfer.files).filter(f=>f.name.toLowerCase().endsWith('.csv'));
-    files.forEach(f=>autoDetectAndImport(f));
+    const file=Array.from(e.dataTransfer.files).find(f=>f.name.toLowerCase().endsWith('.csv'));
+    if(file) loadCSVFile(file);
 }
-function dzFileSelectSingle(e){
-    const files=Array.from(e.target.files).filter(f=>f.name.toLowerCase().endsWith('.csv'));
-    files.forEach(f=>autoDetectAndImport(f));
+function dzFileCSV(e){
+    const file=Array.from(e.target.files).find(f=>f.name.toLowerCase().endsWith('.csv'));
+    if(file) loadCSVFile(file);
     e.target.value='';
 }
 
-async function autoDetectAndImport(file){
-    const log=document.getElementById('import-log');
-    const logRow=document.createElement('div');
-    logRow.style.cssText='padding:10px 14px;background:white;border-radius:6px;margin-bottom:6px;border:1px solid var(--sage-200);';
-    logRow.innerHTML=`📄 <strong>${file.name}</strong> <span style="color:var(--sage-500);font-size:0.85rem;">reading...</span>`;
-    log.prepend(logRow);
+async function loadCSVFile(file){
+    importCSVFilename=file.name;
+    importCSVText=await file.text();
+    const lines=importCSVText.split('\n').filter(l=>l.trim());
+    if(lines.length<2){alert('CSV has no data rows.');return;}
+
+    // Show raw preview
+    const previewLines=lines.slice(0,6);
+    const previewRows=previewLines.map(l=>parseCSVLine(l));
+    let html='<table class="data-table" style="font-size:0.75rem;margin:0;"><thead><tr>';
+    previewRows[0].forEach((h,i)=>html+=`<th style="padding:4px 8px;">Col ${i}: ${h.trim()||'(empty)'}</th>`);
+    html+='</tr></thead><tbody>';
+    for(let i=1;i<previewRows.length;i++){
+        html+='<tr>';
+        previewRows[i].forEach(c=>html+=`<td style="padding:4px 8px;white-space:nowrap;">${(c||'').trim().substring(0,40)}</td>`);
+        html+='</tr>';
+    }
+    html+='</tbody></table>';
+    document.getElementById('import-preview').innerHTML=html;
+    document.getElementById('import-setup').style.display='block';
+    document.getElementById('import-mapping').style.display='none';
+    importParsedRows=[];importColMap=null;
+}
+
+async function aiAnalyzeCSV(){
+    const apiKey=getFinanceApiKey();
+    if(!apiKey||!apiKey.startsWith('sk-')){alert('Set your Claude API key first (bottom of this tab).');return;}
+    if(!importCSVText){alert('Drop a CSV file first.');return;}
+
+    const btn=document.getElementById('btn-ai-analyze');
+    btn.disabled=true;btn.textContent='🤖 Analyzing...';
+
+    const lines=importCSVText.split('\n').filter(l=>l.trim());
+    const sampleLines=lines.slice(0,8).join('\n');
+
+    const prompt=`You are analyzing a bank CSV file to identify which columns contain the transaction date, description, and amount(s).
+
+Here are the first several lines (header + data rows):
+
+\`\`\`
+${sampleLines}
+\`\`\`
+
+Identify the column indices (0-based) for:
+- **date_col**: Which column contains the transaction date
+- **desc_col**: Which column contains the transaction description/payee/merchant name (the human-readable text, NOT a reference number)
+- **amount_col**: If there is a single amount column (negative = charge, positive = deposit), give its index
+- **withdrawal_col** and **deposit_col**: If amounts are split into two columns (withdrawals and deposits), give both indices
+
+Also indicate:
+- **amount_negate**: true if the amount column uses positive numbers for charges and needs to be negated (some banks like Chase use negative for charges already, others use positive)
+
+Respond with ONLY a JSON object, no markdown, no backticks:
+{"date_col":0,"desc_col":1,"amount_col":2,"amount_negate":false}
+or for split amounts:
+{"date_col":0,"desc_col":1,"withdrawal_col":2,"deposit_col":3}`;
+
     try{
-        const text=await file.text();
-        const format=detectCSVFormat(text);
-        if(format==='unknown'){
-            logRow.innerHTML=`❌ <strong>${file.name}</strong> <span style="color:var(--red-soft);">unknown format</span>`;
-            return;
-        }
-        const matches=accounts.filter(a=>accountFormatMap[a.id]===format);
-        if(!matches.length){
-            logRow.innerHTML=`❌ <strong>${file.name}</strong> <span style="color:var(--red-soft);">no ${format} account</span>`;
-            return;
-        }
-        if(matches.length===1){
-            await importCSVForAccountSingle(text,matches[0].id,file.name,logRow);
-        } else {
-            const opts=matches.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
-            logRow.innerHTML=`🤔 <strong>${file.name}</strong> <select id="picker-${file.name.replace(/\W/g,'')}" style="margin-left:8px;padding:4px;">${opts}</select>
-                <button class="btn btn-small btn-primary" onclick="pickImportAccount('${file.name.replace(/\W/g,'')}','${btoa(text).substring(0,100)}...')">Import</button>`;
-            logRow._text=text;
-            logRow._filename=file.name;
-        }
+        const response=await fetch('https://api.anthropic.com/v1/messages',{
+            method:'POST',
+            headers:{
+                'Content-Type':'application/json',
+                'x-api-key':apiKey,
+                'anthropic-version':'2023-06-01',
+                'anthropic-dangerous-direct-browser-access':'true'
+            },
+            body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,messages:[{role:'user',content:prompt}]})
+        });
+        const data=await response.json();
+        if(data.error){throw new Error(data.error.message||'API error');}
+        const text=(data.content||[]).map(c=>c.text||'').join('');
+        const clean=text.replace(/```json|```/g,'').trim();
+        importColMap=JSON.parse(clean);
+        applyColumnMapping();
     }catch(e){
-        logRow.innerHTML=`❌ <strong>${file.name}</strong> <span style="color:var(--red-soft);">${e.message}</span>`;
+        alert('AI analysis failed: '+e.message);
+        console.error('AI analyze:',e);
+    }finally{
+        btn.disabled=false;btn.textContent='🤖 Analyze Columns';
     }
 }
 
-async function importCSVForAccountSingle(text,accountId,filename,logRow){
-    const format=detectCSVFormat(text);
-    const lines=text.split('\n').filter(l=>l.trim());
-    if(lines.length<2){logRow.innerHTML=`⚠️ <strong>${filename}</strong> <span>no data</span>`;return;}
-    const rows=[];
+async function applyColumnMapping(){
+    if(!importColMap||!importCSVText)return;
+    const accountId=document.getElementById('import-account').value;
+    const lines=importCSVText.split('\n').filter(l=>l.trim());
+    const headers=parseCSVLine(lines[0]);
+    const m=importColMap;
+
+    // Show mapping info
+    const descCol=m.desc_col!=null?headers[m.desc_col]:'?';
+    const dateCol=m.date_col!=null?headers[m.date_col]:'?';
+    let amtInfo='';
+    if(m.amount_col!=null) amtInfo=`Amount: "${headers[m.amount_col]}"${m.amount_negate?' (will negate)':''}`;
+    else amtInfo=`Withdrawal: "${headers[m.withdrawal_col]||'?'}", Deposit: "${headers[m.deposit_col]||'?'}"`;
+    document.getElementById('import-mapping-info').innerHTML=
+        `<strong>Date:</strong> "${dateCol}" &nbsp; <strong>Description:</strong> "${descCol}" &nbsp; <strong>${amtInfo}</strong>`;
+
+    // Parse all rows
+    importParsedRows=[];
     for(let i=1;i<lines.length;i++){
         const cols=parseCSVLine(lines[i]);
-        let date=null,desc='',amt=0;
-        if(format==='chase'){
-            date=parseDate(cols[0]);
-            desc=cols[2]||'';
-            amt=parseFloat(cols[5])||0;
-        } else if(format==='boa'){
-            date=parseDate(cols[0]);
-            desc=cols[1]||'';
-            amt=parseFloat((cols[2]||'').replace(/[$,"]/g,''))||0;
-        } else if(format==='pnc'){
-            date=parseDate(cols[0]);
-            desc=cols[1]||'';
-            const wd=parsePNCAmount(cols[2]);
-            const dep=parsePNCAmount(cols[3]);
+        const date=parseDate(cols[m.date_col]);
+        let desc=(cols[m.desc_col]||'').replace(/^"|"$/g,'').trim();
+        let amt=0;
+        if(m.amount_col!=null){
+            amt=parseAmount(cols[m.amount_col]);
+            if(m.amount_negate) amt=-amt;
+        } else {
+            const wd=parseAmount(cols[m.withdrawal_col]);
+            const dep=parseAmount(cols[m.deposit_col]);
             amt=dep>0?dep:-wd;
         }
-        if(!date||(!desc && amt===0)) continue;
-        desc=desc.replace(/^"|"$/g,'').trim();
+        if(!date||(!desc&&amt===0)) continue;
         const hash=await hashTxn(accountId,date,desc,amt);
-        rows.push({
+        importParsedRows.push({
             account_id:accountId,transaction_date:date,description:desc,
             amount:amt,category:guessCategory(desc),dedup_hash:hash
         });
     }
-    if(!rows.length){logRow.innerHTML=`⚠️ <strong>${filename}</strong> <span>no valid rows</span>`;return;}
+
+    // Show parsed preview
+    let html='<table class="data-table" style="font-size:0.75rem;margin:0;"><thead><tr><th style="padding:4px 8px;">Date</th><th style="padding:4px 8px;">Description</th><th style="padding:4px 8px;">Amount</th><th style="padding:4px 8px;">Category</th></tr></thead><tbody>';
+    const preview=importParsedRows.slice(0,10);
+    preview.forEach(r=>{
+        html+=`<tr><td style="padding:4px 8px;">${r.transaction_date}</td><td style="padding:4px 8px;">${(r.description||'').substring(0,50)}</td><td style="padding:4px 8px;" class="amount ${r.amount<0?'negative':'positive'}">${fmt(r.amount)}</td><td style="padding:4px 8px;">${r.category}</td></tr>`;
+    });
+    if(importParsedRows.length>10) html+=`<tr><td colspan="4" style="padding:4px 8px;color:var(--sage-400);">...and ${importParsedRows.length-10} more rows</td></tr>`;
+    html+='</tbody></table>';
+    document.getElementById('import-parsed-preview').innerHTML=html;
+    document.getElementById('import-row-count').textContent=`(${importParsedRows.length})`;
+    document.getElementById('import-mapping').style.display='block';
+}
+
+async function executeImport(){
+    if(!importParsedRows.length){alert('No rows to import.');return;}
+    const btn=document.getElementById('btn-execute-import');
+    btn.disabled=true;btn.textContent='📥 Importing...';
     let inserted=0,skipped=0;
     const batchSize=50;
-    for(let i=0;i<rows.length;i+=batchSize){
-        const batch=rows.slice(i,i+batchSize);
-        try{
+    try{
+        for(let i=0;i<importParsedRows.length;i+=batchSize){
+            const batch=importParsedRows.slice(i,i+batchSize);
             const res=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?on_conflict=dedup_hash`,{
                 method:'POST',
                 headers:{
-                    'apikey':SUPABASE_KEY,
-                    'Authorization':`Bearer ${SUPABASE_KEY}`,
+                    'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,
                     'Content-Type':'application/json',
                     'Prefer':'return=representation,resolution=ignore-duplicates'
                 },
@@ -2764,17 +2907,26 @@ async function importCSVForAccountSingle(text,accountId,filename,logRow){
                 inserted+=saved.length;
                 skipped+=batch.length-saved.length;
             }
-        }catch(e){console.error('Import batch:',e);}
+        }
+        const log=document.getElementById('import-log');
+        const row=document.createElement('div');
+        row.style.cssText='padding:10px 14px;background:white;border-radius:6px;margin-bottom:6px;border:1px solid var(--sage-200);';
+        row.innerHTML=`✅ <strong>${importCSVFilename}</strong> <span style="color:var(--green-soft);">${inserted} imported, ${skipped} duplicates</span>`;
+        log.prepend(row);
+        resetImport();
+        loadImportChecklist();
+    }catch(e){
+        alert('Import error: '+e.message);
+    }finally{
+        btn.disabled=false;btn.textContent='📥 Import Transactions';
     }
-    logRow.innerHTML=`✅ <strong>${filename}</strong> <span style="color:var(--green-soft);">${inserted} imported, ${skipped} duplicates</span>`;
-    loadImportChecklist();
 }
 
-async function pickImportAccount(fnKey,textPreview){
-    const picker=document.getElementById(`picker-${fnKey}`);
-    const logRow=picker.closest('div');
-    const accId=picker.value;
-    await importCSVForAccountSingle(logRow._text,accId,logRow._filename,logRow);
+function resetImport(){
+    importCSVText='';importCSVFilename='';importParsedRows=[];importColMap=null;
+    document.getElementById('import-setup').style.display='none';
+    document.getElementById('import-mapping').style.display='none';
+    document.getElementById('import-preview').innerHTML='';
 }
 
 // ============ TRANSACTIONS ============
