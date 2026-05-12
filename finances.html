@@ -894,14 +894,26 @@ function renderBills(){
                 <span style="color:var(--sage-600);font-size:0.85rem;">Subtotal: <strong>${fmt(subtotal)}</strong></span>
             </div>
             <div class="table-scroll"><table class="data-table"><thead><tr>
-                <th>Paid</th><th>Bill</th><th>Due</th><th>Expected</th><th>Actual</th><th>Auto</th><th>Actions</th>
+                <th>Paid</th><th>Bill</th><th>Due</th><th>Week</th><th>Expected</th><th>Actual</th><th>Auto</th><th>Actions</th>
             </tr></thead><tbody>`;
+        const mk=monthKey(currentBillMonth);
+        const weds=getMonthWednesdays(mk);
         catBills.forEach(b=>{
             const p=billPayments.find(x=>x.bill_id===b.id);
+            const weekAssigned=p?.week_assigned||(b.due_day?defaultWedForDueDay(b.due_day,mk,weds):weds[0]);
+            const weekOpts=weds.map(w=>{
+                const wd=new Date(w+'T12:00:00');
+                const wMonth=wd.getMonth();
+                const bMonth=currentBillMonth.getMonth();
+                if(wMonth!==bMonth) return '';
+                const lbl=wd.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+                return `<option value="${w}" ${w===weekAssigned?'selected':''}>${lbl}</option>`;
+            }).filter(Boolean).join('');
             html+=`<tr>
                 <td><input type="checkbox" class="check-paid" ${p?.is_paid?'checked':''} ${b.is_auto_pay?'disabled title="Auto"':''} onchange="toggleBillPaid('${b.id}',this.checked)"></td>
                 <td><strong>${b.name}</strong>${b.is_variable_amount?'<br><span class="badge badge-variable">Variable</span>':''}${b.frequency==='weekly'?'<br><span class="badge badge-auto" style="background:rgba(52,152,219,0.12);color:#2980b9;">Weekly</span>':''}</td>
                 <td>${b.frequency==='weekly'?'Every wk':(b.is_variable_date?'Varies':(b.due_day||'-'))}</td>
+                <td><select onchange="updateBillWeek('${b.id}',this.value)" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;">${weekOpts}</select></td>
                 <td class="amount">${b.is_variable_amount?'~':''}${fmt(b.expected_amount)}${b.frequency==='weekly'?'<br><span style="font-size:0.7rem;color:var(--sage-400);">/wk</span>':''}</td>
                 <td class="amount">${p?.actual_amount!=null?fmt(p.actual_amount):'-'}${b.is_variable_amount?`<br><button class="btn btn-small btn-secondary" onclick="openAmountModal('${b.id}')">Enter</button>`:''}</td>
                 <td>${b.is_auto_pay?'<span class="badge badge-auto">Auto</span>':''}</td>
@@ -917,9 +929,19 @@ function renderBills(){
 function changeMonth(d){currentBillMonth.setMonth(currentBillMonth.getMonth()+d);loadBillPayments();}
 async function toggleBillPaid(billId,isPaid){
     const mk=monthKey(currentBillMonth),ex=billPayments.find(p=>p.bill_id===billId),bill=bills.find(b=>b.id===billId);
+    const weds=getMonthWednesdays(mk);
+    const weekAssigned=ex?.week_assigned||(bill?.due_day?defaultWedForDueDay(bill.due_day,mk,weds):weds[0]);
     try{
         if(ex)await supaFetch('finance_bill_payments','PATCH',{is_paid:isPaid,paid_date:isPaid?new Date().toISOString().split('T')[0]:null},`?id=eq.${ex.id}`);
-        else await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:mk,actual_amount:bill?.expected_amount||0,is_paid:isPaid,paid_date:isPaid?new Date().toISOString().split('T')[0]:null});
+        else await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:mk,actual_amount:bill?.expected_amount||0,is_paid:isPaid,paid_date:isPaid?new Date().toISOString().split('T')[0]:null,week_assigned:weekAssigned});
+        await loadBillPayments();
+    }catch(e){alert('Error: '+e.message);}
+}
+async function updateBillWeek(billId,weekVal){
+    const mk=monthKey(currentBillMonth),ex=billPayments.find(p=>p.bill_id===billId),bill=bills.find(b=>b.id===billId);
+    try{
+        if(ex)await supaFetch('finance_bill_payments','PATCH',{week_assigned:weekVal},`?id=eq.${ex.id}`);
+        else await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:mk,actual_amount:bill?.expected_amount||0,is_paid:false,week_assigned:weekVal});
         await loadBillPayments();
     }catch(e){alert('Error: '+e.message);}
 }
