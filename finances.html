@@ -1253,10 +1253,10 @@ function getMonthWednesdays(monthKey){
 function defaultWedForDueDay(dueDay,monthKey,wednesdays){
     const [y,m]=monthKey.split('-').map(Number);
     const dueDate=new Date(y,m-1,Math.min(dueDay,28));
-    for(let i=0;i<wednesdays.length-1;i++){
+    // Assign to the week ENDING on or after the due date (Wed is week-end)
+    for(let i=0;i<wednesdays.length;i++){
         const w=new Date(wednesdays[i]+'T12:00:00');
-        const nw=new Date(wednesdays[i+1]+'T12:00:00');
-        if(dueDate>=w && dueDate<nw) return wednesdays[i];
+        if(w>=dueDate) return wednesdays[i];
     }
     return wednesdays[wednesdays.length-1];
 }
@@ -1460,32 +1460,51 @@ async function autoMatchBillsFromTransactions(){
     for(const item of unpaid){
         const name=(item.bill.name||'').toLowerCase();
         const rule=BILL_MATCH_RULES.find(r=>r.billMatch(name));
-        if(!rule)continue;
 
-        // Build ±7 day window around due date in this bill's month
         const [y,m]=item.billMonth.split('-').map(Number);
-        const dueDate=new Date(y,m-1,Math.min(item.bill.due_day||15,28));
-        const from=new Date(dueDate); from.setDate(from.getDate()-7);
-        const to=new Date(dueDate); to.setDate(to.getDate()+7);
-        const fromStr=from.toISOString().split('T')[0];
-        const toStr=to.toISOString().split('T')[0];
+        let match=null;
+
+        if(rule){
+            // Specific rule: ±7 day window around due date
+            const dueDate=new Date(y,m-1,Math.min(item.bill.due_day||15,28));
+            const from=new Date(dueDate); from.setDate(from.getDate()-7);
+            const to=new Date(dueDate); to.setDate(to.getDate()+7);
+            const fromStr=from.toISOString().split('T')[0];
+            const toStr=to.toISOString().split('T')[0];
+            try{
+                let query=`?transaction_date=gte.${fromStr}&transaction_date=lte.${toStr}&amount=lt.0&order=transaction_date.desc`;
+                if(rule.vendor) query+=`&description=ilike.*${encodeURIComponent(rule.vendor)}*`;
+                const txns=await supaFetch('finance_transactions','GET',null,query);
+                if(txns?.length){
+                    if(rule.last4) match=txns.find(t=>(t.description||'').includes(rule.last4));
+                    else if(rule.amountExact) match=txns.find(t=>Math.abs(Math.abs(parseFloat(t.amount))-rule.amountExact)<0.5);
+                    else match=txns[0];
+                }
+            }catch(e){console.error('Rule match error:',e);}
+        } else {
+            // General match: search the whole month by pays_from account + similar amount
+            const paysFrom=(item.bill.pays_from||'').toLowerCase();
+            const payAcct=paysFrom?accounts.find(a=>a.name.toLowerCase().includes(paysFrom)||paysFrom.includes(a.name.toLowerCase())):null;
+            const expectedAmt=item.bill.expected_amount||0;
+            if(!expectedAmt)continue;
+            const monthStart=`${y}-${String(m).padStart(2,'0')}-01`;
+            const monthEnd=`${y}-${String(m).padStart(2,'0')}-${new Date(y,m,0).getDate()}`;
+            try{
+                let query=`?transaction_date=gte.${monthStart}&transaction_date=lte.${monthEnd}&amount=lt.0&order=transaction_date.desc`;
+                if(payAcct) query+=`&account_id=eq.${payAcct.id}`;
+                const txns=await supaFetch('finance_transactions','GET',null,query);
+                if(txns?.length){
+                    // Match by amount within 10% or $5 tolerance
+                    match=txns.find(t=>{
+                        const txAmt=Math.abs(parseFloat(t.amount));
+                        return Math.abs(txAmt-expectedAmt)<Math.max(expectedAmt*0.1,5);
+                    });
+                }
+            }catch(e){console.error('General match error:',e);}
+        }
+        if(!match)continue;
 
         try{
-            let query=`?transaction_date=gte.${fromStr}&transaction_date=lte.${toStr}&amount=lt.0&order=transaction_date.desc`;
-            if(rule.vendor) query+=`&description=ilike.*${encodeURIComponent(rule.vendor)}*`;
-            const txns=await supaFetch('finance_transactions','GET',null,query);
-            if(!txns?.length)continue;
-
-            let match=null;
-            if(rule.last4){
-                match=txns.find(t=>(t.description||'').includes(rule.last4));
-            } else if(rule.amountExact){
-                match=txns.find(t=>Math.abs(Math.abs(parseFloat(t.amount))-rule.amountExact)<0.5);
-            } else {
-                match=txns[0];
-            }
-            if(!match)continue;
-
             const paidDate=match.transaction_date;
             const paidAmt=Math.abs(parseFloat(match.amount));
 
@@ -1509,7 +1528,6 @@ async function autoMatchBillsFromTransactions(){
                 const di=item.rowRef.querySelector('.debt-bill-date');
                 if(cb) cb.checked=true;
                 if(di){ di.value=paidDate; di.className='debt-bill-date paid-date-confirmed'; }
-                // Add confirmed badge to debt bill row
                 if(!item.rowRef.querySelector('.confirmed-badge')){
                     const badge=document.createElement('span');
                     badge.className='confirmed-badge';
@@ -2614,7 +2632,7 @@ async function loadDashboard(){
     // Accounts table
     const accEl=document.getElementById('dash-accounts-table');
     if(accEl){
-        const shown=accounts.filter(a=>a.name.toLowerCase()!=='recurring bills');
+        const shown=accounts.filter(a=>{const n=a.name.toLowerCase();return n.includes('pnc')||n.includes('rental');});
         const accHtml=shown.map(a=>{
             const e=weekEntries.find(x=>x.account_id===a.id);
             const p=priorEntries.find(x=>x.account_id===a.id);
