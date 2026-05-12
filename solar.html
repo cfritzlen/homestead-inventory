@@ -601,6 +601,17 @@ async function loadDashboard(){
             }
         }
 
+        // Build per-day SOC stats from readings
+        const socByDate={};
+        readings.forEach(r=>{
+            const d=r.reading_date;
+            const soc=r.battery_soc;
+            if(soc==null||isNaN(soc))return;
+            if(!socByDate[d])socByDate[d]={min:soc,max:soc};
+            if(soc<socByDate[d].min)socByDate[d].min=soc;
+            if(soc>socByDate[d].max)socByDate[d].max=soc;
+        });
+
         // Daily breakdown
         const ds=document.getElementById('dailySection');
         const allDayDates=new Set([...summaries.map(s=>s.summary_date),...Object.keys(readingsByDate)]);
@@ -615,7 +626,10 @@ async function loadDashboard(){
                 const pvKwh=summ?(summ.pv_kwh||0):(readingsByDate[dateStr]?.pv||0);
                 const loadKwh=summ?(summ.load_kwh||0):(readingsByDate[dateStr]?.load||0);
                 const sv=pvKwh*RATE;
-                c.innerHTML+=`<div class="detail-row"><span class="detail-label">${name}</span><span style="display:flex;gap:14px;align-items:center;"><span style="font-size:0.8rem;color:var(--sage-600);">☀️${fmt(pvKwh)} · 🏠${fmt(loadKwh)} kWh</span><span class="detail-value pos">$${fmtMoney(sv)}</span></span></div>`;
+                const daySoc=socByDate[dateStr];
+                const socInfo=daySoc?`🔋${Math.round(daySoc.min)}–${Math.round(daySoc.max)}%`:'';
+                const fullCharge=daySoc&&Math.round(daySoc.max)>=100?' ✅':'';
+                c.innerHTML+=`<div class="detail-row"><span class="detail-label">${name}${fullCharge}</span><span style="display:flex;gap:14px;align-items:center;"><span style="font-size:0.8rem;color:var(--sage-600);">☀️${fmt(pvKwh)} · 🏠${fmt(loadKwh)} kWh${socInfo?' · '+socInfo:''}</span><span class="detail-value pos">$${fmtMoney(sv)}</span></span></div>`;
             });
         }else{ds.style.display='none';}
 
