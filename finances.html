@@ -1252,11 +1252,11 @@ function getMonthWednesdays(monthKey){
 
 function defaultWedForDueDay(dueDay,monthKey,wednesdays){
     const [y,m]=monthKey.split('-').map(Number);
-    const dueDate=new Date(y,m-1,Math.min(dueDay,28));
-    // Assign to the week ENDING on or after the due date (Wed is week-end)
+    const dueDate=new Date(y,m-1,Math.min(dueDay,28),12,0,0);
+    // Assign to the first Wednesday AFTER the due date
     for(let i=0;i<wednesdays.length;i++){
         const w=new Date(wednesdays[i]+'T12:00:00');
-        if(w>=dueDate) return wednesdays[i];
+        if(w>dueDate) return wednesdays[i];
     }
     return wednesdays[wednesdays.length-1];
 }
