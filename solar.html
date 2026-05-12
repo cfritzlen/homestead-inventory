@@ -155,7 +155,7 @@
             <div class="stat-card pv" onclick="toggleFilter('pv')"><div class="stat-icon">☀️</div><div class="stat-label">Solar</div><div class="stat-value"><span id="pvKwh">0</span> <span class="stat-unit">kWh</span></div><div class="stat-sub" id="pvPeak"></div><div class="filter-hint">click to isolate</div></div>
             <div class="stat-card load-c" onclick="toggleFilter('load')"><div class="stat-icon">🏠</div><div class="stat-label">Home Usage</div><div class="stat-value"><span id="loadKwh">0</span> <span class="stat-unit">kWh</span></div><div class="stat-sub" id="loadPeak"></div><div class="filter-hint">click to isolate</div></div>
             <div class="stat-card grid-c" onclick="toggleFilter('grid')"><div class="stat-icon">⚡</div><div class="stat-label">Grid Import</div><div class="stat-value"><span id="gridKwh">0</span> <span class="stat-unit">kWh</span></div><div class="filter-hint">click to isolate</div></div>
-            <div class="stat-card batt" onclick="toggleFilter('battery')"><div class="stat-icon">🔋</div><div class="stat-label">Battery</div><div class="stat-value"><span id="battSoc">—</span><span class="stat-unit">%</span></div><div class="stat-sub" id="battSub"></div><div class="stat-sub" id="battRange" style="font-size:0.68rem;"></div><div class="stat-sub" id="battKwh" style="font-size:0.68rem;"></div><div class="filter-hint">click to isolate</div></div>
+            <div class="stat-card batt" onclick="toggleFilter('battery')"><div class="stat-icon">🔋</div><div class="stat-label">Battery</div><div class="stat-value"><span id="battSoc">—</span></div><div class="stat-sub" id="battSub"></div><div class="filter-hint">click to isolate</div></div>
         </div>
 
         <div class="chart-card"><canvas id="energyChart"></canvas></div>
@@ -550,7 +550,6 @@ async function loadDashboard(){
             document.getElementById('statusDot').className=mins<60?'status-dot':'status-dot offline';
             document.getElementById('statusText').textContent=mins<60?'System Online':`Last seen ${mins}m ago`;
             document.getElementById('lastUpdated').textContent='Updated '+last.toLocaleTimeString();
-            document.getElementById('battSoc').textContent=Math.round(realtime[0].battery_soc||0);
             const bw=realtime[0].battery_watts||0;
             document.getElementById('battSub').textContent=bw>50?'Charging':bw<-50?'Discharging':'Idle';
         }
@@ -570,16 +569,12 @@ async function loadDashboard(){
         document.getElementById('cGrid').textContent=`$${fmtMoney(gridCost)}`;
         document.getElementById('cNet').textContent=`$${fmtMoney(net)}`;
 
-        // Battery SOC min/max + throughput kWh for the selected period
+        // Battery SOC min/max as the main tile value
         const socVals=readings.map(r=>r.battery_soc).filter(v=>v!=null&&!isNaN(v));
-        const battRangeEl=document.getElementById('battRange');
-        const battKwhEl=document.getElementById('battKwh');
         if(socVals.length){
-            const mn=Math.min(...socVals),mx=Math.max(...socVals);
-            battRangeEl.textContent=`Min ${Math.round(mn)}% / Max ${Math.round(mx)}%`;
-        }else{battRangeEl.textContent='';}
-        const battTotal=(t.battC||0)+(t.battD||0);
-        battKwhEl.textContent=battTotal>0?`${fmt(battTotal)} kWh`:'';
+            const mn=Math.round(Math.min(...socVals)),mx=Math.round(Math.max(...socVals));
+            document.getElementById('battSoc').textContent=`${mn}% / ${mx}%`;
+        }else{document.getElementById('battSoc').textContent='—';}
 
         buildChart(readings);
 
