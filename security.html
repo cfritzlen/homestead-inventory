@@ -242,7 +242,7 @@
             <div class="no-events" id="noEvents">No events yet — detections will appear here</div>
         </div>
 
-        <div class="section-title">Stills Review <span style="font-size:0.8rem;color:var(--taupe);font-weight:400;">(5:00–6:30 AM)</span></div>
+        <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">Stills Review <span style="font-size:0.8rem;color:var(--taupe);font-weight:400;">(5:00–6:30 AM)</span><span onclick="event.stopPropagation();document.getElementById('aiSettingsPanel').style.display=document.getElementById('aiSettingsPanel').style.display==='none'?'block':'none';" style="cursor:pointer;font-size:1.3rem;padding:4px 8px;border-radius:6px;opacity:0.7;transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7" title="AI Detector Settings">&#9881;</span></div>
         <div class="stills-viewer" id="stillsViewer">
             <div class="stills-header">
                 <div class="cam-tabs">
@@ -268,7 +268,6 @@
             <div class="stills-info" id="stillsInfo"></div>
         </div>
 
-        <div class="section-title" style="cursor:pointer;" onclick="document.getElementById('aiSettingsPanel').style.display=document.getElementById('aiSettingsPanel').style.display==='none'?'block':'none';">AI Detector Settings <span style="font-size:0.8rem;color:var(--taupe);font-weight:400;">click to expand</span></div>
         <div id="aiSettingsPanel" style="display:none;background:rgba(74,77,71,0.6);border-radius:12px;padding:20px;margin-bottom:24px;">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                 <div>
