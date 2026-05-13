@@ -58,26 +58,33 @@ def insert_rows(conn, table, rows):
     """Insert rows into local PostgreSQL, skipping duplicates."""
     if not rows:
         return 0
-    cur = conn.cursor()
     inserted = 0
+    errors = 0
     for row in rows:
-        columns = list(row.keys())
+        # Filter out None-key columns and columns that don't exist
+        columns = [k for k in row.keys() if row[k] is not None or k == 'id']
         col_list = ", ".join(f'"{c}"' for c in columns)
         placeholders = ", ".join(["%s"] * len(columns))
-        values = [json.dumps(v) if isinstance(v, (list, dict)) else v for v in row.values()]
+        values = [json.dumps(v) if isinstance(v, (list, dict)) else v for v in [row[c] for c in columns]]
         try:
+            cur = conn.cursor()
             cur.execute(
                 f'INSERT INTO {table} ({col_list}) VALUES ({placeholders}) ON CONFLICT DO NOTHING',
                 values
             )
+            conn.commit()
             if cur.rowcount > 0:
                 inserted += 1
+            cur.close()
         except Exception as e:
             conn.rollback()
-            print(f"  Error inserting row: {e}")
-            continue
-    conn.commit()
-    cur.close()
+            errors += 1
+            if errors <= 3:
+                print(f"  Error inserting row: {e}")
+            elif errors == 4:
+                print(f"  ... suppressing further errors")
+    if errors > 3:
+        print(f"  Total errors: {errors}")
     return inserted
 
 
