@@ -9,6 +9,7 @@ import httpx
 import psycopg2
 import psycopg2.extras
 from fastapi import FastAPI, Request, Response, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
@@ -31,7 +32,10 @@ ALLOWED_TABLES = {
     "meds", "med_logs", "bp_readings", "med_notes", "sleep_entries",
     "recipes", "master_items", "recipe_ingredients", "recipe_steps", "meal_plan",
     "shopping_list", "inventory",
-    "home_vendors", "home_expenses", "home_expense_receipts", "finance_transactions",
+    "home_vendors", "home_expenses", "home_expense_receipts",
+    "finance_accounts", "finance_transactions", "finance_bills", "finance_bill_payments",
+    "finance_weekly_entries", "finance_loan_schedules", "finance_other_payments",
+    "finance_extra_payments", "finance_categories",
     "hatching_batches", "homestead_chores", "plant_entries", "plant_photos", "harvest_log",
     "brain_topics", "brain_people", "brain_tags", "brain_documents", "brain_memories",
     "prediction_trades",
@@ -56,12 +60,19 @@ def parse_postgrest_filters(params: dict) -> tuple[str, list]:
         if key == "select" or key == "on_conflict":
             continue
         elif key == "order":
-            parts = val.split(".")
-            col = parts[0]
-            direction = parts[1].upper() if len(parts) > 1 else "ASC"
-            if direction not in ("ASC", "DESC"):
-                direction = "ASC"
-            order_clause = f' ORDER BY "{col}" {direction}'
+            # Support multiple order columns: display_order.asc,name.asc
+            order_parts = []
+            for segment in val.split(","):
+                seg_parts = segment.strip().split(".")
+                col = seg_parts[0]
+                direction = seg_parts[1].upper() if len(seg_parts) > 1 else "ASC"
+                nulls = ""
+                if len(seg_parts) > 2 and seg_parts[2].lower() == "nullsfirst":
+                    nulls = " NULLS FIRST"
+                if direction not in ("ASC", "DESC"):
+                    direction = "ASC"
+                order_parts.append(f'"{col}" {direction}{nulls}')
+            order_clause = " ORDER BY " + ", ".join(order_parts)
         elif key == "limit":
             limit_clause = f" LIMIT {int(val)}"
         elif key == "offset":
@@ -91,6 +102,7 @@ def parse_postgrest_filters(params: dict) -> tuple[str, list]:
 
 
 app = FastAPI(title="Homestead Hub API")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 @app.get("/api/{table}")
@@ -138,12 +150,15 @@ async def insert_row(table: str, request: Request):
 
         sql = f'INSERT INTO {table} ({col_list}) VALUES ({placeholders})'
 
-        if "merge-duplicates" in prefer and on_conflict:
+        if on_conflict:
             conflict_cols = ", ".join(f'"{c}"' for c in on_conflict.split(","))
-            update_cols = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in columns if c not in on_conflict.split(","))
-            if update_cols:
-                sql += f' ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_cols}'
-            else:
+            if "merge-duplicates" in prefer:
+                update_cols = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in columns if c not in on_conflict.split(","))
+                if update_cols:
+                    sql += f' ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_cols}'
+                else:
+                    sql += f' ON CONFLICT ({conflict_cols}) DO NOTHING'
+            elif "ignore-duplicates" in prefer:
                 sql += f' ON CONFLICT ({conflict_cols}) DO NOTHING'
 
         sql += " RETURNING *"
