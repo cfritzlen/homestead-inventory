@@ -2878,9 +2878,11 @@ or for split amounts:
 async function applyColumnMapping(){
     if(!importColMap||!importCSVText)return;
     const accountId=document.getElementById('import-account').value;
-    const lines=importCSVText.split('\n').filter(l=>l.trim());
+    // Keep all lines including blanks so header_row index matches Claude's numbering
+    const allLines=importCSVText.split('\n');
     const headerRow=importColMap.header_row||0;
-    const headers=parseCSVLine(lines[headerRow]);
+    if(headerRow>=allLines.length){alert(`Header row ${headerRow} is beyond file length (${allLines.length} lines). Try again.`);return;}
+    const headers=parseCSVLine(allLines[headerRow]);
     const m=importColMap;
 
     // Check if this is a BOA CC account — default all to "Girls"
@@ -2897,46 +2899,57 @@ async function applyColumnMapping(){
     const headerInfo=headerRow>0?`<span style="background:rgba(255,193,7,0.15);color:#f39c12;padding:2px 8px;border-radius:4px;font-size:0.8rem;">Headers on line ${headerRow+1}</span> &nbsp; `:'';
     document.getElementById('import-mapping-info').innerHTML=
         `${headerInfo}<strong>Date:</strong> "${dateCol}" &nbsp; <strong>Description:</strong> "${descCol}" &nbsp; <strong>${amtInfo}</strong>${catInfo}${isBOA?' &nbsp; <span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 8px;border-radius:4px;font-size:0.8rem;font-weight:600;">BOA CC → All "Girls"</span>':''}`;
+    // Show mapping panel immediately so user sees progress
+    document.getElementById('import-mapping').style.display='block';
+    document.getElementById('import-parsed-preview').innerHTML='<div style="padding:12px;color:var(--sage-500);">Parsing rows...</div>';
 
-    // Parse all rows (start after header row)
+    // Parse all rows (start after header row, skip blank lines)
     importParsedRows=[];
-    for(let i=headerRow+1;i<lines.length;i++){
-        const cols=parseCSVLine(lines[i]);
-        const date=parseDate(cols[m.date_col]);
-        let desc=(cols[m.desc_col]||'').replace(/^"|"$/g,'').trim();
-        let amt=0;
-        if(m.amount_col!=null){
-            amt=parseAmount(cols[m.amount_col]);
-            if(m.amount_negate) amt=-amt;
-        } else {
-            const wd=parseAmount(cols[m.withdrawal_col]);
-            const dep=parseAmount(cols[m.deposit_col]);
-            amt=dep>0?dep:-wd;
-        }
-        if(!date||(!desc&&amt===0)) continue;
-        // Category: BOA CC → always "Girls", else use CSV category column, else guess
-        let cat;
-        if(isBOA) cat='Girls';
-        else if(m.category_col!=null&&cols[m.category_col]) cat=(cols[m.category_col]||'').replace(/^"|"$/g,'').trim();
-        else cat=guessCategory(desc);
-        const hash=await hashTxn(accountId,date,desc,amt);
-        importParsedRows.push({
-            account_id:accountId,transaction_date:date,description:desc,
-            amount:amt,category:cat,dedup_hash:hash
-        });
+    let skipped=0;
+    for(let i=headerRow+1;i<allLines.length;i++){
+        const line=allLines[i].trim();
+        if(!line) continue;
+        try{
+            const cols=parseCSVLine(line);
+            const date=parseDate(cols[m.date_col]);
+            let desc=(cols[m.desc_col]||'').replace(/^"|"$/g,'').trim();
+            let amt=0;
+            if(m.amount_col!=null){
+                amt=parseAmount(cols[m.amount_col]);
+                if(m.amount_negate) amt=-amt;
+            } else {
+                const wd=parseAmount(cols[m.withdrawal_col]);
+                const dep=parseAmount(cols[m.deposit_col]);
+                amt=dep>0?dep:-wd;
+            }
+            if(!date||(!desc&&amt===0)){skipped++;continue;}
+            let cat;
+            if(isBOA) cat='Girls';
+            else if(m.category_col!=null&&cols[m.category_col]) cat=(cols[m.category_col]||'').replace(/^"|"$/g,'').trim();
+            else cat=guessCategory(desc);
+            const hash=await hashTxn(accountId,date,desc,amt);
+            importParsedRows.push({
+                account_id:accountId,transaction_date:date,description:desc,
+                amount:amt,category:cat,dedup_hash:hash
+            });
+        }catch(e){skipped++;console.warn('Skip row',i,e);}
     }
 
     // Show parsed preview
     let html='<table class="data-table" style="font-size:0.75rem;margin:0;"><thead><tr><th style="padding:4px 8px;">Date</th><th style="padding:4px 8px;">Description</th><th style="padding:4px 8px;">Amount</th><th style="padding:4px 8px;">Category</th></tr></thead><tbody>';
-    const preview=importParsedRows.slice(0,10);
-    preview.forEach(r=>{
-        html+=`<tr><td style="padding:4px 8px;">${r.transaction_date}</td><td style="padding:4px 8px;">${(r.description||'').substring(0,50)}</td><td style="padding:4px 8px;" class="amount ${r.amount<0?'negative':'positive'}">${fmt(r.amount)}</td><td style="padding:4px 8px;">${r.category}</td></tr>`;
-    });
-    if(importParsedRows.length>10) html+=`<tr><td colspan="4" style="padding:4px 8px;color:var(--sage-400);">...and ${importParsedRows.length-10} more rows</td></tr>`;
+    if(!importParsedRows.length){
+        html+=`<tr><td colspan="4" style="padding:12px;color:var(--dusty-rose);">No valid rows found (${skipped} skipped). Check the column mapping above.</td></tr>`;
+    } else {
+        const preview=importParsedRows.slice(0,10);
+        preview.forEach(r=>{
+            html+=`<tr><td style="padding:4px 8px;">${r.transaction_date}</td><td style="padding:4px 8px;">${(r.description||'').substring(0,50)}</td><td style="padding:4px 8px;" class="amount ${r.amount<0?'negative':'positive'}">${fmt(r.amount)}</td><td style="padding:4px 8px;">${r.category}</td></tr>`;
+        });
+        if(importParsedRows.length>10) html+=`<tr><td colspan="4" style="padding:4px 8px;color:var(--sage-400);">...and ${importParsedRows.length-10} more rows</td></tr>`;
+    }
+    if(skipped>0) html+=`<tr><td colspan="4" style="padding:4px 8px;color:var(--sage-400);font-size:0.75rem;">${skipped} rows skipped (no date or amount)</td></tr>`;
     html+='</tbody></table>';
     document.getElementById('import-parsed-preview').innerHTML=html;
     document.getElementById('import-row-count').textContent=`(${importParsedRows.length})`;
-    document.getElementById('import-mapping').style.display='block';
 }
 
 async function executeImport(){
