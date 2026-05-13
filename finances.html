@@ -2823,30 +2823,31 @@ async function aiAnalyzeCSV(){
     btn.disabled=true;btn.textContent='🤖 Analyzing...';
 
     const lines=importCSVText.split('\n').filter(l=>l.trim());
-    const sampleLines=lines.slice(0,8).join('\n');
+    const sampleLines=lines.slice(0,15).join('\n');
 
     const prompt=`You are analyzing a bank CSV file to identify which columns contain the transaction date, description, amount(s), and optionally a category.
 
-Here are the first several lines (header + data rows):
+IMPORTANT: Some bank CSVs have metadata/summary lines at the top before the actual column headers. You must identify which line is the header row.
+
+Here are the first several lines (0-indexed):
 
 \`\`\`
-${sampleLines}
+${sampleLines.split('\n').map((l,i)=>`[${i}] ${l}`).join('\n')}
 \`\`\`
 
-Identify the column indices (0-based) for:
-- **date_col**: Which column contains the transaction date
+Identify:
+- **header_row**: The 0-based line number that contains the column headers. If the headers are on the first line, this is 0. If there are metadata lines before the headers, this will be a higher number.
+- **date_col**: Which column contains the transaction date (0-based index within the header row)
 - **desc_col**: Which column contains the transaction description/payee/merchant name (the human-readable text, NOT a reference number)
 - **amount_col**: If there is a single amount column (negative = charge, positive = deposit), give its index
 - **withdrawal_col** and **deposit_col**: If amounts are split into two columns (withdrawals and deposits), give both indices
 - **category_col**: If there is a column for transaction category/type (e.g. "Food & Drink", "Shopping", "Travel"), give its index. If no category column exists, omit this field.
-
-Also indicate:
 - **amount_negate**: true if the amount column uses positive numbers for charges and needs to be negated (some banks like Chase use negative for charges already, others use positive)
 
 Respond with ONLY a JSON object, no markdown, no backticks:
-{"date_col":0,"desc_col":1,"amount_col":2,"amount_negate":false,"category_col":3}
+{"header_row":0,"date_col":0,"desc_col":1,"amount_col":2,"amount_negate":false,"category_col":3}
 or for split amounts:
-{"date_col":0,"desc_col":1,"withdrawal_col":2,"deposit_col":3}`;
+{"header_row":6,"date_col":0,"desc_col":1,"withdrawal_col":2,"deposit_col":3}`;
 
     try{
         const response=await fetch('https://api.anthropic.com/v1/messages',{
@@ -2877,7 +2878,8 @@ async function applyColumnMapping(){
     if(!importColMap||!importCSVText)return;
     const accountId=document.getElementById('import-account').value;
     const lines=importCSVText.split('\n').filter(l=>l.trim());
-    const headers=parseCSVLine(lines[0]);
+    const headerRow=importColMap.header_row||0;
+    const headers=parseCSVLine(lines[headerRow]);
     const m=importColMap;
 
     // Check if this is a BOA CC account — default all to "Girls"
@@ -2891,12 +2893,13 @@ async function applyColumnMapping(){
     if(m.amount_col!=null) amtInfo=`Amount: "${headers[m.amount_col]}"${m.amount_negate?' (will negate)':''}`;
     else amtInfo=`Withdrawal: "${headers[m.withdrawal_col]||'?'}", Deposit: "${headers[m.deposit_col]||'?'}"`;
     const catInfo=m.category_col!=null?` &nbsp; <strong>Category:</strong> "${headers[m.category_col]}"`:'';
+    const headerInfo=headerRow>0?`<span style="background:rgba(255,193,7,0.15);color:#f39c12;padding:2px 8px;border-radius:4px;font-size:0.8rem;">Headers on line ${headerRow+1}</span> &nbsp; `:'';
     document.getElementById('import-mapping-info').innerHTML=
-        `<strong>Date:</strong> "${dateCol}" &nbsp; <strong>Description:</strong> "${descCol}" &nbsp; <strong>${amtInfo}</strong>${catInfo}${isBOA?' &nbsp; <span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 8px;border-radius:4px;font-size:0.8rem;font-weight:600;">BOA CC → All "Girls"</span>':''}`;
+        `${headerInfo}<strong>Date:</strong> "${dateCol}" &nbsp; <strong>Description:</strong> "${descCol}" &nbsp; <strong>${amtInfo}</strong>${catInfo}${isBOA?' &nbsp; <span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 8px;border-radius:4px;font-size:0.8rem;font-weight:600;">BOA CC → All "Girls"</span>':''}`;
 
-    // Parse all rows
+    // Parse all rows (start after header row)
     importParsedRows=[];
-    for(let i=1;i<lines.length;i++){
+    for(let i=headerRow+1;i<lines.length;i++){
         const cols=parseCSVLine(lines[i]);
         const date=parseDate(cols[m.date_col]);
         let desc=(cols[m.desc_col]||'').replace(/^"|"$/g,'').trim();
