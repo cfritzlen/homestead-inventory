@@ -2999,7 +2999,11 @@ async function executeImport(){
     const batchSize=50;
     try{
         for(let i=0;i<importParsedRows.length;i+=batchSize){
-            const batch=importParsedRows.slice(i,i+batchSize);
+            // Strip debug fields before sending to Supabase
+            const batch=importParsedRows.slice(i,i+batchSize).map(r=>({
+                account_id:r.account_id,transaction_date:r.transaction_date,
+                description:r.description,amount:r.amount,category:r.category,dedup_hash:r.dedup_hash
+            }));
             const res=await fetch(`${SUPABASE_URL}/rest/v1/finance_transactions?on_conflict=dedup_hash`,{
                 method:'POST',
                 headers:{
@@ -3013,6 +3017,11 @@ async function executeImport(){
                 const saved=await res.json();
                 inserted+=saved.length;
                 skipped+=batch.length-saved.length;
+            } else {
+                const errText=await res.text();
+                console.error('Import batch error:',res.status,errText);
+                alert('Import error: '+errText);
+                break;
             }
         }
         const log=document.getElementById('import-log');
