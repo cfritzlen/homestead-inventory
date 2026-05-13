@@ -894,7 +894,7 @@ function renderBills(){
                 <span style="color:var(--sage-600);font-size:0.85rem;">Subtotal: <strong>${fmt(subtotal)}</strong></span>
             </div>
             <div class="table-scroll"><table class="data-table"><thead><tr>
-                <th>Paid</th><th>Bill</th><th>Due</th><th>Week</th><th>Expected</th><th>Actual</th><th>Auto</th><th>Actions</th>
+                <th>Paid</th><th>Bill</th><th>Due</th><th>Week</th><th>Amount</th><th>Paid Date</th><th>Auto</th><th>Actions</th>
             </tr></thead><tbody>`;
         const mk=monthKey(currentBillMonth);
         const weds=getMonthWednesdays(mk);
@@ -909,13 +909,15 @@ function renderBills(){
                 const lbl=wd.toLocaleDateString('en-US',{month:'short',day:'numeric'});
                 return `<option value="${w}" ${w===weekAssigned?'selected':''}>${lbl}</option>`;
             }).filter(Boolean).join('');
-            html+=`<tr>
-                <td><input type="checkbox" class="check-paid" ${p?.is_paid?'checked':''} ${b.is_auto_pay?'disabled title="Auto"':''} onchange="toggleBillPaid('${b.id}',this.checked)"></td>
+            const actualAmt=p?.actual_amount!=null?p.actual_amount:b.expected_amount;
+            const paidDate=p?.paid_date||'';
+            html+=`<tr data-bill-id="${b.id}">
+                <td><input type="checkbox" class="check-paid" ${p?.is_paid?'checked':''} ${b.is_auto_pay?'disabled title="Auto"':''} onchange="billTabSave('${b.id}',this.closest('tr'))"></td>
                 <td><strong>${b.name}</strong>${b.is_variable_amount?'<br><span class="badge badge-variable">Variable</span>':''}${b.frequency==='weekly'?'<br><span class="badge badge-auto" style="background:rgba(52,152,219,0.12);color:#2980b9;">Weekly</span>':''}</td>
                 <td>${b.frequency==='weekly'?'Every wk':(b.is_variable_date?'Varies':(b.due_day||'-'))}</td>
-                <td><select onchange="updateBillWeek('${b.id}',this.value)" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;">${weekOpts}</select></td>
-                <td class="amount">${b.is_variable_amount?'~':''}${fmt(b.expected_amount)}${b.frequency==='weekly'?'<br><span style="font-size:0.7rem;color:var(--sage-400);">/wk</span>':''}</td>
-                <td class="amount">${p?.actual_amount!=null?fmt(p.actual_amount):'-'}${b.is_variable_amount?`<br><button class="btn btn-small btn-secondary" onclick="openAmountModal('${b.id}')">Enter</button>`:''}</td>
+                <td><select data-field="week" onchange="billTabSave('${b.id}',this.closest('tr'))" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;">${weekOpts}</select></td>
+                <td class="amount"><input type="number" step="0.01" data-field="amount" value="${actualAmt}" onchange="billTabSave('${b.id}',this.closest('tr'))" style="width:80px;padding:3px 6px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.85rem;text-align:right;">${b.frequency==='weekly'?'<br><span style="font-size:0.7rem;color:var(--sage-400);">/wk</span>':''}</td>
+                <td><input type="date" data-field="date" value="${paidDate}" onchange="billTabSave('${b.id}',this.closest('tr'))" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;width:110px;"></td>
                 <td>${b.is_auto_pay?'<span class="badge badge-auto">Auto</span>':''}</td>
                 <td><button class="btn btn-small btn-secondary" onclick="editBill('${b.id}')">Edit</button><button class="btn btn-small btn-danger" onclick="deleteBill('${b.id}')">Del</button></td>
             </tr>`;
@@ -927,22 +929,24 @@ function renderBills(){
     container.innerHTML=html;
 }
 function changeMonth(d){currentBillMonth.setMonth(currentBillMonth.getMonth()+d);loadBillPayments();}
-async function toggleBillPaid(billId,isPaid){
+async function billTabSave(billId,row){
     const mk=monthKey(currentBillMonth),ex=billPayments.find(p=>p.bill_id===billId),bill=bills.find(b=>b.id===billId);
-    const weds=getMonthWednesdays(mk);
-    const weekAssigned=ex?.week_assigned||(bill?.due_day?defaultWedForDueDay(bill.due_day,mk,weds):weds[0]);
+    const isPaid=row.querySelector('.check-paid')?.checked||false;
+    const weekSel=row.querySelector('[data-field="week"]');
+    const amtInput=row.querySelector('[data-field="amount"]');
+    const dateInput=row.querySelector('[data-field="date"]');
+    const weekAssigned=weekSel?.value||null;
+    const amt=parseFloat(amtInput?.value)||bill?.expected_amount||0;
+    if(isPaid&&!dateInput.value) dateInput.value=new Date().toISOString().split('T')[0];
+    const paidDate=dateInput?.value||null;
+    const data={is_paid:isPaid,actual_amount:amt,paid_date:isPaid?paidDate:null,week_assigned:weekAssigned};
     try{
-        if(ex)await supaFetch('finance_bill_payments','PATCH',{is_paid:isPaid,paid_date:isPaid?new Date().toISOString().split('T')[0]:null},`?id=eq.${ex.id}`);
-        else await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:mk,actual_amount:bill?.expected_amount||0,is_paid:isPaid,paid_date:isPaid?new Date().toISOString().split('T')[0]:null,week_assigned:weekAssigned});
-        await loadBillPayments();
-    }catch(e){alert('Error: '+e.message);}
-}
-async function updateBillWeek(billId,weekVal){
-    const mk=monthKey(currentBillMonth),ex=billPayments.find(p=>p.bill_id===billId),bill=bills.find(b=>b.id===billId);
-    try{
-        if(ex)await supaFetch('finance_bill_payments','PATCH',{week_assigned:weekVal},`?id=eq.${ex.id}`);
-        else await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:mk,actual_amount:bill?.expected_amount||0,is_paid:false,week_assigned:weekVal});
-        await loadBillPayments();
+        if(ex) await supaFetch('finance_bill_payments','PATCH',data,`?id=eq.${ex.id}`);
+        else await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:mk,...data});
+        row.style.transition='background 0.3s';row.style.background='rgba(39,174,96,0.08)';
+        setTimeout(()=>row.style.background='',800);
+        // Refresh payment data without full re-render
+        try{billPayments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=eq.${mk}`);}catch(e){};
     }catch(e){alert('Error: '+e.message);}
 }
 function openAmountModal(billId){editingBillPaymentId=billId;const p=billPayments.find(x=>x.bill_id===billId);document.getElementById('modal-actual-amount').value=p?.actual_amount||'';document.getElementById('modal-bill-amount').classList.add('active');}
@@ -1275,12 +1279,14 @@ function getMonthWednesdays(monthKey){
 function defaultWedForDueDay(dueDay,monthKey,wednesdays){
     const [y,m]=monthKey.split('-').map(Number);
     const dueDate=new Date(y,m-1,Math.min(dueDay,28),12,0,0);
-    // Assign to the first Wednesday AFTER the due date
-    for(let i=0;i<wednesdays.length;i++){
-        const w=new Date(wednesdays[i]+'T12:00:00');
-        if(w>dueDate) return wednesdays[i];
+    // Assign to the nearest Wednesday
+    let closest=wednesdays[0],minDiff=Infinity;
+    for(const w of wednesdays){
+        const wd=new Date(w+'T12:00:00');
+        const diff=Math.abs(wd-dueDate);
+        if(diff<minDiff){minDiff=diff;closest=w;}
     }
-    return wednesdays[wednesdays.length-1];
+    return closest;
 }
 
 function ordSuffix(n){
