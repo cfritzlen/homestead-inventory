@@ -61,8 +61,9 @@ def insert_rows(conn, table, rows):
     inserted = 0
     errors = 0
     for row in rows:
-        # Filter out None-key columns and columns that don't exist
-        columns = [k for k in row.keys() if row[k] is not None or k == 'id']
+        # Skip 'id' if it's an integer (let PostgreSQL generate UUID), filter nulls
+        skip_id = isinstance(row.get('id'), int)
+        columns = [k for k in row.keys() if (row[k] is not None or k == 'id') and not (k == 'id' and skip_id)]
         col_list = ", ".join(f'"{c}"' for c in columns)
         placeholders = ", ".join(["%s"] * len(columns))
         values = [json.dumps(v) if isinstance(v, (list, dict)) else v for v in [row[c] for c in columns]]
