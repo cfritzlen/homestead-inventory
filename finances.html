@@ -2702,13 +2702,23 @@ function parseCSVLine(line){
 
 function parseDate(s){
     if(!s) return null;
-    s=s.trim().replace(/"/g,'');
-    const parts=s.split(/[\/\-]/);
-    if(parts.length!==3) return null;
-    let [a,b,c]=parts;
-    if(c.length===2) c='20'+c;
-    if(a.length===4) return `${a}-${b.padStart(2,'0')}-${c.padStart(2,'0')}`;
-    return `${c}-${a.padStart(2,'0')}-${b.padStart(2,'0')}`;
+    s=s.trim().replace(/"/g,'').replace(/\s+/g,' ');
+    // Try ISO format first: 2026-05-20
+    let m=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+    // US format: 05/20/2026 or 05/20/26
+    m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if(m){
+        let yr=m[3];if(yr.length===2)yr='20'+yr;
+        return `${yr}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+    }
+    // Try parsing as Date object as last resort
+    const d=new Date(s);
+    if(!isNaN(d)){
+        const yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0');
+        if(yr>=2000&&yr<=2100) return `${yr}-${mo}-${dy}`;
+    }
+    return null;
 }
 
 function parseAmount(s){
