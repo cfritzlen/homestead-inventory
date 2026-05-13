@@ -2714,7 +2714,15 @@ function parseDate(s){
 function parseAmount(s){
     s=(s||'').trim().replace(/"/g,'');
     if(!s) return 0;
-    return parseFloat(s.replace(/[$,]/g,''))||0;
+    // Handle parentheses as negative: (150.00) → -150.00
+    let neg=false;
+    if(s.startsWith('(')&&s.endsWith(')')){neg=true;s=s.slice(1,-1);}
+    if(s.startsWith('-')){neg=true;s=s.slice(1);}
+    // Strip currency symbols, commas, spaces
+    s=s.replace(/[$,\s]/g,'');
+    const val=parseFloat(s);
+    if(isNaN(val)) return 0;
+    return neg?-val:val;
 }
 
 function guessCategory(desc){
