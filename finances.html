@@ -2947,15 +2947,20 @@ async function applyColumnMapping(){
             const cols=parseCSVLine(line);
             const date=parseDate(cols[m.date_col]);
             let desc=(cols[m.desc_col]||'').replace(/^"|"$/g,'').trim();
-            let amt=0;
+            let amt=0, rawAmt='';
             if(m.amount_col!=null){
-                amt=parseAmount(cols[m.amount_col]);
+                rawAmt=cols[m.amount_col]||'';
+                amt=parseAmount(rawAmt);
                 if(m.amount_negate) amt=-amt;
-            } else {
-                const wd=parseAmount(cols[m.withdrawal_col]);
-                const dep=parseAmount(cols[m.deposit_col]);
+            } else if(m.withdrawal_col!=null||m.deposit_col!=null){
+                const rawWd=cols[m.withdrawal_col]||'';
+                const rawDep=cols[m.deposit_col]||'';
+                rawAmt=rawWd||rawDep;
+                const wd=parseAmount(rawWd);
+                const dep=parseAmount(rawDep);
                 amt=dep>0?dep:-wd;
             }
+            if(i<=headerRow+3) console.log('Row',i,'cols:',cols,'rawAmt:',rawAmt,'parsed:',amt);
             if(!date||(!desc&&amt===0)){skipped++;continue;}
             let cat;
             if(isBOA) cat='Girls';
@@ -2964,19 +2969,19 @@ async function applyColumnMapping(){
             const hash=await hashTxn(accountId,date,desc,amt);
             importParsedRows.push({
                 account_id:accountId,transaction_date:date,description:desc,
-                amount:amt,category:cat,dedup_hash:hash
+                amount:amt,category:cat,dedup_hash:hash,_raw:rawAmt
             });
         }catch(e){skipped++;console.warn('Skip row',i,e);}
     }
 
     // Show parsed preview
-    let html='<table class="data-table" style="font-size:0.75rem;margin:0;"><thead><tr><th style="padding:4px 8px;">Date</th><th style="padding:4px 8px;">Description</th><th style="padding:4px 8px;">Amount</th><th style="padding:4px 8px;">Category</th></tr></thead><tbody>';
+    let html='<table class="data-table" style="font-size:0.75rem;margin:0;"><thead><tr><th style="padding:4px 8px;">Date</th><th style="padding:4px 8px;">Description</th><th style="padding:4px 8px;">Raw</th><th style="padding:4px 8px;">Amount</th><th style="padding:4px 8px;">Category</th></tr></thead><tbody>';
     if(!importParsedRows.length){
-        html+=`<tr><td colspan="4" style="padding:12px;color:var(--dusty-rose);">No valid rows found (${skipped} skipped). Check the column mapping above.</td></tr>`;
+        html+=`<tr><td colspan="5" style="padding:12px;color:var(--dusty-rose);">No valid rows found (${skipped} skipped). Check the column mapping above.</td></tr>`;
     } else {
         const preview=importParsedRows.slice(0,10);
         preview.forEach(r=>{
-            html+=`<tr><td style="padding:4px 8px;">${r.transaction_date}</td><td style="padding:4px 8px;">${(r.description||'').substring(0,50)}</td><td style="padding:4px 8px;" class="amount ${r.amount<0?'negative':'positive'}">${fmt(r.amount)}</td><td style="padding:4px 8px;">${r.category}</td></tr>`;
+            html+=`<tr><td style="padding:4px 8px;">${r.transaction_date}</td><td style="padding:4px 8px;">${(r.description||'').substring(0,50)}</td><td style="padding:4px 8px;color:var(--sage-400);font-size:0.7rem;">${(r._raw||'').substring(0,20)}</td><td style="padding:4px 8px;" class="amount ${r.amount<0?'negative':'positive'}">${fmt(r.amount)}</td><td style="padding:4px 8px;">${r.category}</td></tr>`;
         });
         if(importParsedRows.length>10) html+=`<tr><td colspan="4" style="padding:4px 8px;color:var(--sage-400);">...and ${importParsedRows.length-10} more rows</td></tr>`;
     }
