@@ -2397,7 +2397,7 @@ async function aiCategorize(){
                     'anthropic-dangerous-direct-browser-access':'true'
                 },
                 body:JSON.stringify({
-                    model:'claude-sonnet-4-20250514',
+                    model:'claude-sonnet-4-6',
                     max_tokens:4000,
                     messages:[{role:'user',content:prompt}]
                 })
@@ -2858,14 +2858,15 @@ or for split amounts:
                 'anthropic-version':'2023-06-01',
                 'anthropic-dangerous-direct-browser-access':'true'
             },
-            body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,messages:[{role:'user',content:prompt}]})
+            body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,messages:[{role:'user',content:prompt}]})
         });
         const data=await response.json();
-        if(data.error){throw new Error(data.error.message||'API error');}
+        if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
         const text=(data.content||[]).map(c=>c.text||'').join('');
         const clean=text.replace(/```json|```/g,'').trim();
         importColMap=JSON.parse(clean);
-        applyColumnMapping();
+        btn.textContent='🤖 Mapping rows...';
+        await applyColumnMapping();
     }catch(e){
         alert('AI analysis failed: '+e.message);
         console.error('AI analyze:',e);
