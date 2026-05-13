@@ -1279,14 +1279,14 @@ function getMonthWednesdays(monthKey){
 function defaultWedForDueDay(dueDay,monthKey,wednesdays){
     const [y,m]=monthKey.split('-').map(Number);
     const dueDate=new Date(y,m-1,Math.min(dueDay,28),12,0,0);
-    // Assign to the nearest Wednesday
-    let closest=wednesdays[0],minDiff=Infinity;
+    // Assign to the last Wednesday on or before the due date
+    let result=wednesdays[0];
     for(const w of wednesdays){
         const wd=new Date(w+'T12:00:00');
-        const diff=Math.abs(wd-dueDate);
-        if(diff<minDiff){minDiff=diff;closest=w;}
+        if(wd<=dueDate) result=w;
+        else break;
     }
-    return closest;
+    return result;
 }
 
 function ordSuffix(n){
