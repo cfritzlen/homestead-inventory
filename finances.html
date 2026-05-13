@@ -2825,7 +2825,7 @@ async function aiAnalyzeCSV(){
     const lines=importCSVText.split('\n').filter(l=>l.trim());
     const sampleLines=lines.slice(0,8).join('\n');
 
-    const prompt=`You are analyzing a bank CSV file to identify which columns contain the transaction date, description, and amount(s).
+    const prompt=`You are analyzing a bank CSV file to identify which columns contain the transaction date, description, amount(s), and optionally a category.
 
 Here are the first several lines (header + data rows):
 
@@ -2838,12 +2838,13 @@ Identify the column indices (0-based) for:
 - **desc_col**: Which column contains the transaction description/payee/merchant name (the human-readable text, NOT a reference number)
 - **amount_col**: If there is a single amount column (negative = charge, positive = deposit), give its index
 - **withdrawal_col** and **deposit_col**: If amounts are split into two columns (withdrawals and deposits), give both indices
+- **category_col**: If there is a column for transaction category/type (e.g. "Food & Drink", "Shopping", "Travel"), give its index. If no category column exists, omit this field.
 
 Also indicate:
 - **amount_negate**: true if the amount column uses positive numbers for charges and needs to be negated (some banks like Chase use negative for charges already, others use positive)
 
 Respond with ONLY a JSON object, no markdown, no backticks:
-{"date_col":0,"desc_col":1,"amount_col":2,"amount_negate":false}
+{"date_col":0,"desc_col":1,"amount_col":2,"amount_negate":false,"category_col":3}
 or for split amounts:
 {"date_col":0,"desc_col":1,"withdrawal_col":2,"deposit_col":3}`;
 
@@ -2879,14 +2880,19 @@ async function applyColumnMapping(){
     const headers=parseCSVLine(lines[0]);
     const m=importColMap;
 
+    // Check if this is a BOA CC account — default all to "Girls"
+    const acct=accounts.find(a=>a.id===accountId);
+    const isBOA=acct&&acct.name.toLowerCase().includes('boa')&&acct.account_type==='credit_card';
+
     // Show mapping info
     const descCol=m.desc_col!=null?headers[m.desc_col]:'?';
     const dateCol=m.date_col!=null?headers[m.date_col]:'?';
     let amtInfo='';
     if(m.amount_col!=null) amtInfo=`Amount: "${headers[m.amount_col]}"${m.amount_negate?' (will negate)':''}`;
     else amtInfo=`Withdrawal: "${headers[m.withdrawal_col]||'?'}", Deposit: "${headers[m.deposit_col]||'?'}"`;
+    const catInfo=m.category_col!=null?` &nbsp; <strong>Category:</strong> "${headers[m.category_col]}"`:'';
     document.getElementById('import-mapping-info').innerHTML=
-        `<strong>Date:</strong> "${dateCol}" &nbsp; <strong>Description:</strong> "${descCol}" &nbsp; <strong>${amtInfo}</strong>`;
+        `<strong>Date:</strong> "${dateCol}" &nbsp; <strong>Description:</strong> "${descCol}" &nbsp; <strong>${amtInfo}</strong>${catInfo}${isBOA?' &nbsp; <span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 8px;border-radius:4px;font-size:0.8rem;font-weight:600;">BOA CC → All "Girls"</span>':''}`;
 
     // Parse all rows
     importParsedRows=[];
@@ -2904,10 +2910,15 @@ async function applyColumnMapping(){
             amt=dep>0?dep:-wd;
         }
         if(!date||(!desc&&amt===0)) continue;
+        // Category: BOA CC → always "Girls", else use CSV category column, else guess
+        let cat;
+        if(isBOA) cat='Girls';
+        else if(m.category_col!=null&&cols[m.category_col]) cat=(cols[m.category_col]||'').replace(/^"|"$/g,'').trim();
+        else cat=guessCategory(desc);
         const hash=await hashTxn(accountId,date,desc,amt);
         importParsedRows.push({
             account_id:accountId,transaction_date:date,description:desc,
-            amount:amt,category:guessCategory(desc),dedup_hash:hash
+            amount:amt,category:cat,dedup_hash:hash
         });
     }
 
