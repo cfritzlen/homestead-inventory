@@ -268,6 +268,50 @@
             <div class="stills-info" id="stillsInfo"></div>
         </div>
 
+        <div class="section-title" style="cursor:pointer;" onclick="document.getElementById('aiSettingsPanel').style.display=document.getElementById('aiSettingsPanel').style.display==='none'?'block':'none';">AI Detector Settings <span style="font-size:0.8rem;color:var(--taupe);font-weight:400;">click to expand</span></div>
+        <div id="aiSettingsPanel" style="display:none;background:rgba(74,77,71,0.6);border-radius:12px;padding:20px;margin-bottom:24px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div>
+                    <label style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--taupe);display:block;margin-bottom:4px;">Model</label>
+                    <select id="aiSettModel" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(236,232,221,0.2);background:rgba(0,0,0,0.3);color:var(--cream);font-family:'Karla',sans-serif;">
+                        <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                        <option value="claude-opus-4-6">Claude Opus 4.6</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--taupe);display:block;margin-bottom:4px;">Max Tokens</label>
+                    <input type="number" id="aiSettTokens" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(236,232,221,0.2);background:rgba(0,0,0,0.3);color:var(--cream);font-family:'Karla',sans-serif;" placeholder="300">
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div>
+                    <label style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--taupe);display:block;margin-bottom:4px;">Poll Interval (sec)</label>
+                    <input type="number" id="aiSettInterval" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(236,232,221,0.2);background:rgba(0,0,0,0.3);color:var(--cream);font-family:'Karla',sans-serif;" placeholder="60">
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--taupe);display:block;margin-bottom:4px;">Active Start</label>
+                    <input type="time" id="aiSettStart" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(236,232,221,0.2);background:rgba(0,0,0,0.3);color:var(--cream);font-family:'Karla',sans-serif;">
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--taupe);display:block;margin-bottom:4px;">Active End</label>
+                    <input type="time" id="aiSettEnd" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(236,232,221,0.2);background:rgba(0,0,0,0.3);color:var(--cream);font-family:'Karla',sans-serif;">
+                </div>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--taupe);display:block;margin-bottom:4px;">Alarm Labels <span style="font-weight:400;text-transform:none;">(comma-separated)</span></label>
+                <input type="text" id="aiSettAlarm" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(236,232,221,0.2);background:rgba(0,0,0,0.3);color:var(--cream);font-family:'Karla',sans-serif;" placeholder="fox, coyote, raccoon">
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--taupe);display:block;margin-bottom:4px;">Prompt</label>
+                <textarea id="aiSettPrompt" rows="6" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(236,232,221,0.2);background:rgba(0,0,0,0.3);color:var(--cream);font-family:'Karla',sans-serif;font-size:0.85rem;resize:vertical;"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button onclick="saveAiSettings()" style="padding:8px 20px;border-radius:8px;border:none;background:var(--sage-500);color:white;font-family:'Karla',sans-serif;font-weight:600;cursor:pointer;">Save Settings</button>
+                <span id="aiSettStatus" style="font-size:0.85rem;color:var(--taupe);"></span>
+            </div>
+        </div>
+
         <div class="alarm-grid">
             <div class="control-card">
                 <div class="control-label">
@@ -1237,6 +1281,55 @@
             }
         });
 
+        // === AI SETTINGS ===
+        async function loadAiSettings() {
+            try {
+                const res = await fetch(`${REVIEW_API}/ai-settings`);
+                const s = await res.json();
+                document.getElementById('aiSettModel').value = s.model || 'claude-sonnet-4-6';
+                document.getElementById('aiSettTokens').value = s.max_tokens || 300;
+                document.getElementById('aiSettInterval').value = s.poll_interval || 60;
+                document.getElementById('aiSettStart').value = s.active_start || '05:00';
+                document.getElementById('aiSettEnd').value = s.active_end || '20:30';
+                document.getElementById('aiSettAlarm').value = (s.alarm_labels || []).join(', ');
+                document.getElementById('aiSettPrompt').value = s.prompt || '';
+            } catch(e) { console.error('Load AI settings:', e); }
+        }
+
+        async function saveAiSettings() {
+            const status = document.getElementById('aiSettStatus');
+            status.textContent = 'Saving...';
+            const alarmText = document.getElementById('aiSettAlarm').value;
+            const settings = {
+                model: document.getElementById('aiSettModel').value,
+                max_tokens: parseInt(document.getElementById('aiSettTokens').value) || 300,
+                poll_interval: parseInt(document.getElementById('aiSettInterval').value) || 60,
+                active_start: document.getElementById('aiSettStart').value || '05:00',
+                active_end: document.getElementById('aiSettEnd').value || '20:30',
+                alarm_labels: alarmText.split(',').map(s => s.trim()).filter(Boolean),
+                prompt: document.getElementById('aiSettPrompt').value
+            };
+            try {
+                const res = await fetch(`${REVIEW_API}/ai-settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    status.textContent = 'Saved — detector will pick up changes on next poll cycle';
+                    status.style.color = '#6dd59a';
+                } else {
+                    status.textContent = 'Error: ' + (data.error || 'unknown');
+                    status.style.color = '#e88';
+                }
+            } catch(e) {
+                status.textContent = 'Failed to save: ' + e.message;
+                status.style.color = '#e88';
+            }
+            setTimeout(() => { status.textContent = ''; status.style.color = 'var(--taupe)'; }, 5000);
+        }
+
         // === INIT ===
         checkFrigate();
         connectMQTT();
@@ -1244,6 +1337,7 @@
         loadReviewState();
         loadEvents();
         loadStills();
+        loadAiSettings();
         setInterval(loadEvents, EVENT_POLL_MS);
         setInterval(loadReviewState, 30000);
         setInterval(loadStills, 30000);

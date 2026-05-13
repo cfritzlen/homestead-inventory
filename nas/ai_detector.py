@@ -21,21 +21,16 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 FRIGATE_URL = "http://localhost:5000"
-CAMERAS = ["coop_a", "coop_b"]
-POLL_INTERVAL = 60  # seconds between checks
 EVENTS_DIR = "/home/moco/homestead/ai-events"
 SNAPSHOTS_DIR = os.path.join(EVENTS_DIR, "snapshots")
 CLIPS_DIR = os.path.join(EVENTS_DIR, "clips")
 EVENTS_FILE = os.path.join(EVENTS_DIR, "events.json")
+SETTINGS_FILE = os.path.join(EVENTS_DIR, "ai-settings.json")
 MAX_EVENTS = 200  # keep last N events
 
 # Clip settings: 5 seconds before detection, 15 seconds after
 CLIP_BEFORE = 5
 CLIP_AFTER = 15
-
-# Active hours — 5:00 AM to 8:30 PM
-ACTIVE_START = (5, 0)   # 5:00 AM
-ACTIVE_END = (20, 30)   # 8:30 PM
 
 # ntfy push notifications
 NTFY_TOPIC = "homestead-coop-alerts-xk9m"
@@ -48,19 +43,30 @@ MQTT_PORT = 1883
 ALARM_TOPIC = "homestead/alarm/trigger"
 ALARM_ENABLED_TOPIC = "homestead/alarm/enabled/state"
 
-# Animals that trigger the alarm
-ALARM_LABELS = ["fox", "coyote", "raccoon"]
+# Defaults (overridden by ai-settings.json from dashboard)
+DEFAULT_SETTINGS = {
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 300,
+    "poll_interval": 60,
+    "active_start": "05:00",
+    "active_end": "20:30",
+    "cameras": ["coop_a", "coop_b"],
+    "alarm_labels": ["fox", "coyote", "raccoon"],
+    "prompt": "Look at this security camera image from a chicken coop.\nTell me if you see any animals. Focus especially on foxes, but also note any other wildlife (raccoons, coyotes, hawks, owls, cats, dogs, etc).\n\nIMPORTANT: These cameras have IR (infrared) illuminators that appear as bright glowing circles or spots in night vision mode. Do NOT identify IR lights as animals. They are part of the camera hardware. Also ignore lens flare, spiderwebs, and insects close to the lens.\n\nRespond in this exact JSON format only, no other text:\n{\"animals_detected\": true/false, \"animals\": [{\"type\": \"fox\", \"confidence\": \"high/medium/low\", \"location\": \"where in the frame\", \"description\": \"brief description of what you see\"}], \"summary\": \"one line summary\"}\n\nIf you see no animals at all, respond:\n{\"animals_detected\": false, \"animals\": [], \"summary\": \"No animals detected\"}"
+}
 
-PROMPT = """Look at this security camera image from a chicken coop.
-Tell me if you see any animals. Focus especially on foxes, but also note any other wildlife (raccoons, coyotes, hawks, owls, cats, dogs, etc).
 
-IMPORTANT: These cameras have IR (infrared) illuminators that appear as bright glowing circles or spots in night vision mode. Do NOT identify IR lights as animals. They are part of the camera hardware. Also ignore lens flare, spiderwebs, and insects close to the lens.
+def load_settings():
+    settings = dict(DEFAULT_SETTINGS)
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE) as f:
+                saved = json.load(f)
+            settings.update(saved)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return settings
 
-Respond in this exact JSON format only, no other text:
-{"animals_detected": true/false, "animals": [{"type": "fox", "confidence": "high/medium/low", "location": "where in the frame", "description": "brief description of what you see"}], "summary": "one line summary"}
-
-If you see no animals at all, respond:
-{"animals_detected": false, "animals": [], "summary": "No animals detected"}"""
 
 ai_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -94,8 +100,6 @@ def trigger_alarm_for(animal_type, camera):
     if not alarm_enabled:
         print(f"  [{camera}] Alarm skipped — disabled")
         return
-    if animal_type.lower() not in ALARM_LABELS:
-        return
     try:
         mqtt_client.publish(ALARM_TOPIC, "alarm")
         print(f"  [{camera}] ALARM TRIGGERED for {animal_type}!")
@@ -103,10 +107,14 @@ def trigger_alarm_for(animal_type, camera):
         print(f"  [{camera}] Alarm trigger failed: {e}")
 
 
-def is_active_hour():
+def is_active_hour(settings):
     now = datetime.now()
     current = (now.hour, now.minute)
-    return ACTIVE_START <= current < ACTIVE_END
+    start_parts = settings.get("active_start", "05:00").split(":")
+    end_parts = settings.get("active_end", "20:30").split(":")
+    active_start = (int(start_parts[0]), int(start_parts[1]))
+    active_end = (int(end_parts[0]), int(end_parts[1]))
+    return active_start <= current < active_end
 
 
 def get_snapshot(camera):
@@ -120,17 +128,20 @@ def get_snapshot(camera):
     return None
 
 
-def analyze_image(image_data):
+def analyze_image(image_data, settings):
     b64 = base64.standard_b64encode(image_data).decode("utf-8")
+    model = settings.get("model", "claude-sonnet-4-6")
+    max_tokens = settings.get("max_tokens", 300)
+    prompt = settings.get("prompt", DEFAULT_SETTINGS["prompt"])
     try:
         response = ai_client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=300,
+            model=model,
+            max_tokens=max_tokens,
             messages=[{
                 "role": "user",
                 "content": [
                     {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
-                    {"type": "text", "text": PROMPT}
+                    {"type": "text", "text": prompt}
                 ]
             }]
         )
@@ -311,8 +322,10 @@ def send_notification(event, image_data):
         print(f"  [{event['camera']}] Notification error: {e}")
 
 
-def poll_cameras():
-    for camera in CAMERAS:
+def poll_cameras(settings):
+    cameras = settings.get("cameras", ["coop_a", "coop_b"])
+    alarm_labels = settings.get("alarm_labels", ["fox", "coyote", "raccoon"])
+    for camera in cameras:
         image_data = get_snapshot(camera)
         if not image_data:
             continue
@@ -320,7 +333,7 @@ def poll_cameras():
         size_kb = len(image_data) / 1024
         print(f"  [{camera}] Got snapshot ({size_kb:.0f}KB), analyzing...")
 
-        analysis = analyze_image(image_data)
+        analysis = analyze_image(image_data, settings)
         if not analysis:
             continue
 
@@ -330,9 +343,10 @@ def poll_cameras():
             event = save_event(camera, analysis, image_data)
             print(f"  [{camera}] Saved event: {event['id']}")
             send_notification(event, image_data)
-            # Trigger alarm for threat animals (fox, coyote, raccoon)
+            # Trigger alarm for threat animals
             for a in analysis.get("animals", []):
-                trigger_alarm_for(a["type"], camera)
+                if a["type"].lower() in [l.lower() for l in alarm_labels]:
+                    trigger_alarm_for(a["type"], camera)
             # Grab clip in background (waits for recording to finish)
             detect_time = event["timestamp"]
             threading.Thread(
@@ -348,24 +362,28 @@ def main():
     os.makedirs(CLIPS_DIR, exist_ok=True)
     connect_mqtt()
     print("=== AI Wildlife Detector ===")
-    print(f"Cameras: {CAMERAS}")
-    print(f"Poll interval: {POLL_INTERVAL}s")
-    print(f"Active hours: {ACTIVE_START[0]}:{ACTIVE_START[1]:02d} - {ACTIVE_END[0]}:{ACTIVE_END[1]:02d}")
-    print(f"Model: claude-sonnet-4-6")
+    settings = load_settings()
+    print(f"Cameras: {settings['cameras']}")
+    print(f"Poll interval: {settings['poll_interval']}s")
+    print(f"Active hours: {settings['active_start']} - {settings['active_end']}")
+    print(f"Model: {settings['model']}")
     print(f"Clips: {CLIP_BEFORE}s before, {CLIP_AFTER}s after")
     print(f"Events dir: {EVENTS_DIR}")
+    print(f"Settings file: {SETTINGS_FILE}")
     print()
 
     while True:
-        if is_active_hour():
+        # Reload settings each cycle so dashboard changes take effect
+        settings = load_settings()
+        if is_active_hour(settings):
             now = datetime.now().strftime("%H:%M:%S")
             print(f"[{now}] Polling cameras...")
-            poll_cameras()
+            poll_cameras(settings)
         else:
             if datetime.now().minute == 0:
-                print(f"  Outside active hours ({ACTIVE_START[0]}:{ACTIVE_START[1]:02d} - {ACTIVE_END[0]}:{ACTIVE_END[1]:02d})")
+                print(f"  Outside active hours ({settings['active_start']} - {settings['active_end']})")
 
-        time.sleep(POLL_INTERVAL)
+        time.sleep(settings.get("poll_interval", 60))
 
 
 if __name__ == "__main__":
