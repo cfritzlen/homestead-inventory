@@ -346,6 +346,7 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
 
             <div id="import-mapping" style="display:none;margin-top:16px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:8px;padding:16px;">
                 <h3 style="font-size:0.95rem;color:var(--sage-700);margin-bottom:8px;">🤖 Column Mapping</h3>
+                <div id="import-mapping-overrides" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px;"></div>
                 <div id="import-mapping-info" style="font-size:0.85rem;color:var(--sage-600);margin-bottom:12px;"></div>
                 <div id="import-parsed-preview" style="font-size:0.8rem;overflow-x:auto;max-height:250px;overflow-y:auto;border:1px solid var(--sage-200);border-radius:8px;background:white;margin-bottom:12px;"></div>
                 <div style="display:flex;gap:8px;align-items:center;">
@@ -2895,16 +2896,35 @@ async function applyColumnMapping(){
     const acct=accounts.find(a=>a.id===accountId);
     const isBOA=acct&&acct.name.toLowerCase().includes('boa')&&acct.account_type==='credit_card';
 
-    // Show mapping info
+    // Build column override dropdowns
+    const hasSplit=(m.withdrawal_col!=null&&m.deposit_col!=null);
+    const colOpts=headers.map((h,i)=>`<option value="${i}">Col ${i}: ${(h||'').trim().substring(0,20)||'(empty)'}</option>`).join('');
+    const noneOpt='<option value="-1">— none —</option>';
+    function selHtml(label,field,val){
+        let opts=colOpts.replace(`value="${val}"`,`value="${val}" selected`);
+        if(val==null||val<0) opts=noneOpt+opts; else opts=opts.replace('</option>','</option>'+noneOpt.replace('selected',''));
+        if(val==null||val<0) opts=noneOpt.replace('—','— none — selected').replace('value="-1"','value="-1" selected')+colOpts;
+        else opts=noneOpt+colOpts.replace(`value="${val}"`,`value="${val}" selected`);
+        return `<div><label style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--sage-500);display:block;margin-bottom:2px;">${label}</label><select data-map="${field}" onchange="overrideColMapping()" style="width:100%;padding:4px 6px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;">${opts}</select></div>`;
+    }
+    let overHtml=selHtml('Header Row','header_row',headerRow).replace('Col '+headerRow,'Line '+headerRow).replace(colOpts,Array.from({length:Math.min(allLines.length,20)},(_, i)=>`<option value="${i}"${i===headerRow?' selected':''}>Line ${i+1}: ${(allLines[i]||'').trim().substring(0,25)}</option>`).join(''));
+    overHtml+=selHtml('Date','date_col',m.date_col);
+    overHtml+=selHtml('Description','desc_col',m.desc_col);
+    if(hasSplit){
+        overHtml+=selHtml('Withdrawal','withdrawal_col',m.withdrawal_col);
+        overHtml+=selHtml('Deposit','deposit_col',m.deposit_col);
+    } else {
+        overHtml+=selHtml('Amount','amount_col',m.amount_col);
+    }
+    overHtml+=selHtml('Category','category_col',m.category_col!=null?m.category_col:-1);
+    document.getElementById('import-mapping-overrides').innerHTML=overHtml;
+
+    // Show mapping info summary
     const descCol=m.desc_col!=null?headers[m.desc_col]:'?';
     const dateCol=m.date_col!=null?headers[m.date_col]:'?';
-    let amtInfo='';
-    if(m.amount_col!=null) amtInfo=`Amount: "${headers[m.amount_col]}"${m.amount_negate?' (will negate)':''}`;
-    else amtInfo=`Withdrawal: "${headers[m.withdrawal_col]||'?'}", Deposit: "${headers[m.deposit_col]||'?'}"`;
-    const catInfo=m.category_col!=null?` &nbsp; <strong>Category:</strong> "${headers[m.category_col]}"`:'';
-    const headerInfo=headerRow>0?`<span style="background:rgba(255,193,7,0.15);color:#f39c12;padding:2px 8px;border-radius:4px;font-size:0.8rem;">Headers on line ${headerRow+1}</span> &nbsp; `:'';
+    const headerInfo=headerRow>0?`<span style="background:rgba(255,193,7,0.15);color:#f39c12;padding:2px 8px;border-radius:4px;font-size:0.8rem;">Headers on line ${headerRow+1}</span> `:'';
     document.getElementById('import-mapping-info').innerHTML=
-        `${headerInfo}<strong>Date:</strong> "${dateCol}" &nbsp; <strong>Description:</strong> "${descCol}" &nbsp; <strong>${amtInfo}</strong>${catInfo}${isBOA?' &nbsp; <span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 8px;border-radius:4px;font-size:0.8rem;font-weight:600;">BOA CC → All "Girls"</span>':''}`;
+        `${headerInfo}${isBOA?'<span style="background:rgba(52,152,219,0.15);color:#2980b9;padding:2px 8px;border-radius:4px;font-size:0.8rem;font-weight:600;">BOA CC → All "Girls"</span>':''}`;
     // Show mapping panel immediately so user sees progress
     document.getElementById('import-mapping').style.display='block';
     document.getElementById('import-parsed-preview').innerHTML='<div style="padding:12px;color:var(--sage-500);">Parsing rows...</div>';
@@ -2994,6 +3014,25 @@ async function executeImport(){
     }finally{
         btn.disabled=false;btn.textContent='📥 Import Transactions';
     }
+}
+
+function overrideColMapping(){
+    const get=f=>{const el=document.querySelector(`[data-map="${f}"]`);return el?parseInt(el.value):-1;};
+    const hr=get('header_row');
+    importColMap.header_row=hr>=0?hr:0;
+    importColMap.date_col=get('date_col')>=0?get('date_col'):null;
+    importColMap.desc_col=get('desc_col')>=0?get('desc_col'):null;
+    const amtEl=document.querySelector('[data-map="amount_col"]');
+    const wdEl=document.querySelector('[data-map="withdrawal_col"]');
+    if(amtEl){
+        importColMap.amount_col=get('amount_col')>=0?get('amount_col'):null;
+    }
+    if(wdEl){
+        importColMap.withdrawal_col=get('withdrawal_col')>=0?get('withdrawal_col'):null;
+        importColMap.deposit_col=get('deposit_col')>=0?get('deposit_col'):null;
+    }
+    importColMap.category_col=get('category_col')>=0?get('category_col'):null;
+    applyColumnMapping();
 }
 
 function resetImport(){
