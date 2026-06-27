@@ -1,0 +1,49 @@
+name: MX Listings Weekly Digest
+
+on:
+  # Mondays 12:00 UTC = 7am EST / 8am EDT
+  schedule:
+    - cron: '0 12 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (write HTML to artifact instead of emailing)'
+        required: false
+        default: 'false'
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mx-listings-agent
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run agent
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          MX_LISTINGS_TO_EMAIL: ${{ secrets.MX_LISTINGS_TO_EMAIL }}
+          MX_LISTINGS_FROM_EMAIL: ${{ secrets.MX_LISTINGS_FROM_EMAIL }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python -m src.main --dry-run
+          else
+            python -m src.main
+          fi
+
+      - name: Upload digest as artifact (dry-run only)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-html
+          path: mx-listings-agent/out/digest.html
