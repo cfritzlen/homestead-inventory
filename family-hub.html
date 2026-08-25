@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!-- AUTH_GATE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/auth.js"></script>
+<script>Auth.requireAuth();</script>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Family Hub</title>
+
+<!-- FullCalendar (single self-contained bundle) -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<style>
+  :root {
+    --bg: #f4f4f0; --card: #fff; --border: #e3e3dd; --ink: #222; --muted: #666;
+    --school:  #1e6091; --medical: #a3376a; --travel:  #2b7a4b;
+    --vacation:#c26a1a; --sports:  #6a3aa0; --general: #555;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--ink); margin: 0; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 900px) { .grid { grid-template-columns: 360px 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  label { display: block; font-size: 12px; color: #555; margin: 8px 0 3px; }
+  input, select, textarea { width: 100%; box-sizing: border-box; padding: 7px 9px; font-size: 14px;
+                            border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
+  textarea { min-height: 60px; resize: vertical; }
+  button { padding: 8px 14px; font-size: 14px; background: #06408d; color: #fff;
+           border: none; border-radius: 6px; cursor: pointer; }
+  button.ghost { background: #eee; color: #333; }
+  button.danger { background: #b03030; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .msg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; }
+  .msg.ok  { background: #e6f4e6; color: #1d6b1d; }
+  .msg.err { background: #fbeaea; color: #8a1d1d; }
+  #calendar { min-height: 560px; }
+  .drop { border: 2px dashed #ccc; border-radius: 8px; padding: 18px; text-align: center;
+          color: #666; font-size: 13px; cursor: pointer; }
+  .drop.hover { border-color: #06408d; background: #f0f5fc; color: #06408d; }
+  .doc-row { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+  .doc-row a { color: #06408d; text-decoration: none; flex: 1; }
+  .doc-row time { color: #888; font-size: 12px; }
+  .cat-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px;
+              color: #fff; text-transform: uppercase; letter-spacing: 0.5px; }
+  .fc-event { cursor: pointer; }
+  #header-slot { }
+</style>
+</head>
+<body>
+
+<div id="header-slot"></div>
+
+<main>
+  <h1>Family Hub</h1>
+  <div class="sub">School, medical, travel, vacation, sports — everything on one calendar. Upload docs and photos from teachers or providers; add events manually. Gmail Calendar sync coming in Phase 3.</div>
+
+  <div class="grid">
+    <!-- Left column: forms -->
+    <div>
+      <div class="card">
+        <h2>Add event</h2>
+        <form id="event-form">
+          <label>Category</label>
+          <select id="ev-category" required>
+            <option value="school">School</option>
+            <option value="medical">Medical</option>
+            <option value="travel">Travel / Flights</option>
+            <option value="vacation">Vacation</option>
+            <option value="sports">Sports / Activities</option>
+            <option value="general">General</option>
+          </select>
+          <label>Title</label>
+          <input id="ev-title" required placeholder="e.g. Soccer practice, Dentist, JFK→CUN flight">
+          <div class="row">
+            <div>
+              <label>Starts</label>
+              <input id="ev-starts" type="datetime-local" required>
+            </div>
+            <div>
+              <label>Ends (optional)</label>
+              <input id="ev-ends" type="datetime-local">
+            </div>
+          </div>
+          <label><input type="checkbox" id="ev-allday" style="width:auto;"> All day</label>
+          <label>Location</label>
+          <input id="ev-location" placeholder="Field 3 / Dr. Smith / JFK T5">
+          <label>Notes</label>
+          <textarea id="ev-notes" placeholder="Bring cleats. Confirmation: ABC123."></textarea>
+          <label>Attach a document (optional)</label>
+          <select id="ev-doc"><option value="">— none —</option></select>
+          <div style="margin-top:12px;display:flex;gap:8px;">
+            <button type="submit">Save event</button>
+            <button type="button" class="ghost" id="ev-reset">Reset</button>
+          </div>
+          <div id="ev-msg"></div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>Upload document</h2>
+        <div class="sub" style="margin:-4px 0 10px;">Scans, photos of teacher notes, itineraries, discharge papers. Stored privately in Supabase.</div>
+        <div class="drop" id="drop">Click or drop file here to upload</div>
+        <input type="file" id="file-input" style="display:none" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.heic,.webp">
+        <label style="margin-top:8px;">Category (optional)</label>
+        <select id="doc-category">
+          <option value="">—</option>
+          <option value="school">School</option>
+          <option value="medical">Medical</option>
+          <option value="travel">Travel</option>
+          <option value="vacation">Vacation</option>
+          <option value="sports">Sports</option>
+          <option value="general">General</option>
+        </select>
+        <label>Notes (optional)</label>
+        <input id="doc-notes" placeholder="Ms. Johnson — spring field trip form">
+        <div id="doc-msg"></div>
+
+        <h2 style="margin-top:20px;">Recent documents</h2>
+        <div id="doc-list"><div class="sub">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- Right column: calendar -->
+    <div class="card">
+      <h2>Calendar</h2>
+      <div id="calendar"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(async function () {
+  Auth.renderHeader('header-slot');
+
+  const supa = Auth.client;
+  const CAT_COLORS = {
+    school:'#1e6091', medical:'#a3376a', travel:'#2b7a4b',
+    vacation:'#c26a1a', sports:'#6a3aa0', general:'#555',
+  };
+
+  // ============ Calendar ============
+  const calendarEl = document.getElementById('calendar');
+  const calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: window.innerWidth < 700 ? 'listWeek' : 'dayGridMonth',
+    height: 620,
+    headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
+    events: fetchEvents,
+    eventClick: (info) => {
+      if (confirm(`Delete "${info.event.title}"?`)) deleteEvent(info.event.id);
+    },
+  });
+  calendar.render();
+
+  async function fetchEvents(fetchInfo, successCallback, failureCallback) {
+    const { data, error } = await supa.from('family_events')
+      .select('id,category,title,starts_at,ends_at,all_day,location,notes')
+      .gte('starts_at', fetchInfo.startStr)
+      .lt('starts_at', fetchInfo.endStr)
+      .order('starts_at');
+    if (error) { console.error(error); failureCallback(error); return; }
+    successCallback(data.map(e => ({
+      id: e.id, title: `[${e.category}] ${e.title}`,
+      start: e.starts_at, end: e.ends_at || undefined,
+      allDay: e.all_day, color: CAT_COLORS[e.category] || CAT_COLORS.general,
+      extendedProps: { location: e.location, notes: e.notes },
+    })));
+  }
+
+  async function deleteEvent(id) {
+    const { error } = await supa.from('family_events').delete().eq('id', id);
+    if (error) return alert(error.message);
+    calendar.refetchEvents();
+  }
+
+  // ============ Add-event form ============
+  const evForm = document.getElementById('event-form');
+  const evMsg  = document.getElementById('ev-msg');
+
+  evForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    evMsg.innerHTML = '';
+    const payload = {
+      category:   document.getElementById('ev-category').value,
+      title:      document.getElementById('ev-title').value.trim(),
+      starts_at:  new Date(document.getElementById('ev-starts').value).toISOString(),
+      ends_at:    document.getElementById('ev-ends').value
+                    ? new Date(document.getElementById('ev-ends').value).toISOString() : null,
+      all_day:    document.getElementById('ev-allday').checked,
+      location:   document.getElementById('ev-location').value.trim() || null,
+      notes:      document.getElementById('ev-notes').value.trim() || null,
+      document_id: document.getElementById('ev-doc').value || null,
+    };
+    const { error } = await supa.from('family_events').insert(payload);
+    if (error) { evMsg.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
+    evMsg.innerHTML = `<div class="msg ok">Saved.</div>`;
+    evForm.reset();
+    calendar.refetchEvents();
+  });
+
+  document.getElementById('ev-reset').addEventListener('click', () => {
+    evForm.reset();
+    evMsg.innerHTML = '';
+  });
+
+  // ============ Upload doc ============
+  const drop = document.getElementById('drop');
+  const fileInput = document.getElementById('file-input');
+  const docMsg = document.getElementById('doc-msg');
+
+  drop.addEventListener('click', () => fileInput.click());
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('hover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('hover'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault(); drop.classList.remove('hover');
+    if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) uploadFile(fileInput.files[0]);
+  });
+
+  async function uploadFile(file) {
+    docMsg.innerHTML = `<div class="msg">Uploading ${file.name}…</div>`;
+    const year = new Date().getFullYear();
+    const safeName = file.name.replace(/[^a-z0-9._-]/gi, '_');
+    const path = `${year}/${Date.now()}-${safeName}`;
+
+    const up = await supa.storage.from('family-docs').upload(path, file, {
+      cacheControl: '3600', upsert: false, contentType: file.type || undefined,
+    });
+    if (up.error) { docMsg.innerHTML = `<div class="msg err">${up.error.message}</div>`; return; }
+
+    const meta = {
+      storage_path: path,
+      file_name: file.name,
+      mime_type: file.type || null,
+      size_bytes: file.size,
+      category:  document.getElementById('doc-category').value || null,
+      notes:     document.getElementById('doc-notes').value.trim() || null,
+    };
+    const { error } = await supa.from('family_documents').insert(meta);
+    if (error) { docMsg.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
+
+    docMsg.innerHTML = `<div class="msg ok">Saved ${file.name}.</div>`;
+    fileInput.value = '';
+    document.getElementById('doc-notes').value = '';
+    await loadDocs();
+  }
+
+  // ============ Docs list ============
+  const docListEl = document.getElementById('doc-list');
+  const evDocSelect = document.getElementById('ev-doc');
+
+  async function loadDocs() {
+    const { data, error } = await supa.from('family_documents')
+      .select('id,file_name,storage_path,category,notes,created_at')
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if (error) { docListEl.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
+    if (!data.length) { docListEl.innerHTML = `<div class="sub">No documents yet.</div>`; return; }
+
+    docListEl.innerHTML = '';
+    evDocSelect.innerHTML = '<option value="">— none —</option>';
+
+    for (const d of data) {
+      // Short-lived signed URL for viewing
+      const { data: signed } = await supa.storage.from('family-docs')
+        .createSignedUrl(d.storage_path, 3600);
+      const row = document.createElement('div');
+      row.className = 'doc-row';
+      const cat = d.category
+        ? `<span class="cat-pill" style="background:${CAT_COLORS[d.category] || CAT_COLORS.general}">${d.category}</span>`
+        : '';
+      row.innerHTML = `
+        ${cat}
+        <a href="${signed?.signedUrl || '#'}" target="_blank" rel="noopener">${d.file_name}</a>
+        <time>${new Date(d.created_at).toLocaleDateString()}</time>
+        <button class="ghost" data-id="${d.id}" data-path="${d.storage_path}" style="padding:2px 8px;font-size:12px;">🗑</button>
+      `;
+      docListEl.appendChild(row);
+
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.file_name;
+      evDocSelect.appendChild(opt);
+    }
+
+    docListEl.querySelectorAll('button[data-id]').forEach(b => {
+      b.addEventListener('click', async () => {
+        if (!confirm(`Delete ${b.parentElement.querySelector('a').textContent}?`)) return;
+        await supa.storage.from('family-docs').remove([b.dataset.path]);
+        await supa.from('family_documents').delete().eq('id', b.dataset.id);
+        await loadDocs();
+      });
+    });
+  }
+
+  await loadDocs();
+})();
+</script>
+</body>
+</html>
