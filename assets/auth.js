@@ -25,7 +25,11 @@
   }
   const client = global.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const LOGIN_PATH = '/login.html';
+  // Resolve login.html relative to the site root (works both on GitHub Pages
+  // subpath and local file:// or root-hosted serves).
+  const scriptEl = document.currentScript || Array.from(document.scripts).find(s => (s.src || '').includes('auth.js'));
+  const BASE = scriptEl ? new URL('.', scriptEl.src).href.replace(/assets\/$/, '') : '';
+  const LOGIN_URL = BASE + 'login.html';
 
   async function getSession() {
     const { data } = await client.auth.getSession();
@@ -36,15 +40,18 @@
     const session = await getSession();
     if (!session) {
       const back = encodeURIComponent(location.pathname + location.search);
-      location.replace(`${LOGIN_PATH}?next=${back}`);
+      location.replace(`${LOGIN_URL}?next=${back}`);
       return null;
     }
     return session;
   }
 
   async function sendMagicLink(email) {
-    const next = new URLSearchParams(location.search).get('next') || '/index.html';
-    const redirectTo = `${location.origin}${next}`;
+    const next = new URLSearchParams(location.search).get('next') || (BASE + 'index.html');
+    // 'next' may be a relative path or absolute path; make it absolute for Supabase
+    const redirectTo = next.startsWith('http')
+      ? next
+      : (next.startsWith('/') ? location.origin + next : new URL(next, location.href).href);
     const { error } = await client.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: redirectTo },
@@ -54,7 +61,7 @@
 
   async function signOut() {
     await client.auth.signOut();
-    location.replace(LOGIN_PATH);
+    location.replace(LOGIN_URL);
   }
 
   async function getUser() {
@@ -69,15 +76,15 @@
     el.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#f4f4f0;border-bottom:1px solid #ddd;font-family:system-ui,sans-serif;font-size:13px;">
         <div>
-          <a href="/index.html" style="color:#333;text-decoration:none;font-weight:600;">Homestead</a>
+          <a href="${BASE}index.html" style="color:#333;text-decoration:none;font-weight:600;">Homestead</a>
           &nbsp;·&nbsp;
-          <a href="/family-hub.html" style="color:#555;text-decoration:none;">Family Hub</a>
+          <a href="${BASE}family-hub.html" style="color:#555;text-decoration:none;">Family Hub</a>
           &nbsp;·&nbsp;
-          <a href="/finances.html" style="color:#555;text-decoration:none;">Finances</a>
+          <a href="${BASE}finances.html" style="color:#555;text-decoration:none;">Finances</a>
           &nbsp;·&nbsp;
-          <a href="/inventory.html" style="color:#555;text-decoration:none;">Inventory</a>
+          <a href="${BASE}inventory.html" style="color:#555;text-decoration:none;">Inventory</a>
           &nbsp;·&nbsp;
-          <a href="/calendar.html" style="color:#555;text-decoration:none;">Calendar</a>
+          <a href="${BASE}calendar.html" style="color:#555;text-decoration:none;">Calendar</a>
         </div>
         <div>
           <span id="__auth_email" style="color:#666;margin-right:8px;"></span>
