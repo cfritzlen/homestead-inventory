@@ -1,0 +1,92 @@
+# Edit this file to add/remove/tune searches. Each entry becomes one section of the weekly email.
+#
+# Fields:
+#   name             — display label
+#   city_query       — free-text keyword filter (lowercase, no accents); matched against listing title/description
+#   state            — Mexican state name (used as a soft filter on results)
+#   operation        — Venta (sale) or Renta (rent). Default Venta.
+#   min_bedrooms     — integer, optional
+#   max_price_usd    — cap (we convert MXN prices to USD at the rate in src/main.py)
+#   min_price_usd    — floor, optional
+#   nightly_rate_usd — your estimate of nightly Airbnb rate for a typical unit in this area
+#   occupancy        — your estimate of annual occupancy (0.0–1.0)
+#   notes            — free-text reminder for yourself (not used by the code)
+#
+# Cities below are all reachable from JFK/EWR/LGA with at least one direct/nonstop flight.
+
+- name: Ajijic (Lake Chapala expat hub)
+  city_query: ajijic
+  state: Jalisco
+  operation: Venta
+  min_bedrooms: 2
+  max_price_usd: 400000
+  nightly_rate_usd: 85
+  occupancy: 0.55
+  notes: Year-round expat retiree market, low seasonality
+
+- name: Chapala / Riberas del Pilar
+  city_query: chapala
+  state: Jalisco
+  operation: Venta
+  min_bedrooms: 2
+  max_price_usd: 350000
+  nightly_rate_usd: 75
+  occupancy: 0.5
+
+- name: Mérida Centro Histórico
+  city_query: merida centro
+  state: Yucatán
+  operation: Venta
+  min_bedrooms: 2
+  max_price_usd: 400000
+  nightly_rate_usd: 95
+  occupancy: 0.6
+  notes: JetBlue JFK direct; strong colonial-home Airbnb market
+
+- name: Tulum (centro / aldea)
+  city_query: tulum
+  state: Quintana Roo
+  operation: Venta
+  min_bedrooms: 2
+  max_price_usd: 500000
+  nightly_rate_usd: 180
+  occupancy: 0.65
+  notes: New TQO airport opened 2023; high nightly rates, higher seasonality
+
+- name: Playa del Carmen
+  city_query: playa del carmen
+  state: Quintana Roo
+  operation: Venta
+  min_bedrooms: 2
+  max_price_usd: 450000
+  nightly_rate_usd: 150
+  occupancy: 0.65
+
+- name: Puerto Vallarta (Romantic Zone / 5 de Diciembre)
+  city_query: puerto vallarta
+  state: Jalisco
+  operation: Venta
+  min_bedrooms: 2
+  max_price_usd: 500000
+  nightly_rate_usd: 160
+  occupancy: 0.55
+
+- name: Los Cabos (San José / Cabo San Lucas)
+  city_query: cabo
+  state: Baja California Sur
+  operation: Venta
+  min_bedrooms: 2
+  max_price_usd: 600000
+  nightly_rate_usd: 220
+  occupancy: 0.6
+  notes: Highest nightly rates of the set; also highest purchase prices
+
+- name: CDMX (Roma / Condesa / Juárez)
+  city_query: roma condesa
+  state: Distrito Federal
+  operation: Venta
+  min_bedrooms: 2
+  max_price_usd: 500000
+  nightly_rate_usd: 110
+  occupancy: 0.7
+  notes: Year-round demand, lower seasonality than beach markets
