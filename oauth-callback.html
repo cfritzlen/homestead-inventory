@@ -37,15 +37,21 @@
   if (err) { out.innerHTML = `<div class="err">Google returned an error: ${err}</div>`; return; }
   if (!code) { out.innerHTML = `<div class="err">No authorization code in URL — try again from Family Hub.</div>`; return; }
 
-  // Call the Edge Function to swap the code for tokens
-  const supaUrl = Auth.client.supabaseUrl; // exposed by supabase-js
-  const anonKey = Auth.client.supabaseKey;
+  // Call the Edge Function to swap the code for tokens.
+  // URL + anon key are hardcoded because Auth.client's internal properties
+  // aren't reliably public across supabase-js versions.
+  const SUPA_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
+  const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
   const redirectUri = `${location.origin}${location.pathname}`;
 
   try {
-    const res = await fetch(`${supaUrl}/functions/v1/google-oauth-exchange`, {
+    const res = await fetch(`${SUPA_URL}/functions/v1/google-oauth-exchange`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': anonKey },
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': ANON_KEY,
+        'Authorization': `Bearer ${ANON_KEY}`,
+      },
       body: JSON.stringify({ code, redirect_uri: redirectUri }),
     });
     const data = await res.json();
