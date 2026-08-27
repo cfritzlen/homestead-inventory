@@ -3,6 +3,7 @@
 <head>
 <!-- AUTH_GATE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/config.js"></script>
 <script src="assets/auth.js"></script>
 <script>Auth.requireAuth();</script>
 
@@ -60,7 +61,19 @@
 
 <main>
   <h1>Family Hub</h1>
-  <div class="sub">School, medical, travel, vacation, sports — everything on one calendar. Upload docs and photos from teachers or providers; add events manually. Gmail Calendar sync coming in Phase 3.</div>
+  <div class="sub" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span>School, medical, travel, vacation, sports — everything on one calendar. Upload docs, forward-label emails in gmail as <b>family-hub</b>, or add events manually.</span>
+    <button id="connect-google" class="ghost" style="font-size:12px;padding:5px 10px;">Connect Google</button>
+  </div>
+
+  <!-- Proposed-events review panel (shows only when there's at least one) -->
+  <div id="review-panel" class="card" style="margin-bottom:16px;display:none;background:#fff9e6;border-color:#e4d99a;">
+    <h2 style="display:flex;align-items:center;gap:8px;">
+      🤖 AI-proposed events <span id="review-count" style="font-size:12px;color:#666;font-weight:normal;"></span>
+    </h2>
+    <div class="sub" style="margin:-4px 0 10px;">Claude read your uploads/emails and pulled these. Approve to push to Google Calendar, edit to tweak, reject to discard.</div>
+    <div id="review-list"></div>
+  </div>
 
   <div class="grid">
     <!-- Left column: forms -->
@@ -160,14 +173,17 @@
   calendar.render();
 
   async function fetchEvents(fetchInfo, successCallback, failureCallback) {
+    // Calendar only shows approved (or manually-entered, which are approved by default) events
     const { data, error } = await supa.from('family_events')
-      .select('id,category,title,starts_at,ends_at,all_day,location,notes')
+      .select('id,category,title,starts_at,ends_at,all_day,location,notes,google_event_id')
+      .in('status', ['approved'])
       .gte('starts_at', fetchInfo.startStr)
       .lt('starts_at', fetchInfo.endStr)
       .order('starts_at');
     if (error) { console.error(error); failureCallback(error); return; }
     successCallback(data.map(e => ({
-      id: e.id, title: `[${e.category}] ${e.title}`,
+      id: e.id,
+      title: (e.google_event_id ? '✓ ' : '') + `[${e.category}] ${e.title}`,
       start: e.starts_at, end: e.ends_at || undefined,
       allDay: e.all_day, color: CAT_COLORS[e.category] || CAT_COLORS.general,
       extendedProps: { location: e.location, notes: e.notes },
@@ -303,6 +319,114 @@
   }
 
   await loadDocs();
+
+  // ============ Proposed events review queue ============
+  const reviewPanel = document.getElementById('review-panel');
+  const reviewList  = document.getElementById('review-list');
+  const reviewCount = document.getElementById('review-count');
+
+  async function loadProposed() {
+    const { data, error } = await supa.from('family_events')
+      .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id')
+      .eq('status', 'proposed')
+      .order('starts_at');
+    if (error) { console.error(error); return; }
+    if (!data.length) { reviewPanel.style.display = 'none'; return; }
+
+    reviewPanel.style.display = 'block';
+    reviewCount.textContent = `(${data.length})`;
+    reviewList.innerHTML = '';
+
+    for (const ev of data) {
+      const conf = ev.ai_confidence != null ? Math.round(ev.ai_confidence * 100) + '%' : '—';
+      const when = ev.all_day
+        ? new Date(ev.starts_at).toLocaleDateString()
+        : new Date(ev.starts_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
+      const row = document.createElement('div');
+      row.style = 'padding:10px;margin:8px 0;background:#fff;border:1px solid #e4d99a;border-radius:6px;';
+      row.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:220px;">
+            <div><span class="cat-pill" style="background:${CAT_COLORS[ev.category] || CAT_COLORS.general}">${ev.category}</span>
+                 <b style="margin-left:6px;">${ev.title}</b></div>
+            <div style="color:#666;font-size:13px;margin-top:2px;">${when}${ev.location ? ' · ' + ev.location : ''}</div>
+            ${ev.notes ? `<div style="color:#555;font-size:12px;margin-top:4px;">${ev.notes}</div>` : ''}
+            ${ev.ai_notes ? `<div style="color:#888;font-size:11px;margin-top:4px;font-style:italic;">${ev.ai_notes}</div>` : ''}
+            <div style="color:#888;font-size:11px;margin-top:4px;">AI confidence: ${conf}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <button data-id="${ev.id}" data-act="approve">Approve</button>
+            <button data-id="${ev.id}" data-act="edit" class="ghost">Edit</button>
+            <button data-id="${ev.id}" data-act="reject" class="ghost" style="color:#8a1d1d;">Reject</button>
+          </div>
+        </div>`;
+      reviewList.appendChild(row);
+    }
+
+    reviewList.querySelectorAll('button[data-act]').forEach(b => {
+      b.addEventListener('click', () => reviewAction(b.dataset.id, b.dataset.act));
+    });
+  }
+
+  async function reviewAction(id, act) {
+    if (act === 'approve') {
+      const { error } = await supa.from('family_events').update({ status: 'approved' }).eq('id', id);
+      if (error) return alert(error.message);
+    } else if (act === 'reject') {
+      const { error } = await supa.from('family_events').update({ status: 'rejected' }).eq('id', id);
+      if (error) return alert(error.message);
+    } else if (act === 'edit') {
+      const { data: ev } = await supa.from('family_events').select('*').eq('id', id).single();
+      if (!ev) return;
+      // Pre-fill the form and scroll to it; on save it inserts a fresh manual event and rejects the proposed one
+      document.getElementById('ev-category').value = ev.category;
+      document.getElementById('ev-title').value = ev.title;
+      document.getElementById('ev-starts').value = ev.starts_at ? ev.starts_at.slice(0, 16) : '';
+      document.getElementById('ev-ends').value = ev.ends_at ? ev.ends_at.slice(0, 16) : '';
+      document.getElementById('ev-allday').checked = !!ev.all_day;
+      document.getElementById('ev-location').value = ev.location || '';
+      document.getElementById('ev-notes').value = ev.notes || '';
+      document.getElementById('ev-doc').value = ev.document_id || '';
+      // Mark the proposed one as rejected so it disappears from queue
+      await supa.from('family_events').update({ status: 'rejected' }).eq('id', id);
+      document.getElementById('event-form').scrollIntoView({ behavior: 'smooth' });
+    }
+    await loadProposed();
+    calendar.refetchEvents();
+  }
+
+  await loadProposed();
+
+  // Realtime subscription — new AI-proposed events pop into the panel without a refresh
+  supa.channel('family-events-proposed')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'family_events' }, () => {
+      loadProposed(); calendar.refetchEvents();
+    })
+    .subscribe();
+
+  // ============ Connect Google button ============
+  document.getElementById('connect-google').addEventListener('click', () => {
+    const clientId = window.__GOOGLE_CLIENT_ID__;
+    if (!clientId) {
+      alert("Google OAuth client not configured yet.\n\nSet window.__GOOGLE_CLIENT_ID__ in assets/config.js.");
+      return;
+    }
+    const redirectUri = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}oauth-callback.html`;
+    const scope = [
+      'https://www.googleapis.com/auth/gmail.modify',       // read + modify labels
+      'https://www.googleapis.com/auth/calendar.events',    // create/update calendar events
+      'openid', 'email',
+    ].join(' ');
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope,
+      access_type: 'offline',      // needed to get a refresh_token
+      prompt: 'consent',           // force refresh_token even on re-auth
+    });
+    location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  });
 })();
 </script>
 </body>
