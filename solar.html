@@ -319,7 +319,7 @@ let cachedReadings=[]; // store for re-filtering without re-fetching
 let avgKwhPerPanel=0; // calculated from real data
 
 // Helpers
-async function sbGet(t,q=''){const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}?${q}`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${SUPABASE_ANON_KEY}`}});if(!r.ok)throw new Error(`Supabase ${r.status}`);return r.json();}
+async function sbGet(t,q=''){const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}?${q}`,{headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${Auth.bearer()}`}});if(!r.ok)throw new Error(`Supabase ${r.status}`);return r.json();}
 async function sbGetAll(t,q='',pageSize=1000){
     let all=[],offset=0;
     while(true){
@@ -865,7 +865,7 @@ function rejectBill(){
 
 async function saveBillToSupabase(bill){
     const resp=await fetch(`${SUPABASE_URL}/rest/v1/solar_electric_bills?on_conflict=invoice_number`,{
-        method:'POST',headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+        method:'POST',headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${Auth.bearer()}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
         body:JSON.stringify(bill)});
     if(!resp.ok)console.error('Save bill error:',await resp.text());
 }
@@ -1001,7 +1001,8 @@ document.getElementById('installedCount').textContent=currentPanelCount()+' inst
 document.getElementById('paybackPanelCount').textContent=currentPanelCount();
 document.getElementById('calcPanels').value=currentPanelCount();
 document.getElementById('calcPanelsVal').textContent=currentPanelCount();
-updateDayLabel();loadWeather();loadDashboard();loadExpenses();loadBillHistory();
+updateDayLabel();loadWeather();
+Auth.ready.then(()=>{loadDashboard();loadExpenses();loadBillHistory();}); // session must be restored before RLS'd fetches
 setInterval(()=>{if(currentPeriod==='day'&&isToday(selectedDate))loadDashboard();},120000);
 </script>
 <div id="billModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;">

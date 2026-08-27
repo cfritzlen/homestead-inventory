@@ -265,7 +265,7 @@
     <script>
     const SUPABASE_URL = 'https://jzpipxvxrtdhmsdkveog.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o';
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = Auth.client; // shared signed-in client from assets/auth.js
 
     let currentMode = 'capture', selectedFile = null, scannedPages = [], tags = [], people = [];
     let isRecording = false, recognition = null, isOpenMind = false;

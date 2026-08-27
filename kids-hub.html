@@ -414,7 +414,8 @@
 <script>
 var SUPA_URL = "https://jzpipxvxrtdhmsdkveog.supabase.co";
 var SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o";
-var SUPA_HEADERS = { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json", "Prefer": "return=representation" };
+// Live getter: RLS'd tables need the signed-in user's token, not the anon key
+var SUPA_HEADERS = { "apikey": SUPA_KEY, get "Authorization"() { return "Bearer " + Auth.bearer(); }, "Content-Type": "application/json", "Prefer": "return=representation" };
 var PERSON = "tina";
 
 // ── Helpers ──
@@ -1023,7 +1024,7 @@ document.getElementById("vital-datetime").value = localNow();
 document.getElementById("api-key").value = getApiKey();
 updateApiStatus();
 setSyncStatus("Syncing...", "#A88BC3");
-(async function() { await fetchMedLogs(); await checkQRLog(); await refreshMedsTab(); setSyncStatus("Synced &#129412;", "#9B59B6"); })();
+(async function() { await Auth.ready; await fetchMedLogs(); await checkQRLog(); await refreshMedsTab(); setSyncStatus("Synced &#129412;", "#9B59B6"); })();
 </script>
 </body>
 </html>
