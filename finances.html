@@ -663,7 +663,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 async function supaFetch(table, method='GET', body=null, query='') {
     const opts = { method, headers: {
-        'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${Auth.bearer()}`,
         'Content-Type': 'application/json',
         'Prefer': method==='POST' ? 'return=representation' : method==='PATCH' ? 'return=representation' : ''
     }};
@@ -3023,7 +3023,7 @@ async function executeImport(){
                 method:'POST',
                 headers:{
                     'apikey':SUPABASE_KEY,
-                    'Authorization':`Bearer ${SUPABASE_KEY}`,
+                    'Authorization':`Bearer ${Auth.bearer()}`,
                     'Content-Type':'application/json',
                     'Prefer':'return=representation,resolution=ignore-duplicates'
                 },
@@ -3272,6 +3272,7 @@ async function addNewCategory(){
 
 // ============ INIT ============
 async function init(){
+    await Auth.ready; // session must be restored before RLS'd fetches
     await loadFinanceCategories();
     await loadAccounts();
     await loadBills();

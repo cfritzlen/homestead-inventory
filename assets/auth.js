@@ -36,8 +36,26 @@
     return data.session || null;
   }
 
+  // Track the current access token so raw REST pages can send the user's JWT
+  // instead of the anon key (RLS'd tables return nothing to anon).
+  let accessToken = null;
+  const ready = getSession().then(session => {
+    accessToken = session ? session.access_token : null;
+    return session;
+  });
+  client.auth.onAuthStateChange((_event, session) => {
+    accessToken = session ? session.access_token : null;
+  });
+
+  // Bearer token for hand-rolled fetch() calls to /rest/v1 and /storage/v1.
+  // Await Auth.ready before the first data load so the session has been
+  // restored from storage; after that this stays fresh across token refreshes.
+  function bearer() {
+    return accessToken || SUPABASE_ANON_KEY;
+  }
+
   async function requireAuth() {
-    const session = await getSession();
+    const session = await ready.then(() => getSession());
     if (!session) {
       const back = encodeURIComponent(location.pathname + location.search);
       location.replace(`${LOGIN_URL}?next=${back}`);
@@ -98,5 +116,5 @@
     document.getElementById('__auth_signout').addEventListener('click', signOut);
   }
 
-  global.Auth = { client, requireAuth, sendMagicLink, signOut, getUser, renderHeader };
+  global.Auth = { client, ready, bearer, requireAuth, sendMagicLink, signOut, getUser, renderHeader };
 })(window);

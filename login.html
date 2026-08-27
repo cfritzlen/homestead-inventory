@@ -42,7 +42,7 @@
   (async () => {
     const s = await Auth.client.auth.getSession();
     if (s.data.session) {
-      const next = new URLSearchParams(location.search).get('next') || '/index.html';
+      const next = new URLSearchParams(location.search).get('next') || 'index.html';
       location.replace(next);
     }
   })();

@@ -487,7 +487,8 @@ var SUPA_URL = "https://jzpipxvxrtdhmsdkveog.supabase.co";
 var SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6cGlweHZ4cnRkaG1zZGt2ZW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NTE1MjUsImV4cCI6MjA4NTMyNzUyNX0.7mm0ts91y0leGKLFCgRk6KJitah3V5WJZdiD_gHL57o";
 var SUPA_HEADERS = {
   "apikey": SUPA_KEY,
-  "Authorization": "Bearer " + SUPA_KEY,
+  // Live getter: RLS'd tables need the signed-in user's token, not the anon key
+  get "Authorization"() { return "Bearer " + Auth.bearer(); },
   "Content-Type": "application/json",
   "Prefer": "return=representation"
 };
@@ -1886,14 +1887,14 @@ document.getElementById("sleep-date").value = todayStr();
 document.getElementById("api-key").value = getApiKey();
 updateApiStatus();
 if (!getApiKey()) document.getElementById("settings-panel").classList.remove("hidden");
-loadTodayTab();
 
-// Meds init
-(function initMeds() {
+// Meds init (data loads wait for the restored session — RLS'd fetches)
+Auth.ready.then(function () {
+  loadTodayTab();
   clearMedForm();
   updateWindowStatus();
   checkQRLog();
-})();
+});
 </script>
 </body>
 </html>
