@@ -153,6 +153,33 @@ select cron.schedule(
 
 ---
 
+## 8b. (Optional) Daily deep scan — catch everything
+
+Once a day, scan the last 36 hours of inbox mail for every connected account
+(same as pressing "Scan inbox", but automatic). The overlapping window means
+nothing slips through. Supabase → **SQL Editor**:
+
+```sql
+select cron.schedule(
+  'gmail-ingest-daily-deep-scan',
+  '0 10 * * *',  -- 10:00 UTC = 5:00 AM Central. Adjust to taste.
+  $$
+  select net.http_post(
+    url := 'https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/gmail-ingest',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
+      'Content-Type', 'application/json'
+    ),
+    body := jsonb_build_object('hours_back', 36)
+  );
+  $$
+);
+```
+
+To remove it later: `select cron.unschedule('gmail-ingest-daily-deep-scan');`
+
+---
+
 ## 9. Create the gmail label
 
 In gmail (web) → Settings gear → **See all settings** → **Labels** → **Create new label** → `family-hub`. That's it.
