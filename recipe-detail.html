@@ -140,8 +140,10 @@
             color: var(--sage-200);
         }
 
-        .star:hover {
-            transform: scale(1.2);
+        @media (hover: hover) {
+            .star:hover {
+                transform: scale(1.2);
+            }
         }
 
         .meta-tag {
@@ -186,7 +188,17 @@
 
         .btn-primary:hover {
             background: var(--sage-600);
-            transform: translateY(-2px);
+        }
+
+        @media (hover: hover) {
+            .btn-primary:hover {
+                transform: translateY(-2px);
+            }
+        }
+
+        .btn:active,
+        .modal-btn:active {
+            transform: scale(0.98);
         }
 
         .btn-secondary {
@@ -416,6 +428,10 @@
                 font-size: 2rem;
             }
 
+            .main-content {
+                padding: 16px 14px 40px;
+            }
+
             .recipe-header,
             .content-section {
                 padding: 20px;
@@ -428,6 +444,11 @@
             .btn {
                 width: 100%;
                 text-align: center;
+                min-height: 44px;
+            }
+
+            .modal-btn {
+                min-height: 44px;
             }
         }
     </style>

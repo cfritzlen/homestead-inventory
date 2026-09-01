@@ -108,21 +108,21 @@
     const el = document.getElementById(containerId);
     if (!el) return;
     el.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#f4f4f0;border-bottom:1px solid #ddd;font-family:system-ui,sans-serif;font-size:13px;">
-        <div>
+      <style>
+        #__auth_nav a { padding: 4px 2px; }
+        @media (max-width: 700px) { #__auth_email { display: none; } }
+      </style>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;padding:8px 16px;background:#f4f4f0;border-bottom:1px solid #ddd;font-family:system-ui,sans-serif;font-size:14px;">
+        <div id="__auth_nav" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px 10px;">
           <a href="${BASE}index.html" style="color:#333;text-decoration:none;font-weight:600;">Homestead</a>
-          &nbsp;·&nbsp;
           <a href="${BASE}family-hub.html" style="color:#555;text-decoration:none;">Family Hub</a>
-          &nbsp;·&nbsp;
           <a href="${BASE}finances.html" style="color:#555;text-decoration:none;">Finances</a>
-          &nbsp;·&nbsp;
           <a href="${BASE}inventory.html" style="color:#555;text-decoration:none;">Inventory</a>
-          &nbsp;·&nbsp;
           <a href="${BASE}calendar.html" style="color:#555;text-decoration:none;">Calendar</a>
         </div>
-        <div>
-          <span id="__auth_email" style="color:#666;margin-right:8px;"></span>
-          <button id="__auth_signout" style="font-size:12px;padding:2px 8px;cursor:pointer;">Sign out</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="__auth_email" style="color:#666;"></span>
+          <button id="__auth_signout" style="font-size:13px;padding:4px 10px;cursor:pointer;">Sign out</button>
         </div>
       </div>`;
     getUser().then(u => {

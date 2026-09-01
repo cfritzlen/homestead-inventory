@@ -31,7 +31,6 @@
         header{text-align:center;margin-bottom:20px;}
         header .icon{font-size:2.5rem;margin-bottom:8px;}
         h1{font-family:'Crimson Pro',serif;font-size:2.6rem;font-weight:300;letter-spacing:1px;margin-bottom:4px;}
-        .subtitle{font-size:1rem;color:var(--taupe);}
 
         .status-bar{display:flex;justify-content:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
         .status-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(236,232,221,0.1);border:1px solid rgba(236,232,221,0.15);border-radius:20px;padding:6px 14px;font-size:0.82rem;color:var(--taupe);}
@@ -44,6 +43,7 @@
         .day-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;}
         .day-nav-btn{background:rgba(236,232,221,0.12);border:1px solid rgba(236,232,221,0.15);color:var(--taupe);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.1rem;transition:all 0.2s;}
         .day-nav-btn:hover{background:rgba(236,232,221,0.25);color:var(--cream);}
+        .day-nav-btn:active{background:rgba(236,232,221,0.3);transform:scale(0.96);}
         .day-nav-btn:disabled{opacity:0.3;cursor:not-allowed;}
         .day-nav-date{font-family:'Crimson Pro',serif;font-size:1.3rem;font-weight:400;color:var(--cream);min-width:200px;text-align:center;}
         .day-nav-today{background:none;border:1px solid rgba(236,232,221,0.2);color:var(--taupe);border-radius:6px;padding:4px 12px;font-size:0.78rem;cursor:pointer;font-family:'Karla';transition:all 0.2s;}
@@ -53,6 +53,7 @@
         .period-btn{border:none;background:transparent;color:var(--taupe);padding:8px 20px;border-radius:8px;cursor:pointer;font-family:'Karla';font-size:0.9rem;font-weight:500;transition:all 0.2s;}
         .period-btn.active{background:rgba(236,232,221,0.95);color:var(--sage-700);box-shadow:0 2px 8px rgba(0,0,0,0.15);}
         .period-btn:hover:not(.active){color:var(--cream);}
+        .period-btn:active{transform:scale(0.97);}
 
         /* Stat cards - now clickable filters */
         .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
@@ -62,10 +63,13 @@
         .stat-card.batt::before{background:var(--batt-color);}
         .stat-card.grid-c::before{background:var(--grid-color);}
         .stat-card.load-c::before{background:var(--load-color);}
-        .stat-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.3);}
+        @media(hover:hover){
+            .stat-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.3);}
+            .stat-card:hover .filter-hint{opacity:1;}
+        }
+        .stat-card:active{transform:scale(0.98);}
         .stat-card.active-filter{border-color:var(--cream);box-shadow:0 6px 20px rgba(0,0,0,0.4);}
         .stat-card .filter-hint{font-size:0.65rem;color:var(--sage-400);margin-top:3px;opacity:0;transition:opacity 0.2s;}
-        .stat-card:hover .filter-hint{opacity:1;}
         .stat-card.active-filter .filter-hint{opacity:1;color:var(--sage-600);}
         .stat-icon{font-size:1.4rem;margin-bottom:4px;}
         .stat-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--sage-600);font-weight:700;margin-bottom:2px;}
@@ -114,14 +118,22 @@
         .meter-filter-btn{border:1px solid var(--sage-300);background:var(--sage-50);color:var(--sage-600);border-radius:6px;padding:5px 14px;font-size:0.8rem;cursor:pointer;font-family:'Karla';font-weight:500;transition:all 0.2s;}
         .meter-filter-btn.active{background:var(--sage-500);color:white;border-color:var(--sage-500);}
         .meter-filter-btn:hover:not(.active){background:var(--sage-100);}
+        .meter-filter-btn:active{transform:scale(0.97);}
         #dropZone.dragover{border-color:var(--sage-500);background:var(--sage-100);}
 
         @media(max-width:768px){
             h1{font-size:2rem;}
+            .main-content{padding:14px 14px 40px;}
             .stats-grid{grid-template-columns:repeat(2,1fr);}
             .two-col{grid-template-columns:1fr;}
             .invest-grid{grid-template-columns:repeat(2,1fr);}
+            .day-nav{flex-wrap:wrap;}
+            .day-nav-btn{width:40px;height:40px;}
             .day-nav-date{font-size:1.1rem;min-width:160px;}
+            .period-btn{min-height:40px;}
+            .meter-filter-btn{min-height:40px;}
+            .chart-card{padding:12px;height:320px;}
+            .card,.calc-card{padding:16px;}
             .slider-row{flex-wrap:wrap;}
             .slider-row label{min-width:100%;}
         }
@@ -130,7 +142,7 @@
 <body>
 <div class="top-bar"><a href="index.html">← Back to Hub</a></div>
 <div class="main-content">
-    <header><div class="icon">☀️</div><h1>Solar Dashboard</h1><p class="subtitle">SolArk 15K — 1038 Poplar</p></header>
+    <header><div class="icon">☀️</div><h1>Solar Dashboard</h1></header>
 
     <div class="status-bar">
         <div class="status-pill"><span class="status-dot" id="statusDot"></span> <span id="statusText">Connecting...</span></div>

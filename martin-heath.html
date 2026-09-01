@@ -32,7 +32,6 @@
   }
   .header { text-align: center; padding: 28px 0 12px; }
   .header h1 { font-size: 24px; font-weight: 700; color: #2D5F46; }
-  .header p { font-size: 13px; color: #8A8778; margin-top: 4px; }
   .sync-status { text-align: center; font-size: 11px; padding: 4px 0 8px; font-weight: 600; }
   .tabs { display: flex; border-bottom: 2px solid #EAE7E0; margin-bottom: 16px; background: rgba(240,237,230,0.9); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 12px 12px 0 0; }
   .tab {
@@ -99,6 +98,8 @@
   .btn-pri { background: #3A7D5C; color: #FFF; flex: 1; }
   .btn-pri:disabled { opacity: 0.4; cursor: default; }
   .btn-out { background: transparent; color: #3A7D5C; border: 1.5px solid #3A7D5C; }
+  .btn:active { transform: scale(0.97); }
+  .tab:active { background: rgba(58,125,92,0.08); }
   .reading {
     padding: 14px 16px; border-radius: 12px; background: #FAFAF7;
     border: 1px solid #EAE7E0; margin-bottom: 10px;
@@ -117,6 +118,7 @@
   .reading-notes {
     font-size: 13px; color: #555549; line-height: 1.4;
     border-top: 1px solid #EAE7E0; padding-top: 8px; margin-top: 8px;
+    overflow-wrap: anywhere;
   }
   .empty { text-align: center; padding: 30px 0; color: #8A8778; }
   .empty-icon { font-size: 36px; margin-bottom: 8px; }
@@ -200,11 +202,20 @@
   #file-input, #sleep-file-input { display: none; }
   .med-status-card { padding:12px; border-radius:10px; background:#FAFAF7; border:1px solid #EAE7E0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
   .med-log-btn { background:#3A7D5C; color:#FFF; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0; }
+  .med-log-btn:active { transform: scale(0.95); }
   .med-done-badge { background:#D4E8DB; color:#3A7D5C; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700; flex-shrink:0; }
   .qr-box { margin-bottom:14px; padding:14px; border:1px solid #EAE7E0; border-radius:12px; background:#FAFAF7; }
   .twilio-code { width:100%; font-family:monospace; font-size:11px; padding:10px; border-radius:8px; border:1px solid #DDD9CF; background:#F5F5F0; margin-top:8px; resize:none; color:#333; line-height:1.5; }
   select { width:100%; padding:10px 12px; border-radius:8px; border:1.5px solid #DDD9CF; font-size:16px; font-family:inherit; color:#1A1A1A; background:#FFF; outline:none; }
   select:focus { border-color:#3A7D5C; }
+  @media (max-width: 768px) {
+    body { padding: 0 14px 60px; }
+    .header h1 { font-size: 22px; }
+    .tabs { flex-wrap: wrap; }
+    .tab { min-height: 40px; padding: 10px 4px; font-size: 13px; }
+    .btns { flex-wrap: wrap; }
+    .card { padding: 16px; }
+  }
 </style>
 </head>
 <body>
@@ -399,7 +410,7 @@
 
   <div class="card">
     <div class="sec-title">&#128247; Bottle QR Codes</div>
-    <p style="font-size:13px;color:#555549;margin-bottom:14px;line-height:1.5">Print &amp; stick on each bottle. iPhone Camera scan → dose logged!</p>
+    <p style="font-size:13px;color:#555549;margin-bottom:14px;line-height:1.5">Print &amp; stick on bottles. Scan to log!</p>
     <div id="meds-qr-list"></div>
   </div>
 
@@ -477,8 +488,7 @@
   <input type="password" class="api-key-input" id="api-key" placeholder="sk-ant-..." oninput="saveApiKey()">
   <div id="api-status"></div>
   <div style="margin-top:8px;font-size:11px;color:#8A8778;line-height:1.4">
-    Your key is stored only on this device.<br>
-    Do NOT use Private/Incognito mode or the key will be erased.
+    Key stored only on this device.
   </div>
 </div>
 
@@ -1477,7 +1487,7 @@ async function generateQRCodes() {
     return '<div class="qr-box">' +
       '<div style="font-size:14px;font-weight:700;color:#2D5F46;margin-bottom:10px">&#128138; ' + med.name + '</div>' +
       '<div id="qr-' + med.id + '" style="display:inline-block;vertical-align:middle"></div>' +
-      '<div style="font-size:11px;color:#8A8778;margin-top:8px;margin-bottom:4px">Scan with iPhone Camera → tap link → dose logged!</div>' +
+      '<div style="font-size:11px;color:#8A8778;margin-top:8px;margin-bottom:4px">Scan with iPhone Camera to log.</div>' +
       '<div style="font-size:11px;background:#F0EDE6;border-radius:6px;padding:6px 10px;margin-bottom:10px;word-break:break-all;color:#555">' + url + '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
         '<button onclick="copyMedUrl(\'' + encodeURIComponent(url) + '\')" style="padding:6px 14px;border-radius:8px;border:1.5px solid #3A7D5C;color:#3A7D5C;background:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">&#128203; Copy Link</button>' +

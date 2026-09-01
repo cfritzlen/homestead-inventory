@@ -30,7 +30,6 @@
         header { text-align: center; margin-bottom: 30px; }
         h1 { font-family: 'Crimson Pro', serif; font-size: 2.4rem; font-weight: 300; color: var(--cream); letter-spacing: 1px; cursor: pointer; user-select: none; transition: all 0.3s; }
         h1:hover { opacity: 0.8; } h1.open-mind { color: var(--mauve); }
-        .subtitle { font-size: 0.95rem; color: var(--taupe); margin-top: 6px; }
         .mode-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap; }
         .mode-tab { background: rgba(236,232,221,0.1); border: 1px solid rgba(164,172,149,0.3); border-radius: 10px; padding: 10px 18px; color: var(--taupe); cursor: pointer; font-family: 'Karla', sans-serif; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
         .mode-tab:hover { background: rgba(236,232,221,0.15); color: var(--cream); }
@@ -137,10 +136,14 @@
         .manage-add { display: flex; gap: 8px; }
         .manage-add input { flex: 1; padding: 8px 12px; border: 1px solid var(--sage-300); border-radius: 8px; font-family: 'Karla', sans-serif; font-size: 0.9rem; }
         .manage-add button { padding: 8px 16px; background: var(--sage-600); color: white; border: none; border-radius: 8px; cursor: pointer; font-family: 'Karla', sans-serif; font-weight: 600; }
+        .mode-tab:active, .save-btn:active, .search-go-btn:active, .attach-btn:active, .login-btn:active, .modal-actions button:active { transform: scale(0.98); }
+        .recent-item:active { background: rgba(236,232,221,0.18); }
+        .search-result-item:active { background: var(--sage-100); }
         @media (max-width: 768px) {
-            .main-content { padding: 20px 15px; } h1 { font-size: 1.8rem; } .capture-card { padding: 20px; }
-            .fields-grid { grid-template-columns: 1fr; } .mode-tabs { gap: 6px; } .mode-tab { padding: 8px 14px; font-size: 0.85rem; }
+            .main-content { padding: 20px 14px; } h1 { font-size: 1.8rem; } .capture-card { padding: 20px; }
+            .fields-grid { grid-template-columns: 1fr; } .mode-tabs { gap: 6px; } .mode-tab { padding: 8px 14px; font-size: 0.85rem; min-height: 40px; }
             .attach-buttons { flex-direction: column; } .search-bar { flex-direction: column; } .search-filters { flex-direction: column; align-items: stretch; }
+            .search-go-btn, .save-btn { min-height: 44px; }
         }
         /* ── Login Screen ── */
         .login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
@@ -179,7 +182,6 @@
     <div class="main-content">
         <header>
             <h1 id="appTitle">🧠 Open Brain</h1>
-            <p class="subtitle">Capture thoughts, attach files, search your mind</p>
         </header>
         <div class="mode-tabs">
             <button class="mode-tab active" data-mode="capture"><span class="tab-icon">💭</span> Capture</button>

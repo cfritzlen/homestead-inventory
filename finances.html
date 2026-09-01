@@ -60,8 +60,8 @@
         }
         .tab-btn:hover { background: rgba(255,255,255,0.05); color: var(--cream); }
         .dash-card { transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
-        .dash-card:hover, .dash-card:active { border-color: var(--sage-400) !important; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; }
-        @media (hover: none) { .dash-card:active { transform: scale(0.97); } .dash-card:hover { transform: none; } }
+        @media (hover: hover) { .dash-card:hover { border-color: var(--sage-400) !important; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; } }
+        .dash-card:active { transform: scale(0.97); }
         .tab-btn.active { color: var(--cream); border-bottom-color: var(--sage-400); background: rgba(255,255,255,0.08); }
 
         .main-content { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
@@ -92,6 +92,7 @@
         .btn-danger:hover { background: var(--red-soft); }
         .btn-small { padding: 6px 12px; font-size: 0.8rem; }
         .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .btn:active, .month-selector button:active, .tab-btn:active { transform: scale(0.97); }
 
         .data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         .data-table th { background: var(--sage-600); color: white; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; position: sticky; top: 0; }
@@ -172,18 +173,22 @@
         .modal { background: var(--cream); border-radius: 12px; padding: 28px; max-width: 500px; width: 90%; color: var(--charcoal); box-shadow: 0 8px 40px rgba(0,0,0,0.4); }
         .modal h2 { font-family: 'Crimson Pro', serif; color: var(--sage-700); margin-bottom: 16px; }
 
-        .table-scroll { overflow-x: auto; }
+        .table-scroll, #txn-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        #txn-table-wrap td:nth-child(3), #dash-big-charges td:nth-child(2), #dash-boa-girls td:nth-child(2) { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .empty-state { text-align: center; padding: 40px; color: var(--sage-600); }
         .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
 
         #column-picker label:hover { background: var(--sage-100); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
 
         @media (max-width: 768px) {
-            .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
-            .tab-btn { padding: 10px 12px; font-size: 0.78rem; white-space: nowrap; flex-shrink: 0; }
+            .main-content { padding: 14px 10px; }
+            .tab-bar { flex-wrap: wrap; }
+            .tab-btn { padding: 10px 12px; font-size: 0.78rem; white-space: nowrap; flex: 1 1 auto; min-height: 40px; }
+            .btn, .month-selector button { min-height: 40px; }
             .form-row { grid-template-columns: 1fr; }
             .summary-grid { grid-template-columns: 1fr 1fr; }
-            .card { padding: 12px; margin: 8px; }
+            .card { padding: 12px; margin: 0 0 12px; }
+            #txn-table-wrap td:nth-child(3), #dash-big-charges td:nth-child(2), #dash-boa-girls td:nth-child(2) { max-width: 160px; }
             .entry-row { grid-template-columns: 1fr 90px 90px 90px; gap: 4px; }
             .entry-row input { padding: 6px 8px; font-size: 0.85rem; }
             #weekly-bills-list { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -330,7 +335,7 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
     <div id="tab-import" class="tab-panel">
         <div class="card">
             <h2>📥 Import Transactions</h2>
-            <p style="color:var(--sage-500);font-size:0.85rem;margin-bottom:16px;">Drop a bank CSV, pick the account, and Claude will figure out the columns.</p>
+            <p style="color:var(--sage-500);font-size:0.85rem;margin-bottom:16px;">Drop a bank CSV and pick the account.</p>
             <div id="import-drop" class="drop-zone" style="min-height:160px;padding:32px 24px;text-align:center;"
                  ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDropCSV(event)">
                 <div style="font-size:2.5rem;margin-bottom:8px;">📄</div>
@@ -365,7 +370,7 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
 
         <div class="card">
             <h2>📋 Weekly Import Checklist</h2>
-            <p style="color:var(--sage-500);font-size:0.85rem;margin-bottom:12px;">Accounts to import each week — checked when data exists for this period.</p>
+            <p style="color:var(--sage-500);font-size:0.85rem;margin-bottom:12px;">Checked once each account has data this week.</p>
             <div id="import-checklist" style="font-size:0.9rem;"></div>
         </div>
 

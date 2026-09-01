@@ -80,9 +80,15 @@
             transition: all 0.3s ease;
         }
 
-        .home-btn:hover {
-            background: var(--sage-600);
-            transform: translateY(-2px);
+        @media (hover: hover) {
+            .home-btn:hover {
+                background: var(--sage-600);
+                transform: translateY(-2px);
+            }
+        }
+
+        .home-btn:active {
+            transform: scale(0.97);
         }
 
         .search-container {
@@ -138,9 +144,15 @@
             border-radius: 8px;
         }
 
-        .search-result-item:hover {
-            background: var(--sage-50);
-            transform: translateX(4px);
+        @media (hover: hover) {
+            .search-result-item:hover {
+                background: var(--sage-50);
+                transform: translateX(4px);
+            }
+        }
+
+        .search-result-item:active {
+            background: var(--sage-100);
         }
 
         .search-result-item:last-child {
@@ -150,6 +162,14 @@
         .search-result-name {
             font-weight: 500;
             color: var(--sage-800);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .search-result-item > div:first-child {
+            flex: 1;
+            min-width: 0;
         }
 
         .search-result-location {
@@ -201,10 +221,16 @@
             font-size: 0.95rem;
         }
 
-        .tab:hover {
-            border-color: var(--sage-400);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.15);
+        @media (hover: hover) {
+            .tab:hover {
+                border-color: var(--sage-400);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(122, 144, 97, 0.15);
+            }
+        }
+
+        .tab:active {
+            transform: scale(0.97);
         }
 
         .tab.active {
@@ -289,10 +315,17 @@
             font-size: 0.9rem;
         }
 
-        .add-btn:hover {
+        @media (hover: hover) {
+            .add-btn:hover {
+                background: var(--sage-600);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(122, 144, 97, 0.3);
+            }
+        }
+
+        .add-btn:active {
             background: var(--sage-600);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.3);
+            transform: scale(0.97);
         }
 
         .item {
@@ -308,10 +341,12 @@
             cursor: move;
         }
 
-        .item:hover {
-            background: var(--sage-100);
-            transform: translateX(4px);
-            box-shadow: 0 2px 8px rgba(122, 144, 97, 0.15);
+        @media (hover: hover) {
+            .item:hover {
+                background: var(--sage-100);
+                transform: translateX(4px);
+                box-shadow: 0 2px 8px rgba(122, 144, 97, 0.15);
+            }
         }
 
         .item.dragging {
@@ -343,6 +378,10 @@
             border-radius: 6px;
             transition: all 0.2s ease;
             flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .item-name:hover {
@@ -392,9 +431,16 @@
             justify-content: center;
         }
 
-        .counter-btn:hover {
+        @media (hover: hover) {
+            .counter-btn:hover {
+                background: var(--sage-600);
+                transform: scale(1.1);
+            }
+        }
+
+        .counter-btn:active {
             background: var(--sage-600);
-            transform: scale(1.1);
+            transform: scale(0.95);
         }
 
         .counter-value {
@@ -432,9 +478,16 @@
             justify-content: center;
         }
 
-        .delete-btn:hover {
+        @media (hover: hover) {
+            .delete-btn:hover {
+                background: #a83632;
+                transform: scale(1.1);
+            }
+        }
+
+        .delete-btn:active {
             background: #a83632;
-            transform: scale(1.1);
+            transform: scale(0.95);
         }
 
         .add-to-shopping-btn {
@@ -450,9 +503,16 @@
             font-size: 0.85rem;
         }
 
-        .add-to-shopping-btn:hover {
+        @media (hover: hover) {
+            .add-to-shopping-btn:hover {
+                background: var(--sage-700);
+                transform: translateY(-1px);
+            }
+        }
+
+        .add-to-shopping-btn:active {
             background: var(--sage-700);
-            transform: translateY(-1px);
+            transform: scale(0.97);
         }
 
         .empty-state {
@@ -653,10 +713,16 @@
             color: white;
         }
 
-        .modal-btn-primary:hover {
-            background: var(--sage-600);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.3);
+        @media (hover: hover) {
+            .modal-btn-primary:hover {
+                background: var(--sage-600);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(122, 144, 97, 0.3);
+            }
+        }
+
+        .modal-btn:active {
+            transform: scale(0.97);
         }
 
         .modal-btn-secondary {
@@ -701,8 +767,12 @@
         }
 
         @media (max-width: 768px) {
+            .main-content {
+                padding: 14px;
+            }
+
             h1 {
-                font-size: 1.6rem;
+                font-size: 1.8rem;
             }
 
             .tabs {
@@ -712,6 +782,7 @@
             .tab {
                 padding: 10px 16px;
                 font-size: 0.85rem;
+                min-height: 40px;
             }
 
             .category {
@@ -728,9 +799,23 @@
                 gap: 12px;
             }
 
+            .item .item-name {
+                width: 100%;
+            }
+
             .item-controls {
                 width: 100%;
                 justify-content: space-between;
+            }
+
+            .counter-btn,
+            .delete-btn {
+                width: 40px;
+                height: 40px;
+            }
+
+            .add-btn {
+                min-height: 40px;
             }
 
             .modal-content {
@@ -1415,7 +1500,7 @@
             });
 
             if (lowStockItems.length === 0) {
-                container.innerHTML = '<div class="category"><div class="empty-state">🎉 No low stock items! Everything is well stocked.</div></div>';
+                container.innerHTML = '<div class="category"><div class="empty-state">🎉 All stocked up!</div></div>';
                 return;
             }
 
@@ -1633,7 +1718,7 @@
             const items = inventory[category] || [];
 
             if (items.length === 0) {
-                list.innerHTML = '<div class="empty-state">No items yet. Click "+ Add Item" to get started.</div>';
+                list.innerHTML = '<div class="empty-state">No items yet.</div>';
                 updateCategoryTotal(category, 0);
                 return;
             }

@@ -138,9 +138,15 @@
             color: white;
         }
 
-        .btn-primary:hover {
-            background: var(--sage-600);
-            transform: translateY(-2px);
+        @media (hover: hover) {
+            .btn-primary:hover {
+                background: var(--sage-600);
+                transform: translateY(-2px);
+            }
+        }
+
+        .btn:active {
+            transform: scale(0.97);
         }
 
         .btn-secondary {
@@ -221,9 +227,15 @@
             position: relative;
         }
 
-        .recipe-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 25px rgba(90, 106, 71, 0.2);
+        @media (hover: hover) {
+            .recipe-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 6px 25px rgba(90, 106, 71, 0.2);
+            }
+        }
+
+        .recipe-card:active {
+            transform: scale(0.98);
         }
 
         .recipe-card::before {
@@ -244,6 +256,10 @@
             font-weight: 600;
             margin-bottom: 12px;
             padding-top: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .recipe-meta {
@@ -272,6 +288,10 @@
         .recipe-info {
             font-size: 0.85rem;
             color: var(--sage-600);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .last-cooked {
@@ -294,6 +314,10 @@
         }
 
         @media (max-width: 768px) {
+            .main-content {
+                padding: 14px;
+            }
+
             h1 {
                 font-size: 2rem;
             }
@@ -304,6 +328,10 @@
 
             .group-title {
                 font-size: 1.5rem;
+            }
+
+            .btn {
+                min-height: 40px;
             }
         }
     </style>
@@ -411,7 +439,7 @@
             });
 
             if (html === '') {
-                html = '<div class="empty-state">No recipes found. Add your first recipe to get started!</div>';
+                html = '<div class="empty-state">No recipes found.</div>';
             }
 
             container.innerHTML = html;
