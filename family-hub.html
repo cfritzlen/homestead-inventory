@@ -528,7 +528,10 @@
   </div>
 
   <!-- Documents -->
-  <h2 class="section">Documents <span class="count" id="docs-count"></span></h2>
+  <h2 class="section">Documents <span class="count" id="docs-count"></span>
+    <a href="#" class="link" onclick="event.preventDefault(); openActivity();">AI activity →</a>
+  </h2>
+  <div class="chips" id="doc-filters" style="margin-bottom:10px;"></div>
   <div class="docs" id="docs"><div class="docs-empty">Loading…</div></div>
 
   <!-- Google Calendar sync settings -->
@@ -538,6 +541,13 @@
       Toggled-off categories still show here in the hub — they just never touch your Google Calendar. Daycare is off by default so menus and routine notices stay out of your calendar.
     </p>
     <div class="chips" id="sync-toggles" style="margin:0;"></div>
+    <div style="border-top:1px solid var(--border-soft);margin:12px 0 10px;"></div>
+    <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink);cursor:pointer;">
+      <input type="checkbox" id="auto-scan" style="width:18px;height:18px;margin-top:2px;accent-color:var(--sage-600);">
+      <span><b>Auto-scan inbox for events</b><br>
+        <span style="color:var(--muted);font-size:12px;">Every 15 minutes, Claude glances at new mail in your connected gmail (skipping promotions and social) and pulls in anything with real events — no labeling needed. Costs about a tenth of a cent per email checked.</span>
+      </span>
+    </label>
     <div id="sync-msg"></div>
   </div>
 
@@ -702,6 +712,20 @@
       <button class="btn-ghost" onclick="closeInvite()">Cancel</button>
       <button class="btn-primary" id="inv-send" onclick="sendInvite()">Send invite</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ AI activity modal ============ -->
+<div class="modal-backdrop" id="act-modal">
+  <div class="modal">
+    <div class="head">
+      <h3>AI activity</h3>
+      <button class="close" onclick="closeActivity()">×</button>
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 12px;">
+      Everything Claude did with your uploads and emails — including the times it decided there was nothing calendar-worthy.
+    </p>
+    <div id="act-list"><div class="docs-empty">Loading…</div></div>
   </div>
 </div>
 
@@ -964,39 +988,82 @@
   // ================================================================
   // Documents
   // ================================================================
+  let allDocs = [];
+  let docFilter = '';   // '' = all
   async function loadDocs() {
     const { data, error } = await supa.from('family_documents')
       .select('id,file_name,storage_path,category,notes,created_at,mime_type')
-      .order('created_at', { ascending: false }).limit(20);
+      .order('created_at', { ascending: false }).limit(50);
     const el = document.getElementById('docs');
     const sel = document.getElementById('ev-doc');
     sel.innerHTML = '<option value="">— none —</option>';
     if (error) { el.innerHTML = `<div class="docs-empty">${error.message}</div>`; return; }
-    if (!data.length) { el.innerHTML = `<div class="docs-empty">No documents yet. Upload one above.</div>`; return; }
+    allDocs = data || [];
+    renderDocFilters();
+    renderDocs();
+    for (const d of allDocs) {
+      const opt = document.createElement('option');
+      opt.value = d.id; opt.textContent = d.file_name;
+      sel.appendChild(opt);
+    }
+  }
+
+  function renderDocFilters() {
+    const wrap = document.getElementById('doc-filters');
+    const cats = ['', ...Object.keys(CAT_LABELS)];
+    wrap.innerHTML = '';
+    for (const c of cats) {
+      const n = c === '' ? allDocs.length : allDocs.filter(d => d.category === c).length;
+      if (c !== '' && n === 0) continue;   // hide empty categories
+      const b = document.createElement('button');
+      b.type = 'button';
+      const on = docFilter === c;
+      b.className = 'chip' + (on ? ' on' : '');
+      if (on && c) { b.style.background = CAT_COLORS[c]; b.style.borderColor = CAT_COLORS[c]; }
+      b.textContent = (c === '' ? 'All' : CAT_LABELS[c]) + ` (${n})`;
+      b.addEventListener('click', () => { docFilter = c; renderDocFilters(); renderDocs(); });
+      wrap.appendChild(b);
+    }
+  }
+
+  async function renderDocs() {
+    const el = document.getElementById('docs');
+    const docs = docFilter ? allDocs.filter(d => d.category === docFilter) : allDocs;
+    document.getElementById('docs-count').textContent = `— ${docs.length}`;
+    if (!docs.length) { el.innerHTML = `<div class="docs-empty">No documents${docFilter ? ' in this category' : ' yet. Upload one above.'}</div>`; return; }
     el.innerHTML = '';
-    document.getElementById('docs-count').textContent = `— ${data.length}`;
-    for (const d of data) {
+    for (const d of docs) {
       const { data: signed } = await supa.storage.from('family-docs').createSignedUrl(d.storage_path, 3600);
       const isPdf = (d.mime_type || '').includes('pdf');
       const iconSvg = isPdf
         ? '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M5 6h6M5 9h6M5 12h4"/></svg>'
         : '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><circle cx="6" cy="6" r="1"/><path d="M14 10l-3-3-6 6"/></svg>';
+      const catOptions = Object.keys(CAT_LABELS).map(c =>
+        `<option value="${c}" ${d.category === c ? 'selected' : ''}>${CAT_LABELS[c]}</option>`).join('');
       const row = document.createElement('div');
       row.className = 'doc-row';
       row.innerHTML = `
-        <div class="doc-icn">${iconSvg}</div>
+        <div class="doc-icn" ${d.category ? `style="background:${CAT_COLORS[d.category]}22;color:${CAT_COLORS[d.category]};"` : ''}>${iconSvg}</div>
         <div class="doc-name">
           <a href="${signed?.signedUrl || '#'}" target="_blank" rel="noopener" style="color:var(--ink);text-decoration:none;font-weight:500;">${escapeHtml(d.file_name)}</a>
           <span class="from">${escapeHtml(d.notes || '')}</span>
         </div>
+        <select class="doc-cat" data-id="${d.id}" style="width:auto;padding:3px 6px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--cream-2);color:var(--muted);">
+          <option value="">untagged</option>${catOptions}
+        </select>
         <span class="doc-date">${new Date(d.created_at).toLocaleDateString()}</span>
         <button class="doc-del" data-id="${d.id}" data-path="${d.storage_path}" title="Delete">×</button>
       `;
       el.appendChild(row);
-      const opt = document.createElement('option');
-      opt.value = d.id; opt.textContent = d.file_name;
-      sel.appendChild(opt);
     }
+    el.querySelectorAll('.doc-cat').forEach(s => {
+      s.addEventListener('change', async () => {
+        await supa.from('family_documents').update({ category: s.value || null }).eq('id', s.dataset.id);
+        const doc = allDocs.find(d => d.id === s.dataset.id);
+        if (doc) doc.category = s.value || null;
+        renderDocFilters();
+      });
+    });
     el.querySelectorAll('.doc-del').forEach(b => {
       b.addEventListener('click', async () => {
         if (!confirm('Delete this document?')) return;
@@ -1322,12 +1389,80 @@
       category: document.getElementById('up-cat').value || null,
       notes:    document.getElementById('up-notes').value.trim() || null,
     };
-    const { error } = await supa.from('family_documents').insert(meta);
+    const { data: inserted, error } = await supa.from('family_documents').insert(meta).select().single();
     if (error) { msg.innerHTML = `<div class="msg err">${escapeHtml(error.message)}</div>`; return; }
-    msg.innerHTML = `<div class="msg ok">Uploaded. Claude is reading it — check back in ~15 seconds.</div>`;
     fileInput.value = '';
     loadDocs();
+
+    // Live status: poll the extraction log until Claude reports back
+    msg.innerHTML = `<div class="msg">📄 Uploaded <b>${escapeHtml(file.name)}</b>. Claude is reading it…</div>`;
+    const deadline = Date.now() + 90 * 1000;
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 4000));
+      const { data: ex } = await supa.from('ai_extractions')
+        .select('events_created,error,summary')
+        .eq('document_id', inserted.id)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (!ex) continue;
+      if (ex.error) {
+        msg.innerHTML = `<div class="msg err">Claude couldn't process it: ${escapeHtml(ex.error)}<br>See AI activity for details.</div>`;
+      } else if (ex.events_created > 0) {
+        msg.innerHTML = `<div class="msg ok">✓ Claude proposed <b>${ex.events_created} event${ex.events_created === 1 ? '' : 's'}</b>${ex.summary ? ' — ' + escapeHtml(ex.summary) : ''}.<br>Review them from the banner at the top.</div>`;
+      } else {
+        msg.innerHTML = `<div class="msg ok">✓ Claude read it — <b>nothing calendar-worthy</b>${ex.summary ? ': ' + escapeHtml(ex.summary) : ''}. The document is saved.</div>`;
+      }
+      await Promise.all([loadProposed(), loadDocs()]);
+      return;
+    }
+    msg.innerHTML = `<div class="msg err">Still processing after 90s — check the AI activity view in a minute. If it never shows up, the ai-extract function may need attention.</div>`;
   }
+
+  // ================================================================
+  // AI activity feed
+  // ================================================================
+  const actModal = document.getElementById('act-modal');
+  window.openActivity = async () => {
+    actModal.classList.add('on');
+    const list = document.getElementById('act-list');
+    list.innerHTML = `<div class="docs-empty">Loading…</div>`;
+    const { data, error } = await supa.from('ai_extractions')
+      .select('id,document_id,events_created,error,summary,cost_usd,created_at,family_documents(file_name)')
+      .order('created_at', { ascending: false }).limit(25);
+    if (error) { list.innerHTML = `<div class="docs-empty">${escapeHtml(error.message)}</div>`; return; }
+    if (!data.length) { list.innerHTML = `<div class="docs-empty">No AI runs yet. Upload a document or label an email.</div>`; return; }
+    list.innerHTML = '';
+    for (const ex of data) {
+      const when = new Date(ex.created_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+      let outcome, cls;
+      if (ex.error) { outcome = `⚠ ${ex.error}`; cls = 'err'; }
+      else if (ex.events_created > 0) { outcome = `✓ proposed ${ex.events_created} event${ex.events_created === 1 ? '' : 's'}`; cls = 'ok'; }
+      else { outcome = '— nothing calendar-worthy'; cls = ''; }
+      const div = document.createElement('div');
+      div.className = 'prop';
+      div.style.borderColor = 'var(--border)';
+      div.innerHTML = `
+        <div class="row1"><span class="title">${escapeHtml(ex.family_documents?.file_name || '(deleted document)')}</span></div>
+        <div class="when">${when}${ex.cost_usd ? ` · $${Number(ex.cost_usd).toFixed(4)}` : ''}</div>
+        <div class="notes ${cls}">${escapeHtml(outcome)}</div>
+        ${ex.summary ? `<div class="notes" style="font-style:italic;">${escapeHtml(ex.summary)}</div>` : ''}
+      `;
+      list.appendChild(div);
+    }
+  };
+  window.closeActivity = () => actModal.classList.remove('on');
+  actModal.addEventListener('click', (e) => { if (e.target === actModal) closeActivity(); });
+
+  // ================================================================
+  // Auto-scan toggle
+  // ================================================================
+  const autoScanBox = document.getElementById('auto-scan');
+  autoScanBox.checked = HH.settings?.auto_scan_email === true;
+  autoScanBox.addEventListener('change', async () => {
+    const newSettings = { ...(HH.settings || {}), auto_scan_email: autoScanBox.checked };
+    const { error } = await supa.from('households').update({ settings: newSettings }).eq('id', HH.id);
+    if (error) { alert(error.message); autoScanBox.checked = !autoScanBox.checked; return; }
+    HH.settings = newSettings;
+  });
 
   // ================================================================
   // Whole-page drag & drop — drag a file anywhere on the page to upload
