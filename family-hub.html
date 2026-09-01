@@ -64,7 +64,8 @@
     background: var(--bg);
     color: var(--cream);
     font-family: 'Karla', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 15px;
+    font-size: 16px;
+    overflow-x: hidden;
     line-height: 1.5;
     min-height: 100vh;
     padding-bottom: env(safe-area-inset-bottom);
@@ -132,7 +133,7 @@
   }
   .nudge .body { flex: 1; min-width: 0; }
   .nudge .body .count { font-weight: 700; font-size: 18px; }
-  .nudge .body .lead { font-size: 13px; opacity: .9; margin-top: 2px; }
+  .nudge .body .lead { font-size: 14px; opacity: .9; margin-top: 2px; }
   .nudge .arrow { font-size: 20px; opacity: .8; }
 
   /* ============ Primary action buttons ============ */
@@ -165,17 +166,17 @@
   h2.section {
     font-family: 'Crimson Pro', serif;
     font-weight: 400;
-    font-size: 22px;
+    font-size: 25px;
     letter-spacing: .5px;
     color: var(--cream);
     margin: 32px 0 12px;
     display: flex; align-items: baseline; gap: 10px;
   }
-  h2.section .count { font-family: 'Karla', sans-serif; font-size: 13px; font-weight: 400; color: var(--taupe); }
+  h2.section .count { font-family: 'Karla', sans-serif; font-size: 14px; font-weight: 400; color: var(--taupe); }
   h2.section .link {
     margin-left: auto;
     font-family: 'Karla', sans-serif;
-    font-size: 13px; font-weight: 500; color: var(--sage-300);
+    font-size: 14px; font-weight: 500; color: var(--sage-300);
     text-decoration: none;
   }
 
@@ -210,8 +211,8 @@
   .up-item:last-child { border-bottom: none; }
   .up-item .swatch { width: 4px; height: 28px; border-radius: 3px; flex-shrink: 0; }
   .up-item .txt { flex: 1; min-width: 0; }
-  .up-item .txt .title { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .up-item .txt .meta { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .up-item .txt .title { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .up-item .txt .meta { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .up-item .synced { color: var(--good); font-size: 12px; flex-shrink: 0; }
   .up-empty { color: var(--taupe); font-style: italic; padding: 24px; text-align: center; background: rgba(255,255,255,.03); border-radius: var(--radius); }
 
@@ -226,13 +227,13 @@
   .todo:last-child { border-bottom: none; }
   .todo input[type=checkbox] { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--sage-600); flex-shrink: 0; cursor: pointer; }
   .todo .txt { flex: 1; min-width: 0; }
-  .todo .txt .title { font-weight: 600; font-size: 14px; }
-  .todo .txt .meta { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .todo .txt .title { font-weight: 600; font-size: 15px; }
+  .todo .txt .meta { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .todo .due-soon { color: var(--dusty-rose); font-weight: 700; }
   .todo .del { background: none; border: none; color: var(--muted-2); font-size: 16px; cursor: pointer; padding: 0 4px; flex-shrink: 0; }
   .todo-add { display: flex; gap: 8px; margin-top: 8px; }
-  .todo-add input { flex: 1; font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--cream-2); color: var(--ink); }
-  .todo-add button { font: inherit; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 10px; border: none; background: var(--sage-600); color: var(--cream); cursor: pointer; }
+  .todo-add input { flex: 1; font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--cream-2); color: var(--ink); }
+  .todo-add button { font: inherit; font-size: 15px; font-weight: 600; padding: 10px 16px; border-radius: 10px; border: none; background: var(--sage-600); color: var(--cream); cursor: pointer; }
 
   /* ============ Full calendar (collapsible on mobile) ============ */
   .cal-wrap {
@@ -274,13 +275,13 @@
   /* ============ Docs list ============ */
   .docs { display: flex; flex-direction: column; }
   .doc-row {
-    display: grid; grid-template-columns: auto 1fr auto auto;
+    display: grid; grid-template-columns: auto 1fr auto auto auto;
     align-items: center; gap: 10px;
-    padding: 10px 14px;
+    padding: 12px 14px;
     background: var(--cream);
     border-bottom: 1px solid var(--border-soft);
     color: var(--ink);
-    font-size: 14px;
+    font-size: 15px;
   }
   .doc-row:first-child { border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
   .doc-row:last-child { border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); border-bottom: none; }
@@ -291,8 +292,8 @@
   }
   .doc-icn svg { width: 16px; height: 16px; }
   .doc-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .doc-name .from { color: var(--muted); font-size: 12px; display: block; }
-  .doc-date { color: var(--muted-2); font-size: 12px; white-space: nowrap; }
+  .doc-name .from { color: var(--muted); font-size: 13px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-date { color: var(--muted-2); font-size: 13px; white-space: nowrap; }
   .doc-del { background: transparent; border: none; color: var(--muted-2); padding: 6px; font-size: 18px; }
   .doc-del:hover { color: var(--dusty-rose); }
   .docs-empty { color: var(--taupe); font-style: italic; padding: 24px; text-align: center; background: rgba(255,255,255,.03); border-radius: var(--radius); }
@@ -306,11 +307,11 @@
     padding: 12px 16px;
     display: flex; align-items: center; gap: 12px;
     box-shadow: var(--shadow);
-    font-size: 14px;
+    font-size: 15px;
   }
   .acct-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
   .acct-row .email { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .acct-row .scope { color: var(--muted); font-size: 12px; }
+  .acct-row .scope { color: var(--muted); font-size: 13px; }
   .acct-add {
     background: transparent;
     color: var(--sage-300);
@@ -359,7 +360,7 @@
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; font-weight: 500; }
   .field input, .field textarea, .field select {
-    width: 100%; padding: 12px 14px; font: inherit; font-size: 15px;
+    width: 100%; padding: 12px 14px; font: inherit; font-size: 16px;
     background: var(--cream-2);
     color: var(--ink);
     border: 1px solid var(--border);
@@ -375,7 +376,7 @@
   .chip {
     background: var(--cream-2); border: 1px solid var(--border);
     color: var(--muted); border-radius: 999px;
-    padding: 6px 12px; font-size: 12px; font-weight: 500;
+    padding: 7px 14px; font-size: 13px; font-weight: 500;
     cursor: pointer;
   }
   .chip:hover { color: var(--ink); }
@@ -436,9 +437,9 @@
     margin-bottom: 10px;
   }
   .prop .row1 { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
-  .prop .title { font-weight: 600; font-size: 15px; color: var(--ink); }
-  .prop .when { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
-  .prop .notes { color: var(--muted); font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .prop .title { font-weight: 600; font-size: 16px; color: var(--ink); }
+  .prop .when { color: var(--muted); font-size: 14px; margin-bottom: 4px; }
+  .prop .notes { color: var(--muted); font-size: 13px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .prop .src { color: var(--muted-2); font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .prop .actions {
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px;
@@ -477,6 +478,7 @@
   /* ============ Desktop layout ============ */
   @media (min-width: 900px) {
     .above-fold { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: start; }
+    .above-fold > * { min-width: 0; }
     .above-fold .cal-wrap { min-height: 620px; }
     details.collapsible[data-force-open-desktop] { padding: 0; }
     details.collapsible[data-force-open-desktop] > summary { display: none; }
