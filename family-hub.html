@@ -449,6 +449,28 @@
     details.collapsible[data-force-open-desktop] > .body { padding: 12px; }
   }
 
+  /* ============ Whole-page drop overlay ============ */
+  #page-drop {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(74, 90, 59, 0.85);
+    display: none; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  #page-drop.on { display: flex; }
+  #page-drop .inner {
+    border: 3px dashed var(--cream);
+    border-radius: 20px;
+    padding: 48px 64px;
+    text-align: center;
+    color: var(--cream);
+    font-family: 'Crimson Pro', serif;
+    font-size: 28px;
+  }
+  #page-drop .inner small {
+    display: block; font-family: 'Karla', sans-serif; font-size: 14px;
+    margin-top: 8px; opacity: .85;
+  }
+
   /* ============ Reduced motion ============ */
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
@@ -456,6 +478,8 @@
 </style>
 </head>
 <body>
+
+<div id="page-drop"><div class="inner">Drop to upload<small>Photos and PDFs — Claude reads them and proposes events</small></div></div>
 
 <div id="header-slot"></div>
 
@@ -1304,6 +1328,37 @@
     fileInput.value = '';
     loadDocs();
   }
+
+  // ================================================================
+  // Whole-page drag & drop — drag a file anywhere on the page to upload
+  // ================================================================
+  const pageDrop = document.getElementById('page-drop');
+  let dragDepth = 0;
+  document.addEventListener('dragenter', (e) => {
+    if (!e.dataTransfer?.types?.includes('Files')) return;
+    e.preventDefault();
+    dragDepth++;
+    pageDrop.classList.add('on');
+  });
+  document.addEventListener('dragover', (e) => {
+    if (!e.dataTransfer?.types?.includes('Files')) return;
+    e.preventDefault();
+  });
+  document.addEventListener('dragleave', (e) => {
+    if (!e.dataTransfer?.types?.includes('Files')) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) pageDrop.classList.remove('on');
+  });
+  document.addEventListener('drop', async (e) => {
+    if (!e.dataTransfer?.files?.length) { pageDrop.classList.remove('on'); dragDepth = 0; return; }
+    e.preventDefault();
+    dragDepth = 0;
+    pageDrop.classList.remove('on');
+    openUpload();               // show progress in the upload modal
+    for (const file of e.dataTransfer.files) {
+      await uploadFile(file);   // sequential keeps the messages readable
+    }
+  });
 
   // ================================================================
   // REVIEW modal
