@@ -76,15 +76,15 @@ Deno.serve(async (req) => {
     if (dlErr || !blob) return json({ error: `storage download failed: ${dlErr?.message}` }, 500);
 
     const bytes = new Uint8Array(await blob.arrayBuffer());
-    const base64 = btoa(String.fromCharCode(...bytes));
-    const mime = doc.mime_type || 'image/jpeg';
-
-    // Only images work with vision; PDFs need doc-source or a rasterize step.
-    // For v2 we handle images cleanly and log a note for PDFs.
-    if (!mime.startsWith('image/') && mime !== 'application/pdf') {
-      await logExtraction(docId, 'skipped: unsupported mime ' + mime);
-      return json({ skipped: true, reason: 'unsupported mime ' + mime });
+    // Chunked encoding — spreading a large Uint8Array into fromCharCode blows
+    // the call stack for files over ~100KB.
+    let binary = '';
+    const CHUNK = 32768;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
     }
+    const base64 = btoa(binary);
+    const mime = doc.mime_type || 'image/jpeg';
 
     const content: any[] = [];
     if (mime.startsWith('image/')) {
@@ -92,12 +92,18 @@ Deno.serve(async (req) => {
         type: 'image',
         source: { type: 'base64', media_type: mime, data: base64 },
       });
-    } else {
-      // PDF via document source (Claude supports application/pdf as a document)
+    } else if (mime === 'application/pdf') {
       content.push({
         type: 'document',
         source: { type: 'base64', media_type: 'application/pdf', data: base64 },
       });
+    } else if (mime.startsWith('text/')) {
+      // Gmail-ingested email bodies arrive as text/plain
+      const text = new TextDecoder().decode(bytes);
+      content.push({ type: 'text', text: `Document contents:\n\n${text.slice(0, 30000)}` });
+    } else {
+      await logExtraction(docId, 'skipped: unsupported mime ' + mime);
+      return json({ skipped: true, reason: 'unsupported mime ' + mime });
     }
     content.push({ type: 'text', text: EXTRACTION_PROMPT });
 
@@ -158,16 +164,18 @@ Deno.serve(async (req) => {
       if (!insErr) inserted++;
     }
 
-    // Log the extraction (with cost estimate)
+    // Log the extraction (with cost estimate + human-readable summary)
     const usage = claude.usage || {};
     const inTok = usage.input_tokens || 0;
     const outTok = usage.output_tokens || 0;
     // Haiku 4.5 rates as of 2026: $1/M input, $5/M output
     const cost = (inTok * 1 + outTok * 5) / 1_000_000;
-    await logExtraction(docId, null, claude, inserted, inTok, outTok, cost);
+    await logExtraction(docId, null, claude, inserted, inTok, outTok, cost, parsed.document_summary || null);
 
-    // Mark doc as processed
-    await supa.from('family_documents').update({ extracted_at: new Date().toISOString() }).eq('id', docId);
+    // Mark doc processed; auto-categorize it from the first event if untagged
+    const docUpdate: any = { extracted_at: new Date().toISOString() };
+    if (!doc.category && events.length) docUpdate.category = events[0].category || 'general';
+    await supa.from('family_documents').update(docUpdate).eq('id', docId);
 
     return json({ ok: true, events_created: inserted, cost_usd: cost });
   } catch (e) {
@@ -177,13 +185,13 @@ Deno.serve(async (req) => {
 
 async function logExtraction(
   docId: string, error: string | null, raw: any = null, eventsCreated = 0,
-  inTok = 0, outTok = 0, cost = 0,
+  inTok = 0, outTok = 0, cost = 0, summary: string | null = null,
 ) {
   await supa.from('ai_extractions').insert({
     document_id: docId,
     model: ANTHROPIC_MODEL,
     prompt_tokens: inTok, output_tokens: outTok, cost_usd: cost,
-    raw_response: raw, events_created: eventsCreated, error,
+    raw_response: raw, events_created: eventsCreated, error, summary,
   });
 }
 

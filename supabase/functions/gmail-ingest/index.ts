@@ -47,52 +47,143 @@ Deno.serve(async (_req) => {
 async function pollAccount(supa: any, accountEmail: string, householdId: string) {
   const access = await getFreshAccessToken(supa, accountEmail);
 
-  // Resolve label id (cached in gmail_state)
   const { data: state } = await supa.from('gmail_state')
     .select('*').eq('account_email', accountEmail).maybeSingle();
+
+  // ---- Pass 1: explicit label (always on) ----
   let labelId = state?.label_id;
+  let labelResult: any = null;
   if (!labelId) {
     const labels = await gApi<{ labels: any[] }>(access, '/gmail/v1/users/me/labels');
     const lbl = labels.labels.find((l) => l.name === LABEL_NAME);
-    if (!lbl) {
-      // Not an error: this account just hasn't made the label (yet)
-      return { skipped: true, reason: `label "${LABEL_NAME}" not found in this account` };
+    if (lbl) {
+      labelId = lbl.id;
+      await supa.from('gmail_state').upsert({
+        account_email: accountEmail, label_id: labelId,
+      }, { onConflict: 'account_email' });
     }
-    labelId = lbl.id;
-    await supa.from('gmail_state').upsert({
-      account_email: accountEmail, label_id: labelId,
-    }, { onConflict: 'account_email' });
+  }
+  if (labelId) {
+    const list = await gApi<{ messages?: {id: string}[] }>(
+      access, `/gmail/v1/users/me/messages?labelIds=${labelId}&maxResults=25`,
+    );
+    const results: any[] = [];
+    for (const { id } of list.messages || []) {
+      try {
+        const msg = await gApi<any>(access, `/gmail/v1/users/me/messages/${id}?format=full`);
+        const uploaded = await ingestMessage(supa, access, msg, householdId);
+        await gApi(access, `/gmail/v1/users/me/messages/${id}/modify`, {
+          method: 'POST',
+          body: JSON.stringify({ removeLabelIds: [labelId] }),
+        });
+        results.push({ id, uploaded });
+      } catch (e) {
+        results.push({ id, error: e.message });
+      }
+    }
+    labelResult = { processed: results.length, results };
+  } else {
+    labelResult = { skipped: true, reason: `label "${LABEL_NAME}" not found in this account` };
   }
 
-  const list = await gApi<{ messages?: {id: string}[] }>(
-    access, `/gmail/v1/users/me/messages?labelIds=${labelId}&maxResults=25`,
-  );
-  const messageIds = (list.messages || []).map((m) => m.id);
-
-  const results: any[] = [];
-  for (const id of messageIds) {
-    try {
-      const msg = await gApi<any>(access, `/gmail/v1/users/me/messages/${id}?format=full`);
-      const uploaded = await ingestMessage(supa, access, msg, householdId);
-      await gApi(access, `/gmail/v1/users/me/messages/${id}/modify`, {
-        method: 'POST',
-        body: JSON.stringify({ removeLabelIds: [labelId] }),
-      });
-      results.push({ id, uploaded });
-    } catch (e) {
-      results.push({ id, error: e.message });
-    }
+  // ---- Pass 2: inbox auto-scan (per-household opt-in) ----
+  let scanResult: any = { skipped: true, reason: 'auto-scan off' };
+  const { data: hh } = await supa
+    .from('households').select('settings').eq('id', householdId).maybeSingle();
+  if (hh?.settings?.auto_scan_email === true) {
+    scanResult = await autoScan(supa, access, accountEmail, householdId, state?.last_scan_at);
   }
 
   await supa.from('gmail_state').upsert({
     account_email: accountEmail,
-    label_id: labelId,
+    label_id: labelId || null,
     last_polled_at: new Date().toISOString(),
     last_error: null,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'account_email' });
 
-  return { processed: results.length, results };
+  return { label: labelResult, scan: scanResult };
+}
+
+// Scan new inbox mail (excluding promotions/social/spam) and ingest only the
+// messages Claude's cheap triage says contain family-calendar events.
+async function autoScan(
+  supa: any, access: string, accountEmail: string, householdId: string,
+  lastScanAt: string | null,
+) {
+  const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!ANTHROPIC_API_KEY) return { skipped: true, reason: 'no ANTHROPIC_API_KEY' };
+
+  const sinceEpoch = Math.floor(
+    (lastScanAt ? new Date(lastScanAt).getTime() : Date.now() - 24 * 3600 * 1000) / 1000,
+  );
+  const scanStartedAt = new Date().toISOString();
+  const q = encodeURIComponent(
+    `in:inbox -category:promotions -category:social -in:spam after:${sinceEpoch}`,
+  );
+  const list = await gApi<{ messages?: {id: string}[] }>(
+    access, `/gmail/v1/users/me/messages?q=${q}&maxResults=20`,
+  );
+  const results: any[] = [];
+  for (const { id } of list.messages || []) {
+    try {
+      // Skip anything already ingested (label pass or a previous scan)
+      const { data: dup } = await supa.from('family_documents')
+        .select('id').like('storage_path', `%gmail-${id}-%`).limit(1);
+      if (dup?.length) { results.push({ id, skipped: 'already ingested' }); continue; }
+
+      const msg = await gApi<any>(access, `/gmail/v1/users/me/messages/${id}?format=full`);
+      const headers: any[] = msg.payload?.headers || [];
+      const subject = headers.find((h) => h.name.toLowerCase() === 'subject')?.value || '';
+      const from = headers.find((h) => h.name.toLowerCase() === 'from')?.value || '';
+      const body = extractBodyText(msg.payload).slice(0, 8000);
+      if (!body && !subject) { results.push({ id, skipped: 'empty' }); continue; }
+
+      const worth = await triage(ANTHROPIC_API_KEY, subject, from, body);
+      if (!worth) { results.push({ id, triage: 'no events' }); continue; }
+
+      const uploaded = await ingestMessage(supa, access, msg, householdId);
+      results.push({ id, triage: 'has events', uploaded });
+    } catch (e) {
+      results.push({ id, error: e.message });
+    }
+  }
+
+  await supa.from('gmail_state')
+    .update({ last_scan_at: scanStartedAt })
+    .eq('account_email', accountEmail);
+
+  return { scanned: results.length, results };
+}
+
+async function triage(apiKey: string, subject: string, from: string, body: string): Promise<boolean> {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 10,
+      messages: [{
+        role: 'user',
+        content:
+`Does this email contain concrete, dated family-calendar events (appointments, school/daycare closures or activities, sports schedules, flights/reservations, deadlines)? Routine newsletters, receipts, promotions, and undated chatter do NOT count.
+
+From: ${from}
+Subject: ${subject}
+
+${body}
+
+Answer with exactly one word: YES or NO.`,
+      }],
+    }),
+  });
+  if (!res.ok) return false;  // triage failure → don't ingest, don't error the run
+  const data = await res.json();
+  return /YES/i.test(data.content?.[0]?.text || '');
 }
 
 async function ingestMessage(supa: any, access: string, msg: any, householdId: string): Promise<number> {
