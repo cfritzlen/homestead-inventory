@@ -100,7 +100,7 @@
   }
 
   /* ============ Header block ============ */
-  .page-head { margin: 8px 0 24px; text-align: center; }
+  .page-head { margin: 8px 0 20px; text-align: center; }
   .page-head h1 {
     font-family: 'Crimson Pro', Georgia, serif;
     font-weight: 300;
@@ -227,7 +227,7 @@
   .todo input[type=checkbox] { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--sage-600); flex-shrink: 0; cursor: pointer; }
   .todo .txt { flex: 1; min-width: 0; }
   .todo .txt .title { font-weight: 600; font-size: 14px; }
-  .todo .txt .meta { font-size: 12px; color: var(--muted); }
+  .todo .txt .meta { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .todo.done .txt .title { text-decoration: line-through; opacity: .55; }
   .todo.done .txt .meta { opacity: .55; }
   .todo .due-soon { color: var(--dusty-rose); font-weight: 700; }
@@ -440,7 +440,7 @@
   .prop .row1 { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
   .prop .title { font-weight: 600; font-size: 15px; color: var(--ink); }
   .prop .when { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
-  .prop .notes { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .prop .notes { color: var(--muted); font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .prop .src { color: var(--muted-2); font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .prop .actions {
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px;
@@ -466,6 +466,15 @@
   .pill.vacation { background: var(--cat-vacation); }
   .pill.sports   { background: var(--cat-sports); }
   .pill.general  { background: var(--cat-general); }
+
+  /* ============ Phone layout ============ */
+  @media (max-width: 640px) {
+    main { padding: 16px 14px 64px; }
+    .doc-date { display: none; }
+    .doc-row { padding: 10px 10px; gap: 8px; }
+    .fc .fc-toolbar { flex-wrap: wrap; gap: 6px; }
+    .fc .fc-toolbar-title { font-size: 17px !important; }
+  }
 
   /* ============ Desktop layout ============ */
   @media (min-width: 900px) {
@@ -513,7 +522,6 @@
 <main>
   <div class="page-head">
     <h1>Family Hub</h1>
-    <p class="sub">School, medical, travel, sports — one place. Upload photos, label emails <b>family-hub</b>, or add events yourself. Approved events sync to Google Calendar.</p>
   </div>
 
   <div class="above-fold">
@@ -573,14 +581,14 @@
   <h2 class="section">Google Calendar sync <span class="count">which categories push</span></h2>
   <div class="card" style="background:var(--cream);color:var(--ink);border:none;box-shadow:var(--shadow);border-radius:var(--radius);padding:14px 16px;">
     <p style="color:var(--muted);font-size:13px;margin:0 0 10px;">
-      Toggled-off categories still show here in the hub — they just never touch your Google Calendar. Daycare is off by default so menus and routine notices stay out of your calendar.
+      Off categories stay in the hub but never push to Google Calendar.
     </p>
     <div class="chips" id="sync-toggles" style="margin:0;"></div>
     <div style="border-top:1px solid var(--border-soft);margin:12px 0 10px;"></div>
     <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink);cursor:pointer;">
       <input type="checkbox" id="auto-scan" style="width:18px;height:18px;margin-top:2px;accent-color:var(--sage-600);">
       <span><b>Auto-scan inbox for events</b><br>
-        <span style="color:var(--muted);font-size:12px;">Every 15 minutes, Claude glances at new mail in your connected gmail (skipping promotions and social) and pulls in anything with real events — no labeling needed. Costs about a tenth of a cent per email checked.</span>
+        <span style="color:var(--muted);font-size:12px;">Checks new mail every 15 min and pulls in real events — no labeling needed.</span>
       </span>
     </label>
     <div style="border-top:1px solid var(--border-soft);margin:12px 0 10px;"></div>
@@ -683,7 +691,7 @@
       <button class="close" onclick="closeUpload()">×</button>
     </div>
     <p style="color:var(--muted);font-size:13px;margin:0 0 12px;">
-      Photos of teacher notes, appointment cards, itineraries, discharge papers. Claude reads them and proposes calendar events for your review.
+      Snap a photo — Claude reads it and proposes events for your review.
     </p>
 
     <div class="drop" id="drop">
@@ -769,7 +777,7 @@
       <button class="close" onclick="closeActivity()">×</button>
     </div>
     <p style="color:var(--muted);font-size:13px;margin:0 0 12px;">
-      Everything Claude did with your uploads and emails — including the times it decided there was nothing calendar-worthy.
+      What Claude did with your uploads and emails.
     </p>
     <div id="act-list"><div class="docs-empty">Loading…</div></div>
   </div>
@@ -783,7 +791,7 @@
       <button class="close" onclick="closeReview()">×</button>
     </div>
     <p style="color:var(--muted);font-size:13px;margin:0 0 12px;">
-      Claude read your uploads and emails. Events go to the calendar when approved (and push to Google Calendar); to-dos go onto your list. Reject anything that's wrong.
+      Approve to add to your calendar or list. Reject anything wrong.
     </p>
     <div id="rev-list"></div>
   </div>
