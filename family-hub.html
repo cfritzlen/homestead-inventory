@@ -442,6 +442,7 @@
   .prop .when { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
   .prop .notes { color: var(--muted); font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .prop .src { color: var(--muted-2); font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .prop .src .src-link { color: var(--sage-600); font-weight: 600; text-decoration: underline; }
   .prop .actions {
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px;
   }
@@ -983,7 +984,7 @@
         .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id,source')
         .eq('status', 'proposed').order('starts_at'),
       supa.from('family_tasks')
-        .select('id,title,notes,due_date,ai_confidence')
+        .select('id,title,notes,due_date,ai_confidence,document_id')
         .eq('status', 'proposed').order('created_at'),
     ]);
     if (error) { console.error(error); return; }
@@ -1017,7 +1018,7 @@
         </div>
         <div class="when">${escapeHtml(due)}</div>
         ${t.notes ? `<div class="notes">${escapeHtml(t.notes)}</div>` : ''}
-        <div class="src">from ai · confidence ${conf}</div>
+        <div class="src">from ai · confidence ${conf}${t.document_id ? ` · <a href="#" class="src-link" onclick="event.preventDefault(); openSourceDoc('${t.document_id}')">see original email</a>` : ''}</div>
         <div class="actions">
           <button class="approve" data-task="${t.id}" data-act="approve">Add to my list</button>
           <button class="edit"    data-task="${t.id}" data-act="done">Already done</button>
@@ -1050,7 +1051,7 @@
         </div>
         <div class="when">${escapeHtml(when)}${ev.location ? ' · ' + escapeHtml(ev.location) : ''}</div>
         ${ev.notes ? `<div class="notes">${escapeHtml(ev.notes)}</div>` : ''}
-        <div class="src">from ${ev.source || 'ai'} · confidence ${conf}</div>
+        <div class="src">from ${ev.source || 'ai'} · confidence ${conf}${ev.document_id ? ` · <a href="#" class="src-link" onclick="event.preventDefault(); openSourceDoc('${ev.document_id}')">see original email</a>` : ''}</div>
         <div class="actions" style="grid-template-columns:1fr 1fr;">
           <button class="approve" data-id="${ev.id}" data-act="approve">Add to calendar</button>
           <button class="edit"    data-id="${ev.id}" data-act="save">Save only</button>
@@ -1780,6 +1781,23 @@
   // REVIEW modal
   // ================================================================
   const revModal = document.getElementById('rev-modal');
+  // Open the email/attachment a proposal was extracted from, in a new tab.
+  // The tab is opened synchronously so popup blockers allow it.
+  window.openSourceDoc = async (docId) => {
+    const tab = window.open('', '_blank');
+    try {
+      const { data: doc } = await supa.from('family_documents')
+        .select('storage_path').eq('id', docId).maybeSingle();
+      if (!doc) throw new Error('The original document is gone — it may have been deleted.');
+      const { data: signed, error } = await supa.storage
+        .from('family-docs').createSignedUrl(doc.storage_path, 3600);
+      if (error || !signed?.signedUrl) throw new Error('Could not open the document: ' + (error?.message || 'no link'));
+      tab.location = signed.signedUrl;
+    } catch (e) {
+      if (tab) tab.close();
+      alert(e.message);
+    }
+  };
   window.openReview = () => { revModal.classList.add('on'); loadProposed(); };
   window.closeReview = () => revModal.classList.remove('on');
   revModal.addEventListener('click', (e) => { if (e.target === revModal) closeReview(); });
