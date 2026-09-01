@@ -67,7 +67,6 @@
   .header { text-align: center; padding: 28px 0 8px; animation: slideUp 0.5s ease-out; }
   .header h1 { font-size: 26px; font-weight: 700; background: linear-gradient(135deg, #9B59B6, #8E44AD, #7D3C98); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
   .header-unicorn { font-size: 36px; animation: float 3s ease-in-out infinite; display: inline-block; }
-  .header p { font-size: 13px; color: #A88BC3; margin-top: 2px; font-weight: 500; }
   .sync-status { text-align: center; font-size: 11px; padding: 4px 0 8px; font-weight: 600; }
   .tabs { display: flex; gap: 3px; margin-bottom: 16px; background: #EDE0FF; border-radius: 14px; padding: 4px; }
   .tab { flex: 1; padding: 10px 0; border: none; background: none; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Fredoka', sans-serif; border-radius: 11px; color: #9B7DB8; transition: all 0.25s; }
@@ -83,6 +82,8 @@
   .btn-pri:active { transform: scale(0.97); }
   .btn-pri:disabled { opacity: 0.4; cursor: default; }
   .btn-out { background: transparent; color: #9B59B6; border: 1.5px solid #9B59B6; }
+  .btn-out:active { transform: scale(0.97); background: #F3EAFF; }
+  .tab:active { transform: scale(0.97); }
   .btns { display: flex; gap: 10px; }
   .row { display: flex; gap: 10px; margin-bottom: 12px; }
   .field { flex: 1; }
@@ -90,9 +91,9 @@
   .med-card-pending { background: #FDF8FF; }
   .med-card-done { background: linear-gradient(135deg, #E8D5F5, #F3EAFF); border-color: #9B59B6; }
   .med-icon { font-size: 28px; line-height: 1; }
-  .med-info { flex: 1; }
-  .med-name { font-size: 16px; font-weight: 700; color: #2D1B4E; }
-  .med-sub { font-size: 12px; color: #A88BC3; margin-top: 2px; font-weight: 500; }
+  .med-info { flex: 1; min-width: 0; }
+  .med-name { font-size: 16px; font-weight: 700; color: #2D1B4E; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .med-sub { font-size: 12px; color: #A88BC3; margin-top: 2px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .med-log-btn { background: linear-gradient(135deg, #9B59B6, #8E44AD); color: #FFF; border: none; border-radius: 10px; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Fredoka', sans-serif; box-shadow: 0 2px 8px rgba(142,68,173,0.2); transition: all 0.2s; white-space: nowrap; }
   .med-log-btn:active { transform: scale(0.95); }
   .med-done-badge { background: #D7B4F0; color: #5B2D8E; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
@@ -101,7 +102,7 @@
   .badge-doctor { background: #F0D4FF; color: #7D3C98; }
   .badge-general { background: #D4E8FF; color: #2D5FA0; }
   .badge-symptom { background: #FFE0D4; color: #B85C3A; }
-  .note-title { font-size: 15px; font-weight: 700; color: #2D1B4E; margin-top: 6px; }
+  .note-title { font-size: 15px; font-weight: 700; color: #2D1B4E; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .note-content { font-size: 13px; color: #5B4A6E; margin-top: 4px; line-height: 1.5; }
   .note-date { font-size: 11px; color: #A88BC3; font-weight: 600; margin-top: 6px; }
   .note-del { background: none; border: none; cursor: pointer; color: #C0A3D6; font-size: 18px; padding: 4px; }
@@ -142,6 +143,14 @@
   .settings-toggle { text-align: center; margin-top: 4px; }
   .settings-toggle button { background: none; border: none; color: #C0A3D6; font-size: 12px; cursor: pointer; font-family: 'Fredoka', sans-serif; text-decoration: underline; }
   #file-input { display: none; }
+  @media (max-width: 768px) {
+    body { padding: 0 14px 70px; }
+    .header h1 { font-size: 24px; }
+    .tabs { flex-wrap: wrap; }
+    .tab { min-height: 40px; }
+    .btns { flex-wrap: wrap; }
+    .card { padding: 16px; }
+  }
 </style>
 </head>
 <body>
@@ -150,7 +159,6 @@
   <a href="index.html" style="position:absolute;left:0;top:20px;padding:6px 12px;border-radius:8px;border:1.5px solid #E0CCF0;background:rgba(255,255,255,0.7);color:#9B59B6;font-size:12px;font-weight:600;text-decoration:none;font-family:'Fredoka',sans-serif;">← Hub</a>
   <div class="header-unicorn">&#129412;</div>
   <h1>Kids Hub</h1>
-  <p>&#10024; Keeping the kids healthy &amp; happy &#10024;</p>
 </div>
 <div id="sync-status" class="sync-status" style="color:#A88BC3">Loading...</div>
 
@@ -292,7 +300,7 @@
     <div id="meds-qr-list"></div>
     <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid #E8D5F5">
       <div style="font-size:14px;font-weight:700;color:#7D3C98;margin-bottom:8px">&#127979; Daycare QR (logs + thank you)</div>
-      <p style="font-size:12px;color:#5B4A6E;margin-bottom:10px;line-height:1.5">Logs med + shows "Thank You" &mdash; no health data shown.</p>
+      <p style="font-size:12px;color:#5B4A6E;margin-bottom:10px;line-height:1.5">No health data shown.</p>
       <div id="daycare-qr-list"></div>
     </div>
   </div>
