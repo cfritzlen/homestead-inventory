@@ -887,8 +887,13 @@
   // Render only when calendar section is opened (mobile) or immediately (desktop)
   const calCollapse = document.getElementById('cal-collapse');
   const renderCalendar = () => { calendar.render(); calendar.updateSize(); };
-  if (window.innerWidth >= 900) renderCalendar();
+  // On desktop the summary bar is hidden, so the section must be opened for
+  // the calendar to be visible at all; on phones it stays tap-to-expand.
+  if (window.innerWidth >= 900) { calCollapse.open = true; renderCalendar(); }
   calCollapse.addEventListener('toggle', () => { if (calCollapse.open) renderCalendar(); });
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 900 && !calCollapse.open) calCollapse.open = true;
+  });
 
   async function fetchCalEvents(fetchInfo, ok, fail) {
     const { data, error } = await supa.from('family_events')
