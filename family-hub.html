@@ -582,6 +582,19 @@
   <div class="chips" id="doc-filters" style="margin-bottom:10px;"></div>
   <div class="docs" id="docs"><div class="docs-empty">Loading…</div></div>
 
+  <!-- Family members -->
+  <h2 class="section">Family members <span class="count">tag events with names</span></h2>
+  <div style="background:var(--cream);color:var(--ink);box-shadow:var(--shadow);border-radius:var(--radius);padding:14px 16px;">
+    <div class="chips" id="people-chips" style="margin:0 0 10px;"></div>
+    <div class="todo-add" style="margin:0;">
+      <input id="person-new" placeholder="Add a name — e.g. Emma" autocomplete="off">
+      <button id="person-add">Add</button>
+    </div>
+    <div id="people-note" style="display:none;color:var(--muted);font-size:13px;margin-top:8px;">
+      Names save now — tagging on events turns on after the one-time database step (migration 009).
+    </div>
+  </div>
+
   <!-- Google Calendar sync settings -->
   <h2 class="section">Google Calendar sync <span class="count">which categories push</span></h2>
   <div class="card" style="background:var(--cream);color:var(--ink);border:none;box-shadow:var(--shadow);border-radius:var(--radius);padding:14px 16px;">
@@ -639,6 +652,11 @@
     <div class="field">
       <label>Title</label>
       <input id="ev-title" placeholder="e.g. Soccer practice, Dentist" autocomplete="off">
+    </div>
+
+    <div class="field" id="people-field" style="display:none;">
+      <label>Who is it for? (optional)</label>
+      <div class="chips" id="people-picker" style="margin:0;"></div>
     </div>
 
     <div class="field">
@@ -890,6 +908,14 @@
     vacation:'Vacation', sports:'Sports', general:'General',
   };
 
+  // Does the database have people tagging yet (migration 009)?
+  let HAS_PEOPLE = false;
+  {
+    const probe = await supa.from('family_events').select('people').limit(1);
+    HAS_PEOPLE = !probe.error;
+  }
+  const namesOf = (x) => Array.isArray(x?.people) && x.people.length ? x.people.join(' & ') : '';
+
   // ================================================================
   // Calendar (FullCalendar) — approved events only
   // ================================================================
@@ -913,7 +939,7 @@
 
   async function fetchCalEvents(fetchInfo, ok, fail) {
     const { data, error } = await supa.from('family_events')
-      .select('id,category,title,starts_at,ends_at,all_day,location,notes,google_event_id')
+      .select('id,category,title,starts_at,ends_at,all_day,location,notes,google_event_id' + (HAS_PEOPLE ? ',people' : ''))
       .eq('status', 'approved')
       .gte('starts_at', fetchInfo.startStr)
       .lt('starts_at', fetchInfo.endStr)
@@ -921,7 +947,7 @@
     if (error) { console.error(error); fail(error); return; }
     ok(data.map(e => ({
       id: e.id,
-      title: (e.google_event_id ? '✓ ' : '') + e.title,
+      title: (e.google_event_id ? '✓ ' : '') + (namesOf(e) ? namesOf(e) + ': ' : '') + e.title,
       start: e.starts_at, end: e.ends_at || undefined,
       allDay: e.all_day, color: CAT_COLORS[e.category] || CAT_COLORS.general,
       extendedProps: { category: e.category, location: e.location, notes: e.notes },
@@ -942,7 +968,7 @@
     const now = new Date();
     const end = new Date(now.getTime() + 7 * 86400 * 1000);
     const { data, error } = await supa.from('family_events')
-      .select('id,category,title,starts_at,ends_at,all_day,location,google_event_id')
+      .select('id,category,title,starts_at,ends_at,all_day,location,google_event_id' + (HAS_PEOPLE ? ',people' : ''))
       .eq('status', 'approved')
       .gte('starts_at', now.toISOString())
       .lt('starts_at', end.toISOString())
@@ -977,7 +1003,7 @@
       for (const ev of items) {
         const timeStr = ev.all_day ? 'All day'
           : new Date(ev.starts_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        const meta = [timeStr, ev.location, CAT_LABELS[ev.category]].filter(Boolean).join(' · ');
+        const meta = [namesOf(ev), timeStr, ev.location, CAT_LABELS[ev.category]].filter(Boolean).join(' · ');
         const item = document.createElement('div');
         item.className = 'up-item';
         item.innerHTML = `
@@ -1002,10 +1028,10 @@
   async function loadProposed() {
     const [{ data, error }, { data: taskData, error: taskErr }] = await Promise.all([
       supa.from('family_events')
-        .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id,source')
+        .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id,source' + (HAS_PEOPLE ? ',people' : ''))
         .eq('status', 'proposed').order('starts_at'),
       supa.from('family_tasks')
-        .select('id,title,notes,due_date,ai_confidence,document_id')
+        .select('id,title,notes,due_date,ai_confidence,document_id' + (HAS_PEOPLE ? ',people' : ''))
         .eq('status', 'proposed').order('created_at'),
     ]);
     if (error) { console.error(error); return; }
@@ -1036,6 +1062,7 @@
         <div class="row1">
           <span class="pill" style="background:var(--dusty-rose);">TO-DO</span>
           <span class="title">${escapeHtml(t.title)}</span>
+          ${namesOf(t) ? `<span style="color:var(--muted);font-size:14px;">· ${escapeHtml(namesOf(t))}</span>` : ''}
         </div>
         <div class="when">${escapeHtml(due)}</div>
         ${t.notes ? `<div class="notes">${escapeHtml(t.notes)}</div>` : ''}
@@ -1082,6 +1109,7 @@
         <div class="row1">
           <span class="pill ${ev.category}">${CAT_LABELS[ev.category] || ev.category}</span>
           <span class="title">${escapeHtml(ev.title)}</span>
+          ${namesOf(ev) ? `<span style="color:var(--muted);font-size:14px;">· ${escapeHtml(namesOf(ev))}</span>` : ''}
         </div>
         <div class="when">${escapeHtml(when)}${ev.location ? ' · ' + escapeHtml(ev.location) : ''}</div>
         ${ev.notes ? `<div class="notes">${escapeHtml(ev.notes)}</div>` : ''}
@@ -1140,7 +1168,7 @@
   });
   async function loadTasks() {
     const { data: raw, error } = await supa.from('family_tasks')
-      .select('id,title,notes,due_date,status,completed_at')
+      .select('id,title,notes,due_date,status,completed_at' + (HAS_PEOPLE ? ',people' : ''))
       .in('status', ['open', 'done'])
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at');
@@ -1183,7 +1211,7 @@
         <input type="checkbox" data-id="${t.id}" ${isDone ? 'checked' : ''} title="${isDone ? 'Mark not done' : 'Mark done'}">
         <div class="txt">
           <div class="title">${escapeHtml(t.title)}</div>
-          ${dueTxt || t.notes ? `<div class="meta">${dueTxt}${dueTxt && t.notes ? ' · ' : ''}${t.notes ? escapeHtml(t.notes) : ''}</div>` : ''}
+          ${(() => { const bits = [escapeHtml(namesOf(t)), dueTxt, t.notes ? escapeHtml(t.notes) : ''].filter(Boolean); return bits.length ? `<div class="meta">${bits.join(' · ')}</div>` : ''; })()}
         </div>
         <button class="del" data-id="${t.id}" title="Remove">×</button>
       `;
@@ -1391,6 +1419,69 @@
   renderSyncToggles();
 
   // ================================================================
+  // Family members — names live in household settings; events/tasks
+  // carry a people list once migration 009 has run.
+  // ================================================================
+  const peopleList = () => Array.isArray(HH.settings?.people) ? HH.settings.people : [];
+  async function savePeople(next) {
+    const newSettings = { ...(HH.settings || {}), people: next };
+    const { error } = await supa.from('households').update({ settings: newSettings }).eq('id', HH.id);
+    if (error) { alert(error.message); return false; }
+    HH.settings = newSettings;
+    return true;
+  }
+  function renderPeopleChips() {
+    const wrap = document.getElementById('people-chips');
+    const names = peopleList();
+    document.getElementById('people-note').style.display = HAS_PEOPLE ? 'none' : '';
+    wrap.innerHTML = names.length ? '' : '<span style="color:var(--muted);font-size:14px;">No names yet — add the kids (and grown-ups) below.</span>';
+    for (const n of names) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip on';
+      b.textContent = n + '  ×';
+      b.title = 'Remove ' + n;
+      b.addEventListener('click', async () => {
+        if (!confirm(`Remove ${n}?`)) return;
+        if (await savePeople(peopleList().filter(x => x !== n))) { renderPeopleChips(); renderPeoplePicker(); }
+      });
+      wrap.appendChild(b);
+    }
+  }
+  document.getElementById('person-add').addEventListener('click', async () => {
+    const inp = document.getElementById('person-new');
+    const n = inp.value.trim();
+    if (!n || peopleList().some(x => x.toLowerCase() === n.toLowerCase())) { inp.value = ''; return; }
+    if (await savePeople([...peopleList(), n])) { inp.value = ''; renderPeopleChips(); renderPeoplePicker(); }
+  });
+  document.getElementById('person-new').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('person-add').click();
+  });
+
+  let selectedPeople = [];
+  function renderPeoplePicker() {
+    const field = document.getElementById('people-field');
+    const wrap = document.getElementById('people-picker');
+    const names = peopleList();
+    field.style.display = (HAS_PEOPLE && names.length) ? '' : 'none';
+    wrap.innerHTML = '';
+    for (const n of names) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      const on = selectedPeople.includes(n);
+      b.className = 'chip' + (on ? ' on' : '');
+      b.textContent = n;
+      b.addEventListener('click', () => {
+        selectedPeople = on ? selectedPeople.filter(x => x !== n) : [...selectedPeople, n];
+        renderPeoplePicker();
+      });
+      wrap.appendChild(b);
+    }
+  }
+  renderPeopleChips();
+  renderPeoplePicker();
+
+  // ================================================================
   // Invite flow
   // ================================================================
   const invModal = document.getElementById('inv-modal');
@@ -1514,6 +1605,8 @@
   let editingId = null;
   function resetAddForm() {
     editingId = null;
+    selectedPeople = [];
+    renderPeoplePicker();
     document.getElementById('add-title').textContent = 'New event';
     ['ev-title','ev-loc','ev-notes','ev-doc'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('ev-allday').checked = false;
@@ -1537,6 +1630,8 @@
     document.getElementById('ev-loc').value = ev.location || '';
     document.getElementById('ev-notes').value = ev.notes || '';
     document.getElementById('ev-doc').value = ev.document_id || '';
+    selectedPeople = Array.isArray(ev.people) ? ev.people.slice() : [];
+    renderPeoplePicker();
   }
 
   window.saveEvent = async () => {
@@ -1568,6 +1663,7 @@
       notes:    document.getElementById('ev-notes').value.trim() || null,
       document_id: document.getElementById('ev-doc').value || null,
     };
+    if (HAS_PEOPLE) payload.people = selectedPeople.length ? selectedPeople : null;
     const { error } = editingId
       ? await supa.from('family_events').update(payload).eq('id', editingId)
       : await supa.from('family_events').insert(payload);
@@ -1597,6 +1693,17 @@
       ? new Date(ev.starts_at).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + ' · all day'
       : new Date(ev.starts_at).toLocaleString(undefined, { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
         + (ev.ends_at ? ' – ' + new Date(ev.ends_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
+    let srcLink = '';
+    if (ev.document_id) {
+      const { data: doc } = await supa.from('family_documents')
+        .select('file_name,storage_path').eq('id', ev.document_id).maybeSingle();
+      if (doc) {
+        const isEmail = (doc.storage_path || '').includes('gmail-');
+        const label = isEmail ? 'See the original email' : 'See the original photo';
+        srcLink = `<div><a href="#" onclick="event.preventDefault(); openSourceDoc('${ev.document_id}')" style="color:var(--sage-600);font-weight:600;text-decoration:none;">📎 ${label}</a>
+          ${doc.file_name && !isEmail ? `<span style="color:var(--muted);font-size:14px;"> — ${escapeHtml(doc.file_name)}</span>` : ''}</div>`;
+      }
+    }
     document.getElementById('det-body').innerHTML = `
       <div style="display:flex;flex-direction:column;gap:10px;font-size:16px;color:var(--ink);margin-bottom:6px;">
         <div><span class="pill ${ev.category}">${CAT_LABELS[ev.category] || ev.category}</span>
@@ -1604,6 +1711,8 @@
         <div>📅 ${escapeHtml(when)}</div>
         ${ev.location ? `<div>📍 ${escapeHtml(ev.location)}</div>` : ''}
         ${ev.notes ? `<div style="color:var(--muted);font-size:15px;line-height:1.5;">${escapeHtml(ev.notes)}</div>` : ''}
+        ${namesOf(ev) ? `<div>👤 ${escapeHtml(namesOf(ev))}</div>` : ''}
+        ${srcLink}
       </div>`;
     detModal.classList.add('on');
   };
