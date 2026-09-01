@@ -28,7 +28,8 @@
         .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 40px; }
         .dashboard-card { background: rgba(236, 232, 221, 0.95); border-radius: 16px; padding: 32px; text-align: center; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); border: 1px solid rgba(196, 181, 164, 0.3); transition: all 0.3s ease; cursor: pointer; text-decoration: none; color: var(--charcoal); display: block; position: relative; }
         .dashboard-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--sage-500); border-radius: 16px 16px 0 0; }
-        .dashboard-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); background: var(--cream); }
+        @media (hover: hover) { .dashboard-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); background: var(--cream); } }
+        .dashboard-card:active { transform: scale(0.98); }
         .card-icon { font-size: 3.5rem; margin-bottom: 16px; }
         .card-title { font-family: 'Crimson Pro', serif; font-size: 1.8rem; font-weight: 600; color: var(--sage-700); margin-bottom: 8px; }
         .card-description { font-size: 0.95rem; color: var(--sage-600); line-height: 1.5; }
@@ -36,13 +37,15 @@
         .coming-soon-badge { display: inline-block; background: var(--dusty-rose); color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-top: 8px; }
         .dashboard-card.brain-card::before { background: linear-gradient(90deg, var(--sage-500), var(--dusty-sage), var(--mauve)); }
         @media (max-width: 768px) {
-            .pond-banner { height: 180px; }
-            h1 { font-size: 2.2rem; }
-            .main-content { padding: 30px 15px; }
-            .dashboard-grid { grid-template-columns: 1fr; gap: 16px; }
-            .dashboard-card { padding: 24px; }
-            .card-icon { font-size: 2.8rem; }
-            .card-title { font-size: 1.5rem; }
+            .pond-banner { height: 150px; }
+            h1 { font-size: 2.1rem; }
+            header { margin-bottom: 24px; }
+            .main-content { padding: 24px 14px; }
+            .dashboard-grid { grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+            .dashboard-card { padding: 18px 12px; border-radius: 14px; }
+            .card-icon { font-size: 2.1rem; margin-bottom: 8px; }
+            .card-title { font-size: 1.15rem; margin-bottom: 4px; }
+            .card-description { font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -59,110 +62,110 @@
             <a href="family-hub.html" class="dashboard-card">
                 <div class="card-icon">📌</div>
                 <h2 class="card-title">Family Hub</h2>
-                <p class="card-description">School, medical, travel — upload docs, AI extracts events, synced to Google Calendar</p>
+                <p class="card-description">Calendar, to-dos & family docs</p>
             </a>
 
             <a href="solar.html" class="dashboard-card">
                 <div class="card-icon">☀️</div>
                 <h2 class="card-title">Solar Dashboard</h2>
-                <p class="card-description">SolArk 15K monitoring — production, usage & savings</p>
+                <p class="card-description">Production, usage & savings</p>
             </a>
 
             <a href="martin-heath.html" class="dashboard-card">
                 <div class="card-icon">❤️</div>
                 <h2 class="card-title">Martin Heath</h2>
-                <p class="card-description">Blood pressure, pulse, sleep & medication tracking</p>
+                <p class="card-description">Health & medication tracking</p>
             </a>
 
             <a href="kids-hub.html" class="dashboard-card">
                 <div class="card-icon">🎠</div>
                 <h2 class="card-title">Kids Hub</h2>
-                <p class="card-description">Medications, vitals, notes & daycare QR codes</p>
+                <p class="card-description">Meds, vitals & daycare codes</p>
             </a>
 
             <a href="finances.html" class="dashboard-card">
                 <div class="card-icon">📊</div>
                 <h2 class="card-title">Finances</h2>
-                <p class="card-description">Track debt, bills, weekly balances & loan payoff</p>
+                <p class="card-description">Debt, bills & loan payoff</p>
             </a>
 
             <a href="open-brain.html" class="dashboard-card brain-card">
                 <div class="card-icon">🧠</div>
                 <h2 class="card-title">Open Brain</h2>
-                <p class="card-description">Capture thoughts, scan documents, upload files — searchable by meaning</p>
+                <p class="card-description">Notes & docs, searchable</p>
             </a>
 
             <a href="expenses.html" class="dashboard-card">
                 <div class="card-icon">💰</div>
                 <h2 class="card-title">Expense Tracker</h2>
-                <p class="card-description">Track home, homestead & project spending by category</p>
+                <p class="card-description">Spending by category</p>
             </a>
 
             <a href="hatching.html" class="dashboard-card">
                 <div class="card-icon">🥚</div>
                 <h2 class="card-title">Hatching Tracker</h2>
-                <p class="card-description">Track poultry batches from incubator to table</p>
+                <p class="card-description">Incubator to table</p>
             </a>
 
             <a href="recipes.html" class="dashboard-card">
                 <div class="card-icon">🍳</div>
                 <h2 class="card-title">Recipes</h2>
-                <p class="card-description">Browse and manage your recipe collection</p>
+                <p class="card-description">Your recipe collection</p>
             </a>
 
             <a href="meal-plan.html" class="dashboard-card">
                 <div class="card-icon">📅</div>
                 <h2 class="card-title">This Week's Meals</h2>
-                <p class="card-description">Plan and view your weekly meal schedule</p>
+                <p class="card-description">Weekly meal plan</p>
             </a>
 
             <a href="inventory.html" class="dashboard-card">
                 <div class="card-icon">🫙</div>
                 <h2 class="card-title">Inventory</h2>
-                <p class="card-description">Track everything in your freezers, fridge, pantry & supplies</p>
+                <p class="card-description">Freezers, fridge, pantry & supplies</p>
             </a>
 
             <a href="shopping.html" class="dashboard-card">
                 <div class="card-icon">🏪</div>
                 <h2 class="card-title">Shopping List</h2>
-                <p class="card-description">Organized by store with low stock alerts</p>
+                <p class="card-description">By store, with low-stock alerts</p>
             </a>
 
             <a href="calendar.html" class="dashboard-card">
                 <div class="card-icon">🗓️</div>
                 <h2 class="card-title">Homestead Calendar</h2>
-                <p class="card-description">Garden tasks, planting schedule & plant tracker</p>
+                <p class="card-description">Garden & planting schedule</p>
             </a>
 
             <a href="predictions.html" class="dashboard-card">
                 <div class="card-icon">📈</div>
                 <h2 class="card-title">Prediction Markets</h2>
-                <p class="card-description">AI-powered Kalshi trading agent — browse markets & track bets</p>
+                <p class="card-description">Kalshi markets & bets</p>
             </a>
 
             <a href="network.html" class="dashboard-card">
                 <div class="card-icon">🌐</div>
                 <h2 class="card-title">Network Monitor</h2>
-                <p class="card-description">UniFi connected clients, signal strength & traffic</p>
+                <p class="card-description">Devices, signal & traffic</p>
             </a>
 
             <a href="security.html" class="dashboard-card">
                 <div class="card-icon">🛡</div>
                 <h2 class="card-title">Security</h2>
-                <p class="card-description">Live cameras, detection events & alarm control</p>
+                <p class="card-description">Cameras, alerts & alarm</p>
             </a>
 
             <a href="chores.html" class="dashboard-card coming-soon">
                 <div class="card-icon">🧺</div>
                 <h2 class="card-title">Chores</h2>
-                <p class="card-description">Laundry, cleaning, and household tasks</p>
+                <p class="card-description">Laundry & cleaning</p>
                 <span class="coming-soon-badge">Coming Soon</span>
             </a>
 
             <div class="dashboard-card coming-soon">
                 <div class="card-icon">🎤</div>
                 <h2 class="card-title">Alexa Integration</h2>
-                <p class="card-description">Voice control for your entire homestead</p>
+                <p class="card-description">Voice control</p>
                 <span class="coming-soon-badge">Coming Soon</span>
             </div>
         </div>

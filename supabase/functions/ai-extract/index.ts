@@ -30,21 +30,21 @@ Return ONLY a JSON object with this exact shape (no prose, no code fences):
 {
   "events": [
     {
-      "title": "short human-readable title, e.g. 'Soccer practice', 'Dentist appointment', 'Daycare CLOSED — Labor Day'",
+      "title": "SHORT title, 5 words max, e.g. 'Soccer practice', 'Dentist appointment', 'Daycare closed'",
       "category": "school|daycare|medical|travel|vacation|sports|general",
       "starts_at": "ISO8601 datetime in America/New_York timezone, e.g. 2026-09-14T16:00:00-04:00",
       "ends_at": "ISO8601 datetime OR null if unknown",
       "all_day": true/false,
       "location": "string or null",
-      "notes": "any extra detail from the doc worth remembering (bring-list, confirmation numbers, contact info)",
+      "notes": "ONE short line (12 words max) of must-know detail only — bring-list, confirmation number, contact. null if nothing essential",
       "confidence": 0.0-1.0
     }
   ],
   "tasks": [
     {
-      "title": "short action item phrased as a to-do, e.g. 'Fill out field trip permission slip', 'Send October rent payment', 'RSVP for the class party'",
+      "title": "short action phrase, 6 words max, e.g. 'Sign permission slip', 'Pay October rent', 'RSVP class party'",
       "due_date": "YYYY-MM-DD or null if no deadline given",
-      "notes": "who it's for, amounts, where to send it, links/instructions worth keeping",
+      "notes": "ONE short line (12 words max): who/amount/where. null if the title says it all",
       "confidence": 0.0-1.0
     }
   ],
@@ -68,6 +68,8 @@ Rules:
   RSVP, bring or return something, schedule an appointment, submit or renew something.
   A plain calendar event is NOT also a task — only emit a task when there's an action
   beyond showing up. A request for money (rent due, invoice, school fees) IS a task.
+- BE BRIEF. Titles and notes show on a phone screen: no full sentences, no restating the
+  date/category in the title, never copy paragraphs from the document into notes.
 - Return {"events": [], "tasks": [], "document_summary": "..."} if nothing extractable.
 - confidence < 0.5 for anything you're guessing.`;
 
