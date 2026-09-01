@@ -16,6 +16,7 @@ import { getFreshAccessToken, getServiceClient } from '../_shared/google.ts';
 const LABEL_NAME = Deno.env.get('GMAIL_LABEL_NAME') || 'family-hub';
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return cors();
   try {
     const supa = getServiceClient();
 
@@ -322,8 +323,18 @@ async function gApi<T>(access: string, path: string, init: RequestInit = {}): Pr
   return await res.json() as T;
 }
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+function cors() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
 function json(obj: any, status = 200) {
   return new Response(JSON.stringify(obj), {
-    status, headers: { 'Content-Type': 'application/json' },
+    status, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
 }
