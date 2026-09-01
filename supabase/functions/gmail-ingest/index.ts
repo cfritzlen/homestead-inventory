@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     const hoursBack = Math.min(Math.max(
       Number(body.hours_back) || (Number(body.days_back) || 0) * 24, 0), 30 * 24);
 
-    let manual: { householdId: string; hoursBack: number } | null = null;
+    let manual: { householdId: string; hoursBack: number; userId: string } | null = null;
     let forcedHours = 0;
     const authToken = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     if (hoursBack && authToken) {
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
             .from('household_members').select('household_id')
             .eq('user_id', caller.user.id).limit(1).maybeSingle();
           if (!membership) return json({ error: 'no household' }, 403);
-          manual = { householdId: membership.household_id, hoursBack };
+          manual = { householdId: membership.household_id, hoursBack, userId: caller.user.id };
         }
       }
     }
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     const perAccount: any[] = [];
     for (const { account_email, household_id } of accounts) {
       try {
-        const r = await pollAccount(supa, account_email, household_id, manual?.hoursBack || forcedHours);
+        const r = await pollAccount(supa, account_email, household_id, manual?.hoursBack || forcedHours, manual?.userId);
         perAccount.push({ account_email, ...r });
       } catch (e) {
         perAccount.push({ account_email, error: e.message });
@@ -80,8 +80,19 @@ Deno.serve(async (req) => {
   }
 });
 
-async function pollAccount(supa: any, accountEmail: string, householdId: string, forceScanHours?: number) {
+async function pollAccount(supa: any, accountEmail: string, householdId: string, forceScanHours?: number, manualUserId?: string) {
   const access = await getFreshAccessToken(supa, accountEmail);
+
+  // family_documents.created_by is NOT NULL and defaults to auth.uid(), which
+  // is null under the service role — inserts fail without an explicit value.
+  // Manual scans attribute to the caller; cron runs to any household member.
+  let createdBy = manualUserId || null;
+  if (!createdBy) {
+    const { data: member } = await supa.from('household_members')
+      .select('user_id').eq('household_id', householdId).limit(1).maybeSingle();
+    createdBy = member?.user_id || null;
+  }
+  if (!createdBy) throw new Error('no household member found to attribute documents to');
 
   const { data: state } = await supa.from('gmail_state')
     .select('*').eq('account_email', accountEmail).maybeSingle();
@@ -107,7 +118,7 @@ async function pollAccount(supa: any, accountEmail: string, householdId: string,
     for (const { id } of list.messages || []) {
       try {
         const msg = await gApi<any>(access, `/gmail/v1/users/me/messages/${id}?format=full`);
-        const uploaded = await ingestMessage(supa, access, msg, householdId);
+        const uploaded = await ingestMessage(supa, access, msg, householdId, createdBy);
         await gApi(access, `/gmail/v1/users/me/messages/${id}/modify`, {
           method: 'POST',
           body: JSON.stringify({ removeLabelIds: [labelId] }),
@@ -129,12 +140,12 @@ async function pollAccount(supa: any, accountEmail: string, householdId: string,
   let scanResult: any = { skipped: true, reason: 'auto-scan off' };
   if (forceScanHours) {
     const since = new Date(Date.now() - forceScanHours * 3600 * 1000).toISOString();
-    scanResult = await autoScan(supa, access, accountEmail, householdId, since, 100);
+    scanResult = await autoScan(supa, access, accountEmail, householdId, createdBy, since, 100);
   } else {
     const { data: hh } = await supa
       .from('households').select('settings').eq('id', householdId).maybeSingle();
     if (hh?.settings?.auto_scan_email === true) {
-      scanResult = await autoScan(supa, access, accountEmail, householdId, state?.last_scan_at, 20);
+      scanResult = await autoScan(supa, access, accountEmail, householdId, createdBy, state?.last_scan_at, 20);
     }
   }
 
@@ -153,7 +164,7 @@ async function pollAccount(supa: any, accountEmail: string, householdId: string,
 // messages Claude's cheap triage says contain family-calendar events.
 async function autoScan(
   supa: any, access: string, accountEmail: string, householdId: string,
-  lastScanAt: string | null, maxMessages = 20,
+  createdBy: string, lastScanAt: string | null, maxMessages = 20,
 ) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) return { skipped: true, reason: 'no ANTHROPIC_API_KEY' };
@@ -192,7 +203,7 @@ async function autoScan(
         continue;
       }
 
-      const uploaded = await ingestMessage(supa, access, msg, householdId);
+      const uploaded = await ingestMessage(supa, access, msg, householdId, createdBy);
       results.push({ id, triage: 'has events', uploaded });
       await logScan(supa, householdId, accountEmail, id, subject, from, attNames, 'ingested', `saved ${uploaded} file(s) — proposals coming`);
     } catch (e) {
@@ -264,7 +275,7 @@ async function logScan(
   } catch (_) { /* best-effort */ }
 }
 
-async function ingestMessage(supa: any, access: string, msg: any, householdId: string): Promise<number> {
+async function ingestMessage(supa: any, access: string, msg: any, householdId: string, createdBy: string): Promise<number> {
   const headers: any[] = msg.payload?.headers || [];
   const subject = headers.find((h) => h.name.toLowerCase() === 'subject')?.value || '(no subject)';
   const from = headers.find((h) => h.name.toLowerCase() === 'from')?.value || '';
@@ -284,17 +295,18 @@ async function ingestMessage(supa: any, access: string, msg: any, householdId: s
       path, new Blob([content], { type: 'text/plain' }),
       { contentType: 'text/plain', upsert: true },
     );
-    if (!error) {
-      await supa.from('family_documents').insert({
-        household_id: householdId,
-        storage_path: path,
-        file_name: `${subject}.txt`,
-        mime_type: 'text/plain',
-        size_bytes: content.length,
-        notes: `From gmail: ${from}`,
-      });
-      uploaded++;
-    }
+    if (error) throw new Error(`storage upload failed: ${error.message}`);
+    const { error: dbErr } = await supa.from('family_documents').insert({
+      household_id: householdId,
+      storage_path: path,
+      file_name: `${subject}.txt`,
+      mime_type: 'text/plain',
+      size_bytes: content.length,
+      notes: `From gmail: ${from}`,
+      created_by: createdBy,
+    });
+    if (dbErr) throw new Error(`family_documents insert failed: ${dbErr.message}`);
+    uploaded++;
   }
 
   // Save each attachment
@@ -308,17 +320,18 @@ async function ingestMessage(supa: any, access: string, msg: any, householdId: s
       path, new Blob([bytes], { type: att.mimeType || 'application/octet-stream' }),
       { contentType: att.mimeType || 'application/octet-stream', upsert: true },
     );
-    if (!error) {
-      await supa.from('family_documents').insert({
-        household_id: householdId,
-        storage_path: path,
-        file_name: att.filename,
-        mime_type: att.mimeType,
-        size_bytes: bytes.length,
-        notes: `From gmail: ${subject} (${from})`,
-      });
-      uploaded++;
-    }
+    if (error) throw new Error(`storage upload failed: ${error.message}`);
+    const { error: dbErr } = await supa.from('family_documents').insert({
+      household_id: householdId,
+      storage_path: path,
+      file_name: att.filename,
+      mime_type: att.mimeType,
+      size_bytes: bytes.length,
+      notes: `From gmail: ${subject} (${from})`,
+      created_by: createdBy,
+    });
+    if (dbErr) throw new Error(`family_documents insert failed: ${dbErr.message}`);
+    uploaded++;
   }
   return uploaded;
 }
