@@ -8,51 +8,449 @@
 <script>Auth.requireAuth();</script>
 
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Family Hub</title>
 
-<!-- FullCalendar (single self-contained bundle) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
 <style>
   :root {
-    --bg: #f4f4f0; --card: #fff; --border: #e3e3dd; --ink: #222; --muted: #666;
-    --school:  #1e6091; --medical: #a3376a; --travel:  #2b7a4b;
-    --vacation:#c26a1a; --sports:  #6a3aa0; --general: #555;
+    --sage-50: #f6f7f3; --sage-100: #e8ebe0; --sage-200: #d4dac5;
+    --sage-300: #b8c5a3; --sage-400: #98ab7e; --sage-500: #7a9061;
+    --sage-600: #5f734c; --sage-700: #4a5a3b; --sage-800: #3d4a32;
+    --cream: #ece8dd; --cream-2: #f5f2e9; --taupe: #c4b5a4;
+    --dusty-sage: #a4ac95; --mauve: #a88479; --dusty-rose: #9b7269;
+    --charcoal: #4a4d47; --ink: #2d2f2b;
+
+    --bg: var(--charcoal);
+    --card: var(--cream);
+    --card-inset: #e2ded1;
+    --border: rgba(196,181,164,.5);
+    --border-soft: rgba(196,181,164,.25);
+    --muted: #6a6d63;
+    --muted-2: #8a8d83;
+
+    --attn: #c39a51;              /* warm ochre, review-panel accent */
+    --attn-soft: #fbf4e4;
+    --attn-border: #d8ba7e;
+    --good: #5f734c;
+
+    --cat-school:   #5f734c;
+    --cat-medical:  #9b5f5a;
+    --cat-travel:   #5b7d94;
+    --cat-vacation: #c39a51;
+    --cat-sports:   #a88479;
+    --cat-general:  #7a7d76;
+
+    --radius:  14px;
+    --radius-lg: 20px;
+    --shadow: 0 2px 8px rgba(0,0,0,.15);
+    --shadow-lift: 0 8px 30px rgba(0,0,0,.35);
   }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-         background: var(--bg); color: var(--ink); margin: 0; }
-  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
-  h1 { font-size: 24px; margin: 0 0 4px; }
-  h2 { font-size: 17px; margin: 0 0 10px; }
-  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
-  .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-  @media (min-width: 900px) { .grid { grid-template-columns: 360px 1fr; } }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
-  label { display: block; font-size: 12px; color: #555; margin: 8px 0 3px; }
-  input, select, textarea { width: 100%; box-sizing: border-box; padding: 7px 9px; font-size: 14px;
-                            border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
-  textarea { min-height: 60px; resize: vertical; }
-  button { padding: 8px 14px; font-size: 14px; background: #06408d; color: #fff;
-           border: none; border-radius: 6px; cursor: pointer; }
-  button.ghost { background: #eee; color: #333; }
-  button.danger { background: #b03030; }
-  .row { display: flex; gap: 8px; }
-  .row > * { flex: 1; }
-  .msg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; }
-  .msg.ok  { background: #e6f4e6; color: #1d6b1d; }
-  .msg.err { background: #fbeaea; color: #8a1d1d; }
-  #calendar { min-height: 560px; }
-  .drop { border: 2px dashed #ccc; border-radius: 8px; padding: 18px; text-align: center;
-          color: #666; font-size: 13px; cursor: pointer; }
-  .drop.hover { border-color: #06408d; background: #f0f5fc; color: #06408d; }
-  .doc-row { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px; }
-  .doc-row a { color: #06408d; text-decoration: none; flex: 1; }
-  .doc-row time { color: #888; font-size: 12px; }
-  .cat-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px;
-              color: #fff; text-transform: uppercase; letter-spacing: 0.5px; }
-  .fc-event { cursor: pointer; }
-  #header-slot { }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'Karla', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  a { color: var(--sage-300); }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ============ Top nav ============ */
+  #header-slot {
+    background: var(--charcoal);
+    border-bottom: 1px solid rgba(196,181,164,.15);
+  }
+  #header-slot > div {
+    background: transparent !important;
+    color: var(--taupe) !important;
+    padding: 12px 20px !important;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  #header-slot a { color: var(--taupe) !important; }
+  #header-slot a:hover { color: var(--cream) !important; }
+  #header-slot #__auth_email { color: var(--taupe) !important; }
+  #header-slot #__auth_signout {
+    background: transparent; color: var(--taupe);
+    border: 1px solid rgba(196,181,164,.3);
+    border-radius: 6px; padding: 4px 10px;
+  }
+
+  main {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 24px 18px 80px;
+  }
+
+  /* ============ Header block ============ */
+  .page-head { margin: 8px 0 24px; text-align: center; }
+  .page-head h1 {
+    font-family: 'Crimson Pro', Georgia, serif;
+    font-weight: 300;
+    font-size: clamp(34px, 6vw, 46px);
+    letter-spacing: 1px;
+    margin: 0 0 4px;
+    color: var(--cream);
+  }
+  .page-head .sub { color: var(--taupe); font-size: 14px; max-width: 44ch; margin: 0 auto; }
+
+  /* ============ Review nudge card ============ */
+  .nudge {
+    background: linear-gradient(135deg, var(--attn), #b48947);
+    color: #fff;
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    display: flex; align-items: center; gap: 14px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    text-align: left;
+    text-decoration: none;
+  }
+  .nudge:hover { transform: translateY(-1px); box-shadow: var(--shadow-lift); }
+  .nudge .dot {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(255,255,255,.2); flex-shrink: 0;
+    display: grid; place-items: center;
+    font-size: 22px;
+  }
+  .nudge .body { flex: 1; min-width: 0; }
+  .nudge .body .count { font-weight: 700; font-size: 18px; }
+  .nudge .body .lead { font-size: 13px; opacity: .9; margin-top: 2px; }
+  .nudge .arrow { font-size: 20px; opacity: .8; }
+
+  /* ============ Primary action buttons ============ */
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .action {
+    background: var(--cream);
+    color: var(--ink);
+    border: none;
+    border-radius: var(--radius);
+    padding: 20px 14px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    box-shadow: var(--shadow);
+    font-size: 15px; font-weight: 600;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .action:hover, .action:active { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+  .action .ico {
+    width: 42px; height: 42px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--sage-100); color: var(--sage-700);
+  }
+  .action svg { width: 22px; height: 22px; }
+
+  /* ============ Section titles ============ */
+  h2.section {
+    font-family: 'Crimson Pro', serif;
+    font-weight: 400;
+    font-size: 22px;
+    letter-spacing: .5px;
+    color: var(--cream);
+    margin: 32px 0 12px;
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  h2.section .count { font-family: 'Karla', sans-serif; font-size: 13px; font-weight: 400; color: var(--taupe); }
+  h2.section .link {
+    margin-left: auto;
+    font-family: 'Karla', sans-serif;
+    font-size: 13px; font-weight: 500; color: var(--sage-300);
+    text-decoration: none;
+  }
+
+  /* ============ Upcoming list ============ */
+  .upcoming { display: flex; flex-direction: column; gap: 8px; }
+  .up-day {
+    background: var(--cream);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex; align-items: stretch; gap: 12px;
+    box-shadow: var(--shadow);
+    color: var(--ink);
+  }
+  .up-day .date {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 52px;
+    padding: 6px 8px;
+    background: var(--sage-100); color: var(--sage-700);
+    border-radius: 10px;
+    font-family: 'Crimson Pro', serif;
+    line-height: 1;
+  }
+  .up-day .date.today { background: var(--sage-600); color: var(--cream); }
+  .up-day .date .dow { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; margin-bottom: 3px; font-family: 'Karla', sans-serif; font-weight: 500; }
+  .up-day .date .d { font-size: 22px; font-weight: 600; }
+  .up-day .items { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .up-item {
+    display: flex; align-items: center; gap: 8px; padding: 4px 0;
+    border-bottom: 1px solid var(--border-soft);
+    cursor: pointer;
+  }
+  .up-item:last-child { border-bottom: none; }
+  .up-item .swatch { width: 4px; height: 28px; border-radius: 3px; flex-shrink: 0; }
+  .up-item .txt { flex: 1; min-width: 0; }
+  .up-item .txt .title { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .up-item .txt .meta { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .up-item .synced { color: var(--good); font-size: 12px; flex-shrink: 0; }
+  .up-empty { color: var(--taupe); font-style: italic; padding: 24px; text-align: center; background: rgba(255,255,255,.03); border-radius: var(--radius); }
+
+  /* ============ Full calendar (collapsible on mobile) ============ */
+  .cal-wrap {
+    background: var(--cream);
+    border-radius: var(--radius);
+    padding: 12px;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+  #calendar { min-height: 480px; --fc-border-color: var(--border); --fc-page-bg-color: var(--cream); }
+  .fc-theme-standard th, .fc-theme-standard td { border-color: var(--border-soft); }
+  .fc-col-header-cell-cushion, .fc-daygrid-day-number { color: var(--muted); text-decoration: none !important; font-family: 'Karla', sans-serif; }
+  .fc .fc-toolbar-title { font-family: 'Crimson Pro', serif; font-weight: 400; font-size: 20px !important; color: var(--sage-700); }
+  .fc .fc-button-primary { background: var(--sage-600) !important; border-color: var(--sage-600) !important; text-transform: capitalize; }
+  .fc .fc-button-primary:hover { background: var(--sage-700) !important; }
+  .fc-event { cursor: pointer; border: none !important; padding: 1px 4px; font-family: 'Karla', sans-serif; }
+  .fc-daygrid-day.fc-day-today { background: var(--sage-100) !important; }
+
+  details.collapsible {
+    background: var(--cream);
+    border-radius: var(--radius);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    padding: 0;
+    overflow: hidden;
+  }
+  details.collapsible > summary {
+    padding: 14px 18px;
+    font-family: 'Crimson Pro', serif; font-size: 18px;
+    color: var(--sage-700); cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    list-style: none;
+  }
+  details.collapsible > summary::-webkit-details-marker { display: none; }
+  details.collapsible > summary::after { content: '▾'; transition: transform .2s; }
+  details.collapsible[open] > summary::after { transform: rotate(180deg); }
+  details.collapsible > .body { padding: 0 12px 12px; }
+
+  /* ============ Docs list ============ */
+  .docs { display: flex; flex-direction: column; }
+  .doc-row {
+    display: grid; grid-template-columns: auto 1fr auto auto;
+    align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: var(--cream);
+    border-bottom: 1px solid var(--border-soft);
+    color: var(--ink);
+    font-size: 14px;
+  }
+  .doc-row:first-child { border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
+  .doc-row:last-child { border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius); border-bottom: none; }
+  .doc-icn {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--sage-100); color: var(--sage-700);
+    display: grid; place-items: center;
+  }
+  .doc-icn svg { width: 16px; height: 16px; }
+  .doc-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-name .from { color: var(--muted); font-size: 12px; display: block; }
+  .doc-date { color: var(--muted-2); font-size: 12px; white-space: nowrap; }
+  .doc-del { background: transparent; border: none; color: var(--muted-2); padding: 6px; font-size: 18px; }
+  .doc-del:hover { color: var(--dusty-rose); }
+  .docs-empty { color: var(--taupe); font-style: italic; padding: 24px; text-align: center; background: rgba(255,255,255,.03); border-radius: var(--radius); }
+
+  /* ============ Accounts ============ */
+  .accounts { display: flex; flex-direction: column; gap: 8px; }
+  .acct-row {
+    background: var(--cream);
+    color: var(--ink);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: var(--shadow);
+    font-size: 14px;
+  }
+  .acct-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+  .acct-row .email { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .acct-row .scope { color: var(--muted); font-size: 12px; }
+  .acct-add {
+    background: transparent;
+    color: var(--sage-300);
+    border: 1px dashed rgba(196,181,164,.4);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-size: 14px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .acct-add:hover { color: var(--cream); border-color: rgba(196,181,164,.7); }
+
+  /* ============ Bottom-sheet modal ============ */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    display: none; align-items: flex-end; justify-content: center;
+    z-index: 100; padding: 0;
+  }
+  .modal-backdrop.on { display: flex; }
+  @media (min-width: 720px) {
+    .modal-backdrop { align-items: center; padding: 20px; }
+  }
+  .modal {
+    background: var(--cream);
+    color: var(--ink);
+    width: 100%;
+    max-width: 520px;
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    padding: 20px 20px 32px;
+    box-shadow: 0 -8px 30px rgba(0,0,0,.4);
+  }
+  @media (min-width: 720px) { .modal { border-radius: var(--radius-lg); max-height: 88vh; } }
+
+  .modal .head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .modal h3 { margin: 0; font-family: 'Crimson Pro', serif; font-weight: 400; font-size: 22px; color: var(--sage-700); }
+  .modal .close {
+    background: transparent; border: none; font-size: 24px; color: var(--muted);
+    padding: 4px 10px;
+  }
+
+  /* ============ Form fields inside modal ============ */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; font-weight: 500; }
+  .field input, .field textarea, .field select {
+    width: 100%; padding: 12px 14px; font: inherit; font-size: 15px;
+    background: var(--cream-2);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .field textarea { min-height: 60px; resize: vertical; }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    outline: 2px solid var(--sage-500); outline-offset: 0px; border-color: var(--sage-500);
+  }
+  .field .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip {
+    background: var(--cream-2); border: 1px solid var(--border);
+    color: var(--muted); border-radius: 999px;
+    padding: 6px 12px; font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+  .chip:hover { color: var(--ink); }
+  .chip.on { background: var(--sage-600); border-color: var(--sage-600); color: var(--cream); }
+
+  .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+  @media (min-width: 480px) { .cat-grid { grid-template-columns: repeat(6, 1fr); } }
+  .cat-btn {
+    background: var(--cream-2); border: 2px solid transparent;
+    color: var(--ink); border-radius: 10px;
+    padding: 10px 4px; font-size: 12px; font-weight: 600;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .cat-btn .swatch { width: 20px; height: 20px; border-radius: 50%; }
+  .cat-btn.on { border-color: currentColor; background: #fff; }
+
+  .allday-row { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+  .allday-row input { width: 18px; height: 18px; margin: 0; accent-color: var(--sage-600); }
+
+  .modal .go {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px;
+  }
+  .btn-primary {
+    background: var(--sage-600); color: var(--cream);
+    border: none; border-radius: 10px; padding: 14px;
+    font-size: 15px; font-weight: 600;
+  }
+  .btn-primary:hover { background: var(--sage-700); }
+  .btn-primary:disabled { background: var(--taupe); }
+  .btn-ghost {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px;
+    font-size: 15px; font-weight: 500;
+  }
+  .msg { margin-top: 10px; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+  .msg.ok  { background: #e7efdd; color: var(--sage-700); }
+  .msg.err { background: #f2dede; color: var(--dusty-rose); }
+
+  /* ============ Upload drop zone ============ */
+  .drop {
+    border: 2px dashed var(--border);
+    background: var(--cream-2);
+    border-radius: 12px;
+    padding: 32px 18px;
+    text-align: center; color: var(--muted);
+    font-size: 14px; cursor: pointer;
+  }
+  .drop.hover { border-color: var(--sage-500); background: #f0f4ea; color: var(--sage-700); }
+  .drop svg { width: 32px; height: 32px; margin-bottom: 8px; opacity: .6; }
+  .drop b { display: block; color: var(--ink); font-size: 16px; margin-bottom: 4px; }
+
+  /* ============ Review modal ============ */
+  .prop {
+    background: var(--cream-2);
+    border: 1px solid var(--attn-border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .prop .row1 { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .prop .title { font-weight: 600; font-size: 15px; color: var(--ink); }
+  .prop .when { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+  .prop .notes { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .prop .src { color: var(--muted-2); font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .prop .actions {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px;
+  }
+  .prop .actions button {
+    font: inherit; font-size: 13px; padding: 8px; border-radius: 8px; border: 1px solid transparent;
+    font-weight: 600;
+  }
+  .prop .approve  { background: var(--sage-600); color: var(--cream); }
+  .prop .edit     { background: transparent; color: var(--ink); border-color: var(--border); }
+  .prop .reject   { background: transparent; color: var(--dusty-rose); border-color: transparent; }
+
+  /* ============ Category pill (for calendar chips + upcoming list) ============ */
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: #fff;
+  }
+  .pill.school   { background: var(--cat-school); }
+  .pill.medical  { background: var(--cat-medical); }
+  .pill.travel   { background: var(--cat-travel); }
+  .pill.vacation { background: var(--cat-vacation); }
+  .pill.sports   { background: var(--cat-sports); }
+  .pill.general  { background: var(--cat-general); }
+
+  /* ============ Desktop layout ============ */
+  @media (min-width: 900px) {
+    .above-fold { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: start; }
+    .above-fold .cal-wrap { min-height: 620px; }
+    details.collapsible[data-force-open-desktop] { padding: 0; }
+    details.collapsible[data-force-open-desktop] > summary { display: none; }
+    details.collapsible[data-force-open-desktop] > .body { padding: 12px; }
+  }
+
+  /* ============ Reduced motion ============ */
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -60,177 +458,621 @@
 <div id="header-slot"></div>
 
 <main>
-  <h1>Family Hub</h1>
-  <div class="sub" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-    <span>School, medical, travel, vacation, sports — everything on one calendar. Upload docs, forward-label emails in gmail as <b>family-hub</b>, or add events manually.</span>
-    <button id="connect-google" class="ghost" style="font-size:12px;padding:5px 10px;">Connect Google</button>
+  <div class="page-head">
+    <h1>Family Hub</h1>
+    <p class="sub">School, medical, travel, sports — one place. Upload photos, label emails <b>family-hub</b>, or add events yourself. Approved events sync to Google Calendar.</p>
   </div>
 
-  <!-- Proposed-events review panel (shows only when there's at least one) -->
-  <div id="review-panel" class="card" style="margin-bottom:16px;display:none;background:#fff9e6;border-color:#e4d99a;">
-    <h2 style="display:flex;align-items:center;gap:8px;">
-      🤖 AI-proposed events <span id="review-count" style="font-size:12px;color:#666;font-weight:normal;"></span>
-    </h2>
-    <div class="sub" style="margin:-4px 0 10px;">Claude read your uploads/emails and pulled these. Approve to push to Google Calendar, edit to tweak, reject to discard.</div>
-    <div id="review-list"></div>
-  </div>
-
-  <div class="grid">
-    <!-- Left column: forms -->
+  <div class="above-fold">
     <div>
-      <div class="card">
-        <h2>Add event</h2>
-        <form id="event-form">
-          <label>Category</label>
-          <select id="ev-category" required>
-            <option value="school">School</option>
-            <option value="medical">Medical</option>
-            <option value="travel">Travel / Flights</option>
-            <option value="vacation">Vacation</option>
-            <option value="sports">Sports / Activities</option>
-            <option value="general">General</option>
-          </select>
-          <label>Title</label>
-          <input id="ev-title" required placeholder="e.g. Soccer practice, Dentist, JFK→CUN flight">
-          <div class="row">
-            <div>
-              <label>Starts</label>
-              <input id="ev-starts" type="datetime-local" required>
-            </div>
-            <div>
-              <label>Ends (optional)</label>
-              <input id="ev-ends" type="datetime-local">
-            </div>
-          </div>
-          <label><input type="checkbox" id="ev-allday" style="width:auto;"> All day</label>
-          <label>Location</label>
-          <input id="ev-location" placeholder="Field 3 / Dr. Smith / JFK T5">
-          <label>Notes</label>
-          <textarea id="ev-notes" placeholder="Bring cleats. Confirmation: ABC123."></textarea>
-          <label>Attach a document (optional)</label>
-          <select id="ev-doc"><option value="">— none —</option></select>
-          <div style="margin-top:12px;display:flex;gap:8px;">
-            <button type="submit">Save event</button>
-            <button type="button" class="ghost" id="ev-reset">Reset</button>
-          </div>
-          <div id="ev-msg"></div>
-        </form>
+      <!-- Nudge (only shows if items waiting) -->
+      <a href="#" class="nudge" id="nudge" style="display:none;" onclick="event.preventDefault(); openReview();">
+        <div class="dot">🔔</div>
+        <div class="body">
+          <div class="count"><span id="nudge-count">0</span> waiting for you</div>
+          <div class="lead">from your uploads and labeled emails</div>
+        </div>
+        <div class="arrow">›</div>
+      </a>
+
+      <!-- Primary actions -->
+      <div class="actions">
+        <button class="action" onclick="openAdd()">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          Add event
+        </button>
+        <button class="action" onclick="openUpload()">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+          Upload photo
+        </button>
       </div>
 
-      <div class="card" style="margin-top:16px;">
-        <h2>Upload document</h2>
-        <div class="sub" style="margin:-4px 0 10px;">Scans, photos of teacher notes, itineraries, discharge papers. Stored privately in Supabase.</div>
-        <div class="drop" id="drop">Click or drop file here to upload</div>
-        <input type="file" id="file-input" style="display:none" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.heic,.webp">
-        <label style="margin-top:8px;">Category (optional)</label>
-        <select id="doc-category">
-          <option value="">—</option>
-          <option value="school">School</option>
-          <option value="medical">Medical</option>
-          <option value="travel">Travel</option>
-          <option value="vacation">Vacation</option>
-          <option value="sports">Sports</option>
-          <option value="general">General</option>
-        </select>
-        <label>Notes (optional)</label>
-        <input id="doc-notes" placeholder="Ms. Johnson — spring field trip form">
-        <div id="doc-msg"></div>
+      <!-- Upcoming this week -->
+      <h2 class="section">Upcoming <span class="count" id="upcoming-count">— this week</span></h2>
+      <div class="upcoming" id="upcoming"><div class="up-empty">Loading…</div></div>
+    </div>
 
-        <h2 style="margin-top:20px;">Recent documents</h2>
-        <div id="doc-list"><div class="sub">Loading…</div></div>
+    <!-- Full calendar (right column on desktop; collapsed on phone) -->
+    <details class="collapsible" data-force-open-desktop id="cal-collapse">
+      <summary>Full calendar <span style="font-size:12px;color:var(--muted);">tap to expand</span></summary>
+      <div class="body">
+        <div class="cal-wrap"><div id="calendar"></div></div>
+      </div>
+    </details>
+  </div>
+
+  <!-- Documents -->
+  <h2 class="section">Documents <span class="count" id="docs-count"></span></h2>
+  <div class="docs" id="docs"><div class="docs-empty">Loading…</div></div>
+
+  <!-- Connected accounts -->
+  <h2 class="section">Connected accounts <span class="count">gmail + calendar</span></h2>
+  <div class="accounts" id="accounts"><div class="acct-row" style="justify-content:center;color:var(--muted);">Loading…</div></div>
+</main>
+
+<!-- ============ Add Event modal ============ -->
+<div class="modal-backdrop" id="add-modal">
+  <div class="modal" role="dialog" aria-labelledby="add-title">
+    <div class="head">
+      <h3 id="add-title">New event</h3>
+      <button class="close" onclick="closeAdd()" aria-label="Close">×</button>
+    </div>
+
+    <div class="field">
+      <label>Category</label>
+      <div class="cat-grid" id="cat-picker">
+        <button type="button" class="cat-btn" data-cat="school"   style="color:var(--cat-school);"><span class="swatch" style="background:var(--cat-school);"></span>School</button>
+        <button type="button" class="cat-btn" data-cat="medical"  style="color:var(--cat-medical);"><span class="swatch" style="background:var(--cat-medical);"></span>Medical</button>
+        <button type="button" class="cat-btn" data-cat="travel"   style="color:var(--cat-travel);"><span class="swatch" style="background:var(--cat-travel);"></span>Travel</button>
+        <button type="button" class="cat-btn" data-cat="vacation" style="color:var(--cat-vacation);"><span class="swatch" style="background:var(--cat-vacation);"></span>Vacation</button>
+        <button type="button" class="cat-btn" data-cat="sports"   style="color:var(--cat-sports);"><span class="swatch" style="background:var(--cat-sports);"></span>Sports</button>
+        <button type="button" class="cat-btn" data-cat="general"  style="color:var(--cat-general);"><span class="swatch" style="background:var(--cat-general);"></span>General</button>
       </div>
     </div>
 
-    <!-- Right column: calendar -->
-    <div class="card">
-      <h2>Calendar</h2>
-      <div id="calendar"></div>
+    <div class="field">
+      <label>Title</label>
+      <input id="ev-title" placeholder="e.g. Soccer practice, Dentist" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Date</label>
+      <div class="chips">
+        <button type="button" class="chip" onclick="setDate('today')">Today</button>
+        <button type="button" class="chip" onclick="setDate('tomorrow')">Tomorrow</button>
+        <button type="button" class="chip" onclick="setDate('nextweek')">+ 1 week</button>
+      </div>
+      <input type="date" id="ev-date">
+    </div>
+
+    <div class="allday-row field" style="margin-bottom:8px;">
+      <input type="checkbox" id="ev-allday">
+      <label for="ev-allday" style="margin:0;text-transform:none;letter-spacing:0;color:var(--ink);font-size:14px;">All day</label>
+    </div>
+
+    <div class="field" id="time-block">
+      <label>Time</label>
+      <div class="row">
+        <input type="time" id="ev-start" step="900">
+        <input type="time" id="ev-end" step="900">
+      </div>
+      <div style="color:var(--muted);font-size:11px;margin-top:4px;">Start · end</div>
+    </div>
+
+    <div class="field">
+      <label>Location (optional)</label>
+      <input id="ev-loc" placeholder="Field 3 / Dr. Patel / JFK T5" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="ev-notes" placeholder="Bring cleats. Confirmation #ABC123."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Attach a document (optional)</label>
+      <select id="ev-doc"><option value="">— none —</option></select>
+    </div>
+
+    <div id="add-msg"></div>
+    <div class="go">
+      <button class="btn-ghost" onclick="closeAdd()">Cancel</button>
+      <button class="btn-primary" id="add-save" onclick="saveEvent()">Save event</button>
     </div>
   </div>
-</main>
+</div>
+
+<!-- ============ Upload modal ============ -->
+<div class="modal-backdrop" id="up-modal">
+  <div class="modal">
+    <div class="head">
+      <h3>Upload document</h3>
+      <button class="close" onclick="closeUpload()">×</button>
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 12px;">
+      Photos of teacher notes, appointment cards, itineraries, discharge papers. Claude reads them and proposes calendar events for your review.
+    </p>
+
+    <div class="drop" id="drop">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <b>Tap or drop file here</b>
+      Photos, PDFs — anything you'd hand to a scanner
+    </div>
+    <input type="file" id="file-input" style="display:none" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.heic,.webp">
+
+    <div class="field" style="margin-top:14px;">
+      <label>Category (optional pre-tag)</label>
+      <select id="up-cat">
+        <option value="">— let AI decide —</option>
+        <option value="school">School</option>
+        <option value="medical">Medical</option>
+        <option value="travel">Travel</option>
+        <option value="vacation">Vacation</option>
+        <option value="sports">Sports</option>
+        <option value="general">General</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Notes (optional)</label>
+      <input id="up-notes" placeholder="Ms. Johnson — spring field trip form">
+    </div>
+
+    <div id="up-msg"></div>
+    <div class="go">
+      <button class="btn-ghost" onclick="closeUpload()">Done</button>
+      <button class="btn-primary" onclick="document.getElementById('file-input').click()">Choose file</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Review modal ============ -->
+<div class="modal-backdrop" id="rev-modal">
+  <div class="modal">
+    <div class="head">
+      <h3>Proposed events</h3>
+      <button class="close" onclick="closeReview()">×</button>
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 12px;">
+      Claude read your uploads and labeled emails. Approve to add to the calendar (and push to Google Calendar), edit to tweak, reject to discard.
+    </p>
+    <div id="rev-list"></div>
+  </div>
+</div>
 
 <script>
 (async function () {
+  await Auth.ready;
   Auth.renderHeader('header-slot');
 
   const supa = Auth.client;
   const CAT_COLORS = {
-    school:'#1e6091', medical:'#a3376a', travel:'#2b7a4b',
-    vacation:'#c26a1a', sports:'#6a3aa0', general:'#555',
+    school:'#5f734c', medical:'#9b5f5a', travel:'#5b7d94',
+    vacation:'#c39a51', sports:'#a88479', general:'#7a7d76',
+  };
+  const CAT_LABELS = {
+    school:'School', medical:'Medical', travel:'Travel',
+    vacation:'Vacation', sports:'Sports', general:'General',
   };
 
-  // ============ Calendar ============
-  const calendarEl = document.getElementById('calendar');
-  const calendar = new FullCalendar.Calendar(calendarEl, {
+  // ================================================================
+  // Calendar (FullCalendar) — approved events only
+  // ================================================================
+  const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
     initialView: window.innerWidth < 700 ? 'listWeek' : 'dayGridMonth',
-    height: 620,
+    height: 560,
     headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
-    events: fetchEvents,
+    events: fetchCalEvents,
     eventClick: (info) => {
       if (confirm(`Delete "${info.event.title}"?`)) deleteEvent(info.event.id);
     },
   });
-  calendar.render();
+  // Render only when calendar section is opened (mobile) or immediately (desktop)
+  const calCollapse = document.getElementById('cal-collapse');
+  const renderCalendar = () => { calendar.render(); calendar.updateSize(); };
+  if (window.innerWidth >= 900) renderCalendar();
+  calCollapse.addEventListener('toggle', () => { if (calCollapse.open) renderCalendar(); });
 
-  async function fetchEvents(fetchInfo, successCallback, failureCallback) {
-    // Calendar only shows approved (or manually-entered, which are approved by default) events
+  async function fetchCalEvents(fetchInfo, ok, fail) {
     const { data, error } = await supa.from('family_events')
       .select('id,category,title,starts_at,ends_at,all_day,location,notes,google_event_id')
-      .in('status', ['approved'])
+      .eq('status', 'approved')
       .gte('starts_at', fetchInfo.startStr)
       .lt('starts_at', fetchInfo.endStr)
       .order('starts_at');
-    if (error) { console.error(error); failureCallback(error); return; }
-    successCallback(data.map(e => ({
+    if (error) { console.error(error); fail(error); return; }
+    ok(data.map(e => ({
       id: e.id,
-      title: (e.google_event_id ? '✓ ' : '') + `[${e.category}] ${e.title}`,
+      title: (e.google_event_id ? '✓ ' : '') + e.title,
       start: e.starts_at, end: e.ends_at || undefined,
       allDay: e.all_day, color: CAT_COLORS[e.category] || CAT_COLORS.general,
-      extendedProps: { location: e.location, notes: e.notes },
+      extendedProps: { category: e.category, location: e.location, notes: e.notes },
     })));
   }
 
   async function deleteEvent(id) {
     const { error } = await supa.from('family_events').delete().eq('id', id);
     if (error) return alert(error.message);
+    await Promise.all([loadUpcoming(), loadProposed()]);
     calendar.refetchEvents();
   }
 
-  // ============ Add-event form ============
-  const evForm = document.getElementById('event-form');
-  const evMsg  = document.getElementById('ev-msg');
+  // ================================================================
+  // Upcoming this week
+  // ================================================================
+  async function loadUpcoming() {
+    const now = new Date();
+    const end = new Date(now.getTime() + 7 * 86400 * 1000);
+    const { data, error } = await supa.from('family_events')
+      .select('id,category,title,starts_at,ends_at,all_day,location,google_event_id')
+      .eq('status', 'approved')
+      .gte('starts_at', now.toISOString())
+      .lt('starts_at', end.toISOString())
+      .order('starts_at');
+    const el = document.getElementById('upcoming');
+    if (error) { el.innerHTML = `<div class="up-empty">Couldn't load: ${error.message}</div>`; return; }
+    if (!data.length) { el.innerHTML = `<div class="up-empty">Nothing scheduled this week. Enjoy the quiet.</div>`; return; }
 
-  evForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    evMsg.innerHTML = '';
+    // Group by day
+    const days = new Map();
+    for (const ev of data) {
+      const d = new Date(ev.starts_at);
+      const key = d.toISOString().slice(0, 10);
+      if (!days.has(key)) days.set(key, { date: d, items: [] });
+      days.get(key).items.push(ev);
+    }
+
+    const todayKey = new Date().toISOString().slice(0, 10);
+    el.innerHTML = '';
+    for (const [key, { date, items }] of days) {
+      const dow = date.toLocaleDateString(undefined, { weekday: 'short' });
+      const dnum = date.getDate();
+      const day = document.createElement('div');
+      day.className = 'up-day';
+      day.innerHTML = `
+        <div class="date ${key === todayKey ? 'today' : ''}">
+          <span class="dow">${dow}</span><span class="d">${dnum}</span>
+        </div>
+        <div class="items"></div>
+      `;
+      const itemsEl = day.querySelector('.items');
+      for (const ev of items) {
+        const timeStr = ev.all_day ? 'All day'
+          : new Date(ev.starts_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const meta = [timeStr, ev.location, CAT_LABELS[ev.category]].filter(Boolean).join(' · ');
+        const item = document.createElement('div');
+        item.className = 'up-item';
+        item.innerHTML = `
+          <span class="swatch" style="background:${CAT_COLORS[ev.category]};"></span>
+          <div class="txt">
+            <div class="title">${escapeHtml(ev.title)}</div>
+            <div class="meta">${escapeHtml(meta)}</div>
+          </div>
+          ${ev.google_event_id ? '<span class="synced" title="Synced to Google Calendar">✓</span>' : ''}
+        `;
+        item.addEventListener('click', () => {
+          if (confirm(`Delete "${ev.title}"?`)) deleteEvent(ev.id);
+        });
+        itemsEl.appendChild(item);
+      }
+      el.appendChild(day);
+    }
+    document.getElementById('upcoming-count').textContent = `— ${data.length} event${data.length === 1 ? '' : 's'}`;
+  }
+
+  // ================================================================
+  // Proposed events — nudge + review modal
+  // ================================================================
+  async function loadProposed() {
+    const { data, error } = await supa.from('family_events')
+      .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id,source')
+      .eq('status', 'proposed').order('starts_at');
+    if (error) { console.error(error); return; }
+    const nudge = document.getElementById('nudge');
+    if (!data.length) { nudge.style.display = 'none'; }
+    else {
+      nudge.style.display = 'flex';
+      document.getElementById('nudge-count').textContent = data.length;
+    }
+
+    // If review modal is open, re-render its list
+    const list = document.getElementById('rev-list');
+    if (!list) return;
+    if (!data.length) { list.innerHTML = `<div class="up-empty" style="background:transparent;">All caught up.</div>`; return; }
+    list.innerHTML = '';
+    for (const ev of data) {
+      const conf = ev.ai_confidence != null ? Math.round(ev.ai_confidence * 100) + '%' : '—';
+      const when = ev.all_day
+        ? new Date(ev.starts_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+        : new Date(ev.starts_at).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      const card = document.createElement('div');
+      card.className = 'prop';
+      card.innerHTML = `
+        <div class="row1">
+          <span class="pill ${ev.category}">${CAT_LABELS[ev.category] || ev.category}</span>
+          <span class="title">${escapeHtml(ev.title)}</span>
+        </div>
+        <div class="when">${escapeHtml(when)}${ev.location ? ' · ' + escapeHtml(ev.location) : ''}</div>
+        ${ev.notes ? `<div class="notes">${escapeHtml(ev.notes)}</div>` : ''}
+        <div class="src">from ${ev.source || 'ai'} · confidence ${conf}</div>
+        <div class="actions">
+          <button class="approve" data-id="${ev.id}" data-act="approve">Approve</button>
+          <button class="edit"    data-id="${ev.id}" data-act="edit">Edit</button>
+          <button class="reject"  data-id="${ev.id}" data-act="reject">Reject</button>
+        </div>
+      `;
+      list.appendChild(card);
+    }
+    list.querySelectorAll('button[data-act]').forEach(b => {
+      b.addEventListener('click', async () => {
+        const id = b.dataset.id, act = b.dataset.act;
+        if (act === 'approve') {
+          await supa.from('family_events').update({ status: 'approved' }).eq('id', id);
+        } else if (act === 'reject') {
+          await supa.from('family_events').update({ status: 'rejected' }).eq('id', id);
+        } else if (act === 'edit') {
+          const { data: ev } = await supa.from('family_events').select('*').eq('id', id).single();
+          if (ev) {
+            closeReview();
+            openAdd();
+            prefillFromEvent(ev);
+            await supa.from('family_events').update({ status: 'rejected' }).eq('id', id);
+          }
+        }
+        await Promise.all([loadUpcoming(), loadProposed()]);
+        calendar.refetchEvents();
+      });
+    });
+  }
+
+  // ================================================================
+  // Documents
+  // ================================================================
+  async function loadDocs() {
+    const { data, error } = await supa.from('family_documents')
+      .select('id,file_name,storage_path,category,notes,created_at,mime_type')
+      .order('created_at', { ascending: false }).limit(20);
+    const el = document.getElementById('docs');
+    const sel = document.getElementById('ev-doc');
+    sel.innerHTML = '<option value="">— none —</option>';
+    if (error) { el.innerHTML = `<div class="docs-empty">${error.message}</div>`; return; }
+    if (!data.length) { el.innerHTML = `<div class="docs-empty">No documents yet. Upload one above.</div>`; return; }
+    el.innerHTML = '';
+    document.getElementById('docs-count').textContent = `— ${data.length}`;
+    for (const d of data) {
+      const { data: signed } = await supa.storage.from('family-docs').createSignedUrl(d.storage_path, 3600);
+      const isPdf = (d.mime_type || '').includes('pdf');
+      const iconSvg = isPdf
+        ? '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M5 6h6M5 9h6M5 12h4"/></svg>'
+        : '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><circle cx="6" cy="6" r="1"/><path d="M14 10l-3-3-6 6"/></svg>';
+      const row = document.createElement('div');
+      row.className = 'doc-row';
+      row.innerHTML = `
+        <div class="doc-icn">${iconSvg}</div>
+        <div class="doc-name">
+          <a href="${signed?.signedUrl || '#'}" target="_blank" rel="noopener" style="color:var(--ink);text-decoration:none;font-weight:500;">${escapeHtml(d.file_name)}</a>
+          <span class="from">${escapeHtml(d.notes || '')}</span>
+        </div>
+        <span class="doc-date">${new Date(d.created_at).toLocaleDateString()}</span>
+        <button class="doc-del" data-id="${d.id}" data-path="${d.storage_path}" title="Delete">×</button>
+      `;
+      el.appendChild(row);
+      const opt = document.createElement('option');
+      opt.value = d.id; opt.textContent = d.file_name;
+      sel.appendChild(opt);
+    }
+    el.querySelectorAll('.doc-del').forEach(b => {
+      b.addEventListener('click', async () => {
+        if (!confirm('Delete this document?')) return;
+        await supa.storage.from('family-docs').remove([b.dataset.path]);
+        await supa.from('family_documents').delete().eq('id', b.dataset.id);
+        loadDocs();
+      });
+    });
+  }
+
+  // ================================================================
+  // Connected accounts
+  // ================================================================
+  async function loadAccounts() {
+    // oauth_tokens has RLS locking down normal reads; we surface a summary
+    // via a public view family_accounts if it exists, else fall back to a
+    // best-effort direct read and gracefully degrade.
+    const el = document.getElementById('accounts');
+    let accounts = [];
+    let err = null;
+    const v = await supa.from('family_accounts').select('account_email,scopes,updated_at').order('updated_at', { ascending: false });
+    if (!v.error) accounts = v.data || [];
+    else err = v.error;
+
+    el.innerHTML = '';
+    if (err && (err.code === '42P01' || err.message?.includes('does not exist'))) {
+      el.innerHTML = `
+        <div class="acct-row" style="color:var(--muted);font-size:13px;">
+          Account listing view not installed yet. Click <b>+ Add another gmail</b> to connect a new account, or run migration 003.
+        </div>`;
+    } else if (!accounts.length) {
+      el.innerHTML = `<div class="acct-row" style="color:var(--muted);">No accounts connected. Click below to connect one.</div>`;
+    } else {
+      for (const a of accounts) {
+        const row = document.createElement('div');
+        row.className = 'acct-row';
+        row.innerHTML = `
+          <span class="dot"></span>
+          <span class="email">${escapeHtml(a.account_email)}</span>
+          <span class="scope">gmail + calendar</span>
+        `;
+        el.appendChild(row);
+      }
+    }
+    // Add button
+    const add = document.createElement('button');
+    add.className = 'acct-add';
+    add.innerHTML = '+ Add another gmail';
+    add.onclick = () => startGoogleOAuth();
+    el.appendChild(add);
+  }
+
+  function startGoogleOAuth() {
+    const clientId = window.__GOOGLE_CLIENT_ID__;
+    if (!clientId) { alert('Google OAuth not configured. Set window.__GOOGLE_CLIENT_ID__ in assets/config.js.'); return; }
+    const redirectUri = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}oauth-callback.html`;
+    const scope = [
+      'https://www.googleapis.com/auth/gmail.modify',
+      'https://www.googleapis.com/auth/calendar.events',
+      'openid', 'email',
+    ].join(' ');
+    const params = new URLSearchParams({
+      client_id: clientId, redirect_uri: redirectUri,
+      response_type: 'code', scope,
+      access_type: 'offline', prompt: 'consent',
+    });
+    location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  }
+
+  // ================================================================
+  // ADD-EVENT modal
+  // ================================================================
+  const addModal = document.getElementById('add-modal');
+  window.openAdd = () => {
+    addModal.classList.add('on');
+    resetAddForm();
+    // default to School + today at next round half-hour
+    pickCategory('general');
+    setDate('today');
+    setDefaultTimes();
+    document.getElementById('ev-title').focus();
+  };
+  window.closeAdd = () => addModal.classList.remove('on');
+  addModal.addEventListener('click', (e) => { if (e.target === addModal) closeAdd(); });
+
+  let currentCat = 'general';
+  function pickCategory(cat) {
+    currentCat = cat;
+    document.querySelectorAll('#cat-picker .cat-btn').forEach(b => {
+      b.classList.toggle('on', b.dataset.cat === cat);
+    });
+  }
+  document.querySelectorAll('#cat-picker .cat-btn').forEach(b => {
+    b.addEventListener('click', () => pickCategory(b.dataset.cat));
+  });
+
+  window.setDate = (which) => {
+    const d = new Date();
+    if (which === 'tomorrow') d.setDate(d.getDate() + 1);
+    if (which === 'nextweek') d.setDate(d.getDate() + 7);
+    document.getElementById('ev-date').value = d.toISOString().slice(0, 10);
+  };
+
+  function setDefaultTimes() {
+    const now = new Date();
+    // round up to next half hour
+    const m = now.getMinutes();
+    const add = m < 30 ? (30 - m) : (60 - m);
+    now.setMinutes(now.getMinutes() + add);
+    now.setSeconds(0);
+    document.getElementById('ev-start').value = hhmm(now);
+    document.getElementById('ev-end').value   = hhmm(new Date(now.getTime() + 60 * 60 * 1000));
+  }
+  function hhmm(d) { return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0'); }
+
+  // All-day toggle hides time block
+  document.getElementById('ev-allday').addEventListener('change', (e) => {
+    document.getElementById('time-block').style.display = e.target.checked ? 'none' : '';
+  });
+  // Auto-fill end when start changes
+  document.getElementById('ev-start').addEventListener('change', (e) => {
+    const [h, m] = e.target.value.split(':').map(Number);
+    if (isNaN(h)) return;
+    const end = document.getElementById('ev-end');
+    const [eh, em] = (end.value || '').split(':').map(Number);
+    if (!end.value || eh * 60 + em <= h * 60 + m) {
+      const d = new Date();
+      d.setHours(h, m); d.setTime(d.getTime() + 60 * 60 * 1000);
+      end.value = hhmm(d);
+    }
+  });
+
+  function resetAddForm() {
+    ['ev-title','ev-loc','ev-notes','ev-doc'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ev-allday').checked = false;
+    document.getElementById('time-block').style.display = '';
+    document.getElementById('add-msg').innerHTML = '';
+  }
+
+  function prefillFromEvent(ev) {
+    pickCategory(ev.category || 'general');
+    document.getElementById('ev-title').value = ev.title || '';
+    if (ev.starts_at) {
+      const d = new Date(ev.starts_at);
+      document.getElementById('ev-date').value = d.toISOString().slice(0,10);
+      document.getElementById('ev-start').value = hhmm(d);
+    }
+    if (ev.ends_at) {
+      document.getElementById('ev-end').value = hhmm(new Date(ev.ends_at));
+    }
+    document.getElementById('ev-allday').checked = !!ev.all_day;
+    document.getElementById('time-block').style.display = ev.all_day ? 'none' : '';
+    document.getElementById('ev-loc').value = ev.location || '';
+    document.getElementById('ev-notes').value = ev.notes || '';
+    document.getElementById('ev-doc').value = ev.document_id || '';
+  }
+
+  window.saveEvent = async () => {
+    const msg = document.getElementById('add-msg'); msg.innerHTML = '';
+    const btn = document.getElementById('add-save'); btn.disabled = true; btn.textContent = 'Saving…';
+
+    const title = document.getElementById('ev-title').value.trim();
+    const date  = document.getElementById('ev-date').value;
+    if (!title || !date) {
+      msg.innerHTML = `<div class="msg err">Title and date are required.</div>`;
+      btn.disabled = false; btn.textContent = 'Save event'; return;
+    }
+    const allDay = document.getElementById('ev-allday').checked;
+    let starts_at, ends_at;
+    if (allDay) {
+      starts_at = new Date(date + 'T00:00:00').toISOString();
+      ends_at = null;
+    } else {
+      const start = document.getElementById('ev-start').value || '09:00';
+      const end   = document.getElementById('ev-end').value;
+      starts_at = new Date(`${date}T${start}`).toISOString();
+      ends_at   = end ? new Date(`${date}T${end}`).toISOString() : null;
+    }
     const payload = {
-      category:   document.getElementById('ev-category').value,
-      title:      document.getElementById('ev-title').value.trim(),
-      starts_at:  new Date(document.getElementById('ev-starts').value).toISOString(),
-      ends_at:    document.getElementById('ev-ends').value
-                    ? new Date(document.getElementById('ev-ends').value).toISOString() : null,
-      all_day:    document.getElementById('ev-allday').checked,
-      location:   document.getElementById('ev-location').value.trim() || null,
-      notes:      document.getElementById('ev-notes').value.trim() || null,
+      category: currentCat,
+      title,
+      starts_at, ends_at, all_day: allDay,
+      location: document.getElementById('ev-loc').value.trim() || null,
+      notes:    document.getElementById('ev-notes').value.trim() || null,
       document_id: document.getElementById('ev-doc').value || null,
     };
     const { error } = await supa.from('family_events').insert(payload);
-    if (error) { evMsg.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
-    evMsg.innerHTML = `<div class="msg ok">Saved.</div>`;
-    evForm.reset();
+    if (error) {
+      msg.innerHTML = `<div class="msg err">${escapeHtml(error.message)}</div>`;
+      btn.disabled = false; btn.textContent = 'Save event'; return;
+    }
+    msg.innerHTML = `<div class="msg ok">Saved. Pushing to Google Calendar…</div>`;
+    btn.textContent = 'Save event'; btn.disabled = false;
+    setTimeout(() => { closeAdd(); }, 700);
+    await Promise.all([loadUpcoming(), loadProposed()]);
     calendar.refetchEvents();
-  });
+  };
 
-  document.getElementById('ev-reset').addEventListener('click', () => {
-    evForm.reset();
-    evMsg.innerHTML = '';
-  });
+  // ================================================================
+  // UPLOAD modal
+  // ================================================================
+  const upModal = document.getElementById('up-modal');
+  window.openUpload = () => {
+    upModal.classList.add('on');
+    document.getElementById('up-notes').value = '';
+    document.getElementById('up-cat').value = '';
+    document.getElementById('up-msg').innerHTML = '';
+  };
+  window.closeUpload = () => upModal.classList.remove('on');
+  upModal.addEventListener('click', (e) => { if (e.target === upModal) closeUpload(); });
 
-  // ============ Upload doc ============
   const drop = document.getElementById('drop');
   const fileInput = document.getElementById('file-input');
-  const docMsg = document.getElementById('doc-msg');
-
   drop.addEventListener('click', () => fileInput.click());
   drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('hover'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('hover'));
@@ -243,190 +1085,58 @@
   });
 
   async function uploadFile(file) {
-    docMsg.innerHTML = `<div class="msg">Uploading ${file.name}…</div>`;
+    const msg = document.getElementById('up-msg');
+    msg.innerHTML = `<div class="msg">Uploading ${escapeHtml(file.name)}…</div>`;
     const year = new Date().getFullYear();
     const safeName = file.name.replace(/[^a-z0-9._-]/gi, '_');
     const path = `${year}/${Date.now()}-${safeName}`;
-
-    const up = await supa.storage.from('family-docs').upload(path, file, {
-      cacheControl: '3600', upsert: false, contentType: file.type || undefined,
-    });
-    if (up.error) { docMsg.innerHTML = `<div class="msg err">${up.error.message}</div>`; return; }
-
+    const up = await supa.storage.from('family-docs').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
+    if (up.error) { msg.innerHTML = `<div class="msg err">${escapeHtml(up.error.message)}</div>`; return; }
     const meta = {
       storage_path: path,
       file_name: file.name,
       mime_type: file.type || null,
       size_bytes: file.size,
-      category:  document.getElementById('doc-category').value || null,
-      notes:     document.getElementById('doc-notes').value.trim() || null,
+      category: document.getElementById('up-cat').value || null,
+      notes:    document.getElementById('up-notes').value.trim() || null,
     };
     const { error } = await supa.from('family_documents').insert(meta);
-    if (error) { docMsg.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
-
-    docMsg.innerHTML = `<div class="msg ok">Saved ${file.name}.</div>`;
+    if (error) { msg.innerHTML = `<div class="msg err">${escapeHtml(error.message)}</div>`; return; }
+    msg.innerHTML = `<div class="msg ok">Uploaded. Claude is reading it — check back in ~15 seconds.</div>`;
     fileInput.value = '';
-    document.getElementById('doc-notes').value = '';
-    await loadDocs();
+    loadDocs();
   }
 
-  // ============ Docs list ============
-  const docListEl = document.getElementById('doc-list');
-  const evDocSelect = document.getElementById('ev-doc');
+  // ================================================================
+  // REVIEW modal
+  // ================================================================
+  const revModal = document.getElementById('rev-modal');
+  window.openReview = () => { revModal.classList.add('on'); loadProposed(); };
+  window.closeReview = () => revModal.classList.remove('on');
+  revModal.addEventListener('click', (e) => { if (e.target === revModal) closeReview(); });
 
-  async function loadDocs() {
-    const { data, error } = await supa.from('family_documents')
-      .select('id,file_name,storage_path,category,notes,created_at')
-      .order('created_at', { ascending: false })
-      .limit(30);
-    if (error) { docListEl.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
-    if (!data.length) { docListEl.innerHTML = `<div class="sub">No documents yet.</div>`; return; }
-
-    docListEl.innerHTML = '';
-    evDocSelect.innerHTML = '<option value="">— none —</option>';
-
-    for (const d of data) {
-      // Short-lived signed URL for viewing
-      const { data: signed } = await supa.storage.from('family-docs')
-        .createSignedUrl(d.storage_path, 3600);
-      const row = document.createElement('div');
-      row.className = 'doc-row';
-      const cat = d.category
-        ? `<span class="cat-pill" style="background:${CAT_COLORS[d.category] || CAT_COLORS.general}">${d.category}</span>`
-        : '';
-      row.innerHTML = `
-        ${cat}
-        <a href="${signed?.signedUrl || '#'}" target="_blank" rel="noopener">${d.file_name}</a>
-        <time>${new Date(d.created_at).toLocaleDateString()}</time>
-        <button class="ghost" data-id="${d.id}" data-path="${d.storage_path}" style="padding:2px 8px;font-size:12px;">🗑</button>
-      `;
-      docListEl.appendChild(row);
-
-      const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.textContent = d.file_name;
-      evDocSelect.appendChild(opt);
-    }
-
-    docListEl.querySelectorAll('button[data-id]').forEach(b => {
-      b.addEventListener('click', async () => {
-        if (!confirm(`Delete ${b.parentElement.querySelector('a').textContent}?`)) return;
-        await supa.storage.from('family-docs').remove([b.dataset.path]);
-        await supa.from('family_documents').delete().eq('id', b.dataset.id);
-        await loadDocs();
-      });
-    });
-  }
-
-  await loadDocs();
-
-  // ============ Proposed events review queue ============
-  const reviewPanel = document.getElementById('review-panel');
-  const reviewList  = document.getElementById('review-list');
-  const reviewCount = document.getElementById('review-count');
-
-  async function loadProposed() {
-    const { data, error } = await supa.from('family_events')
-      .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id')
-      .eq('status', 'proposed')
-      .order('starts_at');
-    if (error) { console.error(error); return; }
-    if (!data.length) { reviewPanel.style.display = 'none'; return; }
-
-    reviewPanel.style.display = 'block';
-    reviewCount.textContent = `(${data.length})`;
-    reviewList.innerHTML = '';
-
-    for (const ev of data) {
-      const conf = ev.ai_confidence != null ? Math.round(ev.ai_confidence * 100) + '%' : '—';
-      const when = ev.all_day
-        ? new Date(ev.starts_at).toLocaleDateString()
-        : new Date(ev.starts_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
-      const row = document.createElement('div');
-      row.style = 'padding:10px;margin:8px 0;background:#fff;border:1px solid #e4d99a;border-radius:6px;';
-      row.innerHTML = `
-        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:220px;">
-            <div><span class="cat-pill" style="background:${CAT_COLORS[ev.category] || CAT_COLORS.general}">${ev.category}</span>
-                 <b style="margin-left:6px;">${ev.title}</b></div>
-            <div style="color:#666;font-size:13px;margin-top:2px;">${when}${ev.location ? ' · ' + ev.location : ''}</div>
-            ${ev.notes ? `<div style="color:#555;font-size:12px;margin-top:4px;">${ev.notes}</div>` : ''}
-            ${ev.ai_notes ? `<div style="color:#888;font-size:11px;margin-top:4px;font-style:italic;">${ev.ai_notes}</div>` : ''}
-            <div style="color:#888;font-size:11px;margin-top:4px;">AI confidence: ${conf}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px;">
-            <button data-id="${ev.id}" data-act="approve">Approve</button>
-            <button data-id="${ev.id}" data-act="edit" class="ghost">Edit</button>
-            <button data-id="${ev.id}" data-act="reject" class="ghost" style="color:#8a1d1d;">Reject</button>
-          </div>
-        </div>`;
-      reviewList.appendChild(row);
-    }
-
-    reviewList.querySelectorAll('button[data-act]').forEach(b => {
-      b.addEventListener('click', () => reviewAction(b.dataset.id, b.dataset.act));
-    });
-  }
-
-  async function reviewAction(id, act) {
-    if (act === 'approve') {
-      const { error } = await supa.from('family_events').update({ status: 'approved' }).eq('id', id);
-      if (error) return alert(error.message);
-    } else if (act === 'reject') {
-      const { error } = await supa.from('family_events').update({ status: 'rejected' }).eq('id', id);
-      if (error) return alert(error.message);
-    } else if (act === 'edit') {
-      const { data: ev } = await supa.from('family_events').select('*').eq('id', id).single();
-      if (!ev) return;
-      // Pre-fill the form and scroll to it; on save it inserts a fresh manual event and rejects the proposed one
-      document.getElementById('ev-category').value = ev.category;
-      document.getElementById('ev-title').value = ev.title;
-      document.getElementById('ev-starts').value = ev.starts_at ? ev.starts_at.slice(0, 16) : '';
-      document.getElementById('ev-ends').value = ev.ends_at ? ev.ends_at.slice(0, 16) : '';
-      document.getElementById('ev-allday').checked = !!ev.all_day;
-      document.getElementById('ev-location').value = ev.location || '';
-      document.getElementById('ev-notes').value = ev.notes || '';
-      document.getElementById('ev-doc').value = ev.document_id || '';
-      // Mark the proposed one as rejected so it disappears from queue
-      await supa.from('family_events').update({ status: 'rejected' }).eq('id', id);
-      document.getElementById('event-form').scrollIntoView({ behavior: 'smooth' });
-    }
-    await loadProposed();
-    calendar.refetchEvents();
-  }
-
-  await loadProposed();
-
-  // Realtime subscription — new AI-proposed events pop into the panel without a refresh
-  supa.channel('family-events-proposed')
+  // ================================================================
+  // Realtime updates
+  // ================================================================
+  supa.channel('family-updates')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'family_events' }, () => {
-      loadProposed(); calendar.refetchEvents();
+      loadUpcoming(); loadProposed(); calendar.refetchEvents();
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'family_documents' }, () => loadDocs())
     .subscribe();
 
-  // ============ Connect Google button ============
-  document.getElementById('connect-google').addEventListener('click', () => {
-    const clientId = window.__GOOGLE_CLIENT_ID__;
-    if (!clientId) {
-      alert("Google OAuth client not configured yet.\n\nSet window.__GOOGLE_CLIENT_ID__ in assets/config.js.");
-      return;
-    }
-    const redirectUri = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}oauth-callback.html`;
-    const scope = [
-      'https://www.googleapis.com/auth/gmail.modify',       // read + modify labels
-      'https://www.googleapis.com/auth/calendar.events',    // create/update calendar events
-      'openid', 'email',
-    ].join(' ');
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope,
-      access_type: 'offline',      // needed to get a refresh_token
-      prompt: 'consent',           // force refresh_token even on re-auth
-    });
-    location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  });
+  // ================================================================
+  // Initial load
+  // ================================================================
+  await Promise.all([loadUpcoming(), loadProposed(), loadDocs(), loadAccounts()]);
+
+  // ================================================================
+  // Utility
+  // ================================================================
+  function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
 })();
 </script>
 </body>

@@ -2,73 +2,98 @@
 // Supabase Edge Function: gmail-ingest
 //
 // Trigger: cron (Supabase → Database → Cron Jobs → schedule every 15 min).
-// Reads messages from the shared gmail that carry the "family-hub" label,
-// uploads any attachments + the message body as documents into the family-docs
-// bucket, then removes the label so the message isn't re-processed.
-// The DB trigger on family_documents will fire ai-extract for each new file.
+// For EVERY Google account connected in oauth_tokens: reads messages carrying
+// the "family-hub" label, uploads attachments + the message body as documents
+// into the family-docs bucket, then removes the label so the message isn't
+// re-processed. The DB trigger on family_documents fires ai-extract per file.
 //
 // Env / secrets:
 //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-//   GOOGLE_ACCOUNT_EMAIL       — the shared gmail
 //   GMAIL_LABEL_NAME           — optional, default "family-hub"
 
 import { getFreshAccessToken, getServiceClient } from '../_shared/google.ts';
 
-const ACCOUNT_EMAIL = Deno.env.get('GOOGLE_ACCOUNT_EMAIL')!;
 const LABEL_NAME = Deno.env.get('GMAIL_LABEL_NAME') || 'family-hub';
 
 Deno.serve(async (_req) => {
   try {
     const supa = getServiceClient();
-    const access = await getFreshAccessToken(supa, ACCOUNT_EMAIL);
 
-    // Resolve label id (cached in gmail_state)
-    let { data: state } = await supa.from('gmail_state')
-      .select('*').eq('account_email', ACCOUNT_EMAIL).maybeSingle();
-    let labelId = state?.label_id;
-    if (!labelId) {
-      const labels = await gApi<{ labels: any[] }>(access, '/gmail/v1/users/me/labels');
-      const lbl = labels.labels.find((l) => l.name === LABEL_NAME);
-      if (!lbl) throw new Error(`gmail label "${LABEL_NAME}" not found — create it first`);
-      labelId = lbl.id;
-      await supa.from('gmail_state').upsert({
-        account_email: ACCOUNT_EMAIL, label_id: labelId,
-      }, { onConflict: 'account_email' });
-    }
+    const { data: accounts, error: acctErr } = await supa
+      .from('oauth_tokens').select('account_email').eq('provider', 'google');
+    if (acctErr) return json({ error: `accounts query failed: ${acctErr.message}` }, 500);
+    if (!accounts?.length) return json({ ok: true, note: 'no connected accounts' });
 
-    // List messages carrying the label
-    const list = await gApi<{ messages?: {id: string}[] }>(
-      access, `/gmail/v1/users/me/messages?labelIds=${labelId}&maxResults=25`,
-    );
-    const messageIds = (list.messages || []).map((m) => m.id);
-
-    const results: any[] = [];
-    for (const id of messageIds) {
+    const perAccount: any[] = [];
+    for (const { account_email } of accounts) {
       try {
-        const msg = await gApi<any>(access, `/gmail/v1/users/me/messages/${id}?format=full`);
-        const uploaded = await ingestMessage(supa, access, msg);
-        // Remove the label so it doesn't get re-processed
-        await gApi(access, `/gmail/v1/users/me/messages/${id}/modify`, {
-          method: 'POST',
-          body: JSON.stringify({ removeLabelIds: [labelId] }),
-        });
-        results.push({ id, uploaded });
+        const r = await pollAccount(supa, account_email);
+        perAccount.push({ account_email, ...r });
       } catch (e) {
-        results.push({ id, error: e.message });
+        perAccount.push({ account_email, error: e.message });
+        await supa.from('gmail_state').upsert({
+          account_email,
+          last_error: e.message,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'account_email' });
       }
     }
-
-    await supa.from('gmail_state').update({
-      last_polled_at: new Date().toISOString(),
-      last_error: null,
-      updated_at: new Date().toISOString(),
-    }).eq('account_email', ACCOUNT_EMAIL);
-
-    return json({ ok: true, processed: results.length, results });
+    return json({ ok: true, accounts: perAccount });
   } catch (e) {
     return json({ error: `unhandled: ${e.message}` }, 500);
   }
 });
+
+async function pollAccount(supa: any, accountEmail: string) {
+  const access = await getFreshAccessToken(supa, accountEmail);
+
+  // Resolve label id (cached in gmail_state)
+  const { data: state } = await supa.from('gmail_state')
+    .select('*').eq('account_email', accountEmail).maybeSingle();
+  let labelId = state?.label_id;
+  if (!labelId) {
+    const labels = await gApi<{ labels: any[] }>(access, '/gmail/v1/users/me/labels');
+    const lbl = labels.labels.find((l) => l.name === LABEL_NAME);
+    if (!lbl) {
+      // Not an error: this account just hasn't made the label (yet)
+      return { skipped: true, reason: `label "${LABEL_NAME}" not found in this account` };
+    }
+    labelId = lbl.id;
+    await supa.from('gmail_state').upsert({
+      account_email: accountEmail, label_id: labelId,
+    }, { onConflict: 'account_email' });
+  }
+
+  const list = await gApi<{ messages?: {id: string}[] }>(
+    access, `/gmail/v1/users/me/messages?labelIds=${labelId}&maxResults=25`,
+  );
+  const messageIds = (list.messages || []).map((m) => m.id);
+
+  const results: any[] = [];
+  for (const id of messageIds) {
+    try {
+      const msg = await gApi<any>(access, `/gmail/v1/users/me/messages/${id}?format=full`);
+      const uploaded = await ingestMessage(supa, access, msg);
+      await gApi(access, `/gmail/v1/users/me/messages/${id}/modify`, {
+        method: 'POST',
+        body: JSON.stringify({ removeLabelIds: [labelId] }),
+      });
+      results.push({ id, uploaded });
+    } catch (e) {
+      results.push({ id, error: e.message });
+    }
+  }
+
+  await supa.from('gmail_state').upsert({
+    account_email: accountEmail,
+    label_id: labelId,
+    last_polled_at: new Date().toISOString(),
+    last_error: null,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'account_email' });
+
+  return { processed: results.length, results };
+}
 
 async function ingestMessage(supa: any, access: string, msg: any): Promise<number> {
   const headers: any[] = msg.payload?.headers || [];
