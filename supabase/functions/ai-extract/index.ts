@@ -23,15 +23,15 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supa = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
-const EXTRACTION_PROMPT = `You are extracting calendar events from a photo/scan of a school note, itinerary, doctor letter, sports schedule, or similar family document.
+const EXTRACTION_PROMPT = `You are extracting calendar events from a photo/scan of a school note, daycare notice, itinerary, doctor letter, sports schedule, or similar family document.
 
 Return ONLY a JSON object with this exact shape (no prose, no code fences):
 
 {
   "events": [
     {
-      "title": "short human-readable title, e.g. 'Soccer practice', 'Dentist appointment', 'JFK→CUN'",
-      "category": "school|medical|travel|vacation|sports|general",
+      "title": "short human-readable title, e.g. 'Soccer practice', 'Dentist appointment', 'Daycare CLOSED — Labor Day'",
+      "category": "school|daycare|medical|travel|vacation|sports|general",
       "starts_at": "ISO8601 datetime in America/New_York timezone, e.g. 2026-09-14T16:00:00-04:00",
       "ends_at": "ISO8601 datetime OR null if unknown",
       "all_day": true/false,
@@ -47,6 +47,15 @@ Rules:
 - If a date is given without a year, assume the next occurrence from today.
 - If a time is given without a date, DO NOT emit an event; put it in the summary instead.
 - Multi-day items (vacations, tournaments): one event with all_day=true and both starts_at/ends_at set.
+- ROUTINE MEALS ARE NOT EVENTS. Daycare/school menus listing breakfast, lunch, snack, or dinner
+  for each day are informational — emit ZERO events for them, no matter how many dated meal
+  entries appear. Summarize the menu in document_summary instead (e.g. "September menu for
+  Bright Beginnings Daycare"). The same goes for recurring routine schedules like daily nap
+  times or standing pickup times.
+- What DOES count as an event on a menu or daycare/school calendar: closure days
+  ("CLOSED — Labor Day"), holidays, early dismissals, field trips, picture days, parent
+  meetings, deadlines — the exceptions, not the routine. Categorize daycare items as
+  "daycare" and school-age school items as "school".
 - Return {"events": [], "document_summary": "..."} if nothing extractable.
 - confidence < 0.5 for anything you're guessing.`;
 

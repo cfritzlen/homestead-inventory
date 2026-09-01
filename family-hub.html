@@ -39,6 +39,7 @@
     --good: #5f734c;
 
     --cat-school:   #5f734c;
+    --cat-daycare:  #7e6a92;
     --cat-medical:  #9b5f5a;
     --cat-travel:   #5b7d94;
     --cat-vacation: #c39a51;
@@ -356,7 +357,7 @@
   .chip.on { background: var(--sage-600); border-color: var(--sage-600); color: var(--cream); }
 
   .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
-  @media (min-width: 480px) { .cat-grid { grid-template-columns: repeat(6, 1fr); } }
+  @media (min-width: 480px) { .cat-grid { grid-template-columns: repeat(4, 1fr); } }
   .cat-btn {
     background: var(--cream-2); border: 2px solid transparent;
     color: var(--ink); border-radius: 10px;
@@ -432,6 +433,7 @@
     color: #fff;
   }
   .pill.school   { background: var(--cat-school); }
+  .pill.daycare  { background: var(--cat-daycare); }
   .pill.medical  { background: var(--cat-medical); }
   .pill.travel   { background: var(--cat-travel); }
   .pill.vacation { background: var(--cat-vacation); }
@@ -505,6 +507,16 @@
   <h2 class="section">Documents <span class="count" id="docs-count"></span></h2>
   <div class="docs" id="docs"><div class="docs-empty">Loading…</div></div>
 
+  <!-- Google Calendar sync settings -->
+  <h2 class="section">Google Calendar sync <span class="count">which categories push</span></h2>
+  <div class="card" style="background:var(--cream);color:var(--ink);border:none;box-shadow:var(--shadow);border-radius:var(--radius);padding:14px 16px;">
+    <p style="color:var(--muted);font-size:13px;margin:0 0 10px;">
+      Toggled-off categories still show here in the hub — they just never touch your Google Calendar. Daycare is off by default so menus and routine notices stay out of your calendar.
+    </p>
+    <div class="chips" id="sync-toggles" style="margin:0;"></div>
+    <div id="sync-msg"></div>
+  </div>
+
   <!-- Connected accounts -->
   <h2 class="section">Connected accounts <span class="count">gmail + calendar</span></h2>
   <div class="accounts" id="accounts"><div class="acct-row" style="justify-content:center;color:var(--muted);">Loading…</div></div>
@@ -522,6 +534,7 @@
       <label>Category</label>
       <div class="cat-grid" id="cat-picker">
         <button type="button" class="cat-btn" data-cat="school"   style="color:var(--cat-school);"><span class="swatch" style="background:var(--cat-school);"></span>School</button>
+        <button type="button" class="cat-btn" data-cat="daycare"  style="color:var(--cat-daycare);"><span class="swatch" style="background:var(--cat-daycare);"></span>Daycare</button>
         <button type="button" class="cat-btn" data-cat="medical"  style="color:var(--cat-medical);"><span class="swatch" style="background:var(--cat-medical);"></span>Medical</button>
         <button type="button" class="cat-btn" data-cat="travel"   style="color:var(--cat-travel);"><span class="swatch" style="background:var(--cat-travel);"></span>Travel</button>
         <button type="button" class="cat-btn" data-cat="vacation" style="color:var(--cat-vacation);"><span class="swatch" style="background:var(--cat-vacation);"></span>Vacation</button>
@@ -605,6 +618,7 @@
       <select id="up-cat">
         <option value="">— let AI decide —</option>
         <option value="school">School</option>
+        <option value="daycare">Daycare</option>
         <option value="medical">Medical</option>
         <option value="travel">Travel</option>
         <option value="vacation">Vacation</option>
@@ -694,10 +708,11 @@
   let HH = null;  // { household_id, name }
   async function resolveHousehold() {
     const { data } = await supa.from('household_members')
-      .select('household_id, households(name)')
+      .select('household_id, households(name, settings)')
       .limit(1).maybeSingle();
     if (data) {
-      HH = { id: data.household_id, name: data.households?.name || 'Family' };
+      HH = { id: data.household_id, name: data.households?.name || 'Family',
+             settings: data.households?.settings || {} };
       return true;
     }
     return false;
@@ -744,11 +759,11 @@
   // Personalize the header
   document.querySelector('.page-head h1').textContent = HH.name;
   const CAT_COLORS = {
-    school:'#5f734c', medical:'#9b5f5a', travel:'#5b7d94',
+    school:'#5f734c', daycare:'#7e6a92', medical:'#9b5f5a', travel:'#5b7d94',
     vacation:'#c39a51', sports:'#a88479', general:'#7a7d76',
   };
   const CAT_LABELS = {
-    school:'School', medical:'Medical', travel:'Travel',
+    school:'School', daycare:'Daycare', medical:'Medical', travel:'Travel',
     vacation:'Vacation', sports:'Sports', general:'General',
   };
 
@@ -1015,6 +1030,44 @@
     inv.onclick = () => openInvite();
     el.appendChild(inv);
   }
+
+  // ================================================================
+  // Google Calendar sync toggles
+  // ================================================================
+  const DEFAULT_SYNC = ['school', 'medical', 'travel', 'vacation', 'sports', 'general'];  // daycare opt-in
+  function currentSync() {
+    return Array.isArray(HH.settings?.sync_categories) ? HH.settings.sync_categories : DEFAULT_SYNC.slice();
+  }
+  function renderSyncToggles() {
+    const wrap = document.getElementById('sync-toggles');
+    const sync = currentSync();
+    wrap.innerHTML = '';
+    for (const cat of Object.keys(CAT_LABELS)) {
+      const on = sync.includes(cat);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (on ? ' on' : '');
+      if (on) b.style.background = CAT_COLORS[cat];
+      if (on) b.style.borderColor = CAT_COLORS[cat];
+      b.textContent = (on ? '✓ ' : '') + CAT_LABELS[cat];
+      b.addEventListener('click', () => toggleSync(cat));
+      wrap.appendChild(b);
+    }
+  }
+  async function toggleSync(cat) {
+    const sync = currentSync();
+    const idx = sync.indexOf(cat);
+    if (idx >= 0) sync.splice(idx, 1); else sync.push(cat);
+    const newSettings = { ...(HH.settings || {}), sync_categories: sync };
+    const { error } = await supa.from('households')
+      .update({ settings: newSettings }).eq('id', HH.id);
+    const msg = document.getElementById('sync-msg');
+    if (error) { msg.innerHTML = `<div class="msg err">${escapeHtml(error.message)}</div>`; return; }
+    HH.settings = newSettings;
+    msg.innerHTML = '';
+    renderSyncToggles();
+  }
+  renderSyncToggles();
 
   // ================================================================
   // Invite flow

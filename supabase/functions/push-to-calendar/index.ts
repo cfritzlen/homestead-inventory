@@ -29,6 +29,20 @@ Deno.serve(async (req) => {
     if (evErr || !ev) return json({ error: `event not found: ${evErr?.message}` }, 404);
     if (ev.google_event_id) return json({ skipped: true, reason: 'already synced' });
 
+    // Per-category sync toggles. When the household hasn't chosen, everything
+    // syncs EXCEPT daycare (daycare is opt-in — menus and routine notices
+    // shouldn't clutter the family calendar).
+    const DEFAULT_SYNC = ['school', 'medical', 'travel', 'vacation', 'sports', 'general'];
+    if (ev.household_id) {
+      const { data: hh } = await supa
+        .from('households').select('settings').eq('id', ev.household_id).maybeSingle();
+      const sync = Array.isArray(hh?.settings?.sync_categories)
+        ? hh.settings.sync_categories : DEFAULT_SYNC;
+      if (!sync.includes(ev.category)) {
+        return json({ skipped: true, reason: `category "${ev.category}" is off for Google Calendar sync` });
+      }
+    }
+
     // Which account's calendar? The event's household's designated target,
     // falling back to the legacy env var for pre-household deployments.
     let accountEmail = FALLBACK_ACCOUNT;
