@@ -20,27 +20,35 @@ Deno.serve(async (req) => {
   try {
     const supa = getServiceClient();
 
-    // Two calling modes:
-    //   Cron (service role): scan every connected account, incremental window.
+    // Three calling modes:
+    //   Cron, empty body (service role): every connected account, label pass +
+    //   incremental auto-scan for opted-in households.
+    //   Cron, hours_back in body (service role): every connected account,
+    //   forced deep scan of that window ("daily catch-up").
     //   Signed-in user ("Scan now" button): scope to their household, explicit
     //   days_back window, bigger message budget.
     let body: any = {};
     try { body = await req.json(); } catch (_) { /* cron sends empty body */ }
 
-    let manual: { householdId: string; daysBack: number; userId: string } | null = null;
+    // Window in hours: days_back (Scan-now button) or hours_back (daily cron)
+    const hoursBack = Math.min(Math.max(
+      Number(body.hours_back) || (Number(body.days_back) || 0) * 24, 0), 30 * 24);
+
+    let manual: { householdId: string; hoursBack: number; userId: string } | null = null;
+    let forcedHours = 0;
     const authToken = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-    if (body.days_back && authToken) {
-      const { data: caller } = await supa.auth.getUser(authToken);
-      if (caller?.user) {
-        const { data: membership } = await supa
-          .from('household_members').select('household_id')
-          .eq('user_id', caller.user.id).limit(1).maybeSingle();
-        if (!membership) return json({ error: 'no household' }, 403);
-        manual = {
-          householdId: membership.household_id,
-          daysBack: Math.min(Math.max(Number(body.days_back) || 2, 1), 30),
-          userId: caller.user.id,
-        };
+    if (hoursBack && authToken) {
+      if (authToken === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
+        forcedHours = hoursBack;  // scheduled deep scan, all accounts
+      } else {
+        const { data: caller } = await supa.auth.getUser(authToken);
+        if (caller?.user) {
+          const { data: membership } = await supa
+            .from('household_members').select('household_id')
+            .eq('user_id', caller.user.id).limit(1).maybeSingle();
+          if (!membership) return json({ error: 'no household' }, 403);
+          manual = { householdId: membership.household_id, hoursBack, userId: caller.user.id };
+        }
       }
     }
 
@@ -55,7 +63,7 @@ Deno.serve(async (req) => {
     const perAccount: any[] = [];
     for (const { account_email, household_id } of accounts) {
       try {
-        const r = await pollAccount(supa, account_email, household_id, manual?.daysBack, manual?.userId);
+        const r = await pollAccount(supa, account_email, household_id, manual?.hoursBack || forcedHours, manual?.userId);
         perAccount.push({ account_email, ...r });
       } catch (e) {
         perAccount.push({ account_email, error: e.message });
@@ -72,7 +80,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function pollAccount(supa: any, accountEmail: string, householdId: string, manualDaysBack?: number, manualUserId?: string) {
+async function pollAccount(supa: any, accountEmail: string, householdId: string, forceScanHours?: number, manualUserId?: string) {
   const access = await getFreshAccessToken(supa, accountEmail);
 
   // family_documents.created_by is NOT NULL and defaults to auth.uid(), which
@@ -126,11 +134,12 @@ async function pollAccount(supa: any, accountEmail: string, householdId: string,
   }
 
   // ---- Pass 2: inbox scan ----
-  // Manual ("Scan now"): always runs, explicit window, bigger budget.
-  // Cron: only when the household opted into auto-scan; incremental window.
+  // Forced ("Scan now" button or daily deep-scan cron): always runs,
+  // explicit window, bigger budget.
+  // 15-min cron: only when the household opted into auto-scan; incremental window.
   let scanResult: any = { skipped: true, reason: 'auto-scan off' };
-  if (manualDaysBack) {
-    const since = new Date(Date.now() - manualDaysBack * 24 * 3600 * 1000).toISOString();
+  if (forceScanHours) {
+    const since = new Date(Date.now() - forceScanHours * 3600 * 1000).toISOString();
     scanResult = await autoScan(supa, access, accountEmail, householdId, createdBy, since, 100);
   } else {
     const { data: hh } = await supa
@@ -183,26 +192,40 @@ async function autoScan(
       const subject = headers.find((h) => h.name.toLowerCase() === 'subject')?.value || '';
       const from = headers.find((h) => h.name.toLowerCase() === 'from')?.value || '';
       const body = extractBodyText(msg.payload).slice(0, 8000);
-      if (!body && !subject) { results.push({ id, skipped: 'empty' }); continue; }
+      const attNames = collectAttachments(msg.payload).map((a) => a.filename);
+      if (!body && !subject && !attNames.length) { results.push({ id, skipped: 'empty' }); continue; }
 
-      const worth = await triage(ANTHROPIC_API_KEY, subject, from, body);
-      if (!worth) { results.push({ id, triage: 'no events' }); continue; }
+      const worth = await triage(ANTHROPIC_API_KEY, subject, from, body, attNames);
+      console.log(`[scan] ${accountEmail}: ${worth ? 'INGEST' : 'skip'} "${subject.slice(0, 80)}" (${from.slice(0, 60)})${attNames.length ? ` [attachments: ${attNames.join(', ').slice(0, 120)}]` : ''}`);
+      if (!worth) {
+        results.push({ id, triage: 'no events' });
+        await logScan(supa, householdId, accountEmail, id, subject, from, attNames, 'skipped', 'no events or to-dos found');
+        continue;
+      }
 
       const uploaded = await ingestMessage(supa, access, msg, householdId, createdBy);
       results.push({ id, triage: 'has events', uploaded });
+      await logScan(supa, householdId, accountEmail, id, subject, from, attNames, 'ingested', `saved ${uploaded} file(s) — proposals coming`);
     } catch (e) {
       results.push({ id, error: e.message });
+      await logScan(supa, householdId, accountEmail, id, null, null, [], 'error', e.message);
     }
   }
+
+  // Keep the activity feed table small
+  await supa.from('scan_activity').delete()
+    .lt('created_at', new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString());
 
   await supa.from('gmail_state')
     .update({ last_scan_at: scanStartedAt })
     .eq('account_email', accountEmail);
 
+  const kept = results.filter((r) => r.triage === 'has events').length;
+  console.log(`[scan] ${accountEmail}: checked ${results.length} email(s), ingested ${kept}`);
   return { scanned: results.length, results };
 }
 
-async function triage(apiKey: string, subject: string, from: string, body: string): Promise<boolean> {
+async function triage(apiKey: string, subject: string, from: string, body: string, attNames: string[] = []): Promise<boolean> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -216,10 +239,13 @@ async function triage(apiKey: string, subject: string, from: string, body: strin
       messages: [{
         role: 'user',
         content:
-`Does this email contain concrete, dated family-calendar events (appointments, school/daycare closures or activities, sports schedules, flights/reservations, deadlines)? Routine newsletters, receipts, promotions, and undated chatter do NOT count.
+`Does this email contain concrete, dated family-calendar events (appointments, school/daycare closures or activities, sports schedules, flights/reservations, deadlines) OR action items the family must handle (a form to fill out or sign, a payment to make or send such as rent or school fees, an RSVP, something to bring, return, submit, or renew)? Routine newsletters, receipts for completed purchases, promotions, and undated chatter do NOT count.
+
+IMPORTANT: attachments count too. If the email carries an attachment that likely holds a schedule or events — a school/daycare calendar, activity schedule, itinerary, or similar (judge by the attachment name and the email context) — answer YES even if the email text itself has no dates.
 
 From: ${from}
 Subject: ${subject}
+Attachments: ${attNames.length ? attNames.join(', ') : '(none)'}
 
 ${body}
 
@@ -230,6 +256,23 @@ Answer with exactly one word: YES or NO.`,
   if (!res.ok) return false;  // triage failure → don't ingest, don't error the run
   const data = await res.json();
   return /YES/i.test(data.content?.[0]?.text || '');
+}
+
+// Record one scan decision for the in-app activity feed. Never breaks the scan.
+async function logScan(
+  supa: any, householdId: string, accountEmail: string, gmailMsgId: string,
+  subject: string | null, sender: string | null, attNames: string[], decision: string, detail: string,
+) {
+  try {
+    await supa.from('scan_activity').insert({
+      household_id: householdId,
+      account_email: accountEmail,
+      gmail_msg_id: gmailMsgId,
+      subject, sender,
+      attachments: attNames.length ? attNames.join(', ') : null,
+      decision, detail,
+    });
+  } catch (_) { /* best-effort */ }
 }
 
 async function ingestMessage(supa: any, access: string, msg: any, householdId: string, createdBy: string): Promise<number> {
