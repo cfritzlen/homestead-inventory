@@ -20,14 +20,14 @@ Deno.serve(async (_req) => {
     const supa = getServiceClient();
 
     const { data: accounts, error: acctErr } = await supa
-      .from('oauth_tokens').select('account_email').eq('provider', 'google');
+      .from('oauth_tokens').select('account_email,household_id').eq('provider', 'google');
     if (acctErr) return json({ error: `accounts query failed: ${acctErr.message}` }, 500);
     if (!accounts?.length) return json({ ok: true, note: 'no connected accounts' });
 
     const perAccount: any[] = [];
-    for (const { account_email } of accounts) {
+    for (const { account_email, household_id } of accounts) {
       try {
-        const r = await pollAccount(supa, account_email);
+        const r = await pollAccount(supa, account_email, household_id);
         perAccount.push({ account_email, ...r });
       } catch (e) {
         perAccount.push({ account_email, error: e.message });
@@ -44,7 +44,7 @@ Deno.serve(async (_req) => {
   }
 });
 
-async function pollAccount(supa: any, accountEmail: string) {
+async function pollAccount(supa: any, accountEmail: string, householdId: string) {
   const access = await getFreshAccessToken(supa, accountEmail);
 
   // Resolve label id (cached in gmail_state)
@@ -73,7 +73,7 @@ async function pollAccount(supa: any, accountEmail: string) {
   for (const id of messageIds) {
     try {
       const msg = await gApi<any>(access, `/gmail/v1/users/me/messages/${id}?format=full`);
-      const uploaded = await ingestMessage(supa, access, msg);
+      const uploaded = await ingestMessage(supa, access, msg, householdId);
       await gApi(access, `/gmail/v1/users/me/messages/${id}/modify`, {
         method: 'POST',
         body: JSON.stringify({ removeLabelIds: [labelId] }),
@@ -95,7 +95,7 @@ async function pollAccount(supa: any, accountEmail: string) {
   return { processed: results.length, results };
 }
 
-async function ingestMessage(supa: any, access: string, msg: any): Promise<number> {
+async function ingestMessage(supa: any, access: string, msg: any, householdId: string): Promise<number> {
   const headers: any[] = msg.payload?.headers || [];
   const subject = headers.find((h) => h.name.toLowerCase() === 'subject')?.value || '(no subject)';
   const from = headers.find((h) => h.name.toLowerCase() === 'from')?.value || '';
@@ -109,7 +109,7 @@ async function ingestMessage(supa: any, access: string, msg: any): Promise<numbe
 
   // Save the email body itself as a "document" if there's meaningful text
   if (bodyText && bodyText.trim().length > 40) {
-    const path = `${year}/gmail-${msg.id}-body.txt`;
+    const path = `${householdId}/${year}/gmail-${msg.id}-body.txt`;
     const content = `Subject: ${subject}\nFrom: ${from}\nDate: ${date}\n\n${bodyText}`;
     const { error } = await supa.storage.from('family-docs').upload(
       path, new Blob([content], { type: 'text/plain' }),
@@ -117,6 +117,7 @@ async function ingestMessage(supa: any, access: string, msg: any): Promise<numbe
     );
     if (!error) {
       await supa.from('family_documents').insert({
+        household_id: householdId,
         storage_path: path,
         file_name: `${subject}.txt`,
         mime_type: 'text/plain',
@@ -133,13 +134,14 @@ async function ingestMessage(supa: any, access: string, msg: any): Promise<numbe
       `/gmail/v1/users/me/messages/${msg.id}/attachments/${att.attachmentId}`);
     const bytes = base64UrlToBytes(attData.data);
     const safeName = (att.filename || 'attachment').replace(/[^a-z0-9._-]/gi, '_');
-    const path = `${year}/gmail-${msg.id}-${safeName}`;
+    const path = `${householdId}/${year}/gmail-${msg.id}-${safeName}`;
     const { error } = await supa.storage.from('family-docs').upload(
       path, new Blob([bytes], { type: att.mimeType || 'application/octet-stream' }),
       { contentType: att.mimeType || 'application/octet-stream', upsert: true },
     );
     if (!error) {
       await supa.from('family_documents').insert({
+        household_id: householdId,
         storage_path: path,
         file_name: att.filename,
         mime_type: att.mimeType,

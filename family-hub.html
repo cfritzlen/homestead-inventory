@@ -625,6 +625,48 @@
   </div>
 </div>
 
+<!-- ============ Onboarding modal (no household yet) ============ -->
+<div class="modal-backdrop" id="onboard-modal">
+  <div class="modal">
+    <div class="head"><h3>Welcome!</h3></div>
+    <div id="onboard-body">
+      <p style="color:var(--muted);font-size:14px;">Checking your invite…</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Invite modal ============ -->
+<div class="modal-backdrop" id="inv-modal">
+  <div class="modal">
+    <div class="head">
+      <h3>Invite someone</h3>
+      <button class="close" onclick="closeInvite()">×</button>
+    </div>
+    <div class="field">
+      <label>Their email</label>
+      <input id="inv-email" type="email" placeholder="them@gmail.com" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>What do they get?</label>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;gap:10px;align-items:flex-start;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink);cursor:pointer;">
+          <input type="radio" name="inv-mode" value="join" checked style="width:auto;margin-top:3px;accent-color:var(--sage-600);">
+          <span><b>Join my family</b><br><span style="color:var(--muted);font-size:12px;">They see and edit the same calendar, docs, and events as you. For a spouse or co-parent.</span></span>
+        </label>
+        <label style="display:flex;gap:10px;align-items:flex-start;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink);cursor:pointer;">
+          <input type="radio" name="inv-mode" value="own" style="width:auto;margin-top:3px;accent-color:var(--sage-600);">
+          <span><b>Their own family</b><br><span style="color:var(--muted);font-size:12px;">A separate, private space — they can't see your stuff and you can't see theirs. For a sister, friend, anyone.</span></span>
+        </label>
+      </div>
+    </div>
+    <div id="inv-msg"></div>
+    <div class="go">
+      <button class="btn-ghost" onclick="closeInvite()">Cancel</button>
+      <button class="btn-primary" id="inv-send" onclick="sendInvite()">Send invite</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ Review modal ============ -->
 <div class="modal-backdrop" id="rev-modal">
   <div class="modal">
@@ -645,6 +687,62 @@
   Auth.renderHeader('header-slot');
 
   const supa = Auth.client;
+
+  // ================================================================
+  // Household resolution + onboarding
+  // ================================================================
+  let HH = null;  // { household_id, name }
+  async function resolveHousehold() {
+    const { data } = await supa.from('household_members')
+      .select('household_id, households(name)')
+      .limit(1).maybeSingle();
+    if (data) {
+      HH = { id: data.household_id, name: data.households?.name || 'Family' };
+      return true;
+    }
+    return false;
+  }
+
+  if (!(await resolveHousehold())) {
+    // Try consuming a join-invite
+    await supa.rpc('accept_invites').catch(() => {});
+    if (!(await resolveHousehold())) {
+      // Maybe they hold an own-household invite → let them name it
+      const onboard = document.getElementById('onboard-modal');
+      const body = document.getElementById('onboard-body');
+      onboard.classList.add('on');
+      const { data: invites } = await supa.from('household_invites')
+        .select('id, household_id').is('accepted_at', null);
+      const hasOwnInvite = (invites || []).some(i => i.household_id === null);
+      if (hasOwnInvite) {
+        body.innerHTML = `
+          <p style="color:var(--muted);font-size:14px;">You've been invited to set up your own family space. Give it a name:</p>
+          <div class="field"><input id="hh-name" placeholder="e.g. The Smiths" autocomplete="off"></div>
+          <div id="hh-msg"></div>
+          <button class="btn-primary" style="width:100%;" id="hh-create">Create my family</button>`;
+        document.getElementById('hh-create').addEventListener('click', async () => {
+          const name = document.getElementById('hh-name').value.trim();
+          if (!name) return;
+          const { error } = await supa.rpc('create_household', { p_name: name });
+          if (error) {
+            document.getElementById('hh-msg').innerHTML = `<div class="msg err">${error.message}</div>`;
+            return;
+          }
+          location.reload();
+        });
+      } else {
+        body.innerHTML = `
+          <p style="color:var(--muted);font-size:14px;">
+            Your account isn't part of a family yet, and there's no invite waiting for
+            <b>${(await Auth.getUser())?.email || 'your email'}</b>.
+            Ask whoever runs this app to send you an invite from their Family Hub, then reload.
+          </p>`;
+      }
+      return; // stop page init until household exists
+    }
+  }
+  // Personalize the header
+  document.querySelector('.page-head h1').textContent = HH.name;
   const CAT_COLORS = {
     school:'#5f734c', medical:'#9b5f5a', travel:'#5b7d94',
     vacation:'#c39a51', sports:'#a88479', general:'#7a7d76',
@@ -904,13 +1002,60 @@
         el.appendChild(row);
       }
     }
-    // Add button
+    // Add buttons
     const add = document.createElement('button');
     add.className = 'acct-add';
     add.innerHTML = '+ Add another gmail';
     add.onclick = () => startGoogleOAuth();
     el.appendChild(add);
+
+    const inv = document.createElement('button');
+    inv.className = 'acct-add';
+    inv.innerHTML = '+ Invite someone';
+    inv.onclick = () => openInvite();
+    el.appendChild(inv);
   }
+
+  // ================================================================
+  // Invite flow
+  // ================================================================
+  const invModal = document.getElementById('inv-modal');
+  window.openInvite = () => {
+    invModal.classList.add('on');
+    document.getElementById('inv-email').value = '';
+    document.getElementById('inv-msg').innerHTML = '';
+  };
+  window.closeInvite = () => invModal.classList.remove('on');
+  invModal.addEventListener('click', (e) => { if (e.target === invModal) closeInvite(); });
+
+  window.sendInvite = async () => {
+    const msg = document.getElementById('inv-msg');
+    const btn = document.getElementById('inv-send');
+    const email = document.getElementById('inv-email').value.trim();
+    const mode = document.querySelector('input[name="inv-mode"]:checked').value;
+    if (!email) { msg.innerHTML = `<div class="msg err">Email required.</div>`; return; }
+    btn.disabled = true; btn.textContent = 'Sending…'; msg.innerHTML = '';
+    try {
+      const sess = await supa.auth.getSession();
+      const res = await fetch('https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/invite-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sess.data.session.access_token}`,
+        },
+        body: JSON.stringify({ email, mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) { msg.innerHTML = `<div class="msg err">${escapeHtml(data.error || 'invite failed')}</div>`; }
+      else {
+        msg.innerHTML = `<div class="msg ok">Invited. Tell them to go to the login page and request a magic link with this email — everything else is automatic.</div>`;
+      }
+    } catch (e) {
+      msg.innerHTML = `<div class="msg err">${escapeHtml(e.message)}</div>`;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Send invite';
+    }
+  };
 
   function startGoogleOAuth() {
     const clientId = window.__GOOGLE_CLIENT_ID__;
@@ -1089,7 +1234,7 @@
     msg.innerHTML = `<div class="msg">Uploading ${escapeHtml(file.name)}…</div>`;
     const year = new Date().getFullYear();
     const safeName = file.name.replace(/[^a-z0-9._-]/gi, '_');
-    const path = `${year}/${Date.now()}-${safeName}`;
+    const path = `${HH.id}/${year}/${Date.now()}-${safeName}`;
     const up = await supa.storage.from('family-docs').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
     if (up.error) { msg.innerHTML = `<div class="msg err">${escapeHtml(up.error.message)}</div>`; return; }
     const meta = {
