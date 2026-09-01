@@ -1781,14 +1781,24 @@
   // REVIEW modal
   // ================================================================
   const revModal = document.getElementById('rev-modal');
-  // Open the email/attachment a proposal was extracted from, in a new tab.
-  // The tab is opened synchronously so popup blockers allow it.
+  // Open the source of a proposal in a new tab. Emails open in Gmail itself
+  // (the message id is embedded in the storage path); uploaded photos/PDFs
+  // fall back to the stored file. Tab opened synchronously for popup blockers.
   window.openSourceDoc = async (docId) => {
     const tab = window.open('', '_blank');
     try {
       const { data: doc } = await supa.from('family_documents')
         .select('storage_path').eq('id', docId).maybeSingle();
       if (!doc) throw new Error('The original document is gone — it may have been deleted.');
+      const gm = doc.storage_path.match(/gmail-([0-9a-f]+)-/i);
+      if (gm) {
+        // Point Gmail at the right inbox when we know which account it came from
+        const { data: act } = await supa.from('scan_activity')
+          .select('account_email').eq('gmail_msg_id', gm[1]).limit(1).maybeSingle();
+        const authuser = act?.account_email ? `?authuser=${encodeURIComponent(act.account_email)}` : '';
+        tab.location = `https://mail.google.com/mail/${authuser}#all/${gm[1]}`;
+        return;
+      }
       const { data: signed, error } = await supa.storage
         .from('family-docs').createSignedUrl(doc.storage_path, 3600);
       if (error || !signed?.signedUrl) throw new Error('Could not open the document: ' + (error?.message || 'no link'));
