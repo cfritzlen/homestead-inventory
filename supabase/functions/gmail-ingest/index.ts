@@ -186,14 +186,24 @@ async function autoScan(
 
       const worth = await triage(ANTHROPIC_API_KEY, subject, from, body, attNames);
       console.log(`[scan] ${accountEmail}: ${worth ? 'INGEST' : 'skip'} "${subject.slice(0, 80)}" (${from.slice(0, 60)})${attNames.length ? ` [attachments: ${attNames.join(', ').slice(0, 120)}]` : ''}`);
-      if (!worth) { results.push({ id, triage: 'no events' }); continue; }
+      if (!worth) {
+        results.push({ id, triage: 'no events' });
+        await logScan(supa, householdId, accountEmail, id, subject, from, attNames, 'skipped', 'no events or to-dos found');
+        continue;
+      }
 
       const uploaded = await ingestMessage(supa, access, msg, householdId);
       results.push({ id, triage: 'has events', uploaded });
+      await logScan(supa, householdId, accountEmail, id, subject, from, attNames, 'ingested', `saved ${uploaded} file(s) — proposals coming`);
     } catch (e) {
       results.push({ id, error: e.message });
+      await logScan(supa, householdId, accountEmail, id, null, null, [], 'error', e.message);
     }
   }
+
+  // Keep the activity feed table small
+  await supa.from('scan_activity').delete()
+    .lt('created_at', new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString());
 
   await supa.from('gmail_state')
     .update({ last_scan_at: scanStartedAt })
@@ -218,7 +228,7 @@ async function triage(apiKey: string, subject: string, from: string, body: strin
       messages: [{
         role: 'user',
         content:
-`Does this email contain concrete, dated family-calendar events (appointments, school/daycare closures or activities, sports schedules, flights/reservations, deadlines)? Routine newsletters, receipts, promotions, and undated chatter do NOT count.
+`Does this email contain concrete, dated family-calendar events (appointments, school/daycare closures or activities, sports schedules, flights/reservations, deadlines) OR action items the family must handle (a form to fill out or sign, a payment to make or send such as rent or school fees, an RSVP, something to bring, return, submit, or renew)? Routine newsletters, receipts for completed purchases, promotions, and undated chatter do NOT count.
 
 IMPORTANT: attachments count too. If the email carries an attachment that likely holds a schedule or events — a school/daycare calendar, activity schedule, itinerary, or similar (judge by the attachment name and the email context) — answer YES even if the email text itself has no dates.
 
@@ -235,6 +245,23 @@ Answer with exactly one word: YES or NO.`,
   if (!res.ok) return false;  // triage failure → don't ingest, don't error the run
   const data = await res.json();
   return /YES/i.test(data.content?.[0]?.text || '');
+}
+
+// Record one scan decision for the in-app activity feed. Never breaks the scan.
+async function logScan(
+  supa: any, householdId: string, accountEmail: string, gmailMsgId: string,
+  subject: string | null, sender: string | null, attNames: string[], decision: string, detail: string,
+) {
+  try {
+    await supa.from('scan_activity').insert({
+      household_id: householdId,
+      account_email: accountEmail,
+      gmail_msg_id: gmailMsgId,
+      subject, sender,
+      attachments: attNames.length ? attNames.join(', ') : null,
+      decision, detail,
+    });
+  } catch (_) { /* best-effort */ }
 }
 
 async function ingestMessage(supa: any, access: string, msg: any, householdId: string): Promise<number> {

@@ -215,6 +215,25 @@
   .up-item .synced { color: var(--good); font-size: 12px; flex-shrink: 0; }
   .up-empty { color: var(--taupe); font-style: italic; padding: 24px; text-align: center; background: rgba(255,255,255,.03); border-radius: var(--radius); }
 
+  /* ============ To-do list ============ */
+  .todos {
+    display: flex; flex-direction: column;
+    background: var(--cream); border-radius: var(--radius);
+    box-shadow: var(--shadow); color: var(--ink);
+    padding: 6px 14px;
+  }
+  .todo { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+  .todo:last-child { border-bottom: none; }
+  .todo input[type=checkbox] { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--sage-600); flex-shrink: 0; cursor: pointer; }
+  .todo .txt { flex: 1; min-width: 0; }
+  .todo .txt .title { font-weight: 600; font-size: 14px; }
+  .todo .txt .meta { font-size: 12px; color: var(--muted); }
+  .todo .due-soon { color: var(--dusty-rose); font-weight: 700; }
+  .todo .del { background: none; border: none; color: var(--muted-2); font-size: 16px; cursor: pointer; padding: 0 4px; flex-shrink: 0; }
+  .todo-add { display: flex; gap: 8px; margin-top: 8px; }
+  .todo-add input { flex: 1; font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--cream-2); color: var(--ink); }
+  .todo-add button { font: inherit; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 10px; border: none; background: var(--sage-600); color: var(--cream); cursor: pointer; }
+
   /* ============ Full calendar (collapsible on mobile) ============ */
   .cal-wrap {
     background: var(--cream);
@@ -522,6 +541,14 @@
       <!-- Upcoming this week -->
       <h2 class="section">Upcoming <span class="count" id="upcoming-count">— this week</span></h2>
       <div class="upcoming" id="upcoming"><div class="up-empty">Loading…</div></div>
+
+      <!-- To-dos -->
+      <h2 class="section">To-dos <span class="count" id="todo-count"></span></h2>
+      <div class="todos" id="todos"><div class="up-empty" style="background:transparent;">Loading…</div></div>
+      <div class="todo-add">
+        <input id="todo-new" placeholder="Add a to-do…" autocomplete="off">
+        <button id="todo-add-btn">Add</button>
+      </div>
     </div>
 
     <!-- Full calendar (right column on desktop; collapsed on phone) -->
@@ -750,11 +777,11 @@
 <div class="modal-backdrop" id="rev-modal">
   <div class="modal">
     <div class="head">
-      <h3>Proposed events</h3>
+      <h3>Needs your review</h3>
       <button class="close" onclick="closeReview()">×</button>
     </div>
     <p style="color:var(--muted);font-size:13px;margin:0 0 12px;">
-      Claude read your uploads and labeled emails. Approve to add to the calendar (and push to Google Calendar), edit to tweak, reject to discard.
+      Claude read your uploads and emails. Events go to the calendar when approved (and push to Google Calendar); to-dos go onto your list. Reject anything that's wrong.
     </p>
     <div id="rev-list"></div>
   </div>
@@ -941,22 +968,61 @@
   // Proposed events — nudge + review modal
   // ================================================================
   async function loadProposed() {
-    const { data, error } = await supa.from('family_events')
-      .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id,source')
-      .eq('status', 'proposed').order('starts_at');
+    const [{ data, error }, { data: taskData, error: taskErr }] = await Promise.all([
+      supa.from('family_events')
+        .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id,source')
+        .eq('status', 'proposed').order('starts_at'),
+      supa.from('family_tasks')
+        .select('id,title,notes,due_date,ai_confidence')
+        .eq('status', 'proposed').order('created_at'),
+    ]);
     if (error) { console.error(error); return; }
+    const propTasks = taskErr ? [] : (taskData || []);  // table may not exist yet
+    const total = data.length + propTasks.length;
     const nudge = document.getElementById('nudge');
-    if (!data.length) { nudge.style.display = 'none'; }
+    if (!total) { nudge.style.display = 'none'; }
     else {
       nudge.style.display = 'flex';
-      document.getElementById('nudge-count').textContent = data.length;
+      document.getElementById('nudge-count').textContent = total;
     }
 
     // If review modal is open, re-render its list
     const list = document.getElementById('rev-list');
     if (!list) return;
-    if (!data.length) { list.innerHTML = `<div class="up-empty" style="background:transparent;">All caught up.</div>`; return; }
+    if (!total) { list.innerHTML = `<div class="up-empty" style="background:transparent;">All caught up.</div>`; return; }
     list.innerHTML = '';
+
+    // Proposed to-dos first — they usually have deadlines
+    for (const t of propTasks) {
+      const conf = t.ai_confidence != null ? Math.round(t.ai_confidence * 100) + '%' : '—';
+      const due = t.due_date
+        ? 'due ' + new Date(t.due_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+        : 'no deadline given';
+      const card = document.createElement('div');
+      card.className = 'prop';
+      card.innerHTML = `
+        <div class="row1">
+          <span class="pill" style="background:var(--dusty-rose);">TO-DO</span>
+          <span class="title">${escapeHtml(t.title)}</span>
+        </div>
+        <div class="when">${escapeHtml(due)}</div>
+        ${t.notes ? `<div class="notes">${escapeHtml(t.notes)}</div>` : ''}
+        <div class="src">from ai · confidence ${conf}</div>
+        <div class="actions" style="grid-template-columns:1fr 1fr;">
+          <button class="approve" data-task="${t.id}" data-act="approve">Add to my list</button>
+          <button class="reject"  data-task="${t.id}" data-act="reject">Reject</button>
+        </div>
+      `;
+      list.appendChild(card);
+    }
+    list.querySelectorAll('button[data-task]').forEach(b => {
+      b.addEventListener('click', async () => {
+        await supa.from('family_tasks')
+          .update(b.dataset.act === 'approve' ? { status: 'open' } : { status: 'rejected' })
+          .eq('id', b.dataset.task);
+        await Promise.all([loadTasks(), loadProposed()]);
+      });
+    });
     for (const ev of data) {
       const conf = ev.ai_confidence != null ? Math.round(ev.ai_confidence * 100) + '%' : '—';
       const when = ev.all_day
@@ -1001,6 +1067,72 @@
       });
     });
   }
+
+  // ================================================================
+  // To-dos
+  // ================================================================
+  async function loadTasks() {
+    const { data, error } = await supa.from('family_tasks')
+      .select('id,title,notes,due_date')
+      .eq('status', 'open')
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('created_at');
+    const el = document.getElementById('todos');
+    if (error) {  // table may not exist until migration 007 runs
+      el.innerHTML = `<div class="up-empty" style="background:transparent;">To-dos need a one-time database setup (migration 007).</div>`;
+      return;
+    }
+    document.getElementById('todo-count').textContent = data.length ? `${data.length} open` : '';
+    if (!data.length) {
+      el.innerHTML = `<div class="up-empty" style="background:transparent;">Nothing on the list. 🌿</div>`;
+      return;
+    }
+    el.innerHTML = '';
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    for (const t of data) {
+      let dueTxt = '';
+      if (t.due_date) {
+        const due = new Date(t.due_date + 'T00:00:00');
+        const days = Math.round((due - today) / 86400000);
+        const label = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        dueTxt = days < 0 ? `<span class="due-soon">overdue — was due ${label}</span>`
+          : days <= 2 ? `<span class="due-soon">due ${label}</span>`
+          : `due ${label}`;
+      }
+      const row = document.createElement('div');
+      row.className = 'todo';
+      row.innerHTML = `
+        <input type="checkbox" data-id="${t.id}" title="Mark done">
+        <div class="txt">
+          <div class="title">${escapeHtml(t.title)}</div>
+          ${dueTxt || t.notes ? `<div class="meta">${dueTxt}${dueTxt && t.notes ? ' · ' : ''}${t.notes ? escapeHtml(t.notes) : ''}</div>` : ''}
+        </div>
+        <button class="del" data-id="${t.id}" title="Remove">×</button>
+      `;
+      el.appendChild(row);
+    }
+    el.querySelectorAll('input[type=checkbox]').forEach(c => c.addEventListener('change', async () => {
+      await supa.from('family_tasks')
+        .update({ status: 'done', completed_at: new Date().toISOString() }).eq('id', c.dataset.id);
+      await loadTasks();
+    }));
+    el.querySelectorAll('.del').forEach(b => b.addEventListener('click', async () => {
+      await supa.from('family_tasks').delete().eq('id', b.dataset.id);
+      await loadTasks();
+    }));
+  }
+
+  async function addTodo() {
+    const input = document.getElementById('todo-new');
+    const title = input.value.trim();
+    if (!title) return;
+    const { error } = await supa.from('family_tasks').insert({ title, status: 'open', source: 'manual' });
+    if (error) { alert(error.message); return; }
+    input.value = '';
+    await loadTasks();
+  }
+  document.getElementById('todo-add-btn').addEventListener('click', addTodo);
+  document.getElementById('todo-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') addTodo(); });
 
   // ================================================================
   // Documents
@@ -1442,18 +1574,63 @@
     actModal.classList.add('on');
     const list = document.getElementById('act-list');
     list.innerHTML = `<div class="docs-empty">Loading…</div>`;
-    const { data, error } = await supa.from('ai_extractions')
-      .select('id,document_id,events_created,error,summary,cost_usd,created_at,family_documents(file_name)')
-      .order('created_at', { ascending: false }).limit(25);
+    const [{ data, error }, { data: scans }] = await Promise.all([
+      supa.from('ai_extractions')
+        .select('id,document_id,events_created,tasks_created,error,summary,cost_usd,created_at,family_documents(file_name)')
+        .order('created_at', { ascending: false }).limit(25),
+      supa.from('scan_activity')
+        .select('subject,sender,attachments,decision,detail,created_at')
+        .order('created_at', { ascending: false }).limit(25),
+    ]);
     if (error) { list.innerHTML = `<div class="docs-empty">${escapeHtml(error.message)}</div>`; return; }
-    if (!data.length) { list.innerHTML = `<div class="docs-empty">No AI runs yet. Upload a document or label an email.</div>`; return; }
     list.innerHTML = '';
+
+    // Inbox scan decisions — every email checked, kept or skipped
+    if (scans?.length) {
+      const head = document.createElement('h2');
+      head.className = 'section';
+      head.style.marginTop = '0';
+      head.textContent = 'Inbox scans — every email checked';
+      list.appendChild(head);
+      for (const s of scans) {
+        const when = new Date(s.created_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+        const icon = s.decision === 'ingested' ? '✓ kept' : s.decision === 'error' ? '⚠ error' : '— skipped';
+        const div = document.createElement('div');
+        div.className = 'prop';
+        div.style.borderColor = 'var(--border)';
+        div.innerHTML = `
+          <div class="row1"><span class="title">${escapeHtml(s.subject || '(no subject)')}</span></div>
+          <div class="when">${when}${s.sender ? ' · ' + escapeHtml(s.sender) : ''}</div>
+          <div class="notes ${s.decision === 'error' ? 'err' : s.decision === 'ingested' ? 'ok' : ''}">${escapeHtml(icon)}${s.detail ? ' · ' + escapeHtml(s.detail) : ''}</div>
+          ${s.attachments ? `<div class="notes" style="font-style:italic;">📎 ${escapeHtml(s.attachments)}</div>` : ''}
+        `;
+        list.appendChild(div);
+      }
+    }
+
+    const head2 = document.createElement('h2');
+    head2.className = 'section';
+    head2.textContent = 'Document reads';
+    list.appendChild(head2);
+    if (!data.length) {
+      const empty = document.createElement('div');
+      empty.className = 'docs-empty';
+      empty.textContent = 'No AI runs yet. Upload a document or label an email.';
+      list.appendChild(empty);
+      return;
+    }
     for (const ex of data) {
       const when = new Date(ex.created_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
       let outcome, cls;
+      const evN = ex.events_created || 0, taskN = ex.tasks_created || 0;
       if (ex.error) { outcome = `⚠ ${ex.error}`; cls = 'err'; }
-      else if (ex.events_created > 0) { outcome = `✓ proposed ${ex.events_created} event${ex.events_created === 1 ? '' : 's'}`; cls = 'ok'; }
-      else { outcome = '— nothing calendar-worthy'; cls = ''; }
+      else if (evN + taskN > 0) {
+        const parts = [];
+        if (evN) parts.push(`${evN} event${evN === 1 ? '' : 's'}`);
+        if (taskN) parts.push(`${taskN} to-do${taskN === 1 ? '' : 's'}`);
+        outcome = `✓ proposed ${parts.join(' + ')}`; cls = 'ok';
+      }
+      else { outcome = '— nothing calendar- or to-do-worthy'; cls = ''; }
       const div = document.createElement('div');
       div.className = 'prop';
       div.style.borderColor = 'var(--border)';
@@ -1570,12 +1747,15 @@
       loadUpcoming(); loadProposed(); calendar.refetchEvents();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'family_documents' }, () => loadDocs())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'family_tasks' }, () => {
+      loadTasks(); loadProposed();
+    })
     .subscribe();
 
   // ================================================================
   // Initial load
   // ================================================================
-  await Promise.all([loadUpcoming(), loadProposed(), loadDocs(), loadAccounts()]);
+  await Promise.all([loadUpcoming(), loadProposed(), loadTasks(), loadDocs(), loadAccounts()]);
 
   // ================================================================
   // Utility

@@ -40,6 +40,14 @@ Return ONLY a JSON object with this exact shape (no prose, no code fences):
       "confidence": 0.0-1.0
     }
   ],
+  "tasks": [
+    {
+      "title": "short action item phrased as a to-do, e.g. 'Fill out field trip permission slip', 'Send October rent payment', 'RSVP for the class party'",
+      "due_date": "YYYY-MM-DD or null if no deadline given",
+      "notes": "who it's for, amounts, where to send it, links/instructions worth keeping",
+      "confidence": 0.0-1.0
+    }
+  ],
   "document_summary": "one sentence summarizing what this document is"
 }
 
@@ -56,7 +64,11 @@ Rules:
   ("CLOSED — Labor Day"), holidays, early dismissals, field trips, picture days, parent
   meetings, deadlines — the exceptions, not the routine. Categorize daycare items as
   "daycare" and school-age school items as "school".
-- Return {"events": [], "document_summary": "..."} if nothing extractable.
+- TASKS are things the family must DO: fill out or sign a form, make or send a payment,
+  RSVP, bring or return something, schedule an appointment, submit or renew something.
+  A plain calendar event is NOT also a task — only emit a task when there's an action
+  beyond showing up. A request for money (rent due, invoice, school fees) IS a task.
+- Return {"events": [], "tasks": [], "document_summary": "..."} if nothing extractable.
 - confidence < 0.5 for anything you're guessing.`;
 
 Deno.serve(async (req) => {
@@ -164,13 +176,32 @@ Deno.serve(async (req) => {
       if (!insErr) inserted++;
     }
 
+    // Insert extracted tasks as proposed to-dos
+    const tasks: any[] = parsed.tasks || [];
+    let tasksInserted = 0;
+    for (const t of tasks) {
+      if (!t.title) continue;
+      const { error: taskErr } = await supa.from('family_tasks').insert({
+        household_id: doc.household_id,
+        title: t.title,
+        notes: t.notes || null,
+        due_date: t.due_date || null,
+        status: 'proposed',
+        source: 'ai',
+        document_id: docId,
+        ai_confidence: t.confidence ?? null,
+        created_by: doc.created_by,
+      });
+      if (!taskErr) tasksInserted++;
+    }
+
     // Log the extraction (with cost estimate + human-readable summary)
     const usage = claude.usage || {};
     const inTok = usage.input_tokens || 0;
     const outTok = usage.output_tokens || 0;
     // Haiku 4.5 rates as of 2026: $1/M input, $5/M output
     const cost = (inTok * 1 + outTok * 5) / 1_000_000;
-    await logExtraction(docId, null, claude, inserted, inTok, outTok, cost, parsed.document_summary || null);
+    await logExtraction(docId, null, claude, inserted, inTok, outTok, cost, parsed.document_summary || null, tasksInserted);
 
     // Mark doc processed; auto-categorize it from the first event if untagged
     const docUpdate: any = { extracted_at: new Date().toISOString() };
@@ -185,13 +216,13 @@ Deno.serve(async (req) => {
 
 async function logExtraction(
   docId: string, error: string | null, raw: any = null, eventsCreated = 0,
-  inTok = 0, outTok = 0, cost = 0, summary: string | null = null,
+  inTok = 0, outTok = 0, cost = 0, summary: string | null = null, tasksCreated = 0,
 ) {
   await supa.from('ai_extractions').insert({
     document_id: docId,
     model: ANTHROPIC_MODEL,
     prompt_tokens: inTok, output_tokens: outTok, cost_usd: cost,
-    raw_response: raw, events_created: eventsCreated, error, summary,
+    raw_response: raw, events_created: eventsCreated, tasks_created: tasksCreated, error, summary,
   });
 }
 
