@@ -242,7 +242,11 @@ var currentSort = 'newest';
 function init() {
   config = loadCfg();
   if (!config.url || !config.key) { showSetup(); return; }
-  sb = window.supabase.createClient(config.url, config.key);
+  // Isolated client: must NOT share auth storage with Auth.client, or the two
+  // fight over the same refresh token and log the user out on reload.
+  sb = window.supabase.createClient(config.url, config.key, {
+    auth: { persistSession: false, autoRefreshToken: false, storageKey: 'pred-monitor-auth' },
+  });
   hideSetup();
   document.getElementById('settingUrl').value = config.url;
   loadAll();

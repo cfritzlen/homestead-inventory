@@ -59,7 +59,17 @@
   const GUEST_PAGES = ['family-hub.html', 'oauth-callback.html', 'login.html'];
 
   async function requireAuth() {
-    const session = await ready.then(() => getSession());
+    let session = await ready.then(() => getSession());
+    if (!session) {
+      // A flaky network during the token refresh on page load can leave us
+      // session-less even though a valid refresh token is still stored. Try
+      // one explicit refresh before treating the user as signed out.
+      try {
+        const { data } = await client.auth.refreshSession();
+        session = data && data.session ? data.session : null;
+      } catch (_) { /* no stored session or refresh really failed */ }
+      if (session) accessToken = session.access_token;
+    }
     if (!session) {
       const back = encodeURIComponent(location.pathname + location.search);
       location.replace(`${LOGIN_URL}?next=${back}`);
