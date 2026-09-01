@@ -1492,16 +1492,24 @@
       if (!res.ok || data.error) {
         msg.innerHTML = `<div class="msg err">${escapeHtml(data.error || 'scan failed')}</div>`;
       } else {
-        let scanned = 0, ingested = 0, skippedNoAccount = false;
+        let scanned = 0, ingested = 0, failed = 0, firstErr = '', skippedNoAccount = false;
         for (const a of data.accounts || []) {
+          if (a.error && !firstErr) firstErr = a.error;
           const scan = a.scan || {};
           scanned += scan.scanned || 0;
-          for (const r of scan.results || []) if (r.triage === 'has events') ingested++;
+          for (const r of scan.results || []) {
+            if (r.triage === 'has events') ingested++;
+            if (r.error) { failed++; if (!firstErr) firstErr = r.error; }
+          }
         }
         if (data.note) skippedNoAccount = true;
         msg.innerHTML = skippedNoAccount
           ? `<div class="msg err">${escapeHtml(data.note)}</div>`
-          : `<div class="msg ok">✓ Checked ${scanned} email${scanned === 1 ? '' : 's'} — ${ingested} had events and ${ingested === 1 ? 'is' : 'are'} being processed. Proposals appear in the banner shortly.</div>`;
+          : failed
+            ? `<div class="msg err">Checked ${scanned} email${scanned === 1 ? '' : 's'} — ${ingested} processed, but ${failed} failed: ${escapeHtml(firstErr)}</div>`
+            : firstErr
+              ? `<div class="msg err">Scan failed: ${escapeHtml(firstErr)}</div>`
+              : `<div class="msg ok">✓ Checked ${scanned} email${scanned === 1 ? '' : 's'} — ${ingested} had events and ${ingested === 1 ? 'is' : 'are'} being processed. Proposals appear in the banner shortly.</div>`;
         setTimeout(() => { loadProposed(); loadDocs(); }, 8000);
       }
     } catch (e) {
