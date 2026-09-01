@@ -115,6 +115,7 @@
         .btn-danger:hover { background: #8a6158; }
         .btn-secondary { background: var(--taupe); color: white; padding: 6px 12px; font-size: 0.85rem; }
         .btn-secondary:hover { background: #b0a191; }
+        .btn:active, .tab-btn:active, .export-btn:active, .settings-toggle:active { transform: scale(0.97); }
         .btn-row { display: flex; gap: 8px; margin-top: 12px; }
         .btn-ai { background: #6b5b95; color: white; padding: 8px 16px; font-size: 0.9rem; }
         .btn-ai:hover { background: #5a4a80; }
@@ -146,7 +147,8 @@
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; padding: 10px 12px; font-size: 0.8rem; font-weight: 600; color: var(--sage-700); border-bottom: 2px solid var(--sage-200); white-space: nowrap; }
         td { padding: 10px 12px; font-size: 0.9rem; border-bottom: 1px solid var(--sage-100); color: var(--charcoal); }
-        tr:hover td { background: var(--sage-50); }
+        @media (hover: hover) { tr:hover td { background: var(--sage-50); } }
+        #expenseTable td:nth-child(3), #expenseTable td:nth-child(4) { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .amount-col { text-align: right; font-weight: 600; }
         .actions-col { white-space: nowrap; }
         .total-row td { font-weight: 700; border-top: 2px solid var(--sage-500); color: var(--sage-700); font-size: 1rem; }
@@ -173,12 +175,16 @@
 
         @media (max-width: 768px) {
             h1 { font-size: 1.8rem; }
+            .main-content { padding: 14px 12px; }
             .form-row { grid-template-columns: 1fr; }
             .card { padding: 16px; }
             .summary-grid { grid-template-columns: 1fr 1fr; }
+            .tabs { flex-wrap: wrap; }
             .filter-bar { flex-direction: column; }
             .filter-bar .form-group { min-width: 100%; }
             th, td { padding: 8px 6px; font-size: 0.8rem; }
+            #expenseTable td:nth-child(3), #expenseTable td:nth-child(4) { max-width: 130px; }
+            .btn, .tab-btn, .export-btn, .settings-toggle { min-height: 40px; }
             .btn-danger { padding: 4px 8px; font-size: 0.75rem; }
             .receipt-thumb, .existing-receipt { width: 60px; height: 60px; }
         }
@@ -387,7 +393,7 @@
         <div style="font-size:0.8rem; color:var(--taupe); margin-bottom:8px;">Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--sage-300)">console.anthropic.com</a></div>
         <input type="password" class="api-key-input" id="apiKeyInput" placeholder="sk-ant-..." oninput="saveApiKey()">
         <div id="apiKeyStatus" class="api-key-status missing">No key set</div>
-        <div style="font-size:0.75rem; color:var(--taupe); margin-top:8px;">Stored only on this device. Don't use Incognito mode or it will be erased.</div>
+        <div style="font-size:0.75rem; color:var(--taupe); margin-top:8px;">Saved on this device only — avoid Incognito mode.</div>
     </div>
 </div>
 
