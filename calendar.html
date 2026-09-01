@@ -85,16 +85,22 @@
         .m-plant-variety{font-weight:600;font-size:0.92rem;}
         .m-plant-date{font-size:0.78rem;color:var(--sage-600);margin-top:2px;}
 
-        .desktop-view{display:block;}
+        .desktop-view{display:block;overflow-x:auto;}
+        .btn:active,.filter-pill:active,.toggle-btn:active,.photo-tab:active{transform:scale(0.97);}
+        .m-plant-top{gap:8px;}
+        .m-plant-variety{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
         @media(max-width:768px){
             h1{font-size:2rem;}
+            .main-content{padding:16px 14px;}
             .section-toggle{flex-direction:column;align-items:center;}
-            .toggle-btn{width:80%;}
+            .toggle-btn{width:80%;min-height:44px;}
             .desktop-view{display:none !important;}
             .mobile-list{display:block !important;}
             .slide-panel{width:100vw;}
-            .nav-link{font-size:0.78rem;padding:6px 10px;}
+            .nav-link{font-size:0.78rem;padding:8px 10px;}
+            .filter-pill{min-height:40px;padding:8px 14px;}
+            .btn-small{min-height:40px;}
         }
 
         /* === SLIDE PANEL === */

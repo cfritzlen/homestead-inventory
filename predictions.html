@@ -115,9 +115,13 @@
   .day-divider{font-size:12px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px;padding:8px 0;margin-top:8px;border-top:1px solid rgba(196,181,164,0.1)}
   .next-run{font-size:12px;color:var(--taupe);background:rgba(236,232,221,0.05);border:1px solid rgba(196,181,164,0.1);border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:8px}
   .next-run strong{color:var(--cream)}
+  .tab:active,.filter-btn:active,.refresh-btn:active,.btn:active{transform:scale(0.97)}
   @media(max-width:768px){
-    .main{padding:16px}.stats-grid{grid-template-columns:1fr 1fr}
+    .main{padding:14px}.stats-grid{grid-template-columns:1fr 1fr}
     .trade-header{flex-direction:column}.header h1{font-size:18px}
+    .tabs{flex-wrap:wrap;padding:0 14px}
+    .filter-btn{min-height:40px;padding:8px 14px}
+    .refresh-btn{min-height:40px}
   }
 </style>
 </head>
@@ -144,7 +148,7 @@
   <!-- SETUP -->
   <div id="setupScreen" class="setup-screen" style="display:none">
     <h2>Connect to Your Agent</h2>
-    <p>Enter your Supabase details to monitor your prediction agent.</p>
+    <p>Enter your Supabase details.</p>
     <div class="card">
       <div class="form-group"><label class="form-label">Supabase URL</label><input class="form-input" id="setupUrl" placeholder="https://xxxxx.supabase.co" /></div>
       <div class="form-group"><label class="form-label">Supabase Anon Key</label><input class="form-input" id="setupKey" placeholder="eyJhbG..." /></div>
@@ -169,7 +173,7 @@
     </div>
 
     <div class="next-run" id="nextRunInfo">
-      <span>⏱</span> Agent runs every <strong>6 hours</strong> (8pm, 2am, 8am, 2pm Eastern). Auto-refreshes every 60s.
+      <span>⏱</span> Runs every <strong>6 hours</strong> · auto-refreshes every 60s
     </div>
     <div id="recentTrades"><div class="loading"><div class="spinner"></div>Loading trades...</div></div>
   </div>
@@ -193,7 +197,7 @@
       <button class="filter-btn" onclick="setFilter('won',this)">Won</button>
       <button class="filter-btn" onclick="setFilter('lost',this)">Lost</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
       <div style="font-size:11px;font-weight:700;color:var(--taupe);text-transform:uppercase;letter-spacing:0.5px">Sort:</div>
       <button class="filter-btn active" onclick="setSort('newest',this)">Newest</button>
       <button class="filter-btn" onclick="setSort('oldest',this)">Oldest</button>
@@ -209,7 +213,7 @@
   <div id="tab-settings" class="tab-content" style="display:none">
     <div class="card">
       <h3 style="font-family:'Crimson Pro',serif;font-size:17px;font-weight:400;margin-bottom:16px">Agent Configuration</h3>
-      <p style="font-size:13px;color:var(--taupe);margin-bottom:16px">These limits are enforced by the Edge Function. To change them, update the function code via Claude Code.</p>
+      <p style="font-size:13px;color:var(--taupe);margin-bottom:16px">Limits are set in the Edge Function.</p>
       <div class="trade-detail" style="flex-direction:column;gap:8px">
         <div>Max per trade: <strong>$5.00</strong></div>
         <div>Max per day: <strong>$25.00</strong></div>
@@ -311,7 +315,7 @@ function updateStats() {
 function renderRecent() {
   var container = document.getElementById('recentTrades');
   var recent = trades.slice(0, 15);
-  if (!recent.length) { container.innerHTML = '<div class="empty-state"><h3>No trades yet</h3><p>Your agent will place its first trades at the next scheduled run.</p></div>'; return; }
+  if (!recent.length) { container.innerHTML = '<div class="empty-state"><h3>No trades yet</h3><p>Trades appear after the next run.</p></div>'; return; }
   container.innerHTML = buildTable(recent);
 }
 

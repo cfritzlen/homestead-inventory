@@ -270,7 +270,19 @@
 
         .remove-btn:hover {
             background: #a83632;
-            transform: scale(1.1);
+        }
+
+        @media (hover: hover) {
+            .remove-btn:hover {
+                transform: scale(1.1);
+            }
+        }
+
+        .remove-btn:active,
+        .add-btn:active,
+        .scan-btn:active,
+        .btn:active {
+            transform: scale(0.97);
         }
 
         .add-btn {
@@ -288,7 +300,12 @@
 
         .add-btn:hover {
             background: var(--sage-600);
-            transform: translateY(-2px);
+        }
+
+        @media (hover: hover) {
+            .add-btn:hover {
+                transform: translateY(-2px);
+            }
         }
 
         .form-actions {
@@ -320,8 +337,13 @@
 
         .btn-primary:hover {
             background: var(--sage-600);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(122, 144, 97, 0.3);
+        }
+
+        @media (hover: hover) {
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(122, 144, 97, 0.3);
+            }
         }
 
         .btn-secondary {
@@ -386,7 +408,12 @@
 
         .scan-btn:hover {
             background: var(--sage-600);
-            transform: translateY(-2px);
+        }
+
+        @media (hover: hover) {
+            .scan-btn:hover {
+                transform: translateY(-2px);
+            }
         }
 
         .scan-btn:disabled {
@@ -540,8 +567,12 @@
                 font-size: 2rem;
             }
 
+            .main-content {
+                padding: 16px 14px 40px;
+            }
+
             .form-container {
-                padding: 24px;
+                padding: 20px 16px;
             }
 
             .form-row {
@@ -549,6 +580,16 @@
             }
 
             .form-actions {
+                flex-direction: column;
+            }
+
+            .btn,
+            .add-btn,
+            .scan-btn {
+                min-height: 44px;
+            }
+
+            .ai-scanner-actions {
                 flex-direction: column;
             }
         }
@@ -576,7 +617,7 @@
             <!-- AI Recipe Scanner -->
             <div class="ai-scanner" id="ai-scanner">
                 <div class="ai-scanner-title">📸 Scan a Recipe</div>
-                <div class="ai-scanner-subtitle">Upload screenshots or photos of a recipe — AI will fill in the form for you to edit</div>
+                <div class="ai-scanner-subtitle">Upload photos — AI fills in the form</div>
                 <div class="ai-scanner-actions">
                     <button class="scan-btn secondary" onclick="document.getElementById('image-upload').click()">📁 Choose Images</button>
                     <button class="scan-btn secondary" onclick="pasteFromClipboard()">📋 Paste from Clipboard</button>
@@ -1092,10 +1133,10 @@
                     }
                 }
                 if (!foundImage) {
-                    showStatus('No image found on clipboard. Try copying a screenshot first.', 'error');
+                    showStatus('No image on clipboard.', 'error');
                 }
             } catch (err) {
-                showStatus('Could not access clipboard. Try using "Choose Images" instead.', 'error');
+                showStatus('Clipboard blocked — use "Choose Images".', 'error');
             }
         }
 
@@ -1170,7 +1211,7 @@
         async function scanRecipe() {
             const apiKey = localStorage.getItem('homestead-api-key');
             if (!apiKey) {
-                showStatus('No API key found. Open "API Key Settings" at the bottom to add one.', 'error');
+                showStatus('Add an API key in Settings below.', 'error');
                 return;
             }
 
@@ -1179,7 +1220,7 @@
                 return;
             }
 
-            showStatus('Reading your recipe... this may take a moment.', 'loading');
+            showStatus('Reading your recipe...', 'loading');
 
             // Disable scan button
             const scanBtn = document.querySelector('#scan-actions-row .scan-btn:first-child');
@@ -1285,12 +1326,12 @@ Rules:
                     renderSteps();
                 }
 
-                showStatus(`✅ Recipe scanned! Review the form below and edit anything before saving.`, 'success');
+                showStatus(`✅ Scanned! Review the form below.`, 'success');
 
             } catch (err) {
                 console.error('Scan error:', err);
                 if (err instanceof SyntaxError) {
-                    showStatus('AI returned an unexpected format. Try again with a clearer image.', 'error');
+                    showStatus('Scan failed — try a clearer image.', 'error');
                 } else {
                     showStatus(`Error: ${err.message}`, 'error');
                 }
