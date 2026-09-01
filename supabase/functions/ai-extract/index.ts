@@ -55,6 +55,10 @@ Rules:
 - If a date is given without a year, assume the next occurrence from today.
 - If a time is given without a date, DO NOT emit an event; put it in the summary instead.
 - Multi-day items (vacations, tournaments): one event with all_day=true and both starts_at/ends_at set.
+- RECURRING SERIES ("practice every Friday", "Tuesdays Sept 9 – Oct 28", weekly classes):
+  emit ONE EVENT PER OCCURRENCE, all with the same title, from the first date through the
+  stated end date (8 weeks max if no end is given). Put the pattern in each event's notes,
+  e.g. "Fridays through Oct 24". Do NOT collapse a series into a single event.
 - ROUTINE MEALS ARE NOT EVENTS. Daycare/school menus listing breakfast, lunch, snack, or dinner
   for each day are informational — emit ZERO events for them, no matter how many dated meal
   entries appear. Summarize the menu in document_summary instead (e.g. "September menu for
@@ -154,9 +158,24 @@ Deno.serve(async (req) => {
     }
     const events: any[] = parsed.events || [];
 
-    // Insert as proposed events
+    // Insert as proposed events — skipping duplicates the household already
+    // has (same title, same day, any status — covers the same email arriving
+    // in two connected inboxes and re-scans).
+    const likePattern = (s: string) => s.replace(/[%_]/g, '\\$&');
     let inserted = 0;
     for (const ev of events) {
+      if (ev.title && ev.starts_at && !isNaN(Date.parse(ev.starts_at))) {
+        const day = new Date(ev.starts_at); day.setUTCHours(0, 0, 0, 0);
+        const nextDay = new Date(day.getTime() + 86400000);
+        const { data: dupe } = await supa.from('family_events')
+          .select('id')
+          .eq('household_id', doc.household_id)
+          .ilike('title', likePattern(ev.title))
+          .gte('starts_at', day.toISOString())
+          .lt('starts_at', nextDay.toISOString())
+          .limit(1).maybeSingle();
+        if (dupe) continue;
+      }
       const row = {
         household_id: doc.household_id,
         category: ev.category || 'general',
@@ -183,6 +202,16 @@ Deno.serve(async (req) => {
     let tasksInserted = 0;
     for (const t of tasks) {
       if (!t.title) continue;
+      // Skip a to-do that already exists (still open/proposed, or finished in
+      // the last 30 days) with the same title, case-insensitive.
+      const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+      const { data: taskDupe } = await supa.from('family_tasks')
+        .select('id')
+        .eq('household_id', doc.household_id)
+        .ilike('title', likePattern(t.title))
+        .or(`status.in.(proposed,open),completed_at.gte.${cutoff}`)
+        .limit(1).maybeSingle();
+      if (taskDupe) continue;
       const { error: taskErr } = await supa.from('family_tasks').insert({
         household_id: doc.household_id,
         title: t.title,
