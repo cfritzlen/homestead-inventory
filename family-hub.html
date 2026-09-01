@@ -229,6 +229,8 @@
   .todo .txt { flex: 1; min-width: 0; }
   .todo .txt .title { font-weight: 600; font-size: 15px; }
   .todo .txt .meta { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .todo.done .txt .title { text-decoration: line-through; opacity: .55; }
+  .todo.done .txt .meta { opacity: .55; }
   .todo .due-soon { color: var(--dusty-rose); font-weight: 700; }
   .todo .del { background: none; border: none; color: var(--muted-2); font-size: 16px; cursor: pointer; padding: 0 4px; flex-shrink: 0; }
   .todo-add { display: flex; gap: 8px; margin-top: 8px; }
@@ -441,6 +443,7 @@
   .prop .when { color: var(--muted); font-size: 14px; margin-bottom: 4px; }
   .prop .notes { color: var(--muted); font-size: 13px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .prop .src { color: var(--muted-2); font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .prop .src .src-link { color: var(--sage-600); font-weight: 600; text-decoration: underline; }
   .prop .actions {
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px;
   }
@@ -983,7 +986,7 @@
         .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id,source')
         .eq('status', 'proposed').order('starts_at'),
       supa.from('family_tasks')
-        .select('id,title,notes,due_date,ai_confidence')
+        .select('id,title,notes,due_date,ai_confidence,document_id')
         .eq('status', 'proposed').order('created_at'),
     ]);
     if (error) { console.error(error); return; }
@@ -1017,9 +1020,10 @@
         </div>
         <div class="when">${escapeHtml(due)}</div>
         ${t.notes ? `<div class="notes">${escapeHtml(t.notes)}</div>` : ''}
-        <div class="src">from ai · confidence ${conf}</div>
-        <div class="actions" style="grid-template-columns:1fr 1fr;">
+        <div class="src">from ai · confidence ${conf}${t.document_id ? ` · <a href="#" class="src-link" onclick="event.preventDefault(); openSourceDoc('${t.document_id}')">see original email</a>` : ''}</div>
+        <div class="actions">
           <button class="approve" data-task="${t.id}" data-act="approve">Add to my list</button>
+          <button class="edit"    data-task="${t.id}" data-act="done">Already done</button>
           <button class="reject"  data-task="${t.id}" data-act="reject">Reject</button>
         </div>
       `;
@@ -1027,9 +1031,11 @@
     }
     list.querySelectorAll('button[data-task]').forEach(b => {
       b.addEventListener('click', async () => {
-        await supa.from('family_tasks')
-          .update(b.dataset.act === 'approve' ? { status: 'open' } : { status: 'rejected' })
-          .eq('id', b.dataset.task);
+        const act = b.dataset.act;
+        const fields = act === 'approve' ? { status: 'open' }
+          : act === 'done' ? { status: 'done', completed_at: new Date().toISOString() }
+          : { status: 'rejected' };
+        await supa.from('family_tasks').update(fields).eq('id', b.dataset.task);
         await Promise.all([loadTasks(), loadProposed()]);
       });
     });
@@ -1047,20 +1053,33 @@
         </div>
         <div class="when">${escapeHtml(when)}${ev.location ? ' · ' + escapeHtml(ev.location) : ''}</div>
         ${ev.notes ? `<div class="notes">${escapeHtml(ev.notes)}</div>` : ''}
-        <div class="src">from ${ev.source || 'ai'} · confidence ${conf}</div>
-        <div class="actions">
-          <button class="approve" data-id="${ev.id}" data-act="approve">Approve</button>
+        <div class="src">from ${ev.source || 'ai'} · confidence ${conf}${ev.document_id ? ` · <a href="#" class="src-link" onclick="event.preventDefault(); openSourceDoc('${ev.document_id}')">see original email</a>` : ''}</div>
+        <div class="actions" style="grid-template-columns:1fr 1fr;">
+          <button class="approve" data-id="${ev.id}" data-act="approve">Add to calendar</button>
+          <button class="edit"    data-id="${ev.id}" data-act="save">Save only</button>
           <button class="edit"    data-id="${ev.id}" data-act="edit">Edit</button>
-          <button class="reject"  data-id="${ev.id}" data-act="reject">Reject</button>
+          <button class="reject"  data-id="${ev.id}" data-act="reject">Ignore</button>
         </div>
       `;
       list.appendChild(card);
     }
-    list.querySelectorAll('button[data-act]').forEach(b => {
+    // Approve/save with sync choice; falls back gracefully if the
+    // sync_to_google column (migration 008) isn't in the database yet.
+    async function setEventStatus(id, fields) {
+      let { error } = await supa.from('family_events').update(fields).eq('id', id);
+      if (error && 'sync_to_google' in fields) {
+        const { sync_to_google: _skip, ...rest } = fields;
+        ({ error } = await supa.from('family_events').update(rest).eq('id', id));
+      }
+      if (error) alert(error.message);
+    }
+    list.querySelectorAll('button[data-id]').forEach(b => {
       b.addEventListener('click', async () => {
         const id = b.dataset.id, act = b.dataset.act;
         if (act === 'approve') {
-          await supa.from('family_events').update({ status: 'approved' }).eq('id', id);
+          await setEventStatus(id, { status: 'approved', sync_to_google: true });
+        } else if (act === 'save') {
+          await setEventStatus(id, { status: 'approved', sync_to_google: false });
         } else if (act === 'reject') {
           await supa.from('family_events').update({ status: 'rejected' }).eq('id', id);
         } else if (act === 'edit') {
@@ -1082,9 +1101,9 @@
   // To-dos
   // ================================================================
   async function loadTasks() {
-    const { data, error } = await supa.from('family_tasks')
-      .select('id,title,notes,due_date')
-      .eq('status', 'open')
+    const { data: raw, error } = await supa.from('family_tasks')
+      .select('id,title,notes,due_date,status,completed_at')
+      .in('status', ['open', 'done'])
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at');
     const el = document.getElementById('todos');
@@ -1092,7 +1111,14 @@
       el.innerHTML = `<div class="up-empty" style="background:transparent;">To-dos need a one-time database setup (migration 007).</div>`;
       return;
     }
-    document.getElementById('todo-count').textContent = data.length ? `${data.length} open` : '';
+    // Open items first; done items stay visible (checked off) for a week
+    const weekAgo = Date.now() - 7 * 86400000;
+    const open = raw.filter(t => t.status === 'open');
+    const done = raw.filter(t => t.status === 'done'
+      && (!t.completed_at || new Date(t.completed_at).getTime() > weekAgo))
+      .sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
+    const data = [...open, ...done];
+    document.getElementById('todo-count').textContent = open.length ? `${open.length} open` : '';
     if (!data.length) {
       el.innerHTML = `<div class="up-empty" style="background:transparent;">Nothing on the list. 🌿</div>`;
       return;
@@ -1109,10 +1135,11 @@
           : days <= 2 ? `<span class="due-soon">due ${label}</span>`
           : `due ${label}`;
       }
+      const isDone = t.status === 'done';
       const row = document.createElement('div');
-      row.className = 'todo';
+      row.className = 'todo' + (isDone ? ' done' : '');
       row.innerHTML = `
-        <input type="checkbox" data-id="${t.id}" title="Mark done">
+        <input type="checkbox" data-id="${t.id}" ${isDone ? 'checked' : ''} title="${isDone ? 'Mark not done' : 'Mark done'}">
         <div class="txt">
           <div class="title">${escapeHtml(t.title)}</div>
           ${dueTxt || t.notes ? `<div class="meta">${dueTxt}${dueTxt && t.notes ? ' · ' : ''}${t.notes ? escapeHtml(t.notes) : ''}</div>` : ''}
@@ -1123,7 +1150,10 @@
     }
     el.querySelectorAll('input[type=checkbox]').forEach(c => c.addEventListener('change', async () => {
       await supa.from('family_tasks')
-        .update({ status: 'done', completed_at: new Date().toISOString() }).eq('id', c.dataset.id);
+        .update(c.checked
+          ? { status: 'done', completed_at: new Date().toISOString() }
+          : { status: 'open', completed_at: null })
+        .eq('id', c.dataset.id);
       await loadTasks();
     }));
     el.querySelectorAll('.del').forEach(b => b.addEventListener('click', async () => {
@@ -1753,6 +1783,33 @@
   // REVIEW modal
   // ================================================================
   const revModal = document.getElementById('rev-modal');
+  // Open the source of a proposal in a new tab. Emails open in Gmail itself
+  // (the message id is embedded in the storage path); uploaded photos/PDFs
+  // fall back to the stored file. Tab opened synchronously for popup blockers.
+  window.openSourceDoc = async (docId) => {
+    const tab = window.open('', '_blank');
+    try {
+      const { data: doc } = await supa.from('family_documents')
+        .select('storage_path').eq('id', docId).maybeSingle();
+      if (!doc) throw new Error('The original document is gone — it may have been deleted.');
+      const gm = doc.storage_path.match(/gmail-([0-9a-f]+)-/i);
+      if (gm) {
+        // Point Gmail at the right inbox when we know which account it came from
+        const { data: act } = await supa.from('scan_activity')
+          .select('account_email').eq('gmail_msg_id', gm[1]).limit(1).maybeSingle();
+        const authuser = act?.account_email ? `?authuser=${encodeURIComponent(act.account_email)}` : '';
+        tab.location = `https://mail.google.com/mail/${authuser}#all/${gm[1]}`;
+        return;
+      }
+      const { data: signed, error } = await supa.storage
+        .from('family-docs').createSignedUrl(doc.storage_path, 3600);
+      if (error || !signed?.signedUrl) throw new Error('Could not open the document: ' + (error?.message || 'no link'));
+      tab.location = signed.signedUrl;
+    } catch (e) {
+      if (tab) tab.close();
+      alert(e.message);
+    }
+  };
   window.openReview = () => { revModal.classList.add('on'); loadProposed(); };
   window.closeReview = () => revModal.classList.remove('on');
   revModal.addEventListener('click', (e) => { if (e.target === revModal) closeReview(); });
@@ -1760,14 +1817,19 @@
   // ================================================================
   // Realtime updates
   // ================================================================
+  // During a scan, inserts arrive in rapid bursts — refreshing on every single
+  // one makes the page flicker. Debounce: wait for a burst to settle, then
+  // refresh once.
+  function settle(fn, ms = 1500) {
+    let t; return () => { clearTimeout(t); t = setTimeout(fn, ms); };
+  }
+  const refreshEvents = settle(() => { loadUpcoming(); loadProposed(); calendar.refetchEvents(); });
+  const refreshDocs   = settle(() => loadDocs());
+  const refreshTasks  = settle(() => { loadTasks(); loadProposed(); });
   supa.channel('family-updates')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'family_events' }, () => {
-      loadUpcoming(); loadProposed(); calendar.refetchEvents();
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'family_documents' }, () => loadDocs())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'family_tasks' }, () => {
-      loadTasks(); loadProposed();
-    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'family_events' }, refreshEvents)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'family_documents' }, refreshDocs)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'family_tasks' }, refreshTasks)
     .subscribe();
 
   // ================================================================

@@ -29,11 +29,18 @@ Deno.serve(async (req) => {
     if (evErr || !ev) return json({ error: `event not found: ${evErr?.message}` }, 404);
     if (ev.google_event_id) return json({ skipped: true, reason: 'already synced' });
 
+    // Per-event choice from the review buttons overrides category toggles:
+    // false = "Save only" (never push), true = "Add to calendar" (always push),
+    // null = follow the household's per-category settings below.
+    if (ev.sync_to_google === false) {
+      return json({ skipped: true, reason: 'saved without Google Calendar sync' });
+    }
+
     // Per-category sync toggles. When the household hasn't chosen, everything
     // syncs EXCEPT daycare (daycare is opt-in — menus and routine notices
     // shouldn't clutter the family calendar).
     const DEFAULT_SYNC = ['school', 'medical', 'travel', 'vacation', 'sports', 'general'];
-    if (ev.household_id) {
+    if (ev.household_id && ev.sync_to_google !== true) {
       const { data: hh } = await supa
         .from('households').select('settings').eq('id', ev.household_id).maybeSingle();
       const sync = Array.isArray(hh?.settings?.sync_categories)
