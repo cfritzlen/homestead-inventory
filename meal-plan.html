@@ -92,7 +92,7 @@
 
         .main-content {
             padding: 20px 15px;
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
@@ -141,6 +141,10 @@
         .btn-secondary:hover {
             background: var(--sage-50);
             border-color: var(--sage-500);
+        }
+
+        .btn:active {
+            transform: scale(0.97);
         }
 
         .days-container {
@@ -249,6 +253,10 @@
             font-size: 1rem;
             color: var(--sage-800);
             flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .meal-badge {
@@ -279,6 +287,11 @@
             background: var(--sage-200);
         }
 
+        .meal-action-btn:active {
+            background: var(--sage-200);
+            transform: scale(0.95);
+        }
+
         .add-meal-buttons {
             display: flex;
             flex-direction: column;
@@ -301,6 +314,10 @@
 
         .add-meal-btn:hover {
             background: var(--sage-600);
+        }
+
+        .add-meal-btn:active {
+            transform: scale(0.98);
         }
 
         .add-meal-btn.special {
@@ -356,9 +373,16 @@
             transition: all 0.2s ease;
         }
 
-        .recipe-list-item:hover {
+        @media (hover: hover) {
+            .recipe-list-item:hover {
+                background: var(--sage-100);
+                transform: translateX(4px);
+            }
+        }
+
+        .recipe-list-item:active {
             background: var(--sage-100);
-            transform: translateX(4px);
+            transform: scale(0.98);
         }
 
         .recipe-list-item.side-recipe {
@@ -373,12 +397,26 @@
         }
 
         @media (max-width: 768px) {
+            .main-content {
+                padding: 14px;
+            }
+
             .days-container {
                 grid-template-columns: 1fr;
             }
 
             h1 {
                 font-size: 2rem;
+            }
+
+            .btn,
+            .add-meal-btn {
+                min-height: 40px;
+            }
+
+            .meal-action-btn {
+                min-width: 40px;
+                min-height: 40px;
             }
         }
     </style>
@@ -614,7 +652,7 @@
                 recipes.filter(r => r.protein_category !== 'sides');
             
             if (filteredRecipes.length === 0) {
-                list.innerHTML = '<div class="empty-state">No recipes available. Add some recipes first!</div>';
+                list.innerHTML = '<div class="empty-state">No recipes yet.</div>';
             } else {
                 list.innerHTML = filteredRecipes.map(recipe => `
                     <div class="recipe-list-item ${recipe.protein_category === 'sides' ? 'side-recipe' : ''}" 
