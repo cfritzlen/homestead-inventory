@@ -20,26 +20,35 @@ Deno.serve(async (req) => {
   try {
     const supa = getServiceClient();
 
-    // Two calling modes:
-    //   Cron (service role): scan every connected account, incremental window.
+    // Three calling modes:
+    //   Cron, empty body (service role): every connected account, label pass +
+    //   incremental auto-scan for opted-in households.
+    //   Cron, hours_back in body (service role): every connected account,
+    //   forced deep scan of that window ("daily catch-up").
     //   Signed-in user ("Scan now" button): scope to their household, explicit
     //   days_back window, bigger message budget.
     let body: any = {};
     try { body = await req.json(); } catch (_) { /* cron sends empty body */ }
 
-    let manual: { householdId: string; daysBack: number } | null = null;
+    // Window in hours: days_back (Scan-now button) or hours_back (daily cron)
+    const hoursBack = Math.min(Math.max(
+      Number(body.hours_back) || (Number(body.days_back) || 0) * 24, 0), 30 * 24);
+
+    let manual: { householdId: string; hoursBack: number } | null = null;
+    let forcedHours = 0;
     const authToken = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-    if (body.days_back && authToken) {
-      const { data: caller } = await supa.auth.getUser(authToken);
-      if (caller?.user) {
-        const { data: membership } = await supa
-          .from('household_members').select('household_id')
-          .eq('user_id', caller.user.id).limit(1).maybeSingle();
-        if (!membership) return json({ error: 'no household' }, 403);
-        manual = {
-          householdId: membership.household_id,
-          daysBack: Math.min(Math.max(Number(body.days_back) || 2, 1), 30),
-        };
+    if (hoursBack && authToken) {
+      if (authToken === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
+        forcedHours = hoursBack;  // scheduled deep scan, all accounts
+      } else {
+        const { data: caller } = await supa.auth.getUser(authToken);
+        if (caller?.user) {
+          const { data: membership } = await supa
+            .from('household_members').select('household_id')
+            .eq('user_id', caller.user.id).limit(1).maybeSingle();
+          if (!membership) return json({ error: 'no household' }, 403);
+          manual = { householdId: membership.household_id, hoursBack };
+        }
       }
     }
 
@@ -54,7 +63,7 @@ Deno.serve(async (req) => {
     const perAccount: any[] = [];
     for (const { account_email, household_id } of accounts) {
       try {
-        const r = await pollAccount(supa, account_email, household_id, manual?.daysBack);
+        const r = await pollAccount(supa, account_email, household_id, manual?.hoursBack || forcedHours);
         perAccount.push({ account_email, ...r });
       } catch (e) {
         perAccount.push({ account_email, error: e.message });
@@ -71,7 +80,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function pollAccount(supa: any, accountEmail: string, householdId: string, manualDaysBack?: number) {
+async function pollAccount(supa: any, accountEmail: string, householdId: string, forceScanHours?: number) {
   const access = await getFreshAccessToken(supa, accountEmail);
 
   const { data: state } = await supa.from('gmail_state')
@@ -114,11 +123,12 @@ async function pollAccount(supa: any, accountEmail: string, householdId: string,
   }
 
   // ---- Pass 2: inbox scan ----
-  // Manual ("Scan now"): always runs, explicit window, bigger budget.
-  // Cron: only when the household opted into auto-scan; incremental window.
+  // Forced ("Scan now" button or daily deep-scan cron): always runs,
+  // explicit window, bigger budget.
+  // 15-min cron: only when the household opted into auto-scan; incremental window.
   let scanResult: any = { skipped: true, reason: 'auto-scan off' };
-  if (manualDaysBack) {
-    const since = new Date(Date.now() - manualDaysBack * 24 * 3600 * 1000).toISOString();
+  if (forceScanHours) {
+    const since = new Date(Date.now() - forceScanHours * 3600 * 1000).toISOString();
     scanResult = await autoScan(supa, access, accountEmail, householdId, since, 100);
   } else {
     const { data: hh } = await supa
