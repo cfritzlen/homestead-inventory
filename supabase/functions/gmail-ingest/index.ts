@@ -281,6 +281,17 @@ async function ingestMessage(supa: any, access: string, msg: any, householdId: s
   const from = headers.find((h) => h.name.toLowerCase() === 'from')?.value || '';
   const date = headers.find((h) => h.name.toLowerCase() === 'date')?.value || '';
 
+  // The same email arriving in two connected inboxes has different Gmail ids
+  // but an identical RFC Message-ID header — key storage paths on that so the
+  // second copy is recognized and skipped.
+  const rfcId = headers.find((h) => h.name.toLowerCase() === 'message-id')?.value || '';
+  const msgKey = rfcId ? rfcId.replace(/[^a-zA-Z0-9]/g, '').slice(-48) : msg.id;
+  async function alreadySaved(path: string): Promise<boolean> {
+    const { data } = await supa.from('family_documents')
+      .select('id').eq('storage_path', path).limit(1).maybeSingle();
+    return !!data;
+  }
+
   const attachments = collectAttachments(msg.payload);
   const bodyText = extractBodyText(msg.payload);
 
@@ -289,7 +300,8 @@ async function ingestMessage(supa: any, access: string, msg: any, householdId: s
 
   // Save the email body itself as a "document" if there's meaningful text
   if (bodyText && bodyText.trim().length > 40) {
-    const path = `${householdId}/${year}/gmail-${msg.id}-body.txt`;
+    const path = `${householdId}/${year}/gmail-${msgKey}-body.txt`;
+    if (await alreadySaved(path)) return 0;   // whole email already ingested
     const content = `Subject: ${subject}\nFrom: ${from}\nDate: ${date}\n\n${bodyText}`;
     const { error } = await supa.storage.from('family-docs').upload(
       path, new Blob([content], { type: 'text/plain' }),
@@ -315,7 +327,8 @@ async function ingestMessage(supa: any, access: string, msg: any, householdId: s
       `/gmail/v1/users/me/messages/${msg.id}/attachments/${att.attachmentId}`);
     const bytes = base64UrlToBytes(attData.data);
     const safeName = (att.filename || 'attachment').replace(/[^a-z0-9._-]/gi, '_');
-    const path = `${householdId}/${year}/gmail-${msg.id}-${safeName}`;
+    const path = `${householdId}/${year}/gmail-${msgKey}-${safeName}`;
+    if (await alreadySaved(path)) continue;   // this attachment already ingested
     const { error } = await supa.storage.from('family-docs').upload(
       path, new Blob([bytes], { type: att.mimeType || 'application/octet-stream' }),
       { contentType: att.mimeType || 'application/octet-stream', upsert: true },

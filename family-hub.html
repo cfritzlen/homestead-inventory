@@ -802,6 +802,22 @@
   </div>
 </div>
 
+<!-- ============ Event details modal ============ -->
+<div class="modal-backdrop" id="det-modal">
+  <div class="modal">
+    <div class="head">
+      <h3 id="det-title">Event</h3>
+      <button class="close" onclick="closeDetails()">×</button>
+    </div>
+    <div id="det-body"></div>
+    <div class="go" style="grid-template-columns:auto 1fr 1fr;">
+      <button class="btn-ghost" id="det-delete" style="color:var(--dusty-rose);border-color:transparent;">Delete</button>
+      <button class="btn-ghost" id="det-edit">Edit</button>
+      <button class="btn-primary" onclick="closeDetails()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (async function () {
   await Auth.ready;
@@ -882,9 +898,7 @@
     height: window.innerWidth >= 900 ? 680 : 560,
     headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
     events: fetchCalEvents,
-    eventClick: (info) => {
-      if (confirm(`Delete "${info.event.title}"?`)) deleteEvent(info.event.id);
-    },
+    eventClick: (info) => { openDetails(info.event.id); },
   });
   // Render only when calendar section is opened (mobile) or immediately (desktop)
   const calCollapse = document.getElementById('cal-collapse');
@@ -974,9 +988,7 @@
           </div>
           ${ev.google_event_id ? '<span class="synced" title="Synced to Google Calendar">✓</span>' : ''}
         `;
-        item.addEventListener('click', () => {
-          if (confirm(`Delete "${ev.title}"?`)) deleteEvent(ev.id);
-        });
+        item.addEventListener('click', () => openDetails(ev.id));
         itemsEl.appendChild(item);
       }
       el.appendChild(day);
@@ -1046,6 +1058,19 @@
         await Promise.all([loadTasks(), loadProposed()]);
       });
     });
+    if (data.length > 1) {
+      const bulk = document.createElement('button');
+      bulk.className = 'btn-primary';
+      bulk.style.cssText = 'width:100%;margin-bottom:10px;';
+      bulk.textContent = `Add all ${data.length} events to calendar`;
+      bulk.addEventListener('click', async () => {
+        bulk.disabled = true; bulk.textContent = 'Adding…';
+        for (const ev of data) await setEventStatus(ev.id, { status: 'approved', sync_to_google: true });
+        await Promise.all([loadUpcoming(), loadProposed()]);
+        calendar.refetchEvents();
+      });
+      list.appendChild(bulk);
+    }
     for (const ev of data) {
       const conf = ev.ai_confidence != null ? Math.round(ev.ai_confidence * 100) + '%' : '—';
       const when = ev.all_day
@@ -1486,7 +1511,10 @@
     }
   });
 
+  let editingId = null;
   function resetAddForm() {
+    editingId = null;
+    document.getElementById('add-title').textContent = 'New event';
     ['ev-title','ev-loc','ev-notes','ev-doc'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('ev-allday').checked = false;
     document.getElementById('time-block').style.display = '';
@@ -1540,17 +1568,60 @@
       notes:    document.getElementById('ev-notes').value.trim() || null,
       document_id: document.getElementById('ev-doc').value || null,
     };
-    const { error } = await supa.from('family_events').insert(payload);
+    const { error } = editingId
+      ? await supa.from('family_events').update(payload).eq('id', editingId)
+      : await supa.from('family_events').insert(payload);
     if (error) {
       msg.innerHTML = `<div class="msg err">${escapeHtml(error.message)}</div>`;
       btn.disabled = false; btn.textContent = 'Save event'; return;
     }
+    editingId = null;
     msg.innerHTML = `<div class="msg ok">Saved. Pushing to Google Calendar…</div>`;
     btn.textContent = 'Save event'; btn.disabled = false;
     setTimeout(() => { closeAdd(); }, 700);
     await Promise.all([loadUpcoming(), loadProposed()]);
     calendar.refetchEvents();
   };
+
+  // ================================================================
+  // Event details modal
+  // ================================================================
+  const detModal = document.getElementById('det-modal');
+  let detEvent = null;
+  window.openDetails = async (id) => {
+    const { data: ev, error } = await supa.from('family_events').select('*').eq('id', id).maybeSingle();
+    if (error || !ev) return;
+    detEvent = ev;
+    document.getElementById('det-title').textContent = ev.title;
+    const when = ev.all_day
+      ? new Date(ev.starts_at).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + ' · all day'
+      : new Date(ev.starts_at).toLocaleString(undefined, { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+        + (ev.ends_at ? ' – ' + new Date(ev.ends_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
+    document.getElementById('det-body').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:16px;color:var(--ink);margin-bottom:6px;">
+        <div><span class="pill ${ev.category}">${CAT_LABELS[ev.category] || ev.category}</span>
+          ${ev.google_event_id ? '<span style="color:var(--good);font-size:14px;margin-left:8px;">✓ on Google Calendar</span>' : ''}</div>
+        <div>📅 ${escapeHtml(when)}</div>
+        ${ev.location ? `<div>📍 ${escapeHtml(ev.location)}</div>` : ''}
+        ${ev.notes ? `<div style="color:var(--muted);font-size:15px;line-height:1.5;">${escapeHtml(ev.notes)}</div>` : ''}
+      </div>`;
+    detModal.classList.add('on');
+  };
+  window.closeDetails = () => detModal.classList.remove('on');
+  detModal.addEventListener('click', (e) => { if (e.target === detModal) closeDetails(); });
+  document.getElementById('det-delete').addEventListener('click', async () => {
+    if (!detEvent || !confirm(`Delete "${detEvent.title}"?`)) return;
+    closeDetails();
+    await deleteEvent(detEvent.id);
+  });
+  document.getElementById('det-edit').addEventListener('click', () => {
+    if (!detEvent) return;
+    closeDetails();
+    openAdd();
+    prefillFromEvent(detEvent);
+    editingId = detEvent.id;
+    document.getElementById('add-title').textContent = 'Edit event';
+  });
 
   // ================================================================
   // UPLOAD modal
