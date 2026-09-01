@@ -1,0 +1,51 @@
+name: Daily Rent Check
+
+on:
+  # Every day 12:00 UTC = 7am EST / 8am EDT
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (write HTML to artifact instead of emailing)'
+        required: false
+        default: 'false'
+
+jobs:
+  rent-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rent-check
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run rent check
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RENT_CHECK_TO_EMAIL: ${{ secrets.RENT_CHECK_TO_EMAIL }}
+          MX_LISTINGS_TO_EMAIL: ${{ secrets.MX_LISTINGS_TO_EMAIL }}
+          RENT_CHECK_FROM_EMAIL: ${{ secrets.MX_LISTINGS_FROM_EMAIL }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python rent_check.py --dry-run
+          else
+            python rent_check.py
+          fi
+
+      - name: Upload email as artifact (dry-run only)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: rent-check-html
+          path: rent-check/out/rent-check.html
