@@ -45,6 +45,10 @@
   const redirectUri = `${location.origin}${location.pathname}`;
 
   try {
+    // Send the signed-in user's JWT so the function can scope the connection
+    // to their household.
+    const sess = await Auth.client.auth.getSession();
+    const userJwt = sess.data.session?.access_token || '';
     const res = await fetch(`${SUPA_URL}/functions/v1/google-oauth-exchange`, {
       method: 'POST',
       headers: {
@@ -52,7 +56,7 @@
         'apikey': ANON_KEY,
         'Authorization': `Bearer ${ANON_KEY}`,
       },
-      body: JSON.stringify({ code, redirect_uri: redirectUri }),
+      body: JSON.stringify({ code, redirect_uri: redirectUri, user_jwt: userJwt }),
     });
     const data = await res.json();
     if (!res.ok) {

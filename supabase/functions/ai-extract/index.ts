@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
     let inserted = 0;
     for (const ev of events) {
       const row = {
+        household_id: doc.household_id,
         category: ev.category || 'general',
         title: ev.title || '(no title)',
         starts_at: ev.starts_at,

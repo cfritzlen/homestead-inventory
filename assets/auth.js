@@ -54,12 +54,28 @@
     return accessToken || SUPABASE_ANON_KEY;
   }
 
+  // Pages guests (non-homestead households) may open; everything else is
+  // homestead-members only and bounces guests to the Family Hub.
+  const GUEST_PAGES = ['family-hub.html', 'oauth-callback.html', 'login.html'];
+
   async function requireAuth() {
     const session = await ready.then(() => getSession());
     if (!session) {
       const back = encodeURIComponent(location.pathname + location.search);
       location.replace(`${LOGIN_URL}?next=${back}`);
       return null;
+    }
+
+    const page = location.pathname.split('/').pop() || 'index.html';
+    if (!GUEST_PAGES.includes(page)) {
+      try {
+        const { data: isMember } = await client.rpc('am_homestead_member');
+        if (isMember === false) {
+          location.replace(BASE + 'family-hub.html');
+          return null;
+        }
+        // isMember === true, or null/error (pre-migration DB) → let through
+      } catch (_) { /* rpc missing pre-migration — let through */ }
     }
     return session;
   }

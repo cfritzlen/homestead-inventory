@@ -16,7 +16,7 @@
 import { getFreshAccessToken, getServiceClient } from '../_shared/google.ts';
 
 const CALENDAR_ID = Deno.env.get('GOOGLE_CALENDAR_ID') || 'primary';
-const ACCOUNT_EMAIL = Deno.env.get('GOOGLE_ACCOUNT_EMAIL')!;
+const FALLBACK_ACCOUNT = Deno.env.get('GOOGLE_ACCOUNT_EMAIL') || null;
 
 Deno.serve(async (req) => {
   try {
@@ -29,7 +29,31 @@ Deno.serve(async (req) => {
     if (evErr || !ev) return json({ error: `event not found: ${evErr?.message}` }, 404);
     if (ev.google_event_id) return json({ skipped: true, reason: 'already synced' });
 
-    const access = await getFreshAccessToken(supa, ACCOUNT_EMAIL);
+    // Which account's calendar? The event's household's designated target,
+    // falling back to the legacy env var for pre-household deployments.
+    let accountEmail = FALLBACK_ACCOUNT;
+    if (ev.household_id) {
+      const { data: target } = await supa
+        .from('oauth_tokens').select('account_email')
+        .eq('provider', 'google')
+        .eq('household_id', ev.household_id)
+        .eq('is_calendar_target', true)
+        .limit(1).maybeSingle();
+      if (target) accountEmail = target.account_email;
+      else {
+        const { data: anyAcct } = await supa
+          .from('oauth_tokens').select('account_email')
+          .eq('provider', 'google')
+          .eq('household_id', ev.household_id)
+          .limit(1).maybeSingle();
+        if (anyAcct) accountEmail = anyAcct.account_email;
+      }
+    }
+    if (!accountEmail) {
+      return json({ skipped: true, reason: 'no Google account connected for this household' });
+    }
+
+    const access = await getFreshAccessToken(supa, accountEmail);
 
     const description = [
       ev.notes,
