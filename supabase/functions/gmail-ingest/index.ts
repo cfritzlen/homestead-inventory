@@ -181,9 +181,11 @@ async function autoScan(
       const subject = headers.find((h) => h.name.toLowerCase() === 'subject')?.value || '';
       const from = headers.find((h) => h.name.toLowerCase() === 'from')?.value || '';
       const body = extractBodyText(msg.payload).slice(0, 8000);
-      if (!body && !subject) { results.push({ id, skipped: 'empty' }); continue; }
+      const attNames = collectAttachments(msg.payload).map((a) => a.filename);
+      if (!body && !subject && !attNames.length) { results.push({ id, skipped: 'empty' }); continue; }
 
-      const worth = await triage(ANTHROPIC_API_KEY, subject, from, body);
+      const worth = await triage(ANTHROPIC_API_KEY, subject, from, body, attNames);
+      console.log(`[scan] ${accountEmail}: ${worth ? 'INGEST' : 'skip'} "${subject.slice(0, 80)}" (${from.slice(0, 60)})${attNames.length ? ` [attachments: ${attNames.join(', ').slice(0, 120)}]` : ''}`);
       if (!worth) { results.push({ id, triage: 'no events' }); continue; }
 
       const uploaded = await ingestMessage(supa, access, msg, householdId);
@@ -197,10 +199,12 @@ async function autoScan(
     .update({ last_scan_at: scanStartedAt })
     .eq('account_email', accountEmail);
 
+  const kept = results.filter((r) => r.triage === 'has events').length;
+  console.log(`[scan] ${accountEmail}: checked ${results.length} email(s), ingested ${kept}`);
   return { scanned: results.length, results };
 }
 
-async function triage(apiKey: string, subject: string, from: string, body: string): Promise<boolean> {
+async function triage(apiKey: string, subject: string, from: string, body: string, attNames: string[] = []): Promise<boolean> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -216,8 +220,11 @@ async function triage(apiKey: string, subject: string, from: string, body: strin
         content:
 `Does this email contain concrete, dated family-calendar events (appointments, school/daycare closures or activities, sports schedules, flights/reservations, deadlines)? Routine newsletters, receipts, promotions, and undated chatter do NOT count.
 
+IMPORTANT: attachments count too. If the email carries an attachment that likely holds a schedule or events — a school/daycare calendar, activity schedule, itinerary, or similar (judge by the attachment name and the email context) — answer YES even if the email text itself has no dates.
+
 From: ${from}
 Subject: ${subject}
+Attachments: ${attNames.length ? attNames.join(', ') : '(none)'}
 
 ${body}
 
