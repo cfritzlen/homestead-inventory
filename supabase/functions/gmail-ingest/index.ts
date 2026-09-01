@@ -15,19 +15,45 @@ import { getFreshAccessToken, getServiceClient } from '../_shared/google.ts';
 
 const LABEL_NAME = Deno.env.get('GMAIL_LABEL_NAME') || 'family-hub';
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
   try {
     const supa = getServiceClient();
 
-    const { data: accounts, error: acctErr } = await supa
-      .from('oauth_tokens').select('account_email,household_id').eq('provider', 'google');
+    // Two calling modes:
+    //   Cron (service role): scan every connected account, incremental window.
+    //   Signed-in user ("Scan now" button): scope to their household, explicit
+    //   days_back window, bigger message budget.
+    let body: any = {};
+    try { body = await req.json(); } catch (_) { /* cron sends empty body */ }
+
+    let manual: { householdId: string; daysBack: number } | null = null;
+    const authToken = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    if (body.days_back && authToken) {
+      const { data: caller } = await supa.auth.getUser(authToken);
+      if (caller?.user) {
+        const { data: membership } = await supa
+          .from('household_members').select('household_id')
+          .eq('user_id', caller.user.id).limit(1).maybeSingle();
+        if (!membership) return json({ error: 'no household' }, 403);
+        manual = {
+          householdId: membership.household_id,
+          daysBack: Math.min(Math.max(Number(body.days_back) || 2, 1), 30),
+        };
+      }
+    }
+
+    let q = supa.from('oauth_tokens').select('account_email,household_id').eq('provider', 'google');
+    if (manual) q = q.eq('household_id', manual.householdId);
+    const { data: accounts, error: acctErr } = await q;
     if (acctErr) return json({ error: `accounts query failed: ${acctErr.message}` }, 500);
-    if (!accounts?.length) return json({ ok: true, note: 'no connected accounts' });
+    if (!accounts?.length) {
+      return json({ ok: true, note: manual ? 'no gmail connected for your household' : 'no connected accounts' });
+    }
 
     const perAccount: any[] = [];
     for (const { account_email, household_id } of accounts) {
       try {
-        const r = await pollAccount(supa, account_email, household_id);
+        const r = await pollAccount(supa, account_email, household_id, manual?.daysBack);
         perAccount.push({ account_email, ...r });
       } catch (e) {
         perAccount.push({ account_email, error: e.message });
@@ -38,13 +64,13 @@ Deno.serve(async (_req) => {
         }, { onConflict: 'account_email' });
       }
     }
-    return json({ ok: true, accounts: perAccount });
+    return json({ ok: true, manual: !!manual, accounts: perAccount });
   } catch (e) {
     return json({ error: `unhandled: ${e.message}` }, 500);
   }
 });
 
-async function pollAccount(supa: any, accountEmail: string, householdId: string) {
+async function pollAccount(supa: any, accountEmail: string, householdId: string, manualDaysBack?: number) {
   const access = await getFreshAccessToken(supa, accountEmail);
 
   const { data: state } = await supa.from('gmail_state')
@@ -86,12 +112,19 @@ async function pollAccount(supa: any, accountEmail: string, householdId: string)
     labelResult = { skipped: true, reason: `label "${LABEL_NAME}" not found in this account` };
   }
 
-  // ---- Pass 2: inbox auto-scan (per-household opt-in) ----
+  // ---- Pass 2: inbox scan ----
+  // Manual ("Scan now"): always runs, explicit window, bigger budget.
+  // Cron: only when the household opted into auto-scan; incremental window.
   let scanResult: any = { skipped: true, reason: 'auto-scan off' };
-  const { data: hh } = await supa
-    .from('households').select('settings').eq('id', householdId).maybeSingle();
-  if (hh?.settings?.auto_scan_email === true) {
-    scanResult = await autoScan(supa, access, accountEmail, householdId, state?.last_scan_at);
+  if (manualDaysBack) {
+    const since = new Date(Date.now() - manualDaysBack * 24 * 3600 * 1000).toISOString();
+    scanResult = await autoScan(supa, access, accountEmail, householdId, since, 100);
+  } else {
+    const { data: hh } = await supa
+      .from('households').select('settings').eq('id', householdId).maybeSingle();
+    if (hh?.settings?.auto_scan_email === true) {
+      scanResult = await autoScan(supa, access, accountEmail, householdId, state?.last_scan_at, 20);
+    }
   }
 
   await supa.from('gmail_state').upsert({
@@ -109,7 +142,7 @@ async function pollAccount(supa: any, accountEmail: string, householdId: string)
 // messages Claude's cheap triage says contain family-calendar events.
 async function autoScan(
   supa: any, access: string, accountEmail: string, householdId: string,
-  lastScanAt: string | null,
+  lastScanAt: string | null, maxMessages = 20,
 ) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) return { skipped: true, reason: 'no ANTHROPIC_API_KEY' };
@@ -122,7 +155,7 @@ async function autoScan(
     `in:inbox -category:promotions -category:social -in:spam after:${sinceEpoch}`,
   );
   const list = await gApi<{ messages?: {id: string}[] }>(
-    access, `/gmail/v1/users/me/messages?q=${q}&maxResults=20`,
+    access, `/gmail/v1/users/me/messages?q=${q}&maxResults=${maxMessages}`,
   );
   const results: any[] = [];
   for (const { id } of list.messages || []) {

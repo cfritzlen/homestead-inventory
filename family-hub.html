@@ -548,6 +548,17 @@
         <span style="color:var(--muted);font-size:12px;">Every 15 minutes, Claude glances at new mail in your connected gmail (skipping promotions and social) and pulls in anything with real events — no labeling needed. Costs about a tenth of a cent per email checked.</span>
       </span>
     </label>
+    <div style="border-top:1px solid var(--border-soft);margin:12px 0 10px;"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <b style="font-size:14px;">Scan now:</b>
+      <select id="scan-range" style="width:auto;padding:6px 8px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--cream-2);color:var(--ink);">
+        <option value="2">Last 2 days</option>
+        <option value="7">Last week</option>
+        <option value="30" selected>Last 30 days</option>
+      </select>
+      <button class="btn-primary" id="scan-now" style="padding:8px 16px;font-size:13px;width:auto;">Scan inbox</button>
+    </div>
+    <div id="scan-msg"></div>
     <div id="sync-msg"></div>
   </div>
 
@@ -1451,6 +1462,48 @@
   };
   window.closeActivity = () => actModal.classList.remove('on');
   actModal.addEventListener('click', (e) => { if (e.target === actModal) closeActivity(); });
+
+  // ================================================================
+  // Scan now (manual inbox scan)
+  // ================================================================
+  document.getElementById('scan-now').addEventListener('click', async () => {
+    const btn = document.getElementById('scan-now');
+    const msg = document.getElementById('scan-msg');
+    const days = document.getElementById('scan-range').value;
+    btn.disabled = true; btn.textContent = 'Scanning…';
+    msg.innerHTML = `<div class="msg">Claude is reading through the last ${days} day${days === '1' ? '' : 's'} of inbox mail. Big scans can take a minute or two — leave this open.</div>`;
+    try {
+      const sess = await supa.auth.getSession();
+      const res = await fetch('https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/gmail-ingest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sess.data.session.access_token}`,
+        },
+        body: JSON.stringify({ days_back: Number(days) }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        msg.innerHTML = `<div class="msg err">${escapeHtml(data.error || 'scan failed')}</div>`;
+      } else {
+        let scanned = 0, ingested = 0, skippedNoAccount = false;
+        for (const a of data.accounts || []) {
+          const scan = a.scan || {};
+          scanned += scan.scanned || 0;
+          for (const r of scan.results || []) if (r.triage === 'has events') ingested++;
+        }
+        if (data.note) skippedNoAccount = true;
+        msg.innerHTML = skippedNoAccount
+          ? `<div class="msg err">${escapeHtml(data.note)}</div>`
+          : `<div class="msg ok">✓ Checked ${scanned} email${scanned === 1 ? '' : 's'} — ${ingested} had events and ${ingested === 1 ? 'is' : 'are'} being processed. Proposals appear in the banner shortly.</div>`;
+        setTimeout(() => { loadProposed(); loadDocs(); }, 8000);
+      }
+    } catch (e) {
+      msg.innerHTML = `<div class="msg err">${escapeHtml(e.message)}</div>`;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Scan inbox';
+    }
+  });
 
   // ================================================================
   // Auto-scan toggle
