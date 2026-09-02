@@ -171,6 +171,7 @@ Deno.serve(async (req) => {
     // has (same title, same day, any status — covers the same email arriving
     // in two connected inboxes and re-scans).
     const likePattern = (s: string) => s.replace(/[%_]/g, '\\$&');
+    const allTagged = new Set<string>();
     let inserted = 0;
     for (const ev of events) {
       if (ev.title && ev.starts_at && !isNaN(Date.parse(ev.starts_at))) {
@@ -206,6 +207,7 @@ Deno.serve(async (req) => {
         ? ev.people.filter((p: string) => familyPeople.includes(p))
         : [];
       if (tagged.length) (row as any).people = tagged;
+      tagged.forEach((p: string) => allTagged.add(p));
       let { error: insErr } = await supa.from('family_events').insert(row);
       if (insErr && (row as any).people) {
         // people column not migrated yet — insert without the tag
@@ -245,6 +247,7 @@ Deno.serve(async (req) => {
         ? t.people.filter((p: string) => familyPeople.includes(p))
         : [];
       if (taskTagged.length) taskRow.people = taskTagged;
+      taskTagged.forEach((p: string) => allTagged.add(p));
       let { error: taskErr } = await supa.from('family_tasks').insert(taskRow);
       if (taskErr && taskRow.people) {
         delete taskRow.people;
@@ -264,7 +267,16 @@ Deno.serve(async (req) => {
     // Mark doc processed; auto-categorize it from the first event if untagged
     const docUpdate: any = { extracted_at: new Date().toISOString() };
     if (!doc.category && events.length) docUpdate.category = events[0].category || 'general';
-    await supa.from('family_documents').update(docUpdate).eq('id', docId);
+    // Label the document with the family members its events/tasks were about
+    if (allTagged.size && !(Array.isArray(doc.people) && doc.people.length)) {
+      docUpdate.people = [...allTagged];
+    }
+    let { error: docUpdErr } = await supa.from('family_documents').update(docUpdate).eq('id', docId);
+    if (docUpdErr && docUpdate.people) {
+      // people column not migrated on documents yet
+      delete docUpdate.people;
+      await supa.from('family_documents').update(docUpdate).eq('id', docId);
+    }
 
     return json({ ok: true, events_created: inserted, cost_usd: cost });
   } catch (e) {
