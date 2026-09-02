@@ -88,6 +88,12 @@ Deno.serve(async (req) => {
       .from('family_documents').select('*').eq('id', docId).single();
     if (docErr || !doc) return json({ error: `doc not found: ${docErr?.message}` }, 404);
 
+    // Family member names (households.settings.people) — lets Claude tag
+    // who an event or to-do is for.
+    const { data: hh } = await supa.from('households')
+      .select('settings').eq('id', doc.household_id).maybeSingle();
+    const familyPeople: string[] = Array.isArray(hh?.settings?.people) ? hh.settings.people : [];
+
     // Download the file bytes
     const { data: blob, error: dlErr } = await supa.storage
       .from('family-docs').download(doc.storage_path);
@@ -123,7 +129,10 @@ Deno.serve(async (req) => {
       await logExtraction(docId, 'skipped: unsupported mime ' + mime);
       return json({ skipped: true, reason: 'unsupported mime ' + mime });
     }
-    content.push({ type: 'text', text: EXTRACTION_PROMPT });
+    const peopleAddendum = familyPeople.length
+      ? `\n\nFamily members: ${familyPeople.join(', ')}. When the document clearly concerns specific member(s) — their name appears on it — add "people": ["Name"] to that event or task, using EXACTLY the names listed. Omit "people" when unsure.`
+      : '';
+    content.push({ type: 'text', text: EXTRACTION_PROMPT + peopleAddendum });
 
     // Call Claude
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -193,7 +202,16 @@ Deno.serve(async (req) => {
         ai_notes: parsed.document_summary || null,
         created_by: doc.created_by,   // preserve original uploader
       };
-      const { error: insErr } = await supa.from('family_events').insert(row);
+      const tagged = Array.isArray(ev.people)
+        ? ev.people.filter((p: string) => familyPeople.includes(p))
+        : [];
+      if (tagged.length) (row as any).people = tagged;
+      let { error: insErr } = await supa.from('family_events').insert(row);
+      if (insErr && (row as any).people) {
+        // people column not migrated yet — insert without the tag
+        delete (row as any).people;
+        ({ error: insErr } = await supa.from('family_events').insert(row));
+      }
       if (!insErr) inserted++;
     }
 
@@ -212,7 +230,7 @@ Deno.serve(async (req) => {
         .or(`status.in.(proposed,open),completed_at.gte.${cutoff}`)
         .limit(1).maybeSingle();
       if (taskDupe) continue;
-      const { error: taskErr } = await supa.from('family_tasks').insert({
+      const taskRow: any = {
         household_id: doc.household_id,
         title: t.title,
         notes: t.notes || null,
@@ -222,7 +240,16 @@ Deno.serve(async (req) => {
         document_id: docId,
         ai_confidence: t.confidence ?? null,
         created_by: doc.created_by,
-      });
+      };
+      const taskTagged = Array.isArray(t.people)
+        ? t.people.filter((p: string) => familyPeople.includes(p))
+        : [];
+      if (taskTagged.length) taskRow.people = taskTagged;
+      let { error: taskErr } = await supa.from('family_tasks').insert(taskRow);
+      if (taskErr && taskRow.people) {
+        delete taskRow.people;
+        ({ error: taskErr } = await supa.from('family_tasks').insert(taskRow));
+      }
       if (!taskErr) tasksInserted++;
     }
 
