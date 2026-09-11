@@ -964,7 +964,13 @@
   }
 
   async function deleteEvent(id) {
-    const { error } = await supa.from('family_events').delete().eq('id', id);
+    // An event that lives on Google Calendar too gets hidden here rather than
+    // deleted — a hard delete would just be re-imported on the next pull.
+    const { data: ev } = await supa.from('family_events')
+      .select('google_event_id').eq('id', id).maybeSingle();
+    const { error } = ev?.google_event_id
+      ? await supa.from('family_events').update({ status: 'rejected' }).eq('id', id)
+      : await supa.from('family_events').delete().eq('id', id);
     if (error) return alert(error.message);
     await Promise.all([loadUpcoming(), loadProposed()]);
     calendar.refetchEvents();
@@ -1780,7 +1786,11 @@
   window.closeDetails = () => detModal.classList.remove('on');
   detModal.addEventListener('click', (e) => { if (e.target === detModal) closeDetails(); });
   document.getElementById('det-delete').addEventListener('click', async () => {
-    if (!detEvent || !confirm(`Delete "${detEvent.title}"?`)) return;
+    if (!detEvent) return;
+    const q = detEvent.google_event_id
+      ? `Hide "${detEvent.title}" from the hub? It stays on Google Calendar.`
+      : `Delete "${detEvent.title}"?`;
+    if (!confirm(q)) return;
     closeDetails();
     await deleteEvent(detEvent.id);
   });
@@ -2116,6 +2126,28 @@
   // Initial load
   // ================================================================
   await Promise.all([loadUpcoming(), loadProposed(), loadTasks(), loadDocs(), loadAccounts()]);
+
+  // Pull in events family members added straight to the shared Google
+  // calendar (fire-and-forget — the page is already usable).
+  (async () => {
+    try {
+      const sess = await supa.auth.getSession();
+      if (!sess.data.session) return;
+      const res = await fetch('https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/calendar-pull', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sess.data.session.access_token}`,
+        },
+        body: '{}',
+      });
+      const r = await res.json().catch(() => null);
+      if (r && (r.imported || r.updated)) {
+        loadUpcoming();
+        calendar.refetchEvents();
+      }
+    } catch (_) { /* quiet — the next page open tries again */ }
+  })();
 
   // ================================================================
   // Utility
