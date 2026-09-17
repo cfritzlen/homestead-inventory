@@ -153,30 +153,25 @@ select cron.schedule(
 
 ---
 
-## 8b. (Optional) Daily deep scan — catch everything
+## 8b. Daily deep scan — catch everything
 
-Once a day, scan the last 36 hours of inbox mail for every connected account
-(same as pressing "Scan inbox", but automatic). The overlapping window means
-nothing slips through. Supabase → **SQL Editor**:
+Once a day (10:00 UTC, about 6 AM Eastern) every connected account gets the
+last 36 hours of mail scanned for events, same as pressing "Scan inbox". The
+overlapping window means nothing slips through.
 
-```sql
-select cron.schedule(
-  'gmail-ingest-daily-deep-scan',
-  '0 10 * * *',  -- 10:00 UTC = 5:00 AM Central. Adjust to taste.
-  $$
-  select net.http_post(
-    url := 'https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/gmail-ingest',
-    headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || current_setting('app.service_role_key', true),
-      'Content-Type', 'application/json'
-    ),
-    body := jsonb_build_object('hours_back', 36)
-  );
-  $$
-);
-```
+This is set up by running **migration 011** (`supabase/migrations/011_daily_deep_scan.sql`)
+in the SQL Editor. It needs `app.service_role_key` from step 7. Safe to re-run.
 
-To remove it later: `select cron.unschedule('gmail-ingest-daily-deep-scan');`
+To turn it off later: `select cron.unschedule('gmail-ingest-daily-deep-scan');`
+
+## 8c. Scan with dates
+
+On the Family Hub page, under **Scan now**, "Scan with dates" scans a specific
+date range (up to a year) across every connected account, archived mail
+included. "Bookings, schedules & appointments" pre-filters to travel,
+reservations, tickets, school/daycare/doctor mail and anything with an
+attachment. "Everything" reads it all, which is slower. Long ranges run in
+batches, so leave the page open until it says it is finished.
 
 ---
 

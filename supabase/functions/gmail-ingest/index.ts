@@ -34,10 +34,29 @@ Deno.serve(async (req) => {
     const hoursBack = Math.min(Math.max(
       Number(body.hours_back) || (Number(body.days_back) || 0) * 24, 0), 30 * 24);
 
+    // "Scan with dates" button: explicit YYYY-MM-DD range (inclusive), paged
+    // in small batches so a months-long scan never hits the function timeout.
+    // The hub calls back with page_tokens (per account) until none remain.
+    let range: DateRange | null = null;
+    if (body.date_from && body.date_to) {
+      const since = new Date(`${body.date_from}T00:00:00`);
+      const until = new Date(`${body.date_to}T23:59:59`);
+      if (isNaN(since.getTime()) || isNaN(until.getTime())) return json({ error: 'bad date range' }, 400);
+      if (until < since) return json({ error: 'end date is before start date' }, 400);
+      if (until.getTime() - since.getTime() > 366 * 24 * 3600 * 1000) {
+        return json({ error: 'date range must be a year or less' }, 400);
+      }
+      range = {
+        since, until,
+        focus: body.focus === 'all' ? 'all' : 'bookings',
+        pageTokens: body.page_tokens && typeof body.page_tokens === 'object' ? body.page_tokens : null,
+      };
+    }
+
     let manual: { householdId: string; hoursBack: number; userId: string } | null = null;
     let forcedHours = 0;
     const authToken = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-    if (hoursBack && authToken) {
+    if ((hoursBack || range) && authToken) {
       if (authToken === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
         forcedHours = hoursBack;  // scheduled deep scan, all accounts
       } else {
@@ -52,6 +71,8 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (range && !manual) return json({ error: 'sign in to scan a date range' }, 401);
+
     let q = supa.from('oauth_tokens').select('account_email,household_id').eq('provider', 'google');
     if (manual) q = q.eq('household_id', manual.householdId);
     const { data: accounts, error: acctErr } = await q;
@@ -63,7 +84,7 @@ Deno.serve(async (req) => {
     const perAccount: any[] = [];
     for (const { account_email, household_id } of accounts) {
       try {
-        const r = await pollAccount(supa, account_email, household_id, manual?.hoursBack || forcedHours, manual?.userId);
+        const r = await pollAccount(supa, account_email, household_id, manual?.hoursBack || forcedHours, manual?.userId, range);
         perAccount.push({ account_email, ...r });
       } catch (e) {
         perAccount.push({ account_email, error: e.message });
@@ -74,13 +95,44 @@ Deno.serve(async (req) => {
         }, { onConflict: 'account_email' });
       }
     }
-    return json({ ok: true, manual: !!manual, accounts: perAccount });
+    // Per-account page tokens the hub sends back to fetch the next batch
+    const nextPageTokens: Record<string, string> = {};
+    for (const a of perAccount) {
+      if (a.scan?.next_page_token) nextPageTokens[a.account_email] = a.scan.next_page_token;
+    }
+    return json({
+      ok: true, manual: !!manual, accounts: perAccount,
+      next_page_tokens: Object.keys(nextPageTokens).length ? nextPageTokens : null,
+    });
   } catch (e) {
     return json({ error: `unhandled: ${e.message}` }, 500);
   }
 });
 
-async function pollAccount(supa: any, accountEmail: string, householdId: string, forceScanHours?: number, manualUserId?: string) {
+type DateRange = {
+  since: Date; until: Date;
+  focus: 'all' | 'bookings';
+  pageTokens: Record<string, string> | null;   // null on the first call
+};
+
+// Messages checked per account per call. Each one costs a Gmail fetch plus a
+// triage call, so this keeps a single invocation comfortably under the edge
+// function time limit; the hub keeps calling until every account is done.
+const RANGE_BATCH = 40;
+
+// Gmail-side filter for "bookings & schedules" scans: travel, reservations,
+// tickets, school/daycare/doctor mail, or anything with an attachment.
+// Anything that gets through still goes through Claude's triage.
+const FOCUS_QUERY = '{' + [
+  'subject:(confirmation OR confirmed OR reservation OR itinerary OR booking OR ticket OR tickets OR flight OR hotel OR airbnb OR vrbo OR "check-in" OR appointment OR invitation OR invite OR schedule OR calendar OR newsletter OR closed OR closure OR "picture day" OR registration OR rsvp OR reminder OR "save the date" OR trip OR conference)',
+  'has:attachment',
+  'from:(airbnb OR vrbo OR united OR delta OR jetblue OR southwest OR "american airlines" OR spirit OR frontier OR expedia OR booking.com OR hotels.com OR marriott OR hilton OR hyatt OR hertz OR enterprise OR avis OR ticketmaster OR eventbrite OR leagueapps OR himama OR lillio OR mychart OR patientconnect OR cvent OR passkey)',
+].join(' ') + '}';
+
+async function pollAccount(
+  supa: any, accountEmail: string, householdId: string,
+  forceScanHours?: number, manualUserId?: string, range?: DateRange | null,
+) {
   const access = await getFreshAccessToken(supa, accountEmail);
 
   // family_documents.created_by is NOT NULL and defaults to auth.uid(), which
@@ -138,7 +190,20 @@ async function pollAccount(supa: any, accountEmail: string, householdId: string,
   // explicit window, bigger budget.
   // 15-min cron: only when the household opted into auto-scan; incremental window.
   let scanResult: any = { skipped: true, reason: 'auto-scan off' };
-  if (forceScanHours) {
+  if (range) {
+    // Date-range scan: first call has no tokens; later calls only continue
+    // accounts that still have a token, the rest are finished.
+    const token = range.pageTokens ? range.pageTokens[accountEmail] : undefined;
+    if (range.pageTokens && !token) {
+      scanResult = { skipped: true, reason: 'done' };
+    } else {
+      scanResult = await autoScan(
+        supa, access, accountEmail, householdId, createdBy,
+        range.since.toISOString(), RANGE_BATCH,
+        { until: range.until, focus: range.focus, pageToken: token, touchState: false },
+      );
+    }
+  } else if (forceScanHours) {
     const since = new Date(Date.now() - forceScanHours * 3600 * 1000).toISOString();
     scanResult = await autoScan(supa, access, accountEmail, householdId, createdBy, since, 100);
   } else {
@@ -162,9 +227,16 @@ async function pollAccount(supa: any, accountEmail: string, householdId: string,
 
 // Scan new inbox mail (excluding promotions/social/spam) and ingest only the
 // messages Claude's cheap triage says contain family-calendar events.
+type ScanOpts = {
+  until?: Date;                  // end of window (default: now)
+  focus?: 'all' | 'bookings';    // Gmail-side pre-filter for long windows
+  pageToken?: string;            // continue a paged scan
+  touchState?: boolean;          // false = don't move gmail_state.last_scan_at
+};
+
 async function autoScan(
   supa: any, access: string, accountEmail: string, householdId: string,
-  createdBy: string, lastScanAt: string | null, maxMessages = 20,
+  createdBy: string, lastScanAt: string | null, maxMessages = 20, opts: ScanOpts = {},
 ) {
   const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
   if (!ANTHROPIC_API_KEY) return { skipped: true, reason: 'no ANTHROPIC_API_KEY' };
@@ -173,11 +245,16 @@ async function autoScan(
     (lastScanAt ? new Date(lastScanAt).getTime() : Date.now() - 24 * 3600 * 1000) / 1000,
   );
   const scanStartedAt = new Date().toISOString();
-  const q = encodeURIComponent(
-    `in:inbox -category:promotions -category:social -in:spam after:${sinceEpoch}`,
-  );
-  const list = await gApi<{ messages?: {id: string}[] }>(
-    access, `/gmail/v1/users/me/messages?q=${q}&maxResults=${maxMessages}`,
+  // A dated scan looks at archived mail too (older mail is usually archived);
+  // the rolling scan sticks to the inbox.
+  let query = opts.until
+    ? `-in:spam -in:trash -in:draft -category:promotions -category:social after:${sinceEpoch} before:${Math.floor(opts.until.getTime() / 1000) + 1}`
+    : `in:inbox -category:promotions -category:social -in:spam after:${sinceEpoch}`;
+  if (opts.focus === 'bookings') query += ` ${FOCUS_QUERY}`;
+  const q = encodeURIComponent(query);
+  const list = await gApi<{ messages?: {id: string}[]; nextPageToken?: string }>(
+    access, `/gmail/v1/users/me/messages?q=${q}&maxResults=${maxMessages}`
+      + (opts.pageToken ? `&pageToken=${encodeURIComponent(opts.pageToken)}` : ''),
   );
   const results: any[] = [];
   for (const { id } of list.messages || []) {
@@ -216,13 +293,15 @@ async function autoScan(
   await supa.from('scan_activity').delete()
     .lt('created_at', new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString());
 
-  await supa.from('gmail_state')
-    .update({ last_scan_at: scanStartedAt })
-    .eq('account_email', accountEmail);
+  if (opts.touchState !== false) {
+    await supa.from('gmail_state')
+      .update({ last_scan_at: scanStartedAt })
+      .eq('account_email', accountEmail);
+  }
 
   const kept = results.filter((r) => r.triage === 'has events').length;
-  console.log(`[scan] ${accountEmail}: checked ${results.length} email(s), ingested ${kept}`);
-  return { scanned: results.length, results };
+  console.log(`[scan] ${accountEmail}: checked ${results.length} email(s), ingested ${kept}${list.nextPageToken ? ' (more pages)' : ''}`);
+  return { scanned: results.length, results, next_page_token: list.nextPageToken || null };
 }
 
 async function triage(apiKey: string, subject: string, from: string, body: string, attNames: string[] = []): Promise<boolean> {
