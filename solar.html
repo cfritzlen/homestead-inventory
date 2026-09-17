@@ -733,12 +733,23 @@ function setPeriod(p){
 }
 
 // Rate input
-document.getElementById('rateInput').addEventListener('change',function(){RATE=parseFloat(this.value)||0.197264;loadDashboard();loadExpenses();});
+document.getElementById('rateInput').addEventListener('change',function(){RATE=parseFloat(this.value)||0.197264;loadDashboard();loadExpenses();if(allBills.length>0)renderBillsChart();});
 
 // =============================================
 // Electric Bills
 // =============================================
 let allBills=[],billChart=null,activeMeterFilter='all';
+let solarByMonth=null; // {'YYYY-MM': pv kWh} from solar_daily_summary
+async function ensureSolarMonthly(){
+    if(solarByMonth)return solarByMonth;
+    try{
+        const rows=await sbGetAll('solar_daily_summary','select=summary_date,pv_kwh&order=summary_date.asc');
+        const m={};
+        rows.forEach(r=>{const k=(r.summary_date||'').slice(0,7);if(!k)return;m[k]=(m[k]||0)+(r.pv_kwh||0);});
+        solarByMonth=m;
+    }catch(err){console.error('Load solar monthly error:',err);solarByMonth={};}
+    return solarByMonth;
+}
 let pendingBills=[],currentBillData=null; // for modal review
 const METER_LABELS=['Landlord','101','202/3C','201'];
 const ACCT_MAP={'100156002667':'Landlord','100156008516':'101','100156008532':'202/3C','100156014092':'201'};
@@ -941,6 +952,7 @@ function showMonthCheck(){
 async function loadBillHistory(){
     try{
         allBills=await sbGet('solar_electric_bills','order=billing_period_end.desc&limit=200');
+        await ensureSolarMonthly();
         const meters=[...new Set(allBills.map(b=>b.meter_label).filter(Boolean))].sort();
         document.getElementById('meterFilterBtns').innerHTML=meters.map(m=>`<button class="meter-filter-btn${activeMeterFilter===m?' active':''}" onclick="filterMeter('${m}')">${m}</button>`).join('');
         renderBillsTable();renderBillsChart();showMonthCheck();
@@ -1014,9 +1026,14 @@ function renderBillsChart(){
     const months=Object.keys(byMonth).sort();
     const labels=months.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleDateString('en-US',{month:'short',year:'2-digit'});});
     const solarMonthlyKwh=getCalcMonthlyKwh();
+    // Real solar production, shown at the bottom of the bar as its dollar value (only for All Meters — solar isn't per-meter)
+    const rate=RATE||0.197264;
+    const solarKwh=months.map(m=>activeMeterFilter==='all'&&solarByMonth?(solarByMonth[m]||0):0);
+    const solarDollars=solarKwh.map(k=>+(k*rate).toFixed(2));
     billChart=new Chart(ctx,{
         type:'bar',
         data:{labels,datasets:[
+            {label:'Solar produced',data:solarDollars,backgroundColor:'rgba(102,187,106,0.75)',borderRadius:0,stack:'cost',_kwh:solarKwh},
             {label:'Energy Cost',data:months.map(m=>byMonth[m].energy),backgroundColor:'rgba(255,167,38,0.6)',borderRadius:4,stack:'cost'},
             {label:'Fees & Taxes',data:months.map(m=>byMonth[m].fees),backgroundColor:'rgba(196,181,164,0.5)',borderRadius:4,stack:'cost'},
             {label:'kWh',data:months.map(m=>byMonth[m].kwh),type:'line',borderColor:'#EF5350',backgroundColor:'transparent',borderWidth:2,yAxisID:'y1',pointRadius:4,tension:0.3},
@@ -1028,7 +1045,10 @@ function renderBillsChart(){
                 legend:{position:'bottom',labels:{color:'#5f734c',usePointStyle:true,padding:12,font:{family:'Karla',size:12}}},
                 tooltip:{backgroundColor:'rgba(74,77,71,0.95)',titleColor:'#ece8dd',bodyColor:'#c4b5a4',
                     callbacks:{
-                        label:c=>{if(c.dataset.yAxisID==='y1')return `${c.dataset.label}: ${c.parsed.y.toLocaleString()} kWh`;return `${c.dataset.label}: $${c.parsed.y.toFixed(2)}`;},
+                        label:c=>{
+                            if(c.dataset.label==='Solar produced'){const k=c.dataset._kwh[c.dataIndex];if(!k)return null;return `Solar produced: ${Math.round(k).toLocaleString()} kWh (~$${c.parsed.y.toFixed(2)} saved)`;}
+                            if(c.dataset.yAxisID==='y1')return `${c.dataset.label}: ${c.parsed.y.toLocaleString()} kWh`;
+                            return `${c.dataset.label}: $${c.parsed.y.toFixed(2)}`;},
                         afterBody:ctx=>{const m=months[ctx[0].dataIndex];const d=byMonth[m];const avg=d.days>0?(d.kwh/d.days).toFixed(1):'?';return [`Avg daily: ${avg} kWh (${d.days} days)`];}
                     }
                 }
