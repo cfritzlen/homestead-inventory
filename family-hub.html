@@ -582,8 +582,13 @@
   <h2 class="section">Documents <span class="count" id="docs-count"></span>
     <a href="#" class="link" onclick="event.preventDefault(); openActivity();">AI activity →</a>
   </h2>
-  <div class="chips" id="doc-filters" style="margin-bottom:10px;"></div>
-  <div class="docs" id="docs"><div class="docs-empty">Loading…</div></div>
+  <details class="collapsible" id="docs-collapse">
+    <summary>Show documents <span style="font-size:12px;color:var(--muted);">tap to expand</span></summary>
+    <div class="body">
+      <div class="chips" id="doc-filters" style="margin-bottom:10px;"></div>
+      <div class="docs" id="docs"><div class="docs-empty">Loading…</div></div>
+    </div>
+  </details>
 
   <!-- Family members -->
   <h2 class="section">Family members <span class="count">tag events with names</span></h2>
