@@ -2735,7 +2735,7 @@
             // Set previous rent and prepare for increase
             document.getElementById('previous-rent').value = lease.rent_amount;
             document.getElementById('rent-increase-percent').value = '';
-            document.getElementById('rent-amount').value = '';
+            document.getElementById('rent-amount-renewal').value = '';
             
             // Fill deposits (can be edited)
             document.querySelector('[name="security_deposit"]').value = lease.security_deposit || '';
@@ -2750,6 +2750,10 @@
             
             // Fill notes
             document.querySelector('[name="notes"]').value = lease.notes || '';
+
+            // Lease options: what the old lease had, else the property's defaults
+            const oldOpts = lease.lease_options && typeof lease.lease_options === 'object' && Object.keys(lease.lease_options).length ? lease.lease_options : null;
+            if (oldOpts) applyLeaseOptions(oldOpts); else onPropertyChange();
             
             // Scroll to top
             window.scrollTo(0, 0);
