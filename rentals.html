@@ -1674,6 +1674,7 @@
                         <button class="setup-toggle" onclick="togglePaymentSetup()" id="setup-toggle-btn">⚙️ Payment Setup</button>
                     </div>
                     <div id="payment-alert-container"></div>
+                    <div id="mortgage-review-reminder" style="display:none;background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:14px;"></div>
 
                     <!-- Zelle: rent payments read from Gmail (zelle-ingest edge function) -->
                     <div class="card" id="zelle-card" style="background:var(--bg-secondary);margin-bottom:16px;">
@@ -1821,6 +1822,11 @@
                     <div id="payments-paid">
                         <div class="loading">No payments yet this month</div>
                     </div>
+
+                    <!-- Small shortfalls (under $5) are treated as paid but tracked here
+                         so they can come out of the deposit when the tenant moves out -->
+                    <div class="payment-section-header" style="margin-top:30px;">🧾 Short by a few dollars (take from deposit at move-out)</div>
+                    <div id="payments-shortfalls" style="font-size:13px;color:var(--text-secondary);">Loading...</div>
                 </div>
             </div>
         </div>
@@ -3525,6 +3531,10 @@
                 if (pErr) throw pErr;
                 monthlyPayments = payments || [];
 
+                // Mortgages are on auto-pay: once the due date has passed, mark the
+                // month paid on that date. Rent is never touched here.
+                await autoPayMortgages(monthKey);
+
                 // Auto-create records for defaults that don't have one yet this month
                 // This stamps amount_owed so past months keep their original amount
                 const missing = paymentDefaults.filter(d => 
@@ -3553,13 +3563,63 @@
                 }
 
                 renderMonthlyPayments();
+                loadShortfalls();
             } catch (error) {
                 console.error('Error loading payments:', error);
                 showPaymentAlert('Error loading payments: ' + error.message, 'error');
             }
         }
 
+        // Due date for a payment line in a given month (clamped to the month's length)
+        function dueDateFor(d, monthKey) {
+            const [y, m] = monthKey.split('-').map(Number);
+            const last = new Date(y, m, 0).getDate();
+            const day = Math.min(Math.max(parseInt(d.due_day) || 1, 1), last);
+            return `${monthKey}-${String(day).padStart(2, '0')}`;
+        }
+
+        async function autoPayMortgages(monthKey) {
+            const today = new Date().toISOString().split('T')[0];
+            for (const d of paymentDefaults.filter(x => x.type === 'mortgage')) {
+                const due = dueDateFor(d, monthKey);
+                if (due > today) continue;                       // not due yet this month
+                const existing = monthlyPayments.find(p => p.payment_default_id === d.id);
+                try {
+                    if (!existing) {
+                        const amt = getAmountForMonth(d.id, monthKey);
+                        const { data, error } = await supabaseClient.from('rental_payments')
+                            .insert([{ payment_default_id: d.id, period: monthKey, amount_owed: amt, amount_paid: amt, date_paid: due }])
+                            .select().single();
+                        if (error) throw error;
+                        monthlyPayments.push(data);
+                    } else if (!existing.date_paid) {
+                        const amt = parseFloat(existing.amount_owed || getAmountForMonth(d.id, monthKey));
+                        const { error } = await supabaseClient.from('rental_payments')
+                            .update({ date_paid: due, amount_paid: amt }).eq('id', existing.id);
+                        if (error) throw error;
+                        existing.date_paid = due; existing.amount_paid = amt;
+                    }
+                } catch (e) { console.error('auto-pay mortgage failed:', e); }
+            }
+        }
+
+        // Every November: mortgage payments usually change with the new escrow
+        // (taxes/insurance), so nudge once a year to check them.
+        function showMortgageReviewReminder() {
+            const now = new Date();
+            const box = document.getElementById('mortgage-review-reminder');
+            if (!box) return;
+            const key = 'mortgage-review-done-' + now.getFullYear();
+            let done = false;
+            try { done = localStorage.getItem(key) === '1'; } catch (_) {}
+            if (now.getMonth() !== 10 || done) { box.style.display = 'none'; return; }
+            box.style.display = 'block';
+            box.innerHTML = `<strong>🏦 November check:</strong> mortgage payments often change with the new escrow. Compare each mortgage line to your latest statement and update the amount in ⚙️ Payment Setup → 📅 Rates.
+                <button class="action-btn btn-secondary" style="margin-left:8px;" onclick="try{localStorage.setItem('${key}','1')}catch(e){};showMortgageReviewReminder()">Done for ${now.getFullYear()}</button>`;
+        }
+
         function renderMonthlyPayments() {
+            showMortgageReviewReminder();
             const unpaidContainer = document.getElementById('payments-unpaid');
             const paidContainer = document.getElementById('payments-paid');
 
@@ -3588,8 +3648,9 @@
                     if (d.type === 'rent') paidRent.push(row);
                     else paidMortgage.push(row);
 
-                    // Check for partial payment
-                    if (paidAmt < owedAmt) {
+                    // Check for partial payment. Short by less than SMALL_SHORTFALL counts
+                    // as paid; it's tracked in the "Short by a few dollars" list instead.
+                    if (paidAmt < owedAmt && owedAmt - paidAmt >= SMALL_SHORTFALL) {
                         const remaining = owedAmt - paidAmt;
                         const partialRow = renderPartialRow(d, existing, remaining, owedAmt);
                         if (d.type === 'rent') unpaidRent.push(partialRow);
@@ -3635,6 +3696,41 @@
         }
 
         // Render a partial/remaining balance row in unpaid
+        // Anything short by less than this is treated as paid (no nagging) but
+        // added up per tenant below, to deduct from the deposit at move-out.
+        const SMALL_SHORTFALL = 5;
+
+        async function loadShortfalls() {
+            const el = document.getElementById('payments-shortfalls');
+            try {
+                const { data, error } = await supabaseClient
+                    .from('rental_payments')
+                    .select('payment_default_id, period, amount_owed, amount_paid')
+                    .not('date_paid', 'is', null)
+                    .order('period', { ascending: true });
+                if (error) throw error;
+                const byTenant = new Map();
+                for (const p of data || []) {
+                    const short = parseFloat(p.amount_owed || 0) - parseFloat(p.amount_paid || 0);
+                    if (short <= 0.005 || short >= SMALL_SHORTFALL) continue;
+                    const d = paymentDefaults.find(x => x.id === p.payment_default_id);
+                    if (!d || d.type !== 'rent') continue;
+                    const t = byTenant.get(d.id) || { d, total: 0, months: [] };
+                    t.total += short;
+                    t.months.push(`${p.period} ($${short.toFixed(2)})`);
+                    byTenant.set(d.id, t);
+                }
+                if (!byTenant.size) { el.innerHTML = '<div style="padding:8px 0;">Nobody is short right now.</div>'; return; }
+                el.innerHTML = [...byTenant.values()]
+                    .sort((a, b) => b.total - a.total)
+                    .map(t => `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--border);">
+                        <span><strong style="color:var(--text-primary);">${t.d.label}</strong> · ${t.d.property_name}<br><small>${t.months.join(', ')}</small></span>
+                        <strong style="color:#92400e;white-space:nowrap;">$${t.total.toFixed(2)}</strong></div>`).join('');
+            } catch (e) {
+                el.innerHTML = `<div style="color:var(--danger);">Could not load: ${e.message}</div>`;
+            }
+        }
+
         function renderPartialRow(d, existing, remaining, owedAmt) {
             const paymentId = existing ? existing.id : '';
             return `
@@ -3810,6 +3906,8 @@
         const money = (v) => '$' + parseFloat(v || 0).toLocaleString('en-US', {minimumFractionDigits: 2});
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+        let zellePending = [];
+
         async function callZelle(body) {
             const res = await fetch(ZELLE_FN, {
                 method: 'POST',
@@ -3856,7 +3954,8 @@
                     supabaseClient.from('rental_zelle_payments').select('*').eq('status', 'applied').order('applied_at', { ascending: false }).limit(15)
                 ]);
                 if (e1 || e2) throw (e1 || e2);
-                renderZellePending(pending || []);
+                zellePending = pending || [];
+                renderZellePending(zellePending);
                 appliedEl.innerHTML = (applied || []).length
                     ? applied.map(z => `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border);">
                         <span>${esc(z.sent_on)} · <strong>${esc(z.sender_name)}</strong> ${money(z.amount)} → ${esc(z.note)}</span>
@@ -3900,7 +3999,22 @@
             if (!unit || !period) { showPaymentAlert('Pick a unit and a month first', 'error'); return; }
             try {
                 const r = await callZelle({ action: 'apply', id, payment_default_id: Number(unit), period, remember, force: !!force });
-                showPaymentAlert(r.status === 'applied' ? 'Payment applied' : ('Not applied: ' + r.note), r.status === 'applied' ? 'success' : 'error');
+                let applied = r.status === 'applied' ? 1 : 0, held = r.status === 'applied' ? 0 : 1;
+                // "Remember sender" also clears everything else waiting from the same
+                // person, each to its own month. Months already marked paid stay in the list.
+                if (remember && r.status === 'applied') {
+                    const me = zellePending.find(z => z.id === id);
+                    const others = zellePending.filter(z => z.id !== id && me && z.sender_name === me.sender_name && z.period);
+                    for (const z of others) {
+                        try {
+                            const rr = await callZelle({ action: 'apply', id: z.id, payment_default_id: Number(unit), period: z.period, remember: false, force: false });
+                            if (rr.status === 'applied') applied++; else held++;
+                        } catch (_) { held++; }
+                    }
+                }
+                showPaymentAlert(
+                    applied ? `${applied} payment${applied === 1 ? '' : 's'} applied` + (held ? `, ${held} left for review` : '') : ('Not applied: ' + r.note),
+                    applied ? 'success' : 'error');
                 await loadZelle();
                 loadMonthlyPayments();
             } catch (e) { showPaymentAlert('Error: ' + e.message, 'error'); }
