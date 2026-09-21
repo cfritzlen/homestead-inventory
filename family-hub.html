@@ -314,6 +314,9 @@
   .acct-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
   .acct-row .email { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .acct-row .scope { color: var(--muted); font-size: 14px; }
+  .acct-row .daily { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); cursor: pointer; white-space: nowrap; }
+  .acct-row .daily input { width: 16px; height: 16px; accent-color: var(--sage-600); margin: 0; }
+  .accounts-note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
   .acct-add {
     background: transparent;
     color: var(--sage-300);
@@ -604,13 +607,6 @@
       Off categories stay in the hub but never push to Google Calendar.
     </p>
     <div class="chips" id="sync-toggles" style="margin:0;"></div>
-    <div style="border-top:1px solid var(--border-soft);margin:12px 0 10px;"></div>
-    <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink);cursor:pointer;">
-      <input type="checkbox" id="auto-scan" style="width:18px;height:18px;margin-top:2px;accent-color:var(--sage-600);">
-      <span><b>Auto-scan inbox for events</b><br>
-        <span style="color:var(--muted);font-size:12px;">Checks new mail every 15 min and pulls in real events — no labeling needed.</span>
-      </span>
-    </label>
     <div style="border-top:1px solid var(--border-soft);margin:12px 0 10px;"></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <b style="font-size:14px;">Scan now:</b>
@@ -1395,7 +1391,12 @@
     const el = document.getElementById('accounts');
     let accounts = [];
     let err = null;
-    const v = await supa.from('family_accounts').select('account_email,scopes,updated_at').order('updated_at', { ascending: false });
+    let v = await supa.from('family_accounts').select('account_email,scopes,updated_at,auto_scan').order('updated_at', { ascending: false });
+    // Pre-migration-012 view has no auto_scan column — fall back so the list still renders
+    if (v.error && v.error.message?.includes('auto_scan')) {
+      v = await supa.from('family_accounts').select('account_email,scopes,updated_at').order('updated_at', { ascending: false });
+    }
+    const HAS_DAILY = !v.error && (v.data || []).some(a => 'auto_scan' in a);
     if (!v.error) accounts = v.data || [];
     else err = v.error;
 
@@ -1415,9 +1416,23 @@
           <span class="dot"></span>
           <span class="email">${escapeHtml(a.account_email)}</span>
           <span class="scope">gmail + calendar</span>
+          ${HAS_DAILY ? `<label class="daily" title="Every morning, read the last 36 hours of this inbox for events"><input type="checkbox" ${a.auto_scan ? 'checked' : ''}> Daily scan</label>` : ''}
         `;
+        const box = row.querySelector('.daily input');
+        if (box) box.addEventListener('change', async () => {
+          box.disabled = true;
+          const { data: ok, error } = await supa.rpc('set_account_auto_scan', { p_email: a.account_email, p_enabled: box.checked });
+          box.disabled = false;
+          if (error || ok === false) { alert(error?.message || 'could not save'); box.checked = !box.checked; }
+        });
         el.appendChild(row);
       }
+      const note = document.createElement('div');
+      note.className = 'accounts-note';
+      note.textContent = HAS_DAILY
+        ? 'Daily scan reads the last 36 hours of that inbox every morning (about 6 AM Eastern). Scan now and Scan with dates always cover every account.'
+        : 'Run migration 012 to turn on per-account daily scans.';
+      el.appendChild(note);
     }
     // Add buttons
     const add = document.createElement('button');
@@ -2114,18 +2129,6 @@
       btn.disabled = false; btn.textContent = 'Scan dates';
       document.getElementById('scan-now').disabled = false;
     }
-  });
-
-  // ================================================================
-  // Auto-scan toggle
-  // ================================================================
-  const autoScanBox = document.getElementById('auto-scan');
-  autoScanBox.checked = HH.settings?.auto_scan_email === true;
-  autoScanBox.addEventListener('change', async () => {
-    const newSettings = { ...(HH.settings || {}), auto_scan_email: autoScanBox.checked };
-    const { error } = await supa.from('households').update({ settings: newSettings }).eq('id', HH.id);
-    if (error) { alert(error.message); autoScanBox.checked = !autoScanBox.checked; return; }
-    HH.settings = newSettings;
   });
 
   // ================================================================

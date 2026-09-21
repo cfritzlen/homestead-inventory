@@ -21,10 +21,9 @@ Deno.serve(async (req) => {
     const supa = getServiceClient();
 
     // Three calling modes:
-    //   Cron, empty body (service role): every connected account, label pass +
-    //   incremental auto-scan for opted-in households.
-    //   Cron, hours_back in body (service role): every connected account,
-    //   forced deep scan of that window ("daily catch-up").
+    //   Cron, empty body (service role): every connected account, label pass only.
+    //   Cron, hours_back in body (service role): daily scan of that window for
+    //   every account whose "Daily scan" toggle is on (oauth_tokens.auto_scan).
     //   Signed-in user ("Scan now" button): scope to their household, explicit
     //   days_back window, bigger message budget.
     let body: any = {};
@@ -73,7 +72,7 @@ Deno.serve(async (req) => {
 
     if (range && !manual) return json({ error: 'sign in to scan a date range' }, 401);
 
-    let q = supa.from('oauth_tokens').select('account_email,household_id').eq('provider', 'google');
+    let q = supa.from('oauth_tokens').select('account_email,household_id,auto_scan').eq('provider', 'google');
     if (manual) q = q.eq('household_id', manual.householdId);
     const { data: accounts, error: acctErr } = await q;
     if (acctErr) return json({ error: `accounts query failed: ${acctErr.message}` }, 500);
@@ -82,9 +81,13 @@ Deno.serve(async (req) => {
     }
 
     const perAccount: any[] = [];
-    for (const { account_email, household_id } of accounts) {
+    for (const { account_email, household_id, auto_scan } of accounts) {
       try {
-        const r = await pollAccount(supa, account_email, household_id, manual?.hoursBack || forcedHours, manual?.userId, range);
+        // The daily cron only reads accounts whose "Daily scan" toggle is on.
+        // Manual scans (buttons) always cover every account in the household.
+        const cronHours = forcedHours && auto_scan !== true ? 0 : forcedHours;
+        const r = await pollAccount(supa, account_email, household_id, manual?.hoursBack || cronHours, manual?.userId, range,
+          forcedHours && !cronHours ? 'daily scan off for this account' : undefined);
         perAccount.push({ account_email, ...r });
       } catch (e) {
         perAccount.push({ account_email, error: e.message });
@@ -132,6 +135,7 @@ const FOCUS_QUERY = '{' + [
 async function pollAccount(
   supa: any, accountEmail: string, householdId: string,
   forceScanHours?: number, manualUserId?: string, range?: DateRange | null,
+  skipReason?: string,
 ) {
   const access = await getFreshAccessToken(supa, accountEmail);
 
@@ -186,10 +190,10 @@ async function pollAccount(
   }
 
   // ---- Pass 2: inbox scan ----
-  // Forced ("Scan now" button or daily deep-scan cron): always runs,
-  // explicit window, bigger budget.
-  // 15-min cron: only when the household opted into auto-scan; incremental window.
-  let scanResult: any = { skipped: true, reason: 'auto-scan off' };
+  // "Scan now" / "Scan with dates" buttons: every account in the household.
+  // Daily cron (hours_back): only accounts with their Daily scan toggle on.
+  // 15-min cron: label pass only, no inbox scan.
+  let scanResult: any = { skipped: true, reason: skipReason || 'inbox scans run daily per account' };
   if (range) {
     // Date-range scan: first call has no tokens; later calls only continue
     // accounts that still have a token, the rest are finished.
@@ -206,12 +210,6 @@ async function pollAccount(
   } else if (forceScanHours) {
     const since = new Date(Date.now() - forceScanHours * 3600 * 1000).toISOString();
     scanResult = await autoScan(supa, access, accountEmail, householdId, createdBy, since, 100);
-  } else {
-    const { data: hh } = await supa
-      .from('households').select('settings').eq('id', householdId).maybeSingle();
-    if (hh?.settings?.auto_scan_email === true) {
-      scanResult = await autoScan(supa, access, accountEmail, householdId, createdBy, state?.last_scan_at, 20);
-    }
   }
 
   await supa.from('gmail_state').upsert({

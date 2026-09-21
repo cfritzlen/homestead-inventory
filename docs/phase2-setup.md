@@ -155,12 +155,15 @@ select cron.schedule(
 
 ## 8b. Daily deep scan — catch everything
 
-Once a day (10:00 UTC, about 6 AM Eastern) every connected account gets the
-last 36 hours of mail scanned for events, same as pressing "Scan inbox". The
-overlapping window means nothing slips through.
+Once a day (10:00 UTC, about 6 AM Eastern) each connected account with its
+**Daily scan** toggle on (Family Hub → Connected accounts) gets the last 36
+hours of mail scanned for events, same as pressing "Scan inbox". The
+overlapping window means nothing slips through. The 15-minute cron now only
+handles the `family-hub` label.
 
-This is set up by running **migration 011** (`supabase/migrations/011_daily_deep_scan.sql`)
-in the SQL Editor. It needs `app.service_role_key` from step 7. Safe to re-run.
+Set up by running **migration 011** (the schedule) and **migration 012** (the
+per-account toggle) in the SQL Editor. Needs `app.service_role_key` from
+step 7. Both are safe to re-run.
 
 To turn it off later: `select cron.unschedule('gmail-ingest-daily-deep-scan');`
 
