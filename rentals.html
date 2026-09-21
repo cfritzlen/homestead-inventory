@@ -1674,6 +1674,7 @@
                         <button class="setup-toggle" onclick="togglePaymentSetup()" id="setup-toggle-btn">⚙️ Payment Setup</button>
                     </div>
                     <div id="payment-alert-container"></div>
+                    <div id="mortgage-review-reminder" style="display:none;background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:14px;"></div>
 
                     <!-- Zelle: rent payments read from Gmail (zelle-ingest edge function) -->
                     <div class="card" id="zelle-card" style="background:var(--bg-secondary);margin-bottom:16px;">
@@ -3530,6 +3531,10 @@
                 if (pErr) throw pErr;
                 monthlyPayments = payments || [];
 
+                // Mortgages are on auto-pay: once the due date has passed, mark the
+                // month paid on that date. Rent is never touched here.
+                await autoPayMortgages(monthKey);
+
                 // Auto-create records for defaults that don't have one yet this month
                 // This stamps amount_owed so past months keep their original amount
                 const missing = paymentDefaults.filter(d => 
@@ -3565,7 +3570,56 @@
             }
         }
 
+        // Due date for a payment line in a given month (clamped to the month's length)
+        function dueDateFor(d, monthKey) {
+            const [y, m] = monthKey.split('-').map(Number);
+            const last = new Date(y, m, 0).getDate();
+            const day = Math.min(Math.max(parseInt(d.due_day) || 1, 1), last);
+            return `${monthKey}-${String(day).padStart(2, '0')}`;
+        }
+
+        async function autoPayMortgages(monthKey) {
+            const today = new Date().toISOString().split('T')[0];
+            for (const d of paymentDefaults.filter(x => x.type === 'mortgage')) {
+                const due = dueDateFor(d, monthKey);
+                if (due > today) continue;                       // not due yet this month
+                const existing = monthlyPayments.find(p => p.payment_default_id === d.id);
+                try {
+                    if (!existing) {
+                        const amt = getAmountForMonth(d.id, monthKey);
+                        const { data, error } = await supabaseClient.from('rental_payments')
+                            .insert([{ payment_default_id: d.id, period: monthKey, amount_owed: amt, amount_paid: amt, date_paid: due }])
+                            .select().single();
+                        if (error) throw error;
+                        monthlyPayments.push(data);
+                    } else if (!existing.date_paid) {
+                        const amt = parseFloat(existing.amount_owed || getAmountForMonth(d.id, monthKey));
+                        const { error } = await supabaseClient.from('rental_payments')
+                            .update({ date_paid: due, amount_paid: amt }).eq('id', existing.id);
+                        if (error) throw error;
+                        existing.date_paid = due; existing.amount_paid = amt;
+                    }
+                } catch (e) { console.error('auto-pay mortgage failed:', e); }
+            }
+        }
+
+        // Every November: mortgage payments usually change with the new escrow
+        // (taxes/insurance), so nudge once a year to check them.
+        function showMortgageReviewReminder() {
+            const now = new Date();
+            const box = document.getElementById('mortgage-review-reminder');
+            if (!box) return;
+            const key = 'mortgage-review-done-' + now.getFullYear();
+            let done = false;
+            try { done = localStorage.getItem(key) === '1'; } catch (_) {}
+            if (now.getMonth() !== 10 || done) { box.style.display = 'none'; return; }
+            box.style.display = 'block';
+            box.innerHTML = `<strong>🏦 November check:</strong> mortgage payments often change with the new escrow. Compare each mortgage line to your latest statement and update the amount in ⚙️ Payment Setup → 📅 Rates.
+                <button class="action-btn btn-secondary" style="margin-left:8px;" onclick="try{localStorage.setItem('${key}','1')}catch(e){};showMortgageReviewReminder()">Done for ${now.getFullYear()}</button>`;
+        }
+
         function renderMonthlyPayments() {
+            showMortgageReviewReminder();
             const unpaidContainer = document.getElementById('payments-unpaid');
             const paidContainer = document.getElementById('payments-paid');
 
