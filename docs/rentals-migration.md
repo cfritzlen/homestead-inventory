@@ -21,3 +21,11 @@ and they can be added to the migration.
 Tables created: `rental_properties`, `rental_leases`, `rental_expenses`,
 `rental_payment_defaults`, `rental_payments`, `rental_rate_schedules`.
 Bucket created: `rental-receipts` (public read, signed-in write, same as the old one).
+
+## Extra columns (migration 013)
+
+The old tables had a few columns the app doesn't show (property address
+details, bedrooms/bathrooms, a notes field on leases and payments). To keep
+them: run `supabase/migrations/013_rentals_extra_columns.sql` in the Homestead
+SQL Editor, then open `rentals-migrate.html` → Check → Copy everything again.
+Rows are matched by id, so this only fills in the new columns.

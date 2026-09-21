@@ -32,7 +32,7 @@
 
 <div class="step">
   <h2>Step 1: Check both databases</h2>
-  <p class="muted">Confirms the new tables exist (from <code>supabase/migrations/012_rentals.sql</code>) and shows what will be copied.</p>
+  <p class="muted">Confirms the new tables exist (from <code>supabase/migrations/012_rentals.sql</code> and <code>013_rentals_extra_columns.sql</code>) and shows what will be copied.</p>
   <button id="btn-check" onclick="runCheck()">Check</button>
   <div id="check-result"></div>
 </div>
@@ -59,19 +59,20 @@ const NEW_BUCKET = 'rental-receipts';
 const T = (t) => ['tenant'+t+'_name','tenant'+t+'_email','tenant'+t+'_phone','tenant'+t+'_employer'];
 const TABLES = [
   { old: 'properties', new: 'rental_properties',
-    cols: ['id','created_at','property_name','is_building_level','status'] },
+    cols: ['id','created_at','property_name','is_building_level','status','street_address','unit','city','state','zip',
+           'bedrooms','bathrooms','property_type','has_washer_dryer','has_dishwasher','notes'] },
   { old: 'leases', new: 'rental_leases',
     cols: ['id','created_at','tenant_count','tenant_names', ...T(1), ...T(2), ...T(3), ...T(4),
            'tenant_email','tenant_phone','tenant_employer','property_address','lease_start','lease_end',
            'lease_type','lease_months','base_rent','rent_amount','security_deposit','first_month_rent',
-           'last_month_rent','num_cats','cat_fee','num_dogs','dog_fee','notes','status'] },
+           'last_month_rent','num_cats','cat_fee','num_dogs','dog_fee','notes','status','is_renewal','previous_lease_id'] },
   { old: 'expenses', new: 'rental_expenses',
     cols: ['id','created_at','expense_date','property_name','category','amount','vendor',
            'martin_hours','colette_hours','miles','notes','receipt_urls'] },
   { old: 'payment_defaults', new: 'rental_payment_defaults',
     cols: ['id','created_at','type','label','property_name','default_amount','due_day','status'] },
   { old: 'payments', new: 'rental_payments',
-    cols: ['id','created_at','payment_default_id','period','amount_owed','amount_paid','date_paid'] },
+    cols: ['id','created_at','payment_default_id','period','amount_owed','amount_paid','date_paid','notes'] },
   { old: 'rate_schedules', new: 'rental_rate_schedules',
     cols: ['id','created_at','payment_default_id','effective_date','amount','note'] },
 ];
