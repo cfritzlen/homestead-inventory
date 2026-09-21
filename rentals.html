@@ -2133,19 +2133,27 @@
                 leaseData.previous_lease_id = renewalInfo.previousLeaseId;
                 
                 // Generate the full PDF and keep a copy on the lease
-                generatePDF(leaseData, data && data[0] ? data[0].id : null);
-                
-                // Reset form after 2 seconds
-                setTimeout(() => {
-                    e.target.reset();
-                    // Reset renewal mode
-                    document.getElementById('is-renewal').value = 'false';
-                    document.getElementById('previous-lease-id').value = '';
-                    document.getElementById('renewal-indicator').style.display = 'none';
-                    document.getElementById('renewal-rent-section').style.display = 'none';
-                    document.getElementById('initial-rent-section').style.display = 'block';
+                const newId = data && data[0] ? data[0].id : null;
+                await generatePDF(leaseData, newId);
+
+                // Reset the form
+                e.target.reset();
+                document.getElementById('is-renewal').value = 'false';
+                document.getElementById('previous-lease-id').value = '';
+                document.getElementById('renewal-indicator').style.display = 'none';
+                document.getElementById('renewal-rent-section').style.display = 'none';
+                document.getElementById('initial-rent-section').style.display = 'block';
+
+                // Straight into signing: open the new lease and start Sign & send.
+                // (New and renewed leases both need signatures.)
+                if (newId) {
+                    showView('leases');
+                    await loadAllLeases();
+                    const fresh = allLeases.find(l => l.id === newId);
+                    if (fresh) { await openLeaseModal(fresh); sendForSignature(newId); }
+                } else {
                     showView('dashboard');
-                }, 2000);
+                }
 
             } catch (error) {
                 console.error('Error saving lease:', error);
