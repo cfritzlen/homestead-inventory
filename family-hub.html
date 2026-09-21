@@ -1110,6 +1110,46 @@
     return out;
   }
 
+  // Paperwork: every attachment from the same email as a to-do's source doc.
+  async function paperworkFor(docIds) {
+    const out = new Map();
+    const ids = [...new Set(docIds.filter(Boolean))];
+    if (!ids.length) return out;
+    const { data: docs } = await supa.from('family_documents').select('id,storage_path,file_name').in('id', ids);
+    for (const d of docs || []) {
+      const gm = (d.storage_path || '').match(/(gmail-[0-9a-z]+-)/i);
+      let files = [d];
+      if (gm) {
+        const { data: sibs } = await supa.from('family_documents')
+          .select('id,storage_path,file_name').like('storage_path', `%${gm[1]}%`);
+        if (sibs?.length) files = sibs;
+      }
+      out.set(d.id, files.filter(f => !/-body\.txt$/i.test(f.storage_path || '')));
+    }
+    return out;
+  }
+  function paperLinks(paper, docId) {
+    const files = docId ? (paper.get(docId) || []) : [];
+    if (!files.length) return '';
+    return `<div class="meta">📎 ${files.map(f =>
+      `<a href="#" class="src-link" onclick="event.preventDefault(); openDocFile('${f.id}')">${escapeHtml(f.file_name || 'file')}</a>`
+    ).join(' · ')}</div>`;
+  }
+  // Proposed to-dos that repeat each other or an open to-do get ignored.
+  async function tidyTasks(list) {
+    if (!list.length) return list;
+    const { data: open } = await supa.from('family_tasks').select('id,title').eq('status', 'open');
+    const kept = [], reject = [];
+    for (const t of list) {
+      if ([...(open || []), ...kept].some(o => sameThing(o, t))) reject.push(t.id); else kept.push(t);
+    }
+    if (reject.length) {
+      await supa.from('family_tasks').update({ status: 'rejected' }).in('id', reject);
+      console.log(`[tidy] ignored ${reject.length} duplicate to-do(s)`);
+    }
+    return kept;
+  }
+
   async function loadProposed() {
     const [{ data: rawEvents, error }, { data: taskData, error: taskErr }] = await Promise.all([
       supa.from('family_events')
@@ -1122,7 +1162,8 @@
     if (error) { console.error(error); return; }
     const data = await tidyProposals(rawEvents || []);
     const items = groupSeries(data);
-    const propTasks = taskErr ? [] : (taskData || []);  // table may not exist yet
+    const propTasks = taskErr ? [] : await tidyTasks(taskData || []);  // table may not exist yet
+    const paper = await paperworkFor(propTasks.map(t => t.document_id));
     const total = items.length + propTasks.length;
     const nudge = document.getElementById('nudge');
     if (!total) { nudge.style.display = 'none'; }
@@ -1153,6 +1194,7 @@
         </div>
         <div class="when">${escapeHtml(due)}</div>
         ${t.notes ? `<div class="notes">${escapeHtml(t.notes)}</div>` : ''}
+        ${paperLinks(paper, t.document_id)}
         <div class="src">from ai · confidence ${conf}${t.document_id ? ` · <a href="#" class="src-link" onclick="event.preventDefault(); openSourceDoc('${t.document_id}')">see original email</a>` : ''}</div>
         <div class="actions">
           <button class="approve" data-task="${t.id}" data-act="approve">Add to my list</button>
@@ -1296,7 +1338,7 @@
   });
   async function loadTasks() {
     const { data: raw, error } = await supa.from('family_tasks')
-      .select('id,title,notes,due_date,status,completed_at' + (HAS_PEOPLE ? ',people' : ''))
+      .select('id,title,notes,due_date,status,completed_at,document_id' + (HAS_PEOPLE ? ',people' : ''))
       .in('status', ['open', 'done'])
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at');
@@ -1321,6 +1363,7 @@
       return;
     }
     el.innerHTML = '';
+    const paper = await paperworkFor(data.map(t => t.document_id));
     const today = new Date(); today.setHours(0, 0, 0, 0);
     for (const t of data) {
       let dueTxt = '';
@@ -1340,6 +1383,7 @@
         <div class="txt">
           <div class="title">${escapeHtml(t.title)}</div>
           ${(() => { const bits = [escapeHtml(namesOf(t)), dueTxt, t.notes ? escapeHtml(t.notes) : ''].filter(Boolean); return bits.length ? `<div class="meta">${bits.join(' · ')}</div>` : ''; })()}
+          ${paperLinks(paper, t.document_id)}
         </div>
         <button class="del" data-id="${t.id}" title="Remove">×</button>
       `;
@@ -2272,6 +2316,17 @@
   // Open the source of a proposal in a new tab. Emails open in Gmail itself
   // (the message id is embedded in the storage path); uploaded photos/PDFs
   // fall back to the stored file. Tab opened synchronously for popup blockers.
+  // Open a stored file itself (attachment), never the Gmail link.
+  window.openDocFile = async (docId) => {
+    const tab = window.open('', '_blank');
+    try {
+      const { data: doc } = await supa.from('family_documents').select('storage_path').eq('id', docId).maybeSingle();
+      if (!doc) throw new Error('That file is gone — it may have been deleted.');
+      const { data: signed, error } = await supa.storage.from('family-docs').createSignedUrl(doc.storage_path, 3600);
+      if (error || !signed?.signedUrl) throw new Error('Could not open the file: ' + (error?.message || 'no link'));
+      tab.location = signed.signedUrl;
+    } catch (e) { if (tab) tab.close(); alert(e.message); }
+  };
   window.openSourceDoc = async (docId) => {
     const tab = window.open('', '_blank');
     try {

@@ -72,6 +72,8 @@ Rules:
   RSVP, bring or return something, schedule an appointment, submit or renew something.
   A plain calendar event is NOT also a task — only emit a task when there's an action
   beyond showing up. A request for money (rent due, invoice, school fees) IS a task.
+- ONE TASK PER SUBMISSION. A packet, application, or registration made of several forms
+  is ONE task (e.g. "Submit 2027 rental registration packet"), never one task per form.
 - BE BRIEF. Titles and notes show on a phone screen: no full sentences, no restating the
   date/category in the title, never copy paragraphs from the document into notes.
 - Return {"events": [], "tasks": [], "document_summary": "..."} if nothing extractable.
@@ -229,14 +231,15 @@ Deno.serve(async (req) => {
       if (!t.title) continue;
       // Skip a to-do that already exists (still open/proposed, or finished in
       // the last 30 days) with the same title, case-insensitive.
-      const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
-      const { data: taskDupe } = await supa.from('family_tasks')
-        .select('id')
+      // Loose match against open/proposed/recently-done to-dos: a packet with
+      // four attachments must not turn into four "submit the packet" tasks.
+      const taskCutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+      const { data: existingTasks } = await supa.from('family_tasks')
+        .select('id,title')
         .eq('household_id', doc.household_id)
-        .ilike('title', likePattern(t.title))
-        .or(`status.in.(proposed,open),completed_at.gte.${cutoff}`)
-        .limit(1).maybeSingle();
-      if (taskDupe) continue;
+        .or(`status.in.(proposed,open),completed_at.gte.${taskCutoff}`)
+        .limit(200);
+      if ((existingTasks || []).some((o: any) => sameThing(o.title, t.title))) continue;
       const taskRow: any = {
         household_id: doc.household_id,
         title: t.title,
