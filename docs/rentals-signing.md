@@ -30,6 +30,13 @@ time a tenant signs. Emails go out from your connected Gmail.
   changing the lease).
 - Try it first with a test lease that has your own email as the tenant.
 
+## Several tenants
+Each tenant gets their own link and signs their own line and initials
+column, in any order. Their signature is stamped the moment they finish, so
+the next tenant sees it. Every tenant gets a "Download a copy for your
+records" button right after signing and again once the lease is fully
+signed, plus the final PDF by email.
+
 ## Good to know
 - A link only works for that one person and that one lease. It stops
   working after they sign, or if you cancel.

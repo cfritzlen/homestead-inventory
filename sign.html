@@ -109,8 +109,9 @@ async function init() {
     document.getElementById('title').textContent = `Lease: ${data.lease.property}`;
     document.getElementById('subtitle').textContent = `${data.lease.start} to ${data.lease.end} · $${Number(data.lease.rent).toLocaleString()}/month · from ${data.lease.landlord}`;
     renderStatus(data.signers);
-    if (data.lease.status === 'signed') { setMsg('This lease is fully signed. The signed copy was emailed to everyone.', 'ok'); return; }
-    if (data.signer.status === 'signed') { setMsg(`Thanks ${esc(signerName)}, you already signed this lease. You'll get the signed copy by email once everyone has signed.`, 'ok'); return; }
+    const dl = (url, label) => url ? `<p style="margin-top:10px;"><a class="btn-primary" style="display:inline-block;text-decoration:none;width:auto;" href="${url}" target="_blank">⬇ ${label}</a></p>` : '';
+    if (data.lease.status === 'signed') { setMsg('This lease is fully signed. The signed copy was emailed to everyone.' + dl(data.signed_url || data.pdf_url, 'Download the signed lease for your records'), 'ok'); return; }
+    if (data.signer.status === 'signed') { setMsg(`Thanks ${esc(signerName)}, you already signed this lease. You'll get the fully signed copy by email once everyone has signed.` + dl(data.pdf_url, 'Download a copy for your records'), 'ok'); return; }
     if (data.lease.status !== 'sent') { setMsg('This lease is not open for signing right now.', 'err'); return; }
     if (!data.pdf_url) { setMsg('The lease PDF is not available. Please contact the landlord.', 'err'); return; }
     document.getElementById('intro-title').textContent = `Hi ${signerName}`;
@@ -206,9 +207,10 @@ async function submitSignature() {
   try {
     const r = await call({ action: 'sign', token, signature_png: adopted.signature_png, initials_png: adopted.initials_png, tags_done: done, consent: true });
     show('review-card', false); show('sign-card', false); document.getElementById('footer').style.display = 'none';
+    const dl = r.download_url ? `<p style="margin-top:10px;"><a class="btn-primary" style="display:inline-block;text-decoration:none;width:auto;" href="${r.download_url}" target="_blank">⬇ Download a copy for your records</a></p>` : '';
     if (r.warning) setMsg(esc(r.warning) + ' The landlord has been notified.', 'err');
-    else if (r.finalized) setMsg(`Thank you, ${esc(signerName)}. Everyone has now signed. The signed lease is on its way to your email.`, 'ok');
-    else setMsg(`Thank you, ${esc(signerName)}. Your signature is recorded. ${r.remaining} more signature${r.remaining === 1 ? '' : 's'} to go; you'll get the signed copy by email when everyone has signed.`, 'ok');
+    else if (r.finalized) setMsg(`Thank you, ${esc(signerName)}. Everyone has now signed. The signed lease is on its way to your email.` + dl, 'ok');
+    else setMsg(`Thank you, ${esc(signerName)}. Your signature is recorded. ${r.remaining} more signature${r.remaining === 1 ? '' : 's'} to go; you'll get the fully signed copy by email when everyone has signed.` + dl, 'ok');
     try { const d = await call({ action: 'get', token }); renderStatus(d.signers); } catch (_) {}
     window.scrollTo(0, 0);
   } catch (e) {
