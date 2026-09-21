@@ -1816,18 +1816,15 @@
     </div>
 
     <script>
-        // Initialize Supabase
-        const SUPABASE_URL = 'https://fzjzzujrjqjacbfbwcvd.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6anp6dWpyanFqYWNiZmJ3Y3ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyODg0NjYsImV4cCI6MjA4NTg2NDQ2Nn0.dwzx43oEMtLVha7WoLWqAkgRPMLzbE0NaOurS_JWyhY';
-        
-        // Wait for libraries to load and initialize
+        // Data lives in the Homestead Supabase project (rental_* tables,
+        // rental-receipts bucket — see supabase/migrations/012_rentals.sql).
+        // Auth.client is the shared signed-in client from assets/auth.js.
+        const RECEIPT_BUCKET = 'rental-receipts';
         let supabaseClient;
         
         function initSupabase() {
             try {
-                // For UMD build, supabase is on window
-                const { createClient } = window.supabase;
-                supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+                supabaseClient = Auth.client;
                 console.log('Supabase initialized successfully');
                 return true;
             } catch (error) {
@@ -2022,7 +2019,7 @@
             
             // Collect all form data
             for (let [key, value] of formData.entries()) {
-                leaseData[key] = value;
+                leaseData[key] = value === '' ? null : value;
             }
             
             // Store renewal info for later use in PDF generation, but remove from database save
@@ -2049,7 +2046,7 @@
             try {
                 // Save to database
                 const { data, error } = await supabaseClient
-                    .from('leases')
+                    .from('rental_leases')
                     .insert([leaseData])
                     .select();
 
@@ -2061,7 +2058,7 @@
                 if (renewalInfo.isRenewal && renewalInfo.previousLeaseId) {
                     try {
                         await supabaseClient
-                            .from('leases')
+                            .from('rental_leases')
                             .update({ status: 'terminated' })
                             .eq('id', renewalInfo.previousLeaseId);
                     } catch (terminateError) {
@@ -2357,7 +2354,7 @@
         async function loadProperties() {
             try {
                 const { data: properties, error } = await supabaseClient
-                    .from('properties')
+                    .from('rental_properties')
                     .select('*')
                     .eq('is_building_level', false)  // Only load units, not buildings
                     .eq('status', 'active')
@@ -2386,7 +2383,7 @@
         async function loadDashboard() {
             try {
                 const { data: leases, error } = await supabaseClient
-                    .from('leases')
+                    .from('rental_leases')
                     .select('*')
                     .order('lease_start', { ascending: false });
 
@@ -2454,7 +2451,7 @@
         async function loadAllLeases() {
             try {
                 const { data: leases, error } = await supabaseClient
-                    .from('leases')
+                    .from('rental_leases')
                     .select('*')
                     .order('lease_start', { ascending: false });
 
@@ -2552,7 +2549,7 @@
 
             try {
                 const { error } = await supabaseClient
-                    .from('leases')
+                    .from('rental_leases')
                     .update({ status: 'terminated' })
                     .eq('id', id);
 
@@ -2733,7 +2730,7 @@
         async function loadExpenseProperties() {
             try {
                 const { data: properties, error } = await supabaseClient
-                    .from('properties')
+                    .from('rental_properties')
                     .select('*')
                     .eq('status', 'active')
                     .order('property_name', { ascending: true });
@@ -2890,8 +2887,8 @@
             existingReceiptUrls.splice(index, 1);
             renderReceiptThumbnails();
             try {
-                const path = url.split('/receipts/')[1];
-                if (path) supabaseClient.storage.from('receipts').remove([decodeURIComponent(path)]);
+                const path = url.split('/' + RECEIPT_BUCKET + '/')[1];
+                if (path) supabaseClient.storage.from(RECEIPT_BUCKET).remove([decodeURIComponent(path)]);
             } catch(e) { console.warn('Could not delete file from storage', e); }
         }
 
@@ -2901,13 +2898,13 @@
             const filePath = `${timestamp}_${safeName}`;
 
             const { data, error } = await supabaseClient.storage
-                .from('receipts')
+                .from(RECEIPT_BUCKET)
                 .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
             if (error) throw error;
 
             const { data: urlData } = supabaseClient.storage
-                .from('receipts')
+                .from(RECEIPT_BUCKET)
                 .getPublicUrl(filePath);
 
             return urlData.publicUrl;
@@ -2948,14 +2945,14 @@
 
                 if (expenseId) {
                     const { error } = await supabaseClient
-                        .from('expenses')
+                        .from('rental_expenses')
                         .update(expenseData)
                         .eq('id', expenseId);
                     if (error) throw error;
                     showExpenseAlert('Expense updated!', 'success');
                 } else {
                     const { error } = await supabaseClient
-                        .from('expenses')
+                        .from('rental_expenses')
                         .insert([expenseData]);
                     if (error) throw error;
                     showExpenseAlert('Expense saved!', 'success');
@@ -2975,7 +2972,7 @@
         async function loadExpenses() {
             try {
                 let query = supabaseClient
-                    .from('expenses')
+                    .from('rental_expenses')
                     .select('*')
                     .order('expense_date', { ascending: false });
 
@@ -3128,18 +3125,18 @@
                 const expense = allExpenses.find(e => e.id === id);
                 
                 const { error } = await supabaseClient
-                    .from('expenses')
+                    .from('rental_expenses')
                     .delete()
                     .eq('id', id);
                 if (error) throw error;
 
                 if (expense && expense.receipt_urls && expense.receipt_urls.length) {
                     const paths = expense.receipt_urls.map(url => {
-                        const parts = url.split('/receipts/');
+                        const parts = url.split('/' + RECEIPT_BUCKET + '/');
                         return parts[1] ? decodeURIComponent(parts[1]) : null;
                     }).filter(Boolean);
                     if (paths.length) {
-                        await supabaseClient.storage.from('receipts').remove(paths);
+                        await supabaseClient.storage.from(RECEIPT_BUCKET).remove(paths);
                     }
                 }
 
@@ -3316,7 +3313,7 @@
         async function loadPaymentProperties() {
             try {
                 const { data: properties, error } = await supabaseClient
-                    .from('properties')
+                    .from('rental_properties')
                     .select('*')
                     .eq('status', 'active')
                     .order('property_name', { ascending: true });
@@ -3373,14 +3370,14 @@
             try {
                 if (pdId) {
                     const { error } = await supabaseClient
-                        .from('payment_defaults')
+                        .from('rental_payment_defaults')
                         .update(data)
                         .eq('id', pdId);
                     if (error) throw error;
                     showPaymentAlert('Default updated!', 'success');
                 } else {
                     const { error } = await supabaseClient
-                        .from('payment_defaults')
+                        .from('rental_payment_defaults')
                         .insert([data]);
                     if (error) throw error;
                     showPaymentAlert('Default saved!', 'success');
@@ -3405,7 +3402,7 @@
         async function loadPaymentDefaults() {
             try {
                 const { data, error } = await supabaseClient
-                    .from('payment_defaults')
+                    .from('rental_payment_defaults')
                     .select('*')
                     .eq('status', 'active')
                     .order('type', { ascending: true })
@@ -3470,7 +3467,7 @@
             if (!confirm('Delete this payment default? This won\'t delete past payment records.')) return;
             try {
                 const { error } = await supabaseClient
-                    .from('payment_defaults')
+                    .from('rental_payment_defaults')
                     .update({ status: 'inactive' })
                     .eq('id', id);
                 if (error) throw error;
@@ -3490,7 +3487,7 @@
             try {
                 // Get active defaults
                 const { data: defaults, error: dErr } = await supabaseClient
-                    .from('payment_defaults')
+                    .from('rental_payment_defaults')
                     .select('*')
                     .eq('status', 'active')
                     .order('due_day', { ascending: true });
@@ -3500,7 +3497,7 @@
 
                 // Get existing payment records for this month
                 const { data: payments, error: pErr } = await supabaseClient
-                    .from('payments')
+                    .from('rental_payments')
                     .select('*')
                     .eq('period', monthKey);
 
@@ -3526,7 +3523,7 @@
                     });
 
                     const { data: inserted, error: iErr } = await supabaseClient
-                        .from('payments')
+                        .from('rental_payments')
                         .insert(newRecords)
                         .select();
 
@@ -3680,7 +3677,7 @@
                     // Update existing record
                     const updateData = { date_paid: datePaid || null, amount_paid: amountPaid };
                     const { error } = await supabaseClient
-                        .from('payments')
+                        .from('rental_payments')
                         .update(updateData)
                         .eq('id', existingPaymentId);
                     if (error) throw error;
@@ -3688,7 +3685,7 @@
                     // Create new record
                     const scheduledAmount = getAmountForMonth(defaultId, monthKey);
                     const { error } = await supabaseClient
-                        .from('payments')
+                        .from('rental_payments')
                         .insert([{
                             payment_default_id: defaultId,
                             period: monthKey,
@@ -3715,13 +3712,13 @@
             try {
                 if (existingPaymentId) {
                     const { error } = await supabaseClient
-                        .from('payments')
+                        .from('rental_payments')
                         .update({ amount_paid: amount })
                         .eq('id', existingPaymentId);
                     if (error) throw error;
                 } else {
                     const { error } = await supabaseClient
-                        .from('payments')
+                        .from('rental_payments')
                         .insert([{
                             payment_default_id: defaultId,
                             period: monthKey,
@@ -3751,13 +3748,13 @@
                 if (existing) {
                     const newTotal = parseFloat(existing.amount_paid || 0) + addAmt;
                     const { error } = await supabaseClient
-                        .from('payments')
+                        .from('rental_payments')
                         .update({ amount_paid: newTotal })
                         .eq('id', existing.id);
                     if (error) throw error;
                 } else {
                     const { error } = await supabaseClient
-                        .from('payments')
+                        .from('rental_payments')
                         .insert([{
                             payment_default_id: defaultId,
                             period: monthKey,
@@ -3808,7 +3805,7 @@
         async function loadRateSchedules() {
             try {
                 const { data, error } = await supabaseClient
-                    .from('rate_schedules')
+                    .from('rental_rate_schedules')
                     .select('*')
                     .order('effective_date', { ascending: false });
 
@@ -3881,7 +3878,7 @@
 
             try {
                 const { data, error } = await supabaseClient
-                    .from('rate_schedules')
+                    .from('rental_rate_schedules')
                     .insert([{
                         payment_default_id: defaultId,
                         effective_date: effectiveDate,
@@ -3913,7 +3910,7 @@
             if (!confirm('Delete this rate entry?')) return;
             try {
                 const { error } = await supabaseClient
-                    .from('rate_schedules')
+                    .from('rental_rate_schedules')
                     .delete()
                     .eq('id', rateId);
 
@@ -3929,7 +3926,8 @@
         }
 
         // Initialize on page load
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            await Auth.ready;
             initSupabase();
             loadDashboard();
             loadProperties();
@@ -4647,10 +4645,10 @@ If you cannot read something clearly, use null.`
             const filePath = `${ts}_bulk_pg${pg.pageNum}.pdf`;
             const file = new File([new Blob([pg.pdfBytes], { type: 'application/pdf' })], filePath, { type: 'application/pdf' });
 
-            const { error: upErr } = await supabaseClient.storage.from('receipts').upload(filePath, file, { cacheControl: '3600', upsert: false });
+            const { error: upErr } = await supabaseClient.storage.from(RECEIPT_BUCKET).upload(filePath, file, { cacheControl: '3600', upsert: false });
             if (upErr) throw upErr;
 
-            const { data: urlData } = supabaseClient.storage.from('receipts').getPublicUrl(filePath);
+            const { data: urlData } = supabaseClient.storage.from(RECEIPT_BUCKET).getPublicUrl(filePath);
 
             const expenseData = {
                 expense_date: document.getElementById('bk-date').value,
@@ -4665,7 +4663,7 @@ If you cannot read something clearly, use null.`
                 receipt_urls: [urlData.publicUrl]
             };
 
-            const { error } = await supabaseClient.from('expenses').insert([expenseData]);
+            const { error } = await supabaseClient.from('rental_expenses').insert([expenseData]);
             if (error) throw error;
 
             pg.status = 'saved';
