@@ -3852,6 +3852,8 @@
         const money = (v) => '$' + parseFloat(v || 0).toLocaleString('en-US', {minimumFractionDigits: 2});
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+        let zellePending = [];
+
         async function callZelle(body) {
             const res = await fetch(ZELLE_FN, {
                 method: 'POST',
@@ -3898,7 +3900,8 @@
                     supabaseClient.from('rental_zelle_payments').select('*').eq('status', 'applied').order('applied_at', { ascending: false }).limit(15)
                 ]);
                 if (e1 || e2) throw (e1 || e2);
-                renderZellePending(pending || []);
+                zellePending = pending || [];
+                renderZellePending(zellePending);
                 appliedEl.innerHTML = (applied || []).length
                     ? applied.map(z => `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border);">
                         <span>${esc(z.sent_on)} · <strong>${esc(z.sender_name)}</strong> ${money(z.amount)} → ${esc(z.note)}</span>
@@ -3942,7 +3945,22 @@
             if (!unit || !period) { showPaymentAlert('Pick a unit and a month first', 'error'); return; }
             try {
                 const r = await callZelle({ action: 'apply', id, payment_default_id: Number(unit), period, remember, force: !!force });
-                showPaymentAlert(r.status === 'applied' ? 'Payment applied' : ('Not applied: ' + r.note), r.status === 'applied' ? 'success' : 'error');
+                let applied = r.status === 'applied' ? 1 : 0, held = r.status === 'applied' ? 0 : 1;
+                // "Remember sender" also clears everything else waiting from the same
+                // person, each to its own month. Months already marked paid stay in the list.
+                if (remember && r.status === 'applied') {
+                    const me = zellePending.find(z => z.id === id);
+                    const others = zellePending.filter(z => z.id !== id && me && z.sender_name === me.sender_name && z.period);
+                    for (const z of others) {
+                        try {
+                            const rr = await callZelle({ action: 'apply', id: z.id, payment_default_id: Number(unit), period: z.period, remember: false, force: false });
+                            if (rr.status === 'applied') applied++; else held++;
+                        } catch (_) { held++; }
+                    }
+                }
+                showPaymentAlert(
+                    applied ? `${applied} payment${applied === 1 ? '' : 's'} applied` + (held ? `, ${held} left for review` : '') : ('Not applied: ' + r.note),
+                    applied ? 'success' : 'error');
                 await loadZelle();
                 loadMonthlyPayments();
             } catch (e) { showPaymentAlert('Error: ' + e.message, 'error'); }
