@@ -1281,6 +1281,7 @@
           <button class="edit"    data-id="${ev.id}" data-act="save">Save only</button>
           <button class="edit"    data-id="${ev.id}" data-act="edit">Edit</button>
           <button class="reject"  data-id="${ev.id}" data-act="reject">Ignore</button>
+          <button class="edit"    data-id="${ev.id}" data-act="repeat" style="grid-column:1 / -1;">Repeat weekly…</button>
         </div>
       `;
       list.appendChild(card);
@@ -1317,6 +1318,25 @@
           await setEventStatus(id, { status: 'approved', sync_to_google: false });
         } else if (act === 'reject') {
           await supa.from('family_events').update({ status: 'rejected' }).eq('id', id);
+        } else if (act === 'repeat') {
+          // Turn a one-off into a weekly series: clone it for the following weeks.
+          const answer = prompt('Repeat every week for how many weeks in total? (including this one)', '8');
+          const weeks = parseInt(answer, 10);
+          if (!weeks || weeks < 2 || weeks > 52) return;
+          const { data: ev } = await supa.from('family_events').select('*').eq('id', id).single();
+          if (!ev) return;
+          const { id: _id, created_at: _c, updated_at: _u, google_event_id: _g, ...base } = ev;
+          const shift = (iso, k) => iso ? new Date(Date.parse(iso) + k * 7 * 86400000).toISOString() : null;
+          const rows = [];
+          for (let k = 1; k < weeks; k++) {
+            rows.push({ ...base, starts_at: shift(ev.starts_at, k), ends_at: shift(ev.ends_at, k), status: 'proposed' });
+          }
+          let { error } = await supa.from('family_events').insert(rows);
+          if (error && /people|sync_to_google/.test(error.message)) {
+            rows.forEach(r => { delete r.people; delete r.sync_to_google; });
+            ({ error } = await supa.from('family_events').insert(rows));
+          }
+          if (error) { alert(error.message); return; }
         } else if (act === 'edit') {
           const { data: ev } = await supa.from('family_events').select('*').eq('id', id).single();
           if (ev) {

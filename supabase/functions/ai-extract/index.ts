@@ -59,6 +59,9 @@ Rules:
   emit ONE EVENT PER OCCURRENCE, all with the same title, from the first date through the
   stated end date (8 weeks max if no end is given). Put the pattern in each event's notes,
   e.g. "Fridays through Oct 24". Do NOT collapse a series into a single event.
+  A program announced with only a start date ("Friday game nights start Sept 18",
+  "classes begin Tuesday the 9th", "season opener") IS a weekly series: emit 8 weekly
+  events from that start date, not one event.
 - ROUTINE MEALS ARE NOT EVENTS. Daycare/school menus listing breakfast, lunch, snack, or dinner
   for each day are informational — emit ZERO events for them, no matter how many dated meal
   entries appear. Summarize the menu in document_summary instead (e.g. "September menu for
