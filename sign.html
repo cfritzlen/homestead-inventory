@@ -6,6 +6,7 @@
 <title>Sign your lease</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✍️</text></svg>">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="assets/esign.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -17,7 +18,20 @@
   .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
   .card h2 { font-size: 1rem; margin-bottom: 8px; }
   .muted { color: #475569; font-size: 0.9rem; }
-  #pages canvas { width: 100%; height: auto; display: block; border: 1px solid #e2e8f0; margin-bottom: 10px; background: #fff; }
+  .pg { position: relative; border: 1px solid #e2e8f0; margin-bottom: 10px; background: #fff; }
+  .pg canvas { width: 100%; height: auto; display: block; }
+  .tag { position: absolute; display: flex; align-items: center; justify-content: center; border: 2px solid #f59e0b; background: rgba(254, 240, 138, 0.85); color: #92400e; font-weight: 700; font-size: 11px; border-radius: 4px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.2); user-select: none; }
+  .tag.next { animation: pulse 1.2s infinite; border-color: #dc2626; }
+  .tag.done { border-color: #16a34a; background: rgba(255,255,255,0.9); cursor: default; }
+  .tag.done img { width: 100%; height: 100%; object-fit: contain; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.5); } 50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); } }
+  #footer { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid #e2e8f0; padding: 10px 16px; display: none; gap: 10px; align-items: center; justify-content: space-between; box-shadow: 0 -2px 8px rgba(0,0,0,0.08); z-index: 100; }
+  #footer .prog { font-weight: 600; font-size: 0.95rem; }
+  #footer button { padding: 10px 18px; font-weight: 600; }
+  .btn-next { background: #f59e0b; color: #fff; }
+  .btn-finish { background: #16a34a; color: #fff; }
+  .btn-finish:disabled { background: #94a3b8; }
+  main { padding-bottom: 90px; }
   .pad { position: relative; border: 2px dashed #94a3b8; border-radius: 8px; background: #fff; touch-action: none; }
   .pad canvas { display: block; width: 100%; height: 100%; border-radius: 8px; }
   .pad .hint { position: absolute; left: 12px; bottom: 8px; color: #94a3b8; font-size: 0.8rem; pointer-events: none; }
@@ -40,31 +54,41 @@
 </header>
 <main>
   <div id="msg"></div>
+  <div class="card" id="intro-card" style="display:none;">
+    <h2 id="intro-title">Welcome</h2>
+    <p class="muted">Two steps: set up your signature and initials, then tap each spot on the lease where they go.</p>
+    <p style="margin-top:12px;"><button class="btn-primary" onclick="startSigning()">Set up my signature</button></p>
+  </div>
   <div class="card" id="review-card" style="display:none;">
-    <h2>1. Read the whole lease</h2>
+    <h2>Read the lease and tap each yellow spot</h2>
     <p class="muted" id="page-count">Loading the document…</p>
     <div id="pages"></div>
   </div>
   <div class="card" id="sign-card" style="display:none;">
-    <h2>2. Sign</h2>
-    <div class="row"><strong>Your signature</strong><button class="btn-link" onclick="pads.sig.clear()">Clear</button></div>
-    <div class="pad" style="height:160px;"><canvas id="sig-pad"></canvas><span class="hint">Draw with your finger or mouse</span></div>
-    <div class="row"><strong>Your initials</strong><button class="btn-link" onclick="pads.ini.clear()">Clear</button></div>
-    <div class="pad" style="height:110px;width:220px;"><canvas id="ini-pad"></canvas><span class="hint">Initials</span></div>
+    <h2>Finish</h2>
+    <p class="muted" id="finish-hint">Tap every yellow spot above first.</p>
     <label class="agree"><input type="checkbox" id="consent"> <span>I have read the entire lease. I agree to sign it electronically, and I understand this signature is as binding as a handwritten one.</span></label>
-    <button class="btn-primary" id="sign-btn" onclick="submitSignature()">Sign the lease</button>
+    <button class="btn-primary" id="sign-btn" onclick="submitSignature()" disabled>Finish signing</button>
+    <p class="muted" style="margin-top:10px;"><button class="btn-link" onclick="redoSignature()">Change my signature</button></p>
   </div>
   <div class="card" id="status-card" style="display:none;">
     <h2>Who has signed</h2>
     <ul class="status" id="status-list"></ul>
   </div>
 </main>
+<div id="footer">
+  <span class="prog" id="prog"></span>
+  <span><button class="btn-next" id="next-btn" onclick="gotoNext()">Next spot ↓</button></span>
+</div>
 
 <script>
 const FN = 'https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/lease-sign';
 const token = new URLSearchParams(location.search).get('t') || '';
 let signerName = '';
-const pads = {};
+let adopted = null;          // { signature_png, initials_png }
+let tags = [];               // from the server: where to tap
+let tagEls = [];
+let lease = null;
 
 async function call(body) {
   const r = await fetch(FN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -76,95 +100,119 @@ function show(id, on) { document.getElementById(id).style.display = on ? '' : 'n
 function setMsg(html, cls) { document.getElementById('msg').innerHTML = html ? `<div class="card ${cls}">${html}</div>` : ''; }
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// ---- drawing pads ----
-function makePad(canvasId) {
-  const c = document.getElementById(canvasId), ctx = c.getContext('2d');
-  let drawing = false, strokes = 0;
-  const size = () => { const r = c.parentElement.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
-    c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); ctx.scale(dpr, dpr);
-    ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0b1f7a'; };
-  size(); window.addEventListener('resize', () => { const img = c.toDataURL(); size(); const i = new Image(); i.onload = () => ctx.drawImage(i, 0, 0, c.width / (window.devicePixelRatio || 1), c.height / (window.devicePixelRatio || 1)); i.src = img; });
-  const pos = (e) => { const r = c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-  c.addEventListener('pointerdown', e => { drawing = true; c.setPointerCapture(e.pointerId); const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); });
-  c.addEventListener('pointermove', e => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); strokes++; e.preventDefault(); });
-  const up = () => { drawing = false; };
-  c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
-  return {
-    clear() { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height); ctx.restore(); strokes = 0; },
-    isEmpty() { return strokes < 3; },
-    png() { // trim to the drawn area so the PDF stamp isn't mostly whitespace
-      const w = c.width, h = c.height, d = ctx.getImageData(0, 0, w, h).data;
-      let minX = w, minY = h, maxX = 0, maxY = 0;
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (d[(y * w + x) * 4 + 3] > 10) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; } }
-      if (maxX <= minX || maxY <= minY) return null;
-      const pad = 6, out = document.createElement('canvas');
-      out.width = maxX - minX + pad * 2; out.height = maxY - minY + pad * 2;
-      out.getContext('2d').drawImage(c, minX - pad, minY - pad, out.width, out.height, 0, 0, out.width, out.height);
-      return out.toDataURL('image/png');
-    }
-  };
-}
-
 // ---- load ----
 async function init() {
   if (!token) { setMsg('This link is missing its code. Please use the link from your email.', 'err'); return; }
   try {
     const data = await call({ action: 'get', token });
-    signerName = data.signer.name;
+    signerName = data.signer.name; lease = data.lease; tags = data.tags || [];
     document.getElementById('title').textContent = `Lease: ${data.lease.property}`;
     document.getElementById('subtitle').textContent = `${data.lease.start} to ${data.lease.end} · $${Number(data.lease.rent).toLocaleString()}/month · from ${data.lease.landlord}`;
     renderStatus(data.signers);
     if (data.lease.status === 'signed') { setMsg('This lease is fully signed. The signed copy was emailed to everyone.', 'ok'); return; }
     if (data.signer.status === 'signed') { setMsg(`Thanks ${esc(signerName)}, you already signed this lease. You'll get the signed copy by email once everyone has signed.`, 'ok'); return; }
     if (data.lease.status !== 'sent') { setMsg('This lease is not open for signing right now.', 'err'); return; }
-    show('review-card', true); show('sign-card', true);
-    pads.sig = makePad('sig-pad'); pads.ini = makePad('ini-pad');
-    if (data.pdf_url) renderPdf(data.pdf_url); else document.getElementById('page-count').textContent = 'The lease PDF is not available. Please contact the landlord.';
+    if (!data.pdf_url) { setMsg('The lease PDF is not available. Please contact the landlord.', 'err'); return; }
+    document.getElementById('intro-title').textContent = `Hi ${signerName}`;
+    show('intro-card', true);
+    window.__pdfUrl = data.pdf_url;
   } catch (e) { setMsg(esc(e.message), 'err'); }
 }
 function renderStatus(list) {
   show('status-card', true);
   document.getElementById('status-list').innerHTML = (list || []).map(s => `<li>${esc(s.name)}${s.role === 'landlord' ? ' (landlord)' : ''}: ${s.status === 'signed' ? '✅ signed' : '⏳ not yet'}</li>`).join('');
 }
+
+// Step 1: adopt a signature (draw or type), then show the document with tags
+async function startSigning() {
+  const r = await ESign.adopt({ name: signerName, initials: true, title: 'Set up your signature and initials' });
+  if (!r) return;
+  adopted = r;
+  show('intro-card', false);
+  if (!document.getElementById('pages').children.length) {
+    show('review-card', true); show('sign-card', true);
+    await renderPdf(window.__pdfUrl);
+  } else {
+    // signature changed: reset tapped spots so they show the new one
+    tagEls.forEach(t => { t.el.classList.remove('done'); t.el.innerHTML = t.tag.kind === 'initials' ? 'Initial' : 'Sign here'; t.done = false; });
+    updateProgress();
+  }
+}
+async function redoSignature() { await startSigning(); }
+
 async function renderPdf(url) {
   try {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf = await pdfjsLib.getDocument(url).promise;
-    document.getElementById('page-count').textContent = `${pdf.numPages} pages. Scroll through all of them before signing.`;
+    document.getElementById('page-count').textContent = `${pdf.numPages} pages. Read through, and tap each yellow spot to place your initials or signature.`;
     const holder = document.getElementById('pages');
     const width = Math.min(holder.clientWidth || 800, 900);
     for (let n = 1; n <= pdf.numPages; n++) {
       const page = await pdf.getPage(n);
-      const scale = width / page.getViewport({ scale: 1 }).width * (window.devicePixelRatio > 1 ? 1.5 : 1);
-      const vp = page.getViewport({ scale });
+      const base = page.getViewport({ scale: 1 });
+      const vp = page.getViewport({ scale: width / base.width * (window.devicePixelRatio > 1 ? 1.5 : 1) });
+      const wrap = document.createElement('div'); wrap.className = 'pg'; wrap.id = 'pg' + n;
       const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
-      holder.appendChild(c);
+      wrap.appendChild(c); holder.appendChild(wrap);
       await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      // Tags on this page, positioned in % so they follow the canvas size
+      for (const tag of tags.filter(t => t.page === n)) {
+        const el = document.createElement('div'); el.className = 'tag';
+        el.style.left = (tag.x / tag.pw * 100) + '%'; el.style.width = (tag.w / tag.pw * 100) + '%';
+        el.style.top = ((tag.ph - tag.y - tag.h) / tag.ph * 100) + '%'; el.style.height = (tag.h / tag.ph * 100) + '%';
+        el.textContent = tag.kind === 'initials' ? 'Initial' : 'Sign here';
+        const rec = { tag, el, done: false };
+        el.addEventListener('click', () => placeTag(rec));
+        wrap.appendChild(el); tagEls.push(rec);
+      }
     }
+    document.getElementById('footer').style.display = 'flex';
+    updateProgress();
   } catch (e) {
-    document.getElementById('page-count').innerHTML = `Could not display the lease here (${esc(e.message)}). <a href="${url}" target="_blank">Open the PDF in a new tab</a> and read it, then sign below.`;
+    document.getElementById('page-count').innerHTML = `Could not display the lease here (${esc(e.message)}). <a href="${url}" target="_blank">Open the PDF in a new tab</a>, then contact the landlord.`;
   }
 }
+function placeTag(rec) {
+  if (rec.done || !adopted) return;
+  const img = document.createElement('img');
+  img.src = rec.tag.kind === 'initials' ? adopted.initials_png : adopted.signature_png;
+  rec.el.innerHTML = ''; rec.el.appendChild(img); rec.el.classList.add('done'); rec.done = true;
+  updateProgress();
+  const next = tagEls.find(t => !t.done);
+  if (next) setTimeout(() => next.el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+  else setTimeout(() => document.getElementById('sign-card').scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+}
+function updateProgress() {
+  const done = tagEls.filter(t => t.done).length, total = tagEls.length;
+  document.getElementById('prog').textContent = `${done} of ${total} spots done`;
+  tagEls.forEach(t => t.el.classList.remove('next'));
+  const next = tagEls.find(t => !t.done);
+  if (next) next.el.classList.add('next');
+  document.getElementById('next-btn').style.display = next ? '' : 'none';
+  const allDone = total > 0 && done === total;
+  document.getElementById('sign-btn').disabled = !allDone;
+  document.getElementById('finish-hint').textContent = allDone ? 'All spots done. Tick the box and finish.' : `Tap every yellow spot above first (${done} of ${total} done).`;
+}
+function gotoNext() { const next = tagEls.find(t => !t.done); if (next) next.el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 
 // ---- submit ----
 async function submitSignature() {
   const btn = document.getElementById('sign-btn');
-  if (pads.sig.isEmpty()) { alert('Please draw your signature.'); return; }
-  if (pads.ini.isEmpty()) { alert('Please draw your initials.'); return; }
+  if (!adopted) { alert('Set up your signature first.'); return; }
+  const done = tagEls.filter(t => t.done).length;
+  if (done < tagEls.length) { alert('Please tap every yellow spot first.'); gotoNext(); return; }
   if (!document.getElementById('consent').checked) { alert('Please tick the agreement box.'); return; }
-  const signature_png = pads.sig.png(), initials_png = pads.ini.png();
-  if (!signature_png || !initials_png) { alert('Please draw your signature and initials.'); return; }
   btn.disabled = true; btn.textContent = 'Signing…';
   try {
-    const r = await call({ action: 'sign', token, signature_png, initials_png, consent: true });
-    show('review-card', false); show('sign-card', false);
+    const r = await call({ action: 'sign', token, signature_png: adopted.signature_png, initials_png: adopted.initials_png, tags_done: done, consent: true });
+    show('review-card', false); show('sign-card', false); document.getElementById('footer').style.display = 'none';
     if (r.warning) setMsg(esc(r.warning) + ' The landlord has been notified.', 'err');
     else if (r.finalized) setMsg(`Thank you, ${esc(signerName)}. Everyone has now signed. The signed lease is on its way to your email.`, 'ok');
     else setMsg(`Thank you, ${esc(signerName)}. Your signature is recorded. ${r.remaining} more signature${r.remaining === 1 ? '' : 's'} to go; you'll get the signed copy by email when everyone has signed.`, 'ok');
     try { const d = await call({ action: 'get', token }); renderStatus(d.signers); } catch (_) {}
     window.scrollTo(0, 0);
   } catch (e) {
-    setMsg(esc(e.message), 'err'); btn.disabled = false; btn.textContent = 'Sign the lease';
+    setMsg(esc(e.message), 'err'); btn.disabled = false; btn.textContent = 'Finish signing';
   }
 }
 init();

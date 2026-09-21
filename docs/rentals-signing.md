@@ -1,14 +1,19 @@
 # Rentals: electronic lease signing (no DocuSign)
 
-Tenants get an email link, read the whole lease on their phone, draw a
-signature and initials, and tick "I agree to sign electronically". You sign
-last the same way. When everyone has signed, the app stamps every page,
-adds a signing record page (who, when, from where), keeps the signed PDF on
-the lease and emails it to everyone. Emails go out from your connected Gmail.
+**You sign first.** "Sign & send to tenants" opens a pop-up where you draw
+or type your signature (saved for next time). It goes on the signature page
+before the lease is emailed. **Tenants** set up their signature and initials
+the same way, then tap every yellow "Initial" spot and the "Sign here" spot on
+the lease itself; a counter shows progress and Finish only unlocks when every
+spot is done. When the last tenant finishes, the app stamps everything, adds a
+signing record page (who, when, from where, spots tapped), keeps the signed
+PDF on the lease and emails it to everyone. You also get a short email each
+time a tenant signs. Emails go out from your connected Gmail.
 
 ## One-time setup
-1. Supabase (Homestead project) → SQL Editor → paste all of
-   `supabase/migrations/016_lease_signing.sql` → Run.
+1. Supabase (Homestead project) → SQL Editor → run
+   `supabase/migrations/016_lease_signing.sql`, then
+   `supabase/migrations/017_lease_signing_v2.sql`.
 2. In a terminal in the repo folder (after `git pull`):
    ```
    supabase functions deploy lease-sign --no-verify-jwt
@@ -17,8 +22,8 @@ the lease and emails it to everyone. Emails go out from your connected Gmail.
 3. Make sure every tenant on the lease has an email address.
 
 ## Using it
-- All Leases → **View** → **Send for signature**. The app builds a fresh PDF,
-  stores it, and emails each tenant and you a link.
+- All Leases → **View** → **Sign & send to tenants**. Sign in the pop-up; the
+  app builds a fresh PDF with your signature and emails each tenant a link.
 - The lease shows "✍️ Out for signature" until done, then "✓ Signed".
 - In the lease view you can see who opened and who signed, send a
   **Remind**, or **Cancel signing** (links stop working; send again after
