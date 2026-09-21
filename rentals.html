@@ -2762,6 +2762,23 @@
             const container = document.getElementById('alert-container');
             container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
             setTimeout(() => container.innerHTML = '', 5000);
+            // Also as a pop-up at the top of the screen, so it's visible from any
+            // tab or open dialog (the box above only lives on the New Lease page).
+            let toast = document.getElementById('toast-box');
+            if (!toast) {
+                toast = document.createElement('div'); toast.id = 'toast-box';
+                toast.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;max-width:min(640px,92vw);padding:12px 18px;border-radius:10px;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,0.25);cursor:pointer;';
+                toast.onclick = () => { toast.style.display = 'none'; };
+                document.body.appendChild(toast);
+            }
+            const isErr = type === 'error';
+            toast.style.background = isErr ? '#fee2e2' : '#dcfce7';
+            toast.style.color = isErr ? '#991b1b' : '#166534';
+            toast.style.border = '1px solid ' + (isErr ? '#fca5a5' : '#86efac');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => { toast.style.display = 'none'; }, isErr ? 15000 : 5000);
         }
 
         // ============ EXPENSES ============
@@ -5376,7 +5393,13 @@ If you cannot read something clearly, use null.`
                 showAlert(`Signed and sent to ${r.sent} tenant${r.sent === 1 ? '' : 's'}.` + (r.problems && r.problems.length ? ' Problems: ' + r.problems.join('; ') : ''), r.problems && r.problems.length ? 'error' : 'success');
                 displayLeases(allLeases);
                 openLeaseModal(lease);
-            } catch (e) { showAlert('Send failed: ' + e.message, 'error'); renderSigning(lease); }
+            } catch (e) {
+                console.error('send for signature failed:', e);
+                showAlert('Send failed: ' + e.message, 'error');
+                await renderSigning(lease);
+                const box = document.getElementById('lm-signing');
+                if (box) box.insertAdjacentHTML('afterbegin', `<div style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;padding:10px;margin-bottom:8px;font-size:13px;"><strong>Send failed:</strong> ${e.message}</div>`);
+            }
         }
         async function remindSigner(signerId, leaseId) {
             try { await callSign({ action: 'remind', signer_id: signerId, site_url: SITE_URL }); showAlert('Reminder sent', 'success'); }
