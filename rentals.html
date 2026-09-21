@@ -5336,6 +5336,9 @@ If you cannot read something clearly, use null.`
             } catch (e) { showAlert('Upload failed: ' + e.message, 'error'); }
         }
 
+        window.addEventListener('error', (ev) => { try { showAlert('Something went wrong: ' + (ev.message || 'unknown error'), 'error'); } catch (_) {} });
+        window.addEventListener('unhandledrejection', (ev) => { try { showAlert('Something went wrong: ' + ((ev.reason && ev.reason.message) || ev.reason || 'unknown error'), 'error'); } catch (_) {} });
+
         // ---- e-signing (lease-sign edge function + sign.html) ----
         const SIGN_FN = Auth.client.supabaseUrl + '/functions/v1/lease-sign';
         const SITE_URL = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '').replace(/\/+$/, '');
@@ -5371,25 +5374,29 @@ If you cannot read something clearly, use null.`
         async function sendForSignature(leaseId) {
             const lease = allLeases.find(l => l.id === leaseId);
             if (!lease) return;
-            // 1. Landlord signs (draw / type / reuse saved)
-            const sig = await ESign.adopt({
-                name: landlord.name, initials: false, remember: true,
-                title: 'Sign as landlord', subtitle: 'Your signature goes on the signature page before the lease is emailed to the tenants.',
-                saved: landlord.signature_png ? { signature_png: landlord.signature_png } : null,
-            });
-            if (!sig) return;
-            if (sig.remember && !sig.reused) {
-                landlord.signature_png = sig.signature_png;
-                supabaseClient.from('rental_settings').upsert([{ key: 'landlord_signature_png', value: sig.signature_png }], { onConflict: 'key' }).then(() => {});
-            }
-            if (!confirm('Email the lease to every tenant for signature now?')) return;
             const el = document.getElementById('lm-signing');
-            el.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);">Building the PDF, adding your signature and sending emails…</div>';
+            const step = (msg) => { if (el) el.innerHTML = `<div style="font-size:13px;color:var(--text-secondary);padding:8px;background:var(--bg-secondary);border-radius:8px;">${msg}</div>`; };
             try {
+                if (typeof ESign === 'undefined') throw new Error('signature pop-up did not load (assets/esign.js). Hard refresh the page.');
+                // 1. Landlord signs (draw / type / reuse saved)
+                step('Step 1 of 4: waiting for your signature in the pop-up…');
+                const sig = await ESign.adopt({
+                    name: landlord.name, initials: false, remember: true,
+                    title: 'Sign as landlord', subtitle: 'Your signature goes on the signature page before the lease is emailed to the tenants.',
+                    saved: landlord.signature_png ? { signature_png: landlord.signature_png } : null,
+                });
+                if (!sig) { renderSigning(lease); return; }
+                if (sig.remember && !sig.reused) {
+                    landlord.signature_png = sig.signature_png;
+                    supabaseClient.from('rental_settings').upsert([{ key: 'landlord_signature_png', value: sig.signature_png }], { onConflict: 'key' }).then(() => {});
+                }
+                step('Step 2 of 4: building the lease PDF…');
                 const ok = await generatePDF(lease, lease.id, false);      // fresh PDF stored on the lease
                 if (!ok) throw new Error('could not build the PDF');
+                step('Step 3 of 4: adding your signature and emailing the tenants…');
                 const r = await callSign({ action: 'send', lease_id: lease.id, site_url: SITE_URL, landlord_signature_png: sig.signature_png });
                 lease.signing_status = 'sent';
+                step('Step 4 of 4: done.');
                 showAlert(`Signed and sent to ${r.sent} tenant${r.sent === 1 ? '' : 's'}.` + (r.problems && r.problems.length ? ' Problems: ' + r.problems.join('; ') : ''), r.problems && r.problems.length ? 'error' : 'success');
                 displayLeases(allLeases);
                 openLeaseModal(lease);

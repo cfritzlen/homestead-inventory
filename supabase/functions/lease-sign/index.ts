@@ -165,7 +165,10 @@ Deno.serve(async (req) => {
         const name = lease[`tenant${i}_name`], email = lease[`tenant${i}_email`];
         if (!name) continue;
         if (!email) return json({ error: `${name} has no email on the lease. Add it, save, and try again.` }, 400);
-        signers.push({ lease_id: lease.id, role: 'tenant', name, email: String(email).trim(), tenant_index: signers.length });
+        // Same columns as the landlord row below: a bulk insert fills any missing
+        // key with null, which would override the 'pending' default.
+        signers.push({ lease_id: lease.id, role: 'tenant', name, email: String(email).trim(), tenant_index: signers.length,
+          status: 'pending', stamped: false, signed_at: null, signed_ip: null, signed_agent: null, signature_png: null, initials_png: null, viewed_at: null });
       }
       if (!signers.length) return json({ error: 'no tenants on this lease' }, 400);
 
@@ -185,7 +188,7 @@ Deno.serve(async (req) => {
       if (upErr) return json({ error: 'could not store the PDF: ' + upErr.message }, 500);
 
       const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || null;
-      signers.push({ lease_id: lease.id, role: 'landlord', name: settings.name, email: settings.email, status: 'signed', stamped: true,
+      signers.push({ lease_id: lease.id, role: 'landlord', name: settings.name, email: settings.email, tenant_index: null, status: 'signed', stamped: true,
         signed_at: new Date().toISOString(), signed_ip: ip, signed_agent: (req.headers.get('user-agent') || '').slice(0, 300),
         signature_png: landlordSig, initials_png: String(body.landlord_initials_png || '') || null, viewed_at: new Date().toISOString() });
 
