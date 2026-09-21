@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- AUTH_GATE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/auth.js"></script>
+<script>Auth.requireAuth();</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rentals Migration - Homestead Hub</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px 16px; color: #222; background: #fafaf7; }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .muted { color: #666; font-size: 0.9rem; }
+  .step { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin: 16px 0; }
+  .step h2 { font-size: 1.1rem; margin: 0 0 8px; }
+  button { background: #5f734c; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font-size: 1rem; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.danger { background: #9b7269; }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+  .warn { color: #a05a00; }
+  .bad { color: #b00020; font-weight: 600; }
+  .ok { color: #2e7d32; font-weight: 600; }
+  pre#log { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 8px; font-size: 0.8rem; max-height: 320px; overflow: auto; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>Rentals: copy data into Homestead</h1>
+<p class="muted">One-time tool. Copies leases, properties, expenses, payments, rate schedules and receipt files from the old Rental-Manager database into this one. Nothing is deleted from the old database. Safe to run more than once (rows are matched by id).</p>
+
+<div class="step">
+  <h2>Step 1: Check both databases</h2>
+  <p class="muted">Confirms the new tables exist (from <code>supabase/migrations/012_rentals.sql</code>) and shows what will be copied.</p>
+  <button id="btn-check" onclick="runCheck()">Check</button>
+  <div id="check-result"></div>
+</div>
+
+<div class="step">
+  <h2>Step 2: Copy everything</h2>
+  <p class="muted">Copies rows table by table, then copies each receipt file into the new <code>rental-receipts</code> bucket and updates the links.</p>
+  <button id="btn-copy" onclick="runCopy()" disabled>Copy everything</button>
+  <div id="copy-result"></div>
+</div>
+
+<pre id="log">Waiting…</pre>
+<p><a href="rentals.html">Go to Rentals</a> · <a href="index.html">Home</a></p>
+
+<script>
+const OLD_URL = 'https://fzjzzujrjqjacbfbwcvd.supabase.co';
+const OLD_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6anp6dWpyanFqYWNiZmJ3Y3ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyODg0NjYsImV4cCI6MjA4NTg2NDQ2Nn0.dwzx43oEMtLVha7WoLWqAkgRPMLzbE0NaOurS_JWyhY';
+const OLD_BUCKET = 'receipts';
+const NEW_BUCKET = 'rental-receipts';
+// Copy order matters: payments + rate_schedules point at payment_defaults.
+const TABLES = [
+  ['properties',       'rental_properties'],
+  ['leases',           'rental_leases'],
+  ['expenses',         'rental_expenses'],
+  ['payment_defaults', 'rental_payment_defaults'],
+  ['payments',         'rental_payments'],
+  ['rate_schedules',   'rental_rate_schedules'],
+];
+
+const logEl = document.getElementById('log');
+let logLines = [];
+function log(msg) { logLines.push(msg); logEl.textContent = logLines.join('\n'); logEl.scrollTop = logEl.scrollHeight; }
+
+const oldHeaders = { apikey: OLD_KEY, Authorization: 'Bearer ' + OLD_KEY };
+function newHeaders() { return { apikey: Auth.client.supabaseKey, Authorization: 'Bearer ' + Auth.bearer() }; }
+const NEW_URL = () => Auth.client.supabaseUrl;
+
+async function openapi(base, headers) {
+  const r = await fetch(base + '/rest/v1/', { headers });
+  if (!r.ok) throw new Error('Could not read schema from ' + base + ' (' + r.status + ')');
+  const j = await r.json();
+  const out = {};
+  for (const [t, def] of Object.entries(j.definitions || {})) out[t] = Object.keys(def.properties || {});
+  return out;
+}
+async function countRows(base, headers, table) {
+  const r = await fetch(`${base}/rest/v1/${table}?select=id`, { method: 'HEAD', headers: { ...headers, Prefer: 'count=exact' } });
+  if (!r.ok) return null;
+  const cr = r.headers.get('content-range') || '';
+  return parseInt(cr.split('/')[1]) || 0;
+}
+
+let plan = null;
+
+async function runCheck() {
+  const btn = document.getElementById('btn-check'); btn.disabled = true;
+  logLines = []; log('Checking…');
+  try {
+    await Auth.ready;
+    const oldSchema = await openapi(OLD_URL, oldHeaders);
+    const newSchema = await openapi(NEW_URL(), newHeaders());
+    plan = []; let ok = true;
+    let html = '<table><tr><th>Old table</th><th>Rows</th><th>New table</th><th>Rows now</th><th>Notes</th></tr>';
+    for (const [o, n] of TABLES) {
+      const oldCols = oldSchema[o], newCols = newSchema[n];
+      const oldCount = oldCols ? await countRows(OLD_URL, oldHeaders, o) : null;
+      const newCount = newCols ? await countRows(NEW_URL(), newHeaders(), n) : null;
+      let note = '';
+      if (!oldCols) note = '<span class="warn">not in old database, skipped</span>';
+      else if (!newCols) { note = '<span class="bad">missing: run migration 012 first</span>'; ok = false; }
+      else {
+        const dropped = oldCols.filter(c => !newCols.includes(c));
+        note = dropped.length ? `<span class="warn">columns not copied: ${dropped.join(', ')}</span>` : '<span class="ok">columns match</span>';
+        plan.push({ o, n, cols: oldCols.filter(c => newCols.includes(c)), dropped });
+      }
+      html += `<tr><td>${o}</td><td>${oldCount ?? '-'}</td><td>${n}</td><td>${newCount ?? '-'}</td><td>${note}</td></tr>`;
+    }
+    html += '</table>';
+    document.getElementById('check-result').innerHTML = html;
+    log(ok ? 'Check passed. Ready to copy.' : 'Check failed: new tables are missing.');
+    document.getElementById('btn-copy').disabled = !ok || plan.length === 0;
+  } catch (e) {
+    log('ERROR: ' + e.message);
+    document.getElementById('check-result').innerHTML = `<p class="bad">${e.message}</p>`;
+  }
+  btn.disabled = false;
+}
+
+async function fetchAllOld(table, cols) {
+  const rows = []; const page = 500;
+  for (let from = 0; ; from += page) {
+    const r = await fetch(`${OLD_URL}/rest/v1/${table}?select=${cols.join(',')}&order=id.asc`, {
+      headers: { ...oldHeaders, Range: `${from}-${from + page - 1}` } });
+    if (!r.ok && r.status !== 416) throw new Error(`${table}: read failed (${r.status})`);
+    const chunk = r.status === 416 ? [] : await r.json();
+    rows.push(...chunk);
+    if (chunk.length < page) break;
+  }
+  return rows;
+}
+
+const oldPrefix = `${OLD_URL}/storage/v1/object/public/${OLD_BUCKET}/`;
+const receiptCache = new Map();
+async function moveReceipt(url) {
+  if (!url || !url.startsWith(oldPrefix)) return url;          // already moved or not ours
+  if (receiptCache.has(url)) return receiptCache.get(url);
+  const path = decodeURIComponent(url.slice(oldPrefix.length).split('?')[0]);
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('download ' + r.status);
+    const blob = await r.blob();
+    const { error } = await Auth.client.storage.from(NEW_BUCKET).upload(path, blob, { upsert: true, contentType: blob.type || undefined });
+    if (error) throw error;
+    const { data } = Auth.client.storage.from(NEW_BUCKET).getPublicUrl(path);
+    receiptCache.set(url, data.publicUrl);
+    return data.publicUrl;
+  } catch (e) {
+    log(`  receipt kept on old link (${e.message}): ${path}`);
+    receiptCache.set(url, url);
+    return url;
+  }
+}
+
+async function runCopy() {
+  const btn = document.getElementById('btn-copy'); btn.disabled = true;
+  document.getElementById('btn-check').disabled = true;
+  const summary = [];
+  try {
+    for (const { o, n, cols } of plan) {
+      log(`Reading ${o}…`);
+      const rows = await fetchAllOld(o, cols);
+      log(`  ${rows.length} rows`);
+      if (o === 'expenses' && cols.includes('receipt_urls')) {
+        let files = 0;
+        for (const row of rows) {
+          if (!Array.isArray(row.receipt_urls)) continue;
+          const moved = [];
+          for (const u of row.receipt_urls) { moved.push(await moveReceipt(u)); files++; }
+          row.receipt_urls = moved;
+        }
+        log(`  ${files} receipt files processed`);
+      }
+      for (let i = 0; i < rows.length; i += 200) {
+        const { error } = await Auth.client.from(n).upsert(rows.slice(i, i + 200), { onConflict: 'id' });
+        if (error) throw new Error(`${n}: ${error.message}`);
+      }
+      log(`  saved into ${n}`);
+      summary.push(`${n}: ${rows.length}`);
+    }
+    const { error } = await Auth.client.rpc('rental_reset_sequences');
+    if (error) log('  WARNING: could not reset id counters: ' + error.message);
+    log('DONE. ' + summary.join(', '));
+    document.getElementById('copy-result').innerHTML = `<p class="ok">Done. ${summary.join(' · ')}</p><p><a href="rentals.html">Open Rentals</a> and check your data.</p>`;
+  } catch (e) {
+    log('ERROR: ' + e.message);
+    document.getElementById('copy-result').innerHTML = `<p class="bad">${e.message}</p><p class="muted">Fix the problem and press Copy again. Already-copied rows are simply updated.</p>`;
+    btn.disabled = false;
+  }
+  document.getElementById('btn-check').disabled = false;
+}
+</script>
+</body>
+</html>
