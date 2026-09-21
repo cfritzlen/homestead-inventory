@@ -1472,7 +1472,10 @@
             <!-- All Leases View -->
             <div id="leases" class="view">
                 <div class="card">
-                    <div class="card-header">All Lease Agreements</div>
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <span>All Lease Agreements</span>
+                        <button class="setup-toggle" onclick="openRecycleBin()">🗑 Recycle bin</button>
+                    </div>
                     <div class="search-bar">
                         <input type="text" placeholder="Search by tenant, property, or address..." onkeyup="filterLeases(this.value)">
                     </div>
@@ -2436,6 +2439,7 @@
                 const { data: leases, error } = await supabaseClient
                     .from('rental_leases')
                     .select('*')
+                    .is('deleted_at', null)
                     .order('lease_start', { ascending: false });
 
                 if (error) throw error;
@@ -2504,6 +2508,7 @@
                 const { data: leases, error } = await supabaseClient
                     .from('rental_leases')
                     .select('*')
+                    .is('deleted_at', null)
                     .order('lease_start', { ascending: false });
 
                 if (error) throw error;
@@ -2593,21 +2598,56 @@
             return g ? [g.current, ...g.older].filter(l => l.id !== lease.id) : [];
         }
 
-        // Delete a lease and everything attached to it
+        // Delete = move to the recycle bin. Restore or "delete forever" from there.
         async function deleteLease(id) {
             const lease = allLeases.find(l => l.id === id);
             if (!lease) return;
-            if (!confirm(`Delete the lease for ${lease.tenant_names} at ${lease.property_address}?\n\nThis also removes its PDFs and signatures. This cannot be undone.`)) return;
+            if (!confirm(`Move the lease for ${lease.tenant_names} at ${lease.property_address} to the recycle bin?`)) return;
             try {
+                const { error } = await supabaseClient.from('rental_leases').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+                if (error) throw error;
+                closeLeaseModal();
+                showAlert('Moved to the recycle bin', 'success');
+                loadAllLeases(); loadDashboard();
+            } catch (e) { showAlert('Delete failed: ' + e.message, 'error'); }
+        }
+        async function openRecycleBin() {
+            const modal = document.getElementById('lease-modal');
+            modal.style.display = 'flex';
+            document.getElementById('lm-title').textContent = '🗑 Recycle bin';
+            const body = document.getElementById('lm-body');
+            body.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);">Loading…</div>';
+            try {
+                const { data, error } = await supabaseClient.from('rental_leases').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false });
+                if (error) throw error;
+                body.innerHTML = (data || []).length
+                    ? `<p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">Deleted leases. Restore puts one back; Delete forever also removes its PDFs and signatures.</p>` +
+                      data.map(l => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+                        <span><strong>${l.tenant_names}</strong> · ${l.property_address}<br><small style="color:var(--text-secondary);">${l.lease_start} → ${l.lease_end} · deleted ${(l.deleted_at || '').slice(0, 10)}</small></span>
+                        <span><button class="action-btn btn-primary" onclick="restoreLease(${l.id})">Restore</button> <button class="action-btn delete-btn" onclick="destroyLease(${l.id})">Delete forever</button></span></div>`).join('')
+                    : '<div style="font-size:13px;color:var(--text-secondary);">The recycle bin is empty.</div>';
+            } catch (e) { body.innerHTML = `<div style="color:var(--danger);font-size:13px;">Could not load: ${e.message} (run migration 018?)</div>`; }
+        }
+        async function restoreLease(id) {
+            try {
+                const { error } = await supabaseClient.from('rental_leases').update({ deleted_at: null }).eq('id', id);
+                if (error) throw error;
+                showAlert('Lease restored', 'success');
+                loadAllLeases(); loadDashboard(); openRecycleBin();
+            } catch (e) { showAlert('Restore failed: ' + e.message, 'error'); }
+        }
+        async function destroyLease(id) {
+            if (!confirm('Delete this lease forever, including its PDFs and signatures? This cannot be undone.')) return;
+            try {
+                const { data: lease } = await supabaseClient.from('rental_leases').select('signing_pdf_path').eq('id', id).maybeSingle();
                 const { data: files } = await supabaseClient.from('rental_lease_files').select('storage_path').eq('lease_id', id);
                 const paths = (files || []).map(f => f.storage_path);
-                if (lease.signing_pdf_path) paths.push(lease.signing_pdf_path);
+                if (lease && lease.signing_pdf_path) paths.push(lease.signing_pdf_path);
                 if (paths.length) await supabaseClient.storage.from(LEASE_BUCKET).remove(paths);
                 const { error } = await supabaseClient.from('rental_leases').delete().eq('id', id);
                 if (error) throw error;
-                closeLeaseModal();
-                showAlert('Lease deleted', 'success');
-                loadAllLeases(); loadDashboard();
+                showAlert('Lease deleted forever', 'success');
+                openRecycleBin();
             } catch (e) { showAlert('Delete failed: ' + e.message, 'error'); }
         }
 
@@ -5385,7 +5425,7 @@ If you cannot read something clearly, use null.`
                         <span>${o.lease_start} → ${o.lease_end} · <strong>${o.tenant_names}</strong> · ${money(o.rent_amount)} · ${o.status}${signedLeaseIds.has(o.id) ? ' · ✓ signed' : ''}</span>
                         <span><button class="action-btn btn-primary" onclick="viewLease(${o.id})">View</button> <button class="action-btn btn-secondary" onclick="regeneratePDF(${o.id})">PDF</button></span></div>`).join('')}</div>`;
             })()}
-            <div style="margin-top:18px;text-align:right;"><button class="action-btn delete-btn" onclick="deleteLease(${lease.id})">🗑 Delete this lease</button></div>`;
+            <div style="margin-top:18px;text-align:right;"><button class="action-btn delete-btn" onclick="deleteLease(${lease.id})">🗑 Move to recycle bin</button></div>`;
             document.getElementById('lm-body').innerHTML = body;
             renderSigning(lease);
             try {

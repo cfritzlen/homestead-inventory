@@ -157,7 +157,7 @@ async function autoMatch(supa: any, row: any): Promise<string> {
     const target = norm(row.sender_name);
     const { data: leases } = await supa.from('rental_leases')
       .select('id,property_address,tenant_names,tenant1_name,tenant2_name,tenant3_name,tenant4_name')
-      .eq('status', 'active');
+      .eq('status', 'active').is('deleted_at', null);
     const hits = (leases || []).filter((l: any) => {
       const names = [l.tenant1_name, l.tenant2_name, l.tenant3_name, l.tenant4_name,
         ...String(l.tenant_names || '').split(',')].map(norm).filter(Boolean);
