@@ -167,24 +167,26 @@ Deno.serve(async (req) => {
     }
     const events: any[] = parsed.events || [];
 
-    // Insert as proposed events — skipping duplicates the household already
-    // has (same title, same day, any status — covers the same email arriving
-    // in two connected inboxes and re-scans).
-    const likePattern = (s: string) => s.replace(/[%_]/g, '\\$&');
+    // Insert as proposed events — skipping anything already over, and
+    // duplicates the household already has on the same day (any status).
+    // Titles are compared loosely: "Soccer game night" and "Mighty Kicks
+    // Friday game night" from two reminder emails are the same thing.
     const allTagged = new Set<string>();
-    let inserted = 0;
+    const cutoff = Date.now() - 24 * 3600 * 1000;   // nobody reviews yesterday's events
+    let inserted = 0, skippedPast = 0, skippedDupes = 0;
     for (const ev of events) {
       if (ev.title && ev.starts_at && !isNaN(Date.parse(ev.starts_at))) {
+        const endsAt = ev.ends_at && !isNaN(Date.parse(ev.ends_at)) ? Date.parse(ev.ends_at) : Date.parse(ev.starts_at);
+        if (endsAt < cutoff) { skippedPast++; continue; }
         const day = new Date(ev.starts_at); day.setUTCHours(0, 0, 0, 0);
         const nextDay = new Date(day.getTime() + 86400000);
-        const { data: dupe } = await supa.from('family_events')
-          .select('id')
+        const { data: sameDay } = await supa.from('family_events')
+          .select('id,title')
           .eq('household_id', doc.household_id)
-          .ilike('title', likePattern(ev.title))
           .gte('starts_at', day.toISOString())
           .lt('starts_at', nextDay.toISOString())
-          .limit(1).maybeSingle();
-        if (dupe) continue;
+          .limit(50);
+        if ((sameDay || []).some((o: any) => sameThing(o.title, ev.title))) { skippedDupes++; continue; }
       }
       const row = {
         household_id: doc.household_id,
@@ -215,6 +217,9 @@ Deno.serve(async (req) => {
         ({ error: insErr } = await supa.from('family_events').insert(row));
       }
       if (!insErr) inserted++;
+    }
+    if (skippedPast || skippedDupes) {
+      console.log(`[extract] doc ${docId}: skipped ${skippedPast} past, ${skippedDupes} duplicate event(s)`);
     }
 
     // Insert extracted tasks as proposed to-dos
@@ -294,6 +299,23 @@ async function logExtraction(
     prompt_tokens: inTok, output_tokens: outTok, cost_usd: cost,
     raw_response: raw, events_created: eventsCreated, tasks_created: tasksCreated, error, summary,
   });
+}
+
+// Loose title match: same words ignoring filler, one contains the other, or
+// most words overlap. Used to catch the same event phrased two ways.
+function normTokens(s: string): string[] {
+  return (s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\b(the|a|an|at|for|to|of|and|with|day|night|nights|event|reminder)\b/g, ' ')
+    .trim().split(/\s+/).filter(Boolean);
+}
+function sameThing(a: string, b: string): boolean {
+  const ta = normTokens(a), tb = normTokens(b);
+  if (!ta.length || !tb.length) return false;
+  const A = ta.join(' '), B = tb.join(' ');
+  if (A === B || A.includes(B) || B.includes(A)) return true;
+  const sa = new Set(ta);
+  const inter = tb.filter((t) => sa.has(t)).length;
+  return inter / new Set([...ta, ...tb]).size >= 0.6;
 }
 
 function json(obj: any, status = 200) {

@@ -1048,8 +1048,70 @@
   // ================================================================
   // Proposed events — nudge + review modal
   // ================================================================
+  // ---- Tidy: past and duplicate proposals get ignored automatically ----
+  const normTokens = (s) => (s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\b(the|a|an|at|for|to|of|and|with|day|night|nights|event|reminder)\b/g, ' ')
+    .trim().split(/\s+/).filter(Boolean);
+  function sameThing(a, b) {
+    const ta = normTokens(a.title), tb = normTokens(b.title);
+    if (!ta.length || !tb.length) return false;
+    const A = ta.join(' '), B = tb.join(' ');
+    if (A === B || A.includes(B) || B.includes(A)) return true;
+    const sa = new Set(ta);
+    const inter = tb.filter(t => sa.has(t)).length;
+    return inter / new Set([...ta, ...tb]).size >= 0.6;
+  }
+  const dayKey = (iso) => new Date(iso).toDateString();
+  async function tidyProposals(list) {
+    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+    const reject = new Set();
+    for (const ev of list) {
+      const end = ev.ends_at ? Date.parse(ev.ends_at) : Date.parse(ev.starts_at);
+      if (end < startToday.getTime()) reject.add(ev.id);
+    }
+    const live = list.filter(ev => !reject.has(ev.id));
+    let approved = [];
+    if (live.length) {
+      const times = live.map(e => Date.parse(e.starts_at));
+      const lo = new Date(Math.min(...times)); lo.setHours(0, 0, 0, 0);
+      const hi = new Date(Math.max(...times)); hi.setHours(23, 59, 59, 999);
+      const { data: ap } = await supa.from('family_events').select('id,title,starts_at')
+        .eq('status', 'approved').gte('starts_at', lo.toISOString()).lte('starts_at', hi.toISOString());
+      approved = ap || [];
+    }
+    const kept = [];
+    for (const ev of live) {
+      const k = dayKey(ev.starts_at);
+      const clash = [...approved, ...kept].some(o => dayKey(o.starts_at) === k && sameThing(o, ev));
+      if (clash) reject.add(ev.id); else kept.push(ev);
+    }
+    if (reject.size) {
+      await supa.from('family_events').update({ status: 'rejected' }).in('id', [...reject]);
+      console.log(`[tidy] ignored ${reject.size} past or duplicate proposal(s)`);
+    }
+    return kept;
+  }
+  // Weekly repeats (same title, weekday and time, 3+ dates) become one card.
+  function groupSeries(list) {
+    const groups = new Map();
+    for (const ev of list) {
+      const d = new Date(ev.starts_at);
+      const key = [ev.category, normTokens(ev.title).join(' '), d.getDay(), ev.all_day ? 'allday' : d.getHours() + ':' + d.getMinutes()].join('|');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(ev);
+    }
+    const used = new Set(), out = [];
+    for (const evs of groups.values()) {
+      if (evs.length >= 3) { out.push({ series: evs }); evs.forEach(e => used.add(e.id)); }
+    }
+    for (const ev of list) if (!used.has(ev.id)) out.push(ev);
+    const t0 = (x) => Date.parse((x.series ? x.series[0] : x).starts_at);
+    out.sort((a, b) => t0(a) - t0(b));
+    return out;
+  }
+
   async function loadProposed() {
-    const [{ data, error }, { data: taskData, error: taskErr }] = await Promise.all([
+    const [{ data: rawEvents, error }, { data: taskData, error: taskErr }] = await Promise.all([
       supa.from('family_events')
         .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id,source' + (HAS_PEOPLE ? ',people' : ''))
         .eq('status', 'proposed').order('starts_at'),
@@ -1058,8 +1120,10 @@
         .eq('status', 'proposed').order('created_at'),
     ]);
     if (error) { console.error(error); return; }
+    const data = await tidyProposals(rawEvents || []);
+    const items = groupSeries(data);
     const propTasks = taskErr ? [] : (taskData || []);  // table may not exist yet
-    const total = data.length + propTasks.length;
+    const total = items.length + propTasks.length;
     const nudge = document.getElementById('nudge');
     if (!total) { nudge.style.display = 'none'; }
     else {
@@ -1108,7 +1172,7 @@
         await Promise.all([loadTasks(), loadProposed()]);
       });
     });
-    if (data.length > 1) {
+    if (items.length > 1) {
       const bulk = document.createElement('button');
       bulk.className = 'btn-primary';
       bulk.style.cssText = 'width:100%;margin-bottom:10px;';
@@ -1121,7 +1185,35 @@
       });
       list.appendChild(bulk);
     }
-    for (const ev of data) {
+    items.forEach((item, idx) => {
+      if (item.series) {
+        const evs = item.series, first = evs[0], last = evs[evs.length - 1];
+        const d0 = new Date(first.starts_at);
+        const fmtDay = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const when = `${d0.toLocaleDateString(undefined, { weekday: 'long' })}s`
+          + (first.all_day ? '' : ' ' + d0.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))
+          + ` · ${fmtDay(first.starts_at)} – ${fmtDay(last.starts_at)} · ${evs.length} dates`;
+        const card = document.createElement('div');
+        card.className = 'prop';
+        card.innerHTML = `
+          <div class="row1">
+            <span class="pill ${first.category}">${CAT_LABELS[first.category] || first.category}</span>
+            <span class="title">${escapeHtml(first.title)}</span>
+            <span style="color:var(--muted);font-size:14px;">· repeats</span>
+          </div>
+          <div class="when">${escapeHtml(when)}${first.location ? ' · ' + escapeHtml(first.location) : ''}</div>
+          <div class="notes">${evs.map(e => fmtDay(e.starts_at)).join(', ')}</div>
+          <div class="src">from ${first.source || 'ai'}${first.document_id ? ` · <a href="#" class="src-link" onclick="event.preventDefault(); openSourceDoc('${first.document_id}')">see original email</a>` : ''}</div>
+          <div class="actions" style="grid-template-columns:1fr 1fr;">
+            <button class="approve" data-series="${idx}" data-act="approve">Add all ${evs.length} to calendar</button>
+            <button class="edit"    data-series="${idx}" data-act="save">Save only</button>
+            <button class="reject"  data-series="${idx}" data-act="reject" style="grid-column:1 / -1;">Ignore all</button>
+          </div>
+        `;
+        list.appendChild(card);
+        return;
+      }
+      const ev = item;
       const conf = ev.ai_confidence != null ? Math.round(ev.ai_confidence * 100) + '%' : '—';
       const when = ev.all_day
         ? new Date(ev.starts_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
@@ -1145,7 +1237,7 @@
         </div>
       `;
       list.appendChild(card);
-    }
+    });
     // Approve/save with sync choice; falls back gracefully if the
     // sync_to_google column (migration 008) isn't in the database yet.
     async function setEventStatus(id, fields) {
@@ -1156,6 +1248,19 @@
       }
       if (error) alert(error.message);
     }
+    list.querySelectorAll('button[data-series]').forEach(b => {
+      b.addEventListener('click', async () => {
+        const evs = items[Number(b.dataset.series)].series, act = b.dataset.act;
+        b.disabled = true; b.textContent = 'Working…';
+        for (const ev of evs) {
+          if (act === 'approve') await setEventStatus(ev.id, { status: 'approved', sync_to_google: true });
+          else if (act === 'save') await setEventStatus(ev.id, { status: 'approved', sync_to_google: false });
+          else await supa.from('family_events').update({ status: 'rejected' }).eq('id', ev.id);
+        }
+        await Promise.all([loadUpcoming(), loadProposed()]);
+        calendar.refetchEvents();
+      });
+    });
     list.querySelectorAll('button[data-id]').forEach(b => {
       b.addEventListener('click', async () => {
         const id = b.dataset.id, act = b.dataset.act;
