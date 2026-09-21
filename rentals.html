@@ -1219,6 +1219,16 @@
                 <div class="card">
                     <div class="card-header">Create New Lease Agreement</div>
                     <div id="alert-container"></div>
+
+                    <details style="margin-bottom:16px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">
+                        <summary style="cursor:pointer;font-weight:600;">Landlord contact (printed on every lease)</summary>
+                        <div class="form-grid" style="margin-top:10px;">
+                            <div class="form-group"><label>Name</label><input type="text" id="ll-name"></div>
+                            <div class="form-group"><label>Email</label><input type="email" id="ll-email"></div>
+                            <div class="form-group"><label>Phone</label><input type="text" id="ll-phone"></div>
+                        </div>
+                        <button type="button" class="action-btn btn-primary" onclick="saveLandlordSettings()">Save contact info</button>
+                    </details>
                     
                     <form id="lease-form">
                         <!-- Hidden field to track if this is a renewal -->
@@ -1341,11 +1351,15 @@
                         <div class="form-grid">
                             <div class="form-group full-width">
                                 <label>Property & Unit *</label>
-                                <select name="property_address" id="property-dropdown" required>
+                                <select name="property_address" id="property-dropdown" required onchange="onPropertyChange()">
                                     <option value="">Loading properties...</option>
                                 </select>
                             </div>
                         </div>
+
+                        <div class="card-header" style="font-size: 16px; margin-top: 30px; margin-bottom: 6px;">Lease Options for this Property</div>
+                        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Ticked on the lease pages. Saved as this property's defaults when you save the lease.</p>
+                        <div id="lease-options"></div>
 
                         <div class="card-header" style="font-size: 16px; margin-top: 30px; margin-bottom: 15px;">Lease Terms</div>
                         <div class="form-grid">
@@ -1832,6 +1846,17 @@
         </div>
     </main>
 
+    <!-- Lease detail: details + attached files (generated PDF, signed copy) -->
+    <div id="lease-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:16px;" onclick="if (event.target === this) closeLeaseModal()">
+        <div style="background:#fff;border-radius:12px;max-width:680px;width:100%;max-height:90vh;overflow:auto;padding:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
+                <h3 id="lm-title" style="margin:0;font-size:1.1rem;"></h3>
+                <button class="action-btn btn-secondary" onclick="closeLeaseModal()">Close</button>
+            </div>
+            <div id="lm-body"></div>
+        </div>
+    </div>
+
     <!-- Receipt Lightbox -->
     <div class="receipt-lightbox" id="receipt-lightbox" onclick="closeLightbox(event)">
         <img id="lb-image" src="" alt="Receipt">
@@ -2046,8 +2071,10 @@
             
             // Collect all form data
             for (let [key, value] of formData.entries()) {
+                if (key.startsWith('lo_')) continue;          // lease-option inputs, collected below
                 leaseData[key] = value === '' ? null : value;
             }
+            leaseData.lease_options = collectLeaseOptions();
             
             // Store renewal info for later use in PDF generation, but remove from database save
             const renewalInfo = {
@@ -2080,6 +2107,9 @@
                 if (error) throw error;
 
                 showAlert('Lease saved successfully!', 'success');
+                // Keep these choices as the property's defaults for next time
+                const prop = propertiesByName[leaseData.property_address];
+                if (prop) supabaseClient.from('rental_properties').update({ lease_options: leaseData.lease_options }).eq('id', prop.id).then(() => { prop.lease_options = leaseData.lease_options; });
                 
                 // If this is a renewal, terminate the old lease
                 if (renewalInfo.isRenewal && renewalInfo.previousLeaseId) {
@@ -2098,8 +2128,8 @@
                 leaseData.is_renewal = renewalInfo.isRenewal ? 'true' : 'false';
                 leaseData.previous_lease_id = renewalInfo.previousLeaseId;
                 
-                // Generate PDF
-                generatePDF(leaseData);
+                // Generate the full PDF and keep a copy on the lease
+                generatePDF(leaseData, data && data[0] ? data[0].id : null);
                 
                 // Reset form after 2 seconds
                 setTimeout(() => {
@@ -2121,7 +2151,7 @@
 
         // Generate PDF
         // Generate PDF matching the exact format of the lease page 1
-        function generatePDF(leaseData) {
+        function buildLeaseDoc(leaseData, opts = {}) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
@@ -2171,7 +2201,7 @@
             y += splitPara1.length * 5;
             
             y += 2;
-            const para2 = `Between Colette Fritzlen, ("Landlord") and ${leaseData.tenant_names || '________'} ("Tenants").`;
+            const para2 = `Between ${landlord.name}, ("Landlord") and ${leaseData.tenant_names || '________'} ("Tenants").`;
             const splitPara2 = doc.splitTextToSize(para2, 170);
             doc.text(splitPara2, leftMargin, y);
             y += splitPara2.length * 5;
@@ -2192,7 +2222,7 @@
             }
             
             y += 2;
-            const landlordInfo = `Landlord's Email Address: mocopropert908@gmail.com  Landlord's Telephone Number: 570-560-6626`;
+            const landlordInfo = `Landlord's Email Address: ${landlord.email}  Landlord's Telephone Number: ${landlord.phone}`;
             const splitLandlord = doc.splitTextToSize(landlordInfo, 170);
             doc.text(splitLandlord, leftMargin, y);
             y += splitLandlord.length * 5;
@@ -2216,17 +2246,12 @@
             doc.text('Together with the following furniture and appliances, if any:', leftMargin, y);
             
             y += 5;
-            // Appliance checkboxes
-            doc.rect(leftMargin + 5, y - 3, 3, 3);
-            doc.text('Refrigerator', leftMargin + 10, y);
-            doc.rect(leftMargin + 45, y - 3, 3, 3);
-            doc.text('Range', leftMargin + 50, y);
-            doc.rect(leftMargin + 75, y - 3, 3, 3);
-            doc.text('Dishwasher', leftMargin + 80, y);
-            doc.rect(leftMargin + 115, y - 3, 3, 3);
-            doc.text('Microwave', leftMargin + 120, y);
-            doc.rect(leftMargin + 155, y - 3, 3, 3);
-            doc.text('Washer/dryer', leftMargin + 160, y);
+            // Appliance checkboxes (ticked from the property's lease options)
+            const included = (opts.appliances || []);
+            [[5, 'Refrigerator'], [45, 'Range'], [75, 'Dishwasher'], [115, 'Microwave'], [155, 'Washer/dryer']].forEach(([dx, name]) => {
+                pdfCheckbox(doc, leftMargin + dx, y, included.includes(name));
+                doc.text(name, leftMargin + dx + 5, y);
+            });
             
             y += 8;
             doc.text('The Premises shall be occupied only by the Tenant(s) and the following persons:', leftMargin, y);
@@ -2278,20 +2303,17 @@
             const securityDep = leaseData.security_deposit || '';
             
             // First month checkbox
-            if (firstMonth) doc.text('☑', leftMargin, y);
-            else doc.rect(leftMargin, y - 3, 3, 3);
+            pdfCheckbox(doc, leftMargin, y, !!firstMonth);
             doc.text(`First month's Rent of $${firstMonth || '________'} due at lease signing.`, leftMargin + 5, y);
             y += 5;
             
             // Last month checkbox
-            if (lastMonth) doc.text('☑', leftMargin, y);
-            else doc.rect(leftMargin, y - 3, 3, 3);
+            pdfCheckbox(doc, leftMargin, y, !!lastMonth);
             doc.text(`Last month's Rent of $${lastMonth || '________'} due at lease signing.`, leftMargin + 5, y);
             y += 5;
             
             // Security deposit checkbox
-            if (securityDep) doc.text('☑', leftMargin, y);
-            else doc.rect(leftMargin, y - 3, 3, 3);
+            pdfCheckbox(doc, leftMargin, y, !!securityDep);
             doc.text(`Security Deposit of $${securityDep || '________'} due at lease signing.`, leftMargin + 5, y);
             y += 6;
             
@@ -2319,11 +2341,11 @@
             // Section 9 - Sign and Accept
             doc.setFontSize(14);
             doc.setFont('times', 'bold');
-            doc.text('9. Sign and Accept', leftMargin, y);
+            doc.text('7 - SIGN AND ACCEPT', leftMargin, y);
             
             y += 10;
             doc.setFontSize(11);
-            doc.text('9.1 SIGN BELOW', leftMargin, y);
+            doc.text('7.1 SIGN BELOW', leftMargin, y);
             
             y += 8;
             doc.setFontSize(10);
@@ -2368,13 +2390,11 @@
             
             // Name and role
             doc.setFont('times', 'normal');
-            doc.text('Colette Fritzlen', leftMargin + 10, y);
+            doc.text(landlord.name, leftMargin + 10, y);
             y += 5;
             doc.text('Lessor', leftMargin + 10, y);
             
-            // Save PDF
-            const filename = `Lease_Pages1-19_${leaseData.tenant_names ? leaseData.tenant_names.replace(/\s+/g, '_') : 'Draft'}_${leaseData.lease_start || 'Draft'}.pdf`;
-            doc.save(filename);
+            return doc;   // generatePDF() adds the middle pages and downloads
         }
 
         // Load properties into dropdown
@@ -2392,12 +2412,15 @@
                 const dropdown = document.getElementById('property-dropdown');
                 dropdown.innerHTML = '<option value="">Select Property</option>';
                 
+                propertiesByName = {};
                 properties.forEach(prop => {
+                    propertiesByName[prop.property_name] = prop;
                     const option = document.createElement('option');
                     option.value = prop.property_name;
                     option.textContent = prop.property_name;
                     dropdown.appendChild(option);
                 });
+                onPropertyChange();
 
             } catch (error) {
                 console.error('Error loading properties:', error);
@@ -2485,6 +2508,7 @@
                 if (error) throw error;
 
                 allLeases = leases;
+                await loadSignedIds();
                 displayLeases(leases);
 
             } catch (error) {
@@ -2531,7 +2555,7 @@
                         <td>${lease.lease_end}</td>
                         <td>$${parseFloat(lease.rent_amount).toLocaleString()}</td>
                         <td>${lease.lease_type.replace('_', ' ')}</td>
-                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span>${signedLeaseIds.has(lease.id) ? ' <span class="status-badge status-active" title="Signed copy attached">✓ Signed</span>' : ''}</td>
                         <td>
                             <button class="action-btn btn-primary" onclick="viewLease(${lease.id})">View</button>
                             <button class="action-btn btn-secondary" onclick="regeneratePDF(${lease.id})">PDF</button>
@@ -2555,16 +2579,14 @@
         // View lease details
         function viewLease(id) {
             const lease = allLeases.find(l => l.id === id);
-            if (lease) {
-                alert(`Lease Details:\n\nTenant: ${lease.tenant_names}\nProperty: ${lease.property_address}\nRent: $${lease.rent_amount}\nStart: ${lease.lease_start}\nEnd: ${lease.lease_end}`);
-            }
+            if (lease) openLeaseModal(lease);
         }
 
         // Regenerate PDF
         function regeneratePDF(id) {
             const lease = allLeases.find(l => l.id === id);
             if (lease) {
-                generatePDF(lease);
+                generatePDF(lease, lease.id);
             }
         }
 
@@ -4185,6 +4207,8 @@
         window.addEventListener('DOMContentLoaded', async () => {
             await Auth.ready;
             initSupabase();
+            loadLandlordSettings();
+            renderLeaseOptionsForm();
             loadDashboard();
             loadProperties();
             loadRateSchedules();
@@ -4961,5 +4985,289 @@ If you cannot read something clearly, use null.`
     }
     </script>
 
+    <script>
+        // ===================== Lease: full 19-page PDF, options, files =====================
+        // Page 1 and the signature page are drawn by buildLeaseDoc (jsPDF). Pages
+        // 2-18 come from assets/lease-middle-pages.pdf; we stamp the emergency
+        // phone, the Landlord/Tenant choices and the tenants' initial lines on
+        // them with pdf-lib. Coordinates below are PDF points from the bottom-left
+        // of each page and match that file; replace the file and they must be redone.
+        const LEASE_MIDDLE_PDF = 'assets/lease-middle-pages.pdf';
+        const LEASE_BUCKET = 'rental-leases';
+        let landlord = { name: 'Colette Fritzlen', email: 'cfritzlen@gmail.com', phone: '917 428 4252' };
+        let propertiesByName = {};
+        let signedLeaseIds = new Set();
+
+        const APPLIANCES = ['Refrigerator', 'Range', 'Dishwasher', 'Microwave', 'Washer/dryer'];
+        // [key, label, y on the page]  — middle page 2 = lease page 3, section 1.9
+        const MAINT_ROWS = [
+            ['smoke_detectors', 'Smoke detectors (tenant tests monthly)', 200.0],
+            ['extermination', 'Extermination (landlord not responsible for bedbugs)', 189.1],
+            ['locks_keys', 'Locks and keys', 178.3],
+            ['outside_clean', 'Clean & safe condition (outside areas)', 167.5],
+            ['appliances_maint', 'Appliances listed in agreement', 156.7],
+            ['fixtures', 'Fixtures', 145.9],
+        ];
+        // middle page 4 = lease page 5, section 1.12
+        const UTIL_ROWS = [
+            ['heating', 'Heating', 685.3], ['cooling', 'Cooling', 673.0], ['cooking', 'Cooking', 660.6], ['electric', 'Electric', 648.4],
+            ['cable_internet', 'Cable/Internet', 636.0], ['telephone', 'Telephone', 623.8], ['water', 'Water', 611.5], ['sewer', 'Sewer', 599.1],
+            ['trash', 'Trash', 585.8], ['pest_control', 'Pest control', 564.5], ['bed_bugs', 'Bed bugs', 552.2], ['hoa_fees', 'HOA fees', 539.9],
+            ['snow', 'Snow', 527.6], ['lawn', 'Lawn & shrub care', 515.3],
+        ];
+        // Initial lines "________ ________": [middle page index, y]
+        const INITIAL_LINES = [[2, 137.1], [7, 297.3], [9, 428.9], [10, 302.2], [11, 390.8], [11, 117.6], [12, 356.3], [15, 585.6], [16, 435.3], [16, 74.1]];
+        const INITIAL_X = [36, 252, 468, 144];   // tenant 1, 2, 3, 4
+
+        function pdfCheckbox(doc, x, y, checked) {
+            doc.rect(x, y - 3, 3, 3);
+            if (checked) { doc.line(x, y - 3, x + 3, y); doc.line(x, y, x + 3, y - 3); }
+        }
+
+        // ---- landlord contact ----
+        async function loadLandlordSettings() {
+            try {
+                const { data, error } = await supabaseClient.from('rental_settings').select('key,value');
+                if (error) throw error;
+                for (const r of data || []) {
+                    if (r.key === 'landlord_name' && r.value) landlord.name = r.value;
+                    if (r.key === 'landlord_email' && r.value) landlord.email = r.value;
+                    if (r.key === 'landlord_phone' && r.value) landlord.phone = r.value;
+                }
+            } catch (e) { console.warn('Landlord settings not loaded (run migration 015?):', e.message); }
+            document.getElementById('ll-name').value = landlord.name;
+            document.getElementById('ll-email').value = landlord.email;
+            document.getElementById('ll-phone').value = landlord.phone;
+        }
+        async function saveLandlordSettings() {
+            const rows = [
+                { key: 'landlord_name', value: document.getElementById('ll-name').value.trim() },
+                { key: 'landlord_email', value: document.getElementById('ll-email').value.trim() },
+                { key: 'landlord_phone', value: document.getElementById('ll-phone').value.trim() },
+            ];
+            try {
+                const { error } = await supabaseClient.from('rental_settings').upsert(rows, { onConflict: 'key' });
+                if (error) throw error;
+                landlord = { name: rows[0].value || landlord.name, email: rows[1].value, phone: rows[2].value };
+                showAlert('Contact info saved. New leases will use it.', 'success');
+            } catch (e) { showAlert('Could not save: ' + e.message, 'error'); }
+        }
+
+        // ---- lease options (per property) ----
+        function renderLeaseOptionsForm() {
+            const el = document.getElementById('lease-options');
+            if (!el) return;
+            const radio = (name, val, label) => `<label style="margin-right:12px;white-space:nowrap;"><input type="radio" name="lo_${name}" value="${val}"> ${label}</label>`;
+            const rows = (list, extraNA) => list.map(([key, label]) => `
+                <div style="display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;">
+                    <span style="flex:1 1 220px;">${label}</span>
+                    <span>${radio(key, 'landlord', 'Landlord')}${radio(key, 'tenant', 'Tenant')}${extraNA && key === 'hoa_fees' ? radio(key, 'na', 'N/A') : ''}</span>
+                </div>`).join('');
+            el.innerHTML = `
+                <div style="margin-bottom:14px;"><strong style="font-size:14px;">Appliances included (page 1)</strong><div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px;font-size:13px;">
+                    ${APPLIANCES.map(a => `<label><input type="checkbox" name="lo_app" value="${a}"> ${a}</label>`).join('')}</div></div>
+                <div style="margin-bottom:14px;"><strong style="font-size:14px;">Maintenance: who handles it (page 3)</strong>${rows(MAINT_ROWS)}</div>
+                <div style="margin-bottom:14px;"><strong style="font-size:14px;">Utilities & services (page 5)</strong>${rows(UTIL_ROWS, true)}</div>`;
+        }
+        function collectLeaseOptions() {
+            const o = { appliances: [], maintenance: {}, utilities: {} };
+            document.querySelectorAll('input[name="lo_app"]:checked').forEach(i => o.appliances.push(i.value));
+            for (const [key] of MAINT_ROWS) { const c = document.querySelector(`input[name="lo_${key}"]:checked`); if (c) o.maintenance[key] = c.value; }
+            for (const [key] of UTIL_ROWS) { const c = document.querySelector(`input[name="lo_${key}"]:checked`); if (c) o.utilities[key] = c.value; }
+            return o;
+        }
+        function applyLeaseOptions(o) {
+            o = o || {};
+            document.querySelectorAll('input[name^="lo_"]').forEach(i => { i.checked = false; });
+            (o.appliances || []).forEach(a => { const i = document.querySelector(`input[name="lo_app"][value="${a}"]`); if (i) i.checked = true; });
+            for (const [group, list] of [['maintenance', MAINT_ROWS], ['utilities', UTIL_ROWS]]) {
+                for (const [key] of list) {
+                    const v = (o[group] || {})[key];
+                    if (!v) continue;
+                    const i = document.querySelector(`input[name="lo_${key}"][value="${v}"]`);
+                    if (i) i.checked = true;
+                }
+            }
+        }
+        function onPropertyChange() {
+            const sel = document.getElementById('property-dropdown');
+            const prop = sel ? propertiesByName[sel.value] : null;
+            applyLeaseOptions(prop ? prop.lease_options : {});
+        }
+
+        // ---- the full PDF ----
+        async function generatePDF(leaseData, leaseId) {
+            const opts = (leaseData.lease_options && typeof leaseData.lease_options === 'object') ? leaseData.lease_options : {};
+            try {
+                const doc = buildLeaseDoc(leaseData, opts);                               // page 1 + page 19
+                const gen = await PDFLib.PDFDocument.load(doc.output('arraybuffer'));
+                const res = await fetch(LEASE_MIDDLE_PDF);
+                if (!res.ok) throw new Error('middle pages file not found (' + LEASE_MIDDLE_PDF + ')');
+                const middle = await PDFLib.PDFDocument.load(await res.arrayBuffer());
+                await stampMiddlePages(middle, leaseData, opts);
+                const out = await PDFLib.PDFDocument.create();
+                const [p1, pSig] = await out.copyPages(gen, [0, 1]);
+                out.addPage(p1);
+                for (const pg of await out.copyPages(middle, middle.getPageIndices())) out.addPage(pg);
+                out.addPage(pSig);
+                const blob = new Blob([await out.save()], { type: 'application/pdf' });
+                const filename = `Lease_${(leaseData.tenant_names || 'Draft').replace(/[^A-Za-z0-9]+/g, '_')}_${leaseData.lease_start || 'Draft'}.pdf`;
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); a.download = filename;
+                document.body.appendChild(a); a.click(); a.remove();
+                if (leaseId) {
+                    try { await uploadLeaseFile(leaseId, blob, filename, 'generated'); }
+                    catch (e) { console.warn('could not store generated PDF:', e.message); }
+                }
+            } catch (e) {
+                console.error('PDF failed:', e);
+                showAlert('PDF failed: ' + e.message, 'error');
+            }
+        }
+
+        async function stampMiddlePages(middle, leaseData, opts) {
+            const font = await middle.embedFont(PDFLib.StandardFonts.Helvetica);
+            const pages = middle.getPages();
+            const white = PDFLib.rgb(1, 1, 1), black = PDFLib.rgb(0, 0, 0);
+            const ring = (pg, x, y, w, h) => pg.drawRectangle({ x: x - 2, y: y - 2.5, width: w + 4, height: h + 3, borderColor: black, borderWidth: 1 });
+
+            // Emergency phone (lease page 4): "...Please call 570" / "560 6626 for all Emergency calls!"
+            // Preferred: cut the old number out of the page text. Fallback: paint over it.
+            const p3 = pages[2];
+            if (!removeOldEmergencyPhone(middle, p3)) {
+                p3.drawRectangle({ x: 54.8 + 514.0 - 17, y: 416, width: 20, height: 12, color: white });
+                p3.drawRectangle({ x: 53, y: 402, width: 220, height: 12, color: white });
+            }
+            p3.drawText(`${landlord.phone} for all Emergency calls!`, { x: 54.8, y: 404.3, size: 10, font, color: black });
+
+            // Who handles what: box around the chosen word
+            for (const [key, , y] of MAINT_ROWS) {
+                const v = (opts.maintenance || {})[key];
+                if (v === 'landlord') ring(pages[1], 63.3, y, 31.5, 9);
+                else if (v === 'tenant') ring(pages[1], 120.9, y, 25.1, 9);
+            }
+            for (const [key, , y] of UTIL_ROWS) {
+                const v = (opts.utilities || {})[key];
+                if (v === 'landlord') ring(pages[3], 165.5, y, 29.8, 8.5);
+                else if (v === 'tenant') ring(pages[3], 245.3, y, 23.7, 8.5);
+                else if (v === 'na') ring(pages[3], 293.7, y, 12, 8.5);
+            }
+
+            // Initial lines: every tenant initials every line. Lines 1-2 exist on the
+            // page; tenants 3-4 get lines added. Names go in small print underneath.
+            const tenants = [];
+            for (let i = 1; i <= 4; i++) if (leaseData[`tenant${i}_name`]) tenants.push(leaseData[`tenant${i}_name`]);
+            for (const [pi, y] of INITIAL_LINES) {
+                const pg = pages[pi];
+                tenants.forEach((name, i) => {
+                    const x = INITIAL_X[i];
+                    if (i >= 2) pg.drawText('________', { x, y, size: 12, font, color: black });
+                    pg.drawText(`${name} (initials)`, { x, y: y - 8, size: 6.5, font, color: black });
+                });
+            }
+        }
+
+        // The old number is typed into the page's drawing instructions as font
+        // glyph codes. These two snippets are exactly "570 " at the end of the
+        // "Please call" line and "560 6626 " at the start of the next line in
+        // assets/lease-middle-pages.pdf; both are removed and the new number is
+        // drawn in their place. Returns false if the file has changed.
+        const PHONE_TAIL = '<0003>6.5 <03F103F3>6 <03EC0003>]TJ';
+        const PHONE_LINE2 = '[<03F103F2>6 <03EC0003>0.5 <03F2>6 <03F2>6 <03EE03F20003>0.5 ';
+        function removeOldEmergencyPhone(pdfDoc, page) {
+            try {
+                const ref = page.node.get(PDFLib.PDFName.of('Contents'));
+                const stream = pdfDoc.context.lookup(ref);
+                if (!stream || !PDFLib.decodePDFRawStream) return false;
+                const bytes = PDFLib.decodePDFRawStream(stream).decode();
+                let txt = ''; for (let i = 0; i < bytes.length; i++) txt += String.fromCharCode(bytes[i]);
+                const i = txt.indexOf(PHONE_LINE2);
+                if (i < 0 || !txt.includes(PHONE_TAIL)) return false;
+                const j = txt.indexOf(']TJ', i);
+                txt = txt.slice(0, i) + txt.slice(j + 3);                    // drop the "560 6626 for all…" line
+                txt = txt.replace(PHONE_TAIL, '<0003>]TJ');                  // drop "570 " from the line above
+                const out = new Uint8Array(txt.length); for (let k = 0; k < txt.length; k++) out[k] = txt.charCodeAt(k);
+                page.node.set(PDFLib.PDFName.of('Contents'), pdfDoc.context.register(pdfDoc.context.flateStream(out)));
+                return true;
+            } catch (e) { console.warn('phone text edit failed, painting over instead:', e.message); return false; }
+        }
+
+        // ---- files on a lease ----
+        async function uploadLeaseFile(leaseId, fileOrBlob, fileName, kind) {
+            const safe = fileName.replace(/[^A-Za-z0-9._-]+/g, '_');
+            const path = `${leaseId}/${Date.now()}_${safe}`;
+            const { error } = await supabaseClient.storage.from(LEASE_BUCKET).upload(path, fileOrBlob, { upsert: false });
+            if (error) throw error;
+            const { error: e2 } = await supabaseClient.from('rental_lease_files').insert([{ lease_id: leaseId, kind, file_name: fileName, storage_path: path }]);
+            if (e2) throw e2;
+        }
+        async function loadSignedIds() {
+            try {
+                const { data } = await supabaseClient.from('rental_lease_files').select('lease_id').eq('kind', 'signed');
+                signedLeaseIds = new Set((data || []).map(r => r.lease_id));
+            } catch (_) { signedLeaseIds = new Set(); }
+        }
+        async function openLeaseFile(path) {
+            const { data, error } = await supabaseClient.storage.from(LEASE_BUCKET).createSignedUrl(path, 600);
+            if (error) { showAlert('Could not open file: ' + error.message, 'error'); return; }
+            window.open(data.signedUrl, '_blank');
+        }
+        async function removeLeaseFile(id, path, leaseId) {
+            if (!confirm('Remove this file from the lease?')) return;
+            await supabaseClient.storage.from(LEASE_BUCKET).remove([path]);
+            await supabaseClient.from('rental_lease_files').delete().eq('id', id);
+            openLeaseModal(allLeases.find(l => l.id === leaseId));
+        }
+        async function attachSignedLease(leaseId, input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            try {
+                await uploadLeaseFile(leaseId, file, file.name, 'signed');
+                await loadSignedIds();
+                displayLeases(allLeases);
+                openLeaseModal(allLeases.find(l => l.id === leaseId));
+            } catch (e) { showAlert('Upload failed: ' + e.message, 'error'); }
+        }
+
+        function closeLeaseModal() { document.getElementById('lease-modal').style.display = 'none'; }
+        async function openLeaseModal(lease) {
+            if (!lease) return;
+            const modal = document.getElementById('lease-modal');
+            modal.style.display = 'flex';
+            document.getElementById('lm-title').textContent = `${lease.tenant_names} · ${lease.property_address}`;
+            const money = (v) => v == null ? '—' : '$' + parseFloat(v).toLocaleString('en-US', { minimumFractionDigits: 2 });
+            const row = (k, v) => `<tr><td style="color:var(--text-secondary);padding:4px 10px 4px 0;white-space:nowrap;">${k}</td><td style="padding:4px 0;">${v ?? '—'}</td></tr>`;
+            const tenants = [];
+            for (let i = 1; i <= 4; i++) if (lease[`tenant${i}_name`]) tenants.push(`${lease[`tenant${i}_name`]}${lease[`tenant${i}_email`] ? ' · ' + lease[`tenant${i}_email`] : ''}${lease[`tenant${i}_phone`] ? ' · ' + lease[`tenant${i}_phone`] : ''}`);
+            let body = `<table style="font-size:14px;margin-bottom:14px;">
+                ${row('Tenants', tenants.length ? tenants.join('<br>') : lease.tenant_names)}
+                ${row('Term', `${lease.lease_start} → ${lease.lease_end} (${(lease.lease_type || '').replace(/_/g, ' ')})`)}
+                ${row('Rent', money(lease.rent_amount))}
+                ${row('Deposit', money(lease.security_deposit))}
+                ${row('Pets', `${lease.num_cats || 0} cat(s), ${lease.num_dogs || 0} dog(s)`)}
+                ${row('Status', lease.status)}
+                ${lease.notes ? row('Notes', lease.notes) : ''}
+            </table>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+                <button class="action-btn btn-secondary" onclick="generatePDF(allLeases.find(l => l.id === ${lease.id}), ${lease.id})">⬇ Download full lease PDF</button>
+                <label class="action-btn btn-primary" style="cursor:pointer;">📎 Attach signed lease
+                    <input type="file" accept="application/pdf,image/*" style="display:none;" onchange="attachSignedLease(${lease.id}, this)"></label>
+            </div>
+            <div id="lm-files" style="font-size:13px;color:var(--text-secondary);">Loading files…</div>`;
+            document.getElementById('lm-body').innerHTML = body;
+            try {
+                const { data, error } = await supabaseClient.from('rental_lease_files').select('*').eq('lease_id', lease.id).order('created_at', { ascending: false });
+                if (error) throw error;
+                const label = { signed: '✅ Signed copy', generated: '📄 Generated', other: '📎 File' };
+                document.getElementById('lm-files').innerHTML = (data || []).length
+                    ? data.map(f => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+                        <span>${label[f.kind] || label.other} · <a href="#" onclick="openLeaseFile('${f.storage_path}');return false;">${f.file_name}</a> <small>${(f.created_at || '').slice(0, 10)}</small></span>
+                        <button class="action-btn delete-btn" onclick="removeLeaseFile(${f.id}, '${f.storage_path}', ${lease.id})">Remove</button></div>`).join('')
+                    : 'No files yet. Download the PDF above, get it signed, then attach the signed copy here.';
+            } catch (e) {
+                document.getElementById('lm-files').innerHTML = 'Files unavailable: ' + e.message + ' (run migration 015?)';
+            }
+        }
+    </script>
 </body>
 </html>
