@@ -1675,6 +1675,27 @@
                     </div>
                     <div id="payment-alert-container"></div>
 
+                    <!-- Zelle: rent payments read from Gmail (zelle-ingest edge function) -->
+                    <div class="card" id="zelle-card" style="background:var(--bg-secondary);margin-bottom:16px;">
+                        <div class="card-header" style="font-size:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <span>💸 Zelle payments from email</span>
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <select id="zelle-days" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+                                    <option value="14">Last 2 weeks</option>
+                                    <option value="45" selected>Last 45 days</option>
+                                    <option value="120">Last 4 months</option>
+                                </select>
+                                <button class="action-btn btn-primary" id="zelle-scan-btn" onclick="scanZelle()">Scan Zelle emails</button>
+                            </div>
+                        </div>
+                        <div id="zelle-msg" style="font-size:13px;color:var(--text-secondary);margin:4px 0 8px;">Runs by itself every morning. Press Scan to check now.</div>
+                        <div id="zelle-pending"></div>
+                        <details style="margin-top:8px;">
+                            <summary style="cursor:pointer;font-size:13px;color:var(--text-secondary);">Recently applied</summary>
+                            <div id="zelle-applied" style="margin-top:6px;"></div>
+                        </details>
+                    </div>
+
                     <!-- Payment Setup (hidden by default) -->
                     <div class="setup-container" id="payment-setup-container">
                         <div class="card" style="background:var(--bg-secondary);margin-bottom:16px;">
@@ -1863,7 +1884,7 @@
                 }
                 loadExpenseProperties(); loadExpenses();
             }
-            if (viewName === 'payments') { loadPaymentProperties(); loadRateSchedules().then(() => { loadPaymentDefaults(); loadMonthlyPayments(); }); }
+            if (viewName === 'payments') { loadPaymentProperties(); loadRateSchedules().then(() => { loadPaymentDefaults(); loadMonthlyPayments(); loadZelle(); }); }
         }
 
         // Reset form and show new lease view (not a renewal)
@@ -3782,6 +3803,127 @@
         // ===== RATE SCHEDULE FUNCTIONS =====
 
         // Get the correct amount for a payment default in a given month
+        // ---------------- Zelle payments (read from Gmail) ----------------
+        // The heavy lifting lives in the zelle-ingest edge function; this just
+        // shows what it found and lets you assign the ones it couldn't match.
+        const ZELLE_FN = Auth.client.supabaseUrl + '/functions/v1/zelle-ingest';
+        const money = (v) => '$' + parseFloat(v || 0).toLocaleString('en-US', {minimumFractionDigits: 2});
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+        async function callZelle(body) {
+            const res = await fetch(ZELLE_FN, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Auth.bearer() },
+                body: JSON.stringify(body)
+            });
+            let data = {};
+            try { data = await res.json(); } catch (_) {}
+            if (!res.ok || data.error) throw new Error(data.error || ('request failed (' + res.status + ')'));
+            return data;
+        }
+
+        async function scanZelle() {
+            const btn = document.getElementById('zelle-scan-btn');
+            const msg = document.getElementById('zelle-msg');
+            btn.disabled = true; btn.textContent = 'Scanning…';
+            msg.textContent = 'Reading Zelle emails (including Trash)…';
+            try {
+                const data = await callZelle({ days_back: Number(document.getElementById('zelle-days').value) });
+                if (data.note) { msg.textContent = data.note; return; }
+                let found = 0, added = 0, applied = 0, pending = 0, ignored = 0, problems = [];
+                for (const a of data.accounts || []) {
+                    if (a.error) { problems.push(a.account_email + ': ' + a.error); continue; }
+                    found += a.found || 0; added += a.added || 0; applied += a.applied || 0;
+                    pending += a.pending || 0; ignored += a.ignored || 0; problems.push(...(a.problems || []));
+                }
+                msg.textContent = `Found ${found} Zelle email${found === 1 ? '' : 's'}, ${added} new: ${applied} applied, ${pending} need your review, ${ignored} ignored.`
+                    + (problems.length ? ' Problems: ' + problems.join('; ') : '');
+                await loadZelle();
+                loadMonthlyPayments();
+            } catch (e) {
+                msg.textContent = 'Scan failed: ' + e.message;
+            } finally {
+                btn.disabled = false; btn.textContent = 'Scan Zelle emails';
+            }
+        }
+
+        async function loadZelle() {
+            const pendingEl = document.getElementById('zelle-pending');
+            const appliedEl = document.getElementById('zelle-applied');
+            try {
+                const [{ data: pending, error: e1 }, { data: applied, error: e2 }] = await Promise.all([
+                    supabaseClient.from('rental_zelle_payments').select('*').eq('status', 'pending').order('sent_on', { ascending: false }),
+                    supabaseClient.from('rental_zelle_payments').select('*').eq('status', 'applied').order('applied_at', { ascending: false }).limit(15)
+                ]);
+                if (e1 || e2) throw (e1 || e2);
+                renderZellePending(pending || []);
+                appliedEl.innerHTML = (applied || []).length
+                    ? applied.map(z => `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border);">
+                        <span>${esc(z.sent_on)} · <strong>${esc(z.sender_name)}</strong> ${money(z.amount)} → ${esc(z.note)}</span>
+                        <button class="action-btn edit-btn" onclick="undoZelle(${z.id})">Undo</button></div>`).join('')
+                    : '<div style="font-size:13px;color:var(--text-secondary);">Nothing applied yet.</div>';
+            } catch (e) {
+                // Table missing (migration 014 not run yet) or similar: keep the tab usable
+                pendingEl.innerHTML = `<div style="font-size:13px;color:var(--danger);">Zelle list unavailable: ${esc(e.message)}</div>`;
+                appliedEl.innerHTML = '';
+            }
+        }
+
+        function renderZellePending(rows) {
+            const el = document.getElementById('zelle-pending');
+            if (!rows.length) { el.innerHTML = '<div style="font-size:13px;color:var(--success);">✓ Nothing waiting for review.</div>'; return; }
+            const defaults = paymentDefaults.filter(d => d.status !== 'inactive');
+            const options = (sel) => '<option value="">Pick a unit…</option>' + defaults
+                .sort((a, b) => (a.type + a.label).localeCompare(b.type + b.label))
+                .map(d => `<option value="${d.id}" ${d.id === sel ? 'selected' : ''}>${esc(d.label)} · ${esc(d.property_name)}${d.type === 'mortgage' ? ' (mortgage)' : ''}</option>`).join('');
+            el.innerHTML = rows.map(z => {
+                const alreadyPaid = /already marked paid/i.test(z.note || '');
+                return `<div class="payment-row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;margin:4px 0;background:${alreadyPaid ? '#fef3c7' : '#fff'};border:1px solid var(--border);border-radius:6px;">
+                    <div style="flex:1 1 220px;font-size:13px;">
+                        <strong>${esc(z.sender_name)}</strong> sent <strong>${money(z.amount)}</strong> on ${esc(z.sent_on)}
+                        ${z.memo ? `<div style="color:var(--text-secondary);">Memo: ${esc(z.memo)}</div>` : ''}
+                        <div style="color:${alreadyPaid ? '#92400e' : 'var(--text-secondary)'};">${esc(z.note)}</div>
+                    </div>
+                    <select id="zelle-unit-${z.id}" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px;">${options(z.payment_default_id)}</select>
+                    <input type="month" id="zelle-period-${z.id}" value="${esc(z.period || '')}" style="padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+                    <label style="font-size:12px;color:var(--text-secondary);white-space:nowrap;"><input type="checkbox" id="zelle-remember-${z.id}" ${alreadyPaid ? '' : 'checked'}> remember sender</label>
+                    <button class="action-btn btn-primary" onclick="applyZelle(${z.id}, ${alreadyPaid})">${alreadyPaid ? 'Apply anyway' : 'Apply'}</button>
+                    <button class="action-btn delete-btn" onclick="ignoreZelle(${z.id})">Ignore</button>
+                </div>`;
+            }).join('');
+        }
+
+        async function applyZelle(id, force) {
+            const unit = document.getElementById('zelle-unit-' + id).value;
+            const period = document.getElementById('zelle-period-' + id).value;
+            const remember = document.getElementById('zelle-remember-' + id).checked;
+            if (!unit || !period) { showPaymentAlert('Pick a unit and a month first', 'error'); return; }
+            try {
+                const r = await callZelle({ action: 'apply', id, payment_default_id: Number(unit), period, remember, force: !!force });
+                showPaymentAlert(r.status === 'applied' ? 'Payment applied' : ('Not applied: ' + r.note), r.status === 'applied' ? 'success' : 'error');
+                await loadZelle();
+                loadMonthlyPayments();
+            } catch (e) { showPaymentAlert('Error: ' + e.message, 'error'); }
+        }
+
+        async function ignoreZelle(id) {
+            const remember = document.getElementById('zelle-remember-' + id).checked;
+            if (remember && !confirm('Ignore this sender from now on?')) return;
+            try {
+                await callZelle({ action: 'ignore', id, remember });
+                await loadZelle();
+            } catch (e) { showPaymentAlert('Error: ' + e.message, 'error'); }
+        }
+
+        async function undoZelle(id) {
+            try {
+                await callZelle({ action: 'undo', id });
+                showPaymentAlert('Payment undone, back in the review list', 'success');
+                await loadZelle();
+                loadMonthlyPayments();
+            } catch (e) { showPaymentAlert('Error: ' + e.message, 'error'); }
+        }
+
         function getAmountForMonth(defaultId, monthKey) {
             // monthKey is like "2026-02"
             const rates = rateSchedules
