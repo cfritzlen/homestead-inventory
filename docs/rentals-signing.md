@@ -13,7 +13,7 @@ time a tenant signs. Emails go out from your connected Gmail.
 ## One-time setup
 1. Supabase (Homestead project) → SQL Editor → run
    `supabase/migrations/016_lease_signing.sql`, then
-   `supabase/migrations/017_lease_signing_v2.sql`.
+   `017_lease_signing_v2.sql` and `019_lease_signer_id.sql`.
 2. In a terminal in the repo folder (after `git pull`):
    ```
    supabase functions deploy lease-sign --no-verify-jwt
@@ -29,6 +29,13 @@ time a tenant signs. Emails go out from your connected Gmail.
   **Remind**, or **Cancel signing** (links stop working; send again after
   changing the lease).
 - Try it first with a test lease that has your own email as the tenant.
+
+## Tenant ID
+Before a tenant can finish, they must add a photo of their government-issued
+ID (the phone camera opens for it). It is stored in the private
+`rental-leases` bucket, listed on the lease as "🪪 Tenant ID", and only
+visible when signed in to the app. The signing record notes "ID photo: on
+file".
 
 ## Several tenants
 Each tenant gets their own link and signs their own line and initials

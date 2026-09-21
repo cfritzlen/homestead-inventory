@@ -14,8 +14,8 @@
 //   { action:'cancel', lease_id }             remove signers, back to draft
 // Signer (token):
 //   { action:'get',  token }                              lease summary + PDF link
-//   { action:'sign', token, signature_png, initials_png, tags_done, consent }
-//                       record the signature (every tag must be tapped);
+//   { action:'sign', token, signature_png, initials_png, tags_done, consent, id_image }
+//                       record the signature (every tag must be tapped, ID photo required);
 //                       finalizes when all tenants have signed
 //
 // Emails go out through the landlord's connected Gmail (oauth_tokens, same
@@ -26,6 +26,7 @@ import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1';
 
 const BUCKET = 'rental-leases';
 const MAX_PNG = 300_000;                       // bytes of data URL per drawing
+const MAX_ID = 4_000_000;                      // bytes of data URL for the ID photo (resized on the phone)
 
 // Where things go on the final PDF. Page 1 and the signature page are Letter
 // (drawn in mm by jsPDF); the middle pages are the static file. Must match
@@ -96,13 +97,24 @@ Deno.serve(async (req) => {
       const sig = String(body.signature_png || ''), ini = String(body.initials_png || '');
       if (!isPng(sig) || !isPng(ini)) return json({ error: 'Please draw both a signature and initials.' }, 400);
       if (body.consent !== true) return json({ error: 'Please tick the agreement box.' }, 400);
+      const idImage = String(body.id_image || '');
+      const idMatch = idImage.match(/^data:image\/(jpeg|png|webp);base64,/);
+      if (!idMatch || idImage.length > MAX_ID) return json({ error: 'Please add a clear photo of your government-issued ID.' }, 400);
       const expected = tagsFor(signer.tenant_index ?? 0, 19).length;
       if (Number(body.tags_done) < expected) return json({ error: `Please tap every "Initial" and "Sign" spot first (${Number(body.tags_done) || 0} of ${expected} done).` }, 400);
+      // Store the ID photo privately on the lease
+      const ext = idMatch[1] === 'jpeg' ? 'jpg' : idMatch[1];
+      const idBytes = Uint8Array.from(atob(idImage.slice(idImage.indexOf(',') + 1)), (c) => c.charCodeAt(0));
+      const idPath = `${lease.id}/id_${signer.id}_${Date.now()}.${ext}`;
+      const { error: idErr } = await supa.storage.from(BUCKET).upload(idPath, idBytes, { contentType: `image/${idMatch[1]}` });
+      if (idErr) return json({ error: 'Could not save the ID photo: ' + idErr.message }, 500);
+      await supa.from('rental_lease_files').insert({ lease_id: lease.id, kind: 'id', file_name: `ID - ${signer.name}.${ext}`, storage_path: idPath });
+
       const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || req.headers.get('cf-connecting-ip') || null;
       await supa.from('rental_lease_signers').update({
         status: 'signed', signed_at: new Date().toISOString(), signed_ip: ip,
         signed_agent: (req.headers.get('user-agent') || '').slice(0, 300),
-        signature_png: sig, initials_png: ini, tags_done: Number(body.tags_done) || 0,
+        signature_png: sig, initials_png: ini, tags_done: Number(body.tags_done) || 0, id_path: idPath,
       }).eq('id', signer.id);
       // Heads-up to the landlord (best effort)
       try {
@@ -313,7 +325,7 @@ async function finalize(supa: any, lease: any, signers: any[], settings: any[]) 
     rec.drawText(`Email: ${s.email}`, { x: 70, y, size: 9, font }); y -= 12;
     rec.drawText(`Signed: ${new Date(s.signed_at).toUTCString()}${s.role === 'tenant' && s.tags_done ? `   (tapped ${s.tags_done} initial/signature spots)` : ''}`, { x: 70, y, size: 9, font }); y -= 12;
     rec.drawText(`Link opened: ${s.viewed_at ? new Date(s.viewed_at).toUTCString() : 'n/a'}   IP: ${s.signed_ip || 'n/a'}`, { x: 70, y, size: 9, font }); y -= 12;
-    rec.drawText(`Device: ${(s.signed_agent || 'n/a').slice(0, 95)}`, { x: 70, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) }); y -= 20;
+    rec.drawText(`Device: ${(s.signed_agent || 'n/a').slice(0, 95)}${s.id_path ? '   ID photo: on file' : ''}`, { x: 70, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) }); y -= 20;
   }
   rec.drawText(`Record generated ${new Date().toUTCString()}`, { x: 54, y, size: 8, font, color: rgb(0.4, 0.4, 0.4) });
 
