@@ -621,6 +621,18 @@
       </select>
       <button class="btn-primary" id="scan-now" style="padding:8px 16px;font-size:13px;width:auto;">Scan inbox</button>
     </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+      <b style="font-size:14px;">Scan with dates:</b>
+      <input type="date" id="scan-from" style="width:auto;padding:6px 8px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--cream-2);color:var(--ink);">
+      <span style="color:var(--muted);font-size:13px;">to</span>
+      <input type="date" id="scan-to" style="width:auto;padding:6px 8px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--cream-2);color:var(--ink);">
+      <select id="scan-focus" style="width:auto;padding:6px 8px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--cream-2);color:var(--ink);">
+        <option value="bookings" selected>Bookings, schedules &amp; appointments</option>
+        <option value="all">Everything (slower)</option>
+      </select>
+      <button class="btn-primary" id="scan-dates" style="padding:8px 16px;font-size:13px;width:auto;">Scan dates</button>
+    </div>
+    <div style="color:var(--muted);font-size:12px;margin-top:4px;">Looks through every connected account for that date range, including archived mail. Up to a year at a time.</div>
     <div id="scan-msg"></div>
     <div id="sync-msg"></div>
   </div>
@@ -2025,6 +2037,82 @@
       msg.innerHTML = `<div class="msg err">${escapeHtml(e.message)}</div>`;
     } finally {
       btn.disabled = false; btn.textContent = 'Scan inbox';
+    }
+  });
+
+  // ================================================================
+  // Scan with dates (explicit range, paged in batches per account)
+  // ================================================================
+  (() => {
+    const from = document.getElementById('scan-from');
+    const to = document.getElementById('scan-to');
+    const today = new Date();
+    const iso = (d) => d.toISOString().slice(0, 10);
+    to.value = iso(today);
+    from.value = iso(new Date(today.getTime() - 30 * 24 * 3600 * 1000));
+    to.max = iso(today);
+  })();
+
+  document.getElementById('scan-dates').addEventListener('click', async () => {
+    const btn = document.getElementById('scan-dates');
+    const msg = document.getElementById('scan-msg');
+    const dateFrom = document.getElementById('scan-from').value;
+    const dateTo = document.getElementById('scan-to').value;
+    const focus = document.getElementById('scan-focus').value;
+    if (!dateFrom || !dateTo) { msg.innerHTML = `<div class="msg err">Pick a start and end date.</div>`; return; }
+    if (dateTo < dateFrom) { msg.innerHTML = `<div class="msg err">The end date is before the start date.</div>`; return; }
+
+    btn.disabled = true; btn.textContent = 'Scanning…';
+    document.getElementById('scan-now').disabled = true;
+    const pretty = (d) => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    let scanned = 0, ingested = 0, failed = 0, firstErr = '', pageTokens = null, batches = 0;
+    const progress = () => {
+      msg.innerHTML = `<div class="msg">Claude is reading mail from ${pretty(dateFrom)} to ${pretty(dateTo)}… checked ${scanned} email${scanned === 1 ? '' : 's'} so far, ${ingested} with events. Long ranges take a few minutes — leave this open.</div>`;
+    };
+    progress();
+    try {
+      const sess = await supa.auth.getSession();
+      // Each call handles one batch per account and hands back page tokens;
+      // keep calling until every account reports it is done.
+      while (true) {
+        const res = await fetch('https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/gmail-ingest', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sess.data.session.access_token}`,
+          },
+          body: JSON.stringify({ date_from: dateFrom, date_to: dateTo, focus, page_tokens: pageTokens }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) { firstErr = data.error || 'scan failed'; break; }
+        if (data.note) { firstErr = data.note; break; }
+        for (const a of data.accounts || []) {
+          if (a.error && !firstErr) firstErr = a.error;
+          const scan = a.scan || {};
+          scanned += scan.scanned || 0;
+          for (const r of scan.results || []) {
+            if (r.triage === 'has events') ingested++;
+            if (r.error) { failed++; if (!firstErr) firstErr = r.error; }
+          }
+        }
+        progress();
+        batches++;
+        if (!data.next_page_tokens || batches >= 60) break;   // 60 batches ≈ 2,400 emails per account
+        pageTokens = data.next_page_tokens;
+      }
+      if (firstErr && !scanned) {
+        msg.innerHTML = `<div class="msg err">Scan failed: ${escapeHtml(firstErr)}</div>`;
+      } else if (failed) {
+        msg.innerHTML = `<div class="msg err">Checked ${scanned} email${scanned === 1 ? '' : 's'} — ${ingested} processed, but ${failed} failed: ${escapeHtml(firstErr)}</div>`;
+      } else {
+        msg.innerHTML = `<div class="msg ok">✓ Checked ${scanned} email${scanned === 1 ? '' : 's'} from ${pretty(dateFrom)} to ${pretty(dateTo)} — ${ingested} had events and ${ingested === 1 ? 'is' : 'are'} being processed. Proposals appear in the banner shortly.</div>`;
+      }
+      setTimeout(() => { loadProposed(); loadDocs(); }, 8000);
+    } catch (e) {
+      msg.innerHTML = `<div class="msg err">${escapeHtml(e.message)}</div>`;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Scan dates';
+      document.getElementById('scan-now').disabled = false;
     }
   });
 
