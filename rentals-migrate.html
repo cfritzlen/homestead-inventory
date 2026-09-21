@@ -52,37 +52,69 @@ const OLD_URL = 'https://fzjzzujrjqjacbfbwcvd.supabase.co';
 const OLD_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6anp6dWpyanFqYWNiZmJ3Y3ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyODg0NjYsImV4cCI6MjA4NTg2NDQ2Nn0.dwzx43oEMtLVha7WoLWqAkgRPMLzbE0NaOurS_JWyhY';
 const OLD_BUCKET = 'receipts';
 const NEW_BUCKET = 'rental-receipts';
+
+// Columns that exist in the new tables (supabase/migrations/012_rentals.sql).
+// Anything else in the old rows is dropped and reported, never a failure.
 // Copy order matters: payments + rate_schedules point at payment_defaults.
+const T = (t) => ['tenant'+t+'_name','tenant'+t+'_email','tenant'+t+'_phone','tenant'+t+'_employer'];
 const TABLES = [
-  ['properties',       'rental_properties'],
-  ['leases',           'rental_leases'],
-  ['expenses',         'rental_expenses'],
-  ['payment_defaults', 'rental_payment_defaults'],
-  ['payments',         'rental_payments'],
-  ['rate_schedules',   'rental_rate_schedules'],
+  { old: 'properties', new: 'rental_properties',
+    cols: ['id','created_at','property_name','is_building_level','status'] },
+  { old: 'leases', new: 'rental_leases',
+    cols: ['id','created_at','tenant_count','tenant_names', ...T(1), ...T(2), ...T(3), ...T(4),
+           'tenant_email','tenant_phone','tenant_employer','property_address','lease_start','lease_end',
+           'lease_type','lease_months','base_rent','rent_amount','security_deposit','first_month_rent',
+           'last_month_rent','num_cats','cat_fee','num_dogs','dog_fee','notes','status'] },
+  { old: 'expenses', new: 'rental_expenses',
+    cols: ['id','created_at','expense_date','property_name','category','amount','vendor',
+           'martin_hours','colette_hours','miles','notes','receipt_urls'] },
+  { old: 'payment_defaults', new: 'rental_payment_defaults',
+    cols: ['id','created_at','type','label','property_name','default_amount','due_day','status'] },
+  { old: 'payments', new: 'rental_payments',
+    cols: ['id','created_at','payment_default_id','period','amount_owed','amount_paid','date_paid'] },
+  { old: 'rate_schedules', new: 'rental_rate_schedules',
+    cols: ['id','created_at','payment_default_id','effective_date','amount','note'] },
 ];
 
 const logEl = document.getElementById('log');
 let logLines = [];
-function log(msg) { logLines.push(msg); logEl.textContent = logLines.join('\n'); logEl.scrollTop = logEl.scrollHeight; }
+function log(msg) { logLines.push(msg); logEl.textContent = logLines.join('\n'); logEl.scrollTop = logEl.scrollHeight; console.log(msg); }
+function fail(where, e) {
+  const msg = (e && e.message) ? e.message : String(e);
+  log('ERROR: ' + msg);
+  document.getElementById(where).innerHTML = `<p class="bad">${msg}</p><p class="muted">Send Claude a screenshot of this page and the black log box.</p>`;
+}
 
 const oldHeaders = { apikey: OLD_KEY, Authorization: 'Bearer ' + OLD_KEY };
-function newHeaders() { return { apikey: Auth.client.supabaseKey, Authorization: 'Bearer ' + Auth.bearer() }; }
-const NEW_URL = () => Auth.client.supabaseUrl;
 
-async function openapi(base, headers) {
-  const r = await fetch(base + '/rest/v1/', { headers });
-  if (!r.ok) throw new Error('Could not read schema from ' + base + ' (' + r.status + ')');
-  const j = await r.json();
-  const out = {};
-  for (const [t, def] of Object.entries(j.definitions || {})) out[t] = Object.keys(def.properties || {});
-  return out;
-}
-async function countRows(base, headers, table) {
-  const r = await fetch(`${base}/rest/v1/${table}?select=id`, { method: 'HEAD', headers: { ...headers, Prefer: 'count=exact' } });
-  if (!r.ok) return null;
+// ---- old project (plain REST, anon key; its tables allow anon reads) ----
+async function oldCount(table) {
+  const r = await fetch(`${OLD_URL}/rest/v1/${table}?select=id`, { method: 'HEAD', headers: { ...oldHeaders, Prefer: 'count=exact' } });
+  if (r.status === 404) return null;                       // table doesn't exist
+  if (!r.ok) throw new Error(`old ${table}: ${r.status} ${r.statusText}`);
   const cr = r.headers.get('content-range') || '';
   return parseInt(cr.split('/')[1]) || 0;
+}
+async function oldRows(table) {
+  const rows = []; const page = 500;
+  for (let from = 0; ; from += page) {
+    const r = await fetch(`${OLD_URL}/rest/v1/${table}?select=*&order=id.asc&offset=${from}&limit=${page}`, { headers: oldHeaders });
+    if (!r.ok) throw new Error(`old ${table}: read failed (${r.status})`);
+    const chunk = await r.json();
+    rows.push(...chunk);
+    if (chunk.length < page) break;
+  }
+  return rows;
+}
+
+// ---- new project (signed-in supabase client from assets/auth.js) ----
+async function newCount(table) {
+  const { count, error } = await Auth.client.from(table).select('id', { count: 'exact', head: true });
+  if (error) {
+    if (error.code === '42P01' || /does not exist|not find/i.test(error.message)) return null;
+    throw new Error(`new ${table}: ${error.message}`);
+  }
+  return count || 0;
 }
 
 let plan = null;
@@ -90,48 +122,40 @@ let plan = null;
 async function runCheck() {
   const btn = document.getElementById('btn-check'); btn.disabled = true;
   logLines = []; log('Checking…');
+  document.getElementById('btn-copy').disabled = true;
   try {
-    await Auth.ready;
-    const oldSchema = await openapi(OLD_URL, oldHeaders);
-    const newSchema = await openapi(NEW_URL(), newHeaders());
-    plan = []; let ok = true;
+    const session = await Auth.ready;
+    if (!session) throw new Error('Not signed in. Sign in to Homestead first, then reload this page.');
+    log('Signed in as ' + session.user.email);
+    plan = []; let ok = true; let totalOld = 0;
     let html = '<table><tr><th>Old table</th><th>Rows</th><th>New table</th><th>Rows now</th><th>Notes</th></tr>';
-    for (const [o, n] of TABLES) {
-      const oldCols = oldSchema[o], newCols = newSchema[n];
-      const oldCount = oldCols ? await countRows(OLD_URL, oldHeaders, o) : null;
-      const newCount = newCols ? await countRows(NEW_URL(), newHeaders(), n) : null;
+    for (const t of TABLES) {
+      const oc = await oldCount(t.old);
+      const nc = await newCount(t.new);
       let note = '';
-      if (!oldCols) note = '<span class="warn">not in old database, skipped</span>';
-      else if (!newCols) { note = '<span class="bad">missing: run migration 012 first</span>'; ok = false; }
+      if (oc === null) note = '<span class="warn">not in old database, skipped</span>';
+      else if (nc === null) { note = '<span class="bad">missing: run migration 012 first</span>'; ok = false; }
       else {
-        const dropped = oldCols.filter(c => !newCols.includes(c));
-        note = dropped.length ? `<span class="warn">columns not copied: ${dropped.join(', ')}</span>` : '<span class="ok">columns match</span>';
-        plan.push({ o, n, cols: oldCols.filter(c => newCols.includes(c)), dropped });
+        // peek at one old row so we can report columns that won't be copied
+        let extra = [];
+        if (oc > 0) {
+          const r = await fetch(`${OLD_URL}/rest/v1/${t.old}?select=*&limit=1`, { headers: oldHeaders });
+          if (r.ok) { const [row] = await r.json(); if (row) extra = Object.keys(row).filter(c => !t.cols.includes(c)); }
+        }
+        note = extra.length ? `<span class="warn">columns not copied: ${extra.join(', ')}</span>` : '<span class="ok">ready</span>';
+        plan.push(t); totalOld += oc;
+        log(`${t.old}: ${oc} rows → ${t.new} (${nc} there now)${extra.length ? '; will drop ' + extra.join(', ') : ''}`);
       }
-      html += `<tr><td>${o}</td><td>${oldCount ?? '-'}</td><td>${n}</td><td>${newCount ?? '-'}</td><td>${note}</td></tr>`;
+      html += `<tr><td>${t.old}</td><td>${oc ?? '-'}</td><td>${t.new}</td><td>${nc ?? '-'}</td><td>${note}</td></tr>`;
     }
     html += '</table>';
     document.getElementById('check-result').innerHTML = html;
-    log(ok ? 'Check passed. Ready to copy.' : 'Check failed: new tables are missing.');
-    document.getElementById('btn-copy').disabled = !ok || plan.length === 0;
-  } catch (e) {
-    log('ERROR: ' + e.message);
-    document.getElementById('check-result').innerHTML = `<p class="bad">${e.message}</p>`;
-  }
+    if (!ok) log('Check failed: new tables are missing. Run supabase/migrations/012_rentals.sql first.');
+    else if (totalOld === 0) log('Check passed but the old database has no rows to copy.');
+    else log('Check passed. Press "Copy everything".');
+    document.getElementById('btn-copy').disabled = !ok || totalOld === 0;
+  } catch (e) { fail('check-result', e); }
   btn.disabled = false;
-}
-
-async function fetchAllOld(table, cols) {
-  const rows = []; const page = 500;
-  for (let from = 0; ; from += page) {
-    const r = await fetch(`${OLD_URL}/rest/v1/${table}?select=${cols.join(',')}&order=id.asc`, {
-      headers: { ...oldHeaders, Range: `${from}-${from + page - 1}` } });
-    if (!r.ok && r.status !== 416) throw new Error(`${table}: read failed (${r.status})`);
-    const chunk = r.status === 416 ? [] : await r.json();
-    rows.push(...chunk);
-    if (chunk.length < page) break;
-  }
-  return rows;
 }
 
 const oldPrefix = `${OLD_URL}/storage/v1/object/public/${OLD_BUCKET}/`;
@@ -156,16 +180,23 @@ async function moveReceipt(url) {
   }
 }
 
+function pick(row, cols) {
+  const out = {};
+  for (const c of cols) if (c in row) out[c] = row[c];
+  return out;
+}
+
 async function runCopy() {
   const btn = document.getElementById('btn-copy'); btn.disabled = true;
   document.getElementById('btn-check').disabled = true;
+  document.getElementById('copy-result').innerHTML = '';
   const summary = [];
   try {
-    for (const { o, n, cols } of plan) {
-      log(`Reading ${o}…`);
-      const rows = await fetchAllOld(o, cols);
+    for (const t of plan) {
+      log(`Reading ${t.old}…`);
+      const rows = (await oldRows(t.old)).map(r => pick(r, t.cols));
       log(`  ${rows.length} rows`);
-      if (o === 'expenses' && cols.includes('receipt_urls')) {
+      if (t.old === 'expenses') {
         let files = 0;
         for (const row of rows) {
           if (!Array.isArray(row.receipt_urls)) continue;
@@ -176,19 +207,19 @@ async function runCopy() {
         log(`  ${files} receipt files processed`);
       }
       for (let i = 0; i < rows.length; i += 200) {
-        const { error } = await Auth.client.from(n).upsert(rows.slice(i, i + 200), { onConflict: 'id' });
-        if (error) throw new Error(`${n}: ${error.message}`);
+        const { error } = await Auth.client.from(t.new).upsert(rows.slice(i, i + 200), { onConflict: 'id' });
+        if (error) throw new Error(`${t.new}: ${error.message}`);
       }
-      log(`  saved into ${n}`);
-      summary.push(`${n}: ${rows.length}`);
+      const after = await newCount(t.new);
+      log(`  saved: ${t.new} now has ${after} rows`);
+      summary.push(`${t.new}: ${after}`);
     }
     const { error } = await Auth.client.rpc('rental_reset_sequences');
     if (error) log('  WARNING: could not reset id counters: ' + error.message);
     log('DONE. ' + summary.join(', '));
     document.getElementById('copy-result').innerHTML = `<p class="ok">Done. ${summary.join(' · ')}</p><p><a href="rentals.html">Open Rentals</a> and check your data.</p>`;
   } catch (e) {
-    log('ERROR: ' + e.message);
-    document.getElementById('copy-result').innerHTML = `<p class="bad">${e.message}</p><p class="muted">Fix the problem and press Copy again. Already-copied rows are simply updated.</p>`;
+    fail('copy-result', e);
     btn.disabled = false;
   }
   document.getElementById('btn-check').disabled = false;
