@@ -5461,7 +5461,7 @@ If you cannot read something clearly, use null.`
             try {
                 const { data, error } = await supabaseClient.from('rental_lease_files').select('*').eq('lease_id', lease.id).order('created_at', { ascending: false });
                 if (error) throw error;
-                const label = { signed: '✅ Signed copy', generated: '📄 Generated', other: '📎 File' };
+                const label = { signed: '✅ Signed copy', generated: '📄 Generated', id: '🪪 Tenant ID', other: '📎 File' };
                 document.getElementById('lm-files').innerHTML = (data || []).length
                     ? data.map(f => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
                         <span>${label[f.kind] || label.other} · <a href="#" onclick="openLeaseFile('${f.storage_path}');return false;">${f.file_name}</a> <small>${(f.created_at || '').slice(0, 10)}</small></span>

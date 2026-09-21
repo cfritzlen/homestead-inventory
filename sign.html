@@ -67,6 +67,12 @@
   <div class="card" id="sign-card" style="display:none;">
     <h2>Finish</h2>
     <p class="muted" id="finish-hint">Tap every yellow spot above first.</p>
+    <div style="margin:14px 0;padding:12px;border:1px dashed #94a3b8;border-radius:8px;">
+      <strong>Photo of your government-issued ID</strong>
+      <p class="muted" style="margin:4px 0 8px;">Driver's license or passport. Take a clear photo of the front. It is stored privately with the lease and only the landlord can see it.</p>
+      <input type="file" id="id-file" accept="image/*" capture="environment" onchange="pickId(this)">
+      <div id="id-preview" style="margin-top:8px;"></div>
+    </div>
     <label class="agree"><input type="checkbox" id="consent"> <span>I have read the entire lease. I agree to sign it electronically, and I understand this signature is as binding as a handwritten one.</span></label>
     <button class="btn-primary" id="sign-btn" onclick="submitSignature()" disabled>Finish signing</button>
     <p class="muted" style="margin-top:10px;"><button class="btn-link" onclick="redoSignature()">Change my signature</button></p>
@@ -86,6 +92,7 @@ const FN = 'https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/lease-sign';
 const token = new URLSearchParams(location.search).get('t') || '';
 let signerName = '';
 let adopted = null;          // { signature_png, initials_png }
+let idImage = null;          // resized JPEG data URL of the ID photo
 let tags = [];               // from the server: where to tap
 let tagEls = [];
 let lease = null;
@@ -109,8 +116,9 @@ async function init() {
     document.getElementById('title').textContent = `Lease: ${data.lease.property}`;
     document.getElementById('subtitle').textContent = `${data.lease.start} to ${data.lease.end} · $${Number(data.lease.rent).toLocaleString()}/month · from ${data.lease.landlord}`;
     renderStatus(data.signers);
-    if (data.lease.status === 'signed') { setMsg('This lease is fully signed. The signed copy was emailed to everyone.', 'ok'); return; }
-    if (data.signer.status === 'signed') { setMsg(`Thanks ${esc(signerName)}, you already signed this lease. You'll get the signed copy by email once everyone has signed.`, 'ok'); return; }
+    const dl = (url, label) => url ? `<p style="margin-top:10px;"><a class="btn-primary" style="display:inline-block;text-decoration:none;width:auto;" href="${url}" target="_blank">⬇ ${label}</a></p>` : '';
+    if (data.lease.status === 'signed') { setMsg('This lease is fully signed. The signed copy was emailed to everyone.' + dl(data.signed_url || data.pdf_url, 'Download the signed lease for your records'), 'ok'); return; }
+    if (data.signer.status === 'signed') { setMsg(`Thanks ${esc(signerName)}, you already signed this lease. You'll get the fully signed copy by email once everyone has signed.` + dl(data.pdf_url, 'Download a copy for your records'), 'ok'); return; }
     if (data.lease.status !== 'sent') { setMsg('This lease is not open for signing right now.', 'err'); return; }
     if (!data.pdf_url) { setMsg('The lease PDF is not available. Please contact the landlord.', 'err'); return; }
     document.getElementById('intro-title').textContent = `Hi ${signerName}`;
@@ -182,6 +190,25 @@ function placeTag(rec) {
   if (next) setTimeout(() => next.el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
   else setTimeout(() => document.getElementById('sign-card').scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
 }
+// Resize the ID photo on the phone so the upload stays small
+async function pickId(input) {
+  const file = input.files && input.files[0];
+  const prev = document.getElementById('id-preview');
+  if (!file) { idImage = null; prev.innerHTML = ''; updateProgress(); return; }
+  try {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    const max = 1600, scale = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement('canvas'); c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    idImage = c.toDataURL('image/jpeg', 0.85);
+    URL.revokeObjectURL(url);
+    prev.innerHTML = `<img src="${idImage}" style="max-width:100%;max-height:220px;border-radius:6px;border:1px solid #e2e8f0;"><div class="muted">✓ Photo added</div>`;
+  } catch (e) { idImage = null; prev.innerHTML = '<span style="color:#991b1b;">Could not read that photo. Please try again.</span>'; }
+  updateProgress();
+}
+
 function updateProgress() {
   const done = tagEls.filter(t => t.done).length, total = tagEls.length;
   document.getElementById('prog').textContent = `${done} of ${total} spots done`;
@@ -190,8 +217,9 @@ function updateProgress() {
   if (next) next.el.classList.add('next');
   document.getElementById('next-btn').style.display = next ? '' : 'none';
   const allDone = total > 0 && done === total;
-  document.getElementById('sign-btn').disabled = !allDone;
-  document.getElementById('finish-hint').textContent = allDone ? 'All spots done. Tick the box and finish.' : `Tap every yellow spot above first (${done} of ${total} done).`;
+  document.getElementById('sign-btn').disabled = !(allDone && idImage);
+  document.getElementById('finish-hint').textContent = !allDone ? `Tap every yellow spot above first (${done} of ${total} done).`
+    : (!idImage ? 'All spots done. Now add a photo of your ID below.' : 'All set. Tick the box and finish.');
 }
 function gotoNext() { const next = tagEls.find(t => !t.done); if (next) next.el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 
@@ -201,14 +229,16 @@ async function submitSignature() {
   if (!adopted) { alert('Set up your signature first.'); return; }
   const done = tagEls.filter(t => t.done).length;
   if (done < tagEls.length) { alert('Please tap every yellow spot first.'); gotoNext(); return; }
+  if (!idImage) { alert('Please add a photo of your government-issued ID.'); return; }
   if (!document.getElementById('consent').checked) { alert('Please tick the agreement box.'); return; }
   btn.disabled = true; btn.textContent = 'Signing…';
   try {
-    const r = await call({ action: 'sign', token, signature_png: adopted.signature_png, initials_png: adopted.initials_png, tags_done: done, consent: true });
+    const r = await call({ action: 'sign', token, signature_png: adopted.signature_png, initials_png: adopted.initials_png, tags_done: done, consent: true, id_image: idImage });
     show('review-card', false); show('sign-card', false); document.getElementById('footer').style.display = 'none';
+    const dl = r.download_url ? `<p style="margin-top:10px;"><a class="btn-primary" style="display:inline-block;text-decoration:none;width:auto;" href="${r.download_url}" target="_blank">⬇ Download a copy for your records</a></p>` : '';
     if (r.warning) setMsg(esc(r.warning) + ' The landlord has been notified.', 'err');
-    else if (r.finalized) setMsg(`Thank you, ${esc(signerName)}. Everyone has now signed. The signed lease is on its way to your email.`, 'ok');
-    else setMsg(`Thank you, ${esc(signerName)}. Your signature is recorded. ${r.remaining} more signature${r.remaining === 1 ? '' : 's'} to go; you'll get the signed copy by email when everyone has signed.`, 'ok');
+    else if (r.finalized) setMsg(`Thank you, ${esc(signerName)}. Everyone has now signed. The signed lease is on its way to your email.` + dl, 'ok');
+    else setMsg(`Thank you, ${esc(signerName)}. Your signature is recorded. ${r.remaining} more signature${r.remaining === 1 ? '' : 's'} to go; you'll get the fully signed copy by email when everyone has signed.` + dl, 'ok');
     try { const d = await call({ action: 'get', token }); renderStatus(d.signers); } catch (_) {}
     window.scrollTo(0, 0);
   } catch (e) {

@@ -14,8 +14,8 @@
 //   { action:'cancel', lease_id }             remove signers, back to draft
 // Signer (token):
 //   { action:'get',  token }                              lease summary + PDF link
-//   { action:'sign', token, signature_png, initials_png, tags_done, consent }
-//                       record the signature (every tag must be tapped);
+//   { action:'sign', token, signature_png, initials_png, tags_done, consent, id_image }
+//                       record the signature (every tag must be tapped, ID photo required);
 //                       finalizes when all tenants have signed
 //
 // Emails go out through the landlord's connected Gmail (oauth_tokens, same
@@ -26,6 +26,7 @@ import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1';
 
 const BUCKET = 'rental-leases';
 const MAX_PNG = 300_000;                       // bytes of data URL per drawing
+const MAX_ID = 4_000_000;                      // bytes of data URL for the ID photo (resized on the phone)
 
 // Where things go on the final PDF. Page 1 and the signature page are Letter
 // (drawn in mm by jsPDF); the middle pages are the static file. Must match
@@ -69,10 +70,15 @@ Deno.serve(async (req) => {
 
       if (action === 'get') {
         if (!signer.viewed_at) await supa.from('rental_lease_signers').update({ viewed_at: new Date().toISOString() }).eq('id', signer.id);
-        let pdf_url: string | null = null;
+        let pdf_url: string | null = null, signed_url: string | null = null;
         if (lease.signing_pdf_path) {
           const { data } = await supa.storage.from(BUCKET).createSignedUrl(lease.signing_pdf_path, 3600);
           pdf_url = data?.signedUrl || null;
+        }
+        if (lease.signing_status === 'signed') {
+          const { data: sf } = await supa.from('rental_lease_files').select('storage_path').eq('lease_id', lease.id).eq('kind', 'signed')
+            .order('created_at', { ascending: false }).limit(1).maybeSingle();
+          if (sf) { const { data } = await supa.storage.from(BUCKET).createSignedUrl(sf.storage_path, 3600); signed_url = data?.signedUrl || null; }
         }
         let pageCount = 19;
         if (lease.signing_pdf_path && signer.status !== 'signed') {
@@ -81,7 +87,7 @@ Deno.serve(async (req) => {
         return json({
           ok: true, signer: { name: signer.name, role: signer.role, status: signer.status, signed_at: signer.signed_at, tenant_index: signer.tenant_index ?? 0 },
           lease: { property: lease.property_address, start: lease.lease_start, end: lease.lease_end, rent: lease.rent_amount, tenants: lease.tenant_names, landlord: landlordName, status: lease.signing_status },
-          signers: others || [], pdf_url, tags: signer.role === 'tenant' ? tagsFor(signer.tenant_index ?? 0, pageCount) : [],
+          signers: others || [], pdf_url, signed_url, tags: signer.role === 'tenant' ? tagsFor(signer.tenant_index ?? 0, pageCount) : [],
         });
       }
 
@@ -91,13 +97,24 @@ Deno.serve(async (req) => {
       const sig = String(body.signature_png || ''), ini = String(body.initials_png || '');
       if (!isPng(sig) || !isPng(ini)) return json({ error: 'Please draw both a signature and initials.' }, 400);
       if (body.consent !== true) return json({ error: 'Please tick the agreement box.' }, 400);
+      const idImage = String(body.id_image || '');
+      const idMatch = idImage.match(/^data:image\/(jpeg|png|webp);base64,/);
+      if (!idMatch || idImage.length > MAX_ID) return json({ error: 'Please add a clear photo of your government-issued ID.' }, 400);
       const expected = tagsFor(signer.tenant_index ?? 0, 19).length;
       if (Number(body.tags_done) < expected) return json({ error: `Please tap every "Initial" and "Sign" spot first (${Number(body.tags_done) || 0} of ${expected} done).` }, 400);
+      // Store the ID photo privately on the lease
+      const ext = idMatch[1] === 'jpeg' ? 'jpg' : idMatch[1];
+      const idBytes = Uint8Array.from(atob(idImage.slice(idImage.indexOf(',') + 1)), (c) => c.charCodeAt(0));
+      const idPath = `${lease.id}/id_${signer.id}_${Date.now()}.${ext}`;
+      const { error: idErr } = await supa.storage.from(BUCKET).upload(idPath, idBytes, { contentType: `image/${idMatch[1]}` });
+      if (idErr) return json({ error: 'Could not save the ID photo: ' + idErr.message }, 500);
+      await supa.from('rental_lease_files').insert({ lease_id: lease.id, kind: 'id', file_name: `ID - ${signer.name}.${ext}`, storage_path: idPath });
+
       const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || req.headers.get('cf-connecting-ip') || null;
       await supa.from('rental_lease_signers').update({
         status: 'signed', signed_at: new Date().toISOString(), signed_ip: ip,
         signed_agent: (req.headers.get('user-agent') || '').slice(0, 300),
-        signature_png: sig, initials_png: ini, tags_done: Number(body.tags_done) || 0,
+        signature_png: sig, initials_png: ini, tags_done: Number(body.tags_done) || 0, id_path: idPath,
       }).eq('id', signer.id);
       // Heads-up to the landlord (best effort)
       try {
@@ -107,6 +124,25 @@ Deno.serve(async (req) => {
           `<p>${esc(signer.name)} just signed the lease for ${esc(lease.property_address)}.</p><p>${left ? `${left} more signature${left === 1 ? '' : 's'} to go.` : 'That was the last one; the signed copy is on its way to everyone.'}</p>`);
       } catch (e) { console.warn('landlord notice failed', e.message); }
 
+      // Stamp this signature and initials onto the working PDF now, so the
+      // next tenant (and this one's download) already shows it.
+      let download_url: string | null = null;
+      try {
+        const { data: file } = await supa.storage.from(BUCKET).download(lease.signing_pdf_path);
+        if (!file) throw new Error('no working PDF');
+        const pdf = await PDFDocument.load(await file.arrayBuffer());
+        const { count } = await supa.from('rental_lease_signers').select('id', { count: 'exact', head: true }).eq('lease_id', lease.id).eq('role', 'tenant');
+        await stampSigner(pdf, { ...signer, signature_png: sig, initials_png: ini, signed_at: new Date().toISOString() }, count || 1);
+        const newPath = `${lease.id}/${Date.now()}_for_signing.pdf`;
+        const { error: upErr } = await supa.storage.from(BUCKET).upload(newPath, await pdf.save(), { contentType: 'application/pdf' });
+        if (upErr) throw upErr;
+        await supa.from('rental_leases').update({ signing_pdf_path: newPath }).eq('id', lease.id);
+        await supa.from('rental_lease_signers').update({ stamped: true }).eq('id', signer.id);
+        lease.signing_pdf_path = newPath;
+        const { data: u } = await supa.storage.from(BUCKET).createSignedUrl(newPath, 3600);
+        download_url = u?.signedUrl || null;
+      } catch (e) { console.warn('immediate stamp failed; finalize will do it:', e.message); }
+
       const { data: all } = await supa.from('rental_lease_signers').select('*').eq('lease_id', lease.id).order('id');
       const remaining = (all || []).filter((s: any) => s.status !== 'signed');
       let finalized = false;
@@ -114,7 +150,11 @@ Deno.serve(async (req) => {
         try { await finalize(supa, lease, all || [], settings || []); finalized = true; }
         catch (e) { console.error('finalize failed', e); return json({ ok: true, finalized: false, warning: 'Signed, but the final PDF could not be built: ' + e.message }); }
       }
-      return json({ ok: true, finalized, remaining: remaining.length });
+      if (finalized) {
+        const { data: sf } = await supa.from('rental_lease_files').select('storage_path').eq('lease_id', lease.id).eq('kind', 'signed').order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (sf) { const { data: u } = await supa.storage.from(BUCKET).createSignedUrl(sf.storage_path, 3600); download_url = u?.signedUrl || download_url; }
+      }
+      return json({ ok: true, finalized, remaining: remaining.length, download_url });
     }
 
     // ---- landlord actions: signed-in homestead member ----
@@ -233,8 +273,35 @@ async function sendInvite(supa: any, settings: any, lease: any, s: any, siteUrl:
 }
 
 // ---------------------------------------------------------------------------
-// Final PDF: signatures on the signature page, initials on every initial
-// line, plus a signing record page. Then stored on the lease and emailed.
+// Draw one signer's signature (and, for tenants, initials) onto the PDF.
+async function stampSigner(pdf: any, s: any, tenantCount: number) {
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const pages = pdf.getPages();
+  const sigPage = pages[pages.length - 1];
+  const yPt = (mm: number) => (LETTER_H_MM - mm) * PT;
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const place = async (page: any, dataUrl: string, x: number, yBottom: number, maxW: number, maxH: number) => {
+    const img = await pdf.embedPng(dataUrl);
+    const scale = Math.min(maxW / img.width, maxH / img.height);
+    page.drawImage(img, { x, y: yBottom, width: img.width * scale, height: img.height * scale });
+  };
+  if (!s.signature_png) return;
+  const lineY = s.role === 'landlord'
+    ? yPt(SIG_FIRST_Y_MM + SIG_STEP_MM * tenantCount + SIG_LANDLORD_GAP_MM)
+    : yPt(SIG_FIRST_Y_MM + SIG_STEP_MM * (s.tenant_index ?? 0));
+  await place(sigPage, s.signature_png, SIG_X_MM * PT, lineY + 2, 190, 40);
+  sigPage.drawText(`Signed ${fmt(s.signed_at || new Date().toISOString())}`, { x: 330, y: lineY + 3, size: 9, font, color: rgb(0.2, 0.2, 0.2) });
+  if (s.role === 'tenant' && s.initials_png) {
+    const idx = Math.min(s.tenant_index ?? 0, INITIAL_X.length - 1);
+    for (const [mi, y] of INITIAL_LINES) {
+      const page = pages[mi + 1];
+      if (page) await place(page, s.initials_png, INITIAL_X[idx] + 2, y + 1, 44, 20);
+    }
+  }
+}
+
+// Final PDF: anyone not stamped yet, plus a signing record page. Then stored
+// on the lease and emailed.
 async function finalize(supa: any, lease: any, signers: any[], settings: any[]) {
   if (!lease.signing_pdf_path) throw new Error('no PDF on this lease');
   const { data: file, error } = await supa.storage.from(BUCKET).download(lease.signing_pdf_path);
@@ -242,40 +309,9 @@ async function finalize(supa: any, lease: any, signers: any[], settings: any[]) 
   const pdf = await PDFDocument.load(await file.arrayBuffer());
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const pages = pdf.getPages();
-  const sigPage = pages[pages.length - 1];
   const tenants = signers.filter((s) => s.role === 'tenant');
-  const landlord = signers.find((s) => s.role === 'landlord' && !s.stamped);   // v1 leases only
-  const yPt = (mm: number) => (LETTER_H_MM - mm) * PT;
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-
-  const place = async (page: any, dataUrl: string, x: number, yBottom: number, maxW: number, maxH: number) => {
-    const img = await pdf.embedPng(dataUrl);
-    const scale = Math.min(maxW / img.width, maxH / img.height);
-    page.drawImage(img, { x, y: yBottom, width: img.width * scale, height: img.height * scale });
-  };
-
-  // Signature page
-  for (let i = 0; i < tenants.length; i++) {
-    const s = tenants[i];
-    const lineY = yPt(SIG_FIRST_Y_MM + SIG_STEP_MM * i);
-    await place(sigPage, s.signature_png, SIG_X_MM * PT, lineY + 2, 190, 40);
-    sigPage.drawText(`Signed ${fmt(s.signed_at)}`, { x: 330, y: lineY + 3, size: 9, font, color: rgb(0.2, 0.2, 0.2) });
-  }
-  if (landlord && landlord.signature_png) {
-    const lineY = yPt(SIG_FIRST_Y_MM + SIG_STEP_MM * tenants.length + SIG_LANDLORD_GAP_MM);
-    await place(sigPage, landlord.signature_png, SIG_X_MM * PT, lineY + 2, 190, 40);
-    sigPage.drawText(`Signed ${fmt(landlord.signed_at)}`, { x: 330, y: lineY + 3, size: 9, font, color: rgb(0.2, 0.2, 0.2) });
-  }
-
-  // Initials on the middle pages (final page index = middle index + 1)
-  for (const [mi, y] of INITIAL_LINES) {
-    const page = pages[mi + 1];
-    if (!page) continue;
-    for (let i = 0; i < tenants.length && i < INITIAL_X.length; i++) {
-      await place(page, tenants[i].initials_png, INITIAL_X[i] + 2, y + 1, 44, 20);
-    }
-  }
+  tenants.forEach((t, i) => { if (t.tenant_index == null) t.tenant_index = i; });   // rows from before v2
+  for (const s of signers) if (!s.stamped) await stampSigner(pdf, s, tenants.length);
 
   // Signing record
   const rec = pdf.addPage([612, 792]);
@@ -289,7 +325,7 @@ async function finalize(supa: any, lease: any, signers: any[], settings: any[]) 
     rec.drawText(`Email: ${s.email}`, { x: 70, y, size: 9, font }); y -= 12;
     rec.drawText(`Signed: ${new Date(s.signed_at).toUTCString()}${s.role === 'tenant' && s.tags_done ? `   (tapped ${s.tags_done} initial/signature spots)` : ''}`, { x: 70, y, size: 9, font }); y -= 12;
     rec.drawText(`Link opened: ${s.viewed_at ? new Date(s.viewed_at).toUTCString() : 'n/a'}   IP: ${s.signed_ip || 'n/a'}`, { x: 70, y, size: 9, font }); y -= 12;
-    rec.drawText(`Device: ${(s.signed_agent || 'n/a').slice(0, 95)}`, { x: 70, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) }); y -= 20;
+    rec.drawText(`Device: ${(s.signed_agent || 'n/a').slice(0, 95)}${s.id_path ? '   ID photo: on file' : ''}`, { x: 70, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) }); y -= 20;
   }
   rec.drawText(`Record generated ${new Date().toUTCString()}`, { x: 54, y, size: 8, font, color: rgb(0.4, 0.4, 0.4) });
 
