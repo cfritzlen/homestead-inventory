@@ -20,13 +20,33 @@ const FALLBACK_ACCOUNT = Deno.env.get('GOOGLE_ACCOUNT_EMAIL') || null;
 
 Deno.serve(async (req) => {
   try {
-    const { event_id } = await req.json();
+    const { event_id, action } = await req.json();
     if (!event_id) return json({ error: 'missing event_id' }, 400);
 
     const supa = getServiceClient();
     const { data: ev, error: evErr } = await supa
       .from('family_events').select('*').eq('id', event_id).single();
     if (evErr || !ev) return json({ error: `event not found: ${evErr?.message}` }, 404);
+
+    // { action: 'delete' } — the event was rejected/removed in the hub after it
+    // had been pushed; take it off Google Calendar too.
+    if (action === 'delete') {
+      if (!ev.google_event_id) return json({ skipped: true, reason: 'not on Google Calendar' });
+      const accountEmail = await resolveAccount(supa, ev);
+      if (!accountEmail) return json({ skipped: true, reason: 'no Google account connected for this household' });
+      const access = await getFreshAccessToken(supa, accountEmail);
+      const dRes = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(ev.google_event_id)}`,
+        { method: 'DELETE', headers: { Authorization: `Bearer ${access}` } },
+      );
+      // 404/410 = already gone on Google's side; treat as done
+      if (!dRes.ok && dRes.status !== 404 && dRes.status !== 410) {
+        return json({ error: `google ${dRes.status}: ${await dRes.text()}` }, 500);
+      }
+      await supa.from('family_events').update({ google_event_id: null, updated_at: new Date().toISOString() }).eq('id', event_id);
+      return json({ ok: true, deleted: ev.google_event_id });
+    }
+
     if (ev.google_event_id) return json({ skipped: true, reason: 'already synced' });
 
     // Per-event choice from the review buttons overrides category toggles:
@@ -50,26 +70,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Which account's calendar? The event's household's designated target,
-    // falling back to the legacy env var for pre-household deployments.
-    let accountEmail = FALLBACK_ACCOUNT;
-    if (ev.household_id) {
-      const { data: target } = await supa
-        .from('oauth_tokens').select('account_email')
-        .eq('provider', 'google')
-        .eq('household_id', ev.household_id)
-        .eq('is_calendar_target', true)
-        .limit(1).maybeSingle();
-      if (target) accountEmail = target.account_email;
-      else {
-        const { data: anyAcct } = await supa
-          .from('oauth_tokens').select('account_email')
-          .eq('provider', 'google')
-          .eq('household_id', ev.household_id)
-          .limit(1).maybeSingle();
-        if (anyAcct) accountEmail = anyAcct.account_email;
-      }
-    }
+    const accountEmail = await resolveAccount(supa, ev);
     if (!accountEmail) {
       return json({ skipped: true, reason: 'no Google account connected for this household' });
     }
@@ -118,6 +119,30 @@ Deno.serve(async (req) => {
     return json({ error: `unhandled: ${e.message}` }, 500);
   }
 });
+
+// Which account's calendar? The event's household's designated target,
+// falling back to the legacy env var for pre-household deployments.
+async function resolveAccount(supa: any, ev: any): Promise<string | null> {
+  let accountEmail = FALLBACK_ACCOUNT;
+  if (ev.household_id) {
+    const { data: target } = await supa
+      .from('oauth_tokens').select('account_email')
+      .eq('provider', 'google')
+      .eq('household_id', ev.household_id)
+      .eq('is_calendar_target', true)
+      .limit(1).maybeSingle();
+    if (target) accountEmail = target.account_email;
+    else {
+      const { data: anyAcct } = await supa
+        .from('oauth_tokens').select('account_email')
+        .eq('provider', 'google')
+        .eq('household_id', ev.household_id)
+        .limit(1).maybeSingle();
+      if (anyAcct) accountEmail = anyAcct.account_email;
+    }
+  }
+  return accountEmail;
+}
 
 function addHour(iso: string): string {
   return new Date(new Date(iso).getTime() + 60 * 60 * 1000).toISOString();

@@ -59,6 +59,9 @@ Rules:
   emit ONE EVENT PER OCCURRENCE, all with the same title, from the first date through the
   stated end date (8 weeks max if no end is given). Put the pattern in each event's notes,
   e.g. "Fridays through Oct 24". Do NOT collapse a series into a single event.
+  A program announced with only a start date ("Friday game nights start Sept 18",
+  "classes begin Tuesday the 9th", "season opener") IS a weekly series: emit 8 weekly
+  events from that start date, not one event.
 - ROUTINE MEALS ARE NOT EVENTS. Daycare/school menus listing breakfast, lunch, snack, or dinner
   for each day are informational — emit ZERO events for them, no matter how many dated meal
   entries appear. Summarize the menu in document_summary instead (e.g. "September menu for
@@ -72,6 +75,8 @@ Rules:
   RSVP, bring or return something, schedule an appointment, submit or renew something.
   A plain calendar event is NOT also a task — only emit a task when there's an action
   beyond showing up. A request for money (rent due, invoice, school fees) IS a task.
+- ONE TASK PER SUBMISSION. A packet, application, or registration made of several forms
+  is ONE task (e.g. "Submit 2027 rental registration packet"), never one task per form.
 - BE BRIEF. Titles and notes show on a phone screen: no full sentences, no restating the
   date/category in the title, never copy paragraphs from the document into notes.
 - Return {"events": [], "tasks": [], "document_summary": "..."} if nothing extractable.
@@ -167,24 +172,26 @@ Deno.serve(async (req) => {
     }
     const events: any[] = parsed.events || [];
 
-    // Insert as proposed events — skipping duplicates the household already
-    // has (same title, same day, any status — covers the same email arriving
-    // in two connected inboxes and re-scans).
-    const likePattern = (s: string) => s.replace(/[%_]/g, '\\$&');
+    // Insert as proposed events — skipping anything already over, and
+    // duplicates the household already has on the same day (any status).
+    // Titles are compared loosely: "Soccer game night" and "Mighty Kicks
+    // Friday game night" from two reminder emails are the same thing.
     const allTagged = new Set<string>();
-    let inserted = 0;
+    const cutoff = Date.now() - 24 * 3600 * 1000;   // nobody reviews yesterday's events
+    let inserted = 0, skippedPast = 0, skippedDupes = 0;
     for (const ev of events) {
       if (ev.title && ev.starts_at && !isNaN(Date.parse(ev.starts_at))) {
+        const endsAt = ev.ends_at && !isNaN(Date.parse(ev.ends_at)) ? Date.parse(ev.ends_at) : Date.parse(ev.starts_at);
+        if (endsAt < cutoff) { skippedPast++; continue; }
         const day = new Date(ev.starts_at); day.setUTCHours(0, 0, 0, 0);
         const nextDay = new Date(day.getTime() + 86400000);
-        const { data: dupe } = await supa.from('family_events')
-          .select('id')
+        const { data: sameDay } = await supa.from('family_events')
+          .select('id,title')
           .eq('household_id', doc.household_id)
-          .ilike('title', likePattern(ev.title))
           .gte('starts_at', day.toISOString())
           .lt('starts_at', nextDay.toISOString())
-          .limit(1).maybeSingle();
-        if (dupe) continue;
+          .limit(50);
+        if ((sameDay || []).some((o: any) => sameThing(o.title, ev.title))) { skippedDupes++; continue; }
       }
       const row = {
         household_id: doc.household_id,
@@ -216,6 +223,9 @@ Deno.serve(async (req) => {
       }
       if (!insErr) inserted++;
     }
+    if (skippedPast || skippedDupes) {
+      console.log(`[extract] doc ${docId}: skipped ${skippedPast} past, ${skippedDupes} duplicate event(s)`);
+    }
 
     // Insert extracted tasks as proposed to-dos
     const tasks: any[] = parsed.tasks || [];
@@ -224,14 +234,15 @@ Deno.serve(async (req) => {
       if (!t.title) continue;
       // Skip a to-do that already exists (still open/proposed, or finished in
       // the last 30 days) with the same title, case-insensitive.
-      const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
-      const { data: taskDupe } = await supa.from('family_tasks')
-        .select('id')
+      // Loose match against open/proposed/recently-done to-dos: a packet with
+      // four attachments must not turn into four "submit the packet" tasks.
+      const taskCutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+      const { data: existingTasks } = await supa.from('family_tasks')
+        .select('id,title')
         .eq('household_id', doc.household_id)
-        .ilike('title', likePattern(t.title))
-        .or(`status.in.(proposed,open),completed_at.gte.${cutoff}`)
-        .limit(1).maybeSingle();
-      if (taskDupe) continue;
+        .or(`status.in.(proposed,open),completed_at.gte.${taskCutoff}`)
+        .limit(200);
+      if ((existingTasks || []).some((o: any) => sameThing(o.title, t.title))) continue;
       const taskRow: any = {
         household_id: doc.household_id,
         title: t.title,
@@ -294,6 +305,23 @@ async function logExtraction(
     prompt_tokens: inTok, output_tokens: outTok, cost_usd: cost,
     raw_response: raw, events_created: eventsCreated, tasks_created: tasksCreated, error, summary,
   });
+}
+
+// Loose title match: same words ignoring filler, one contains the other, or
+// most words overlap. Used to catch the same event phrased two ways.
+function normTokens(s: string): string[] {
+  return (s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\b(the|a|an|at|for|to|of|and|with|day|night|nights|event|reminder)\b/g, ' ')
+    .trim().split(/\s+/).filter(Boolean);
+}
+function sameThing(a: string, b: string): boolean {
+  const ta = normTokens(a), tb = normTokens(b);
+  if (!ta.length || !tb.length) return false;
+  const A = ta.join(' '), B = tb.join(' ');
+  if (A === B || A.includes(B) || B.includes(A)) return true;
+  const sa = new Set(ta);
+  const inter = tb.filter((t) => sa.has(t)).length;
+  return inter / new Set([...ta, ...tb]).size >= 0.6;
 }
 
 function json(obj: any, status = 200) {

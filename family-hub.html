@@ -314,6 +314,9 @@
   .acct-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
   .acct-row .email { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .acct-row .scope { color: var(--muted); font-size: 14px; }
+  .acct-row .daily { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); cursor: pointer; white-space: nowrap; }
+  .acct-row .daily input { width: 16px; height: 16px; accent-color: var(--sage-600); margin: 0; }
+  .accounts-note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
   .acct-add {
     background: transparent;
     color: var(--sage-300);
@@ -579,8 +582,13 @@
   <h2 class="section">Documents <span class="count" id="docs-count"></span>
     <a href="#" class="link" onclick="event.preventDefault(); openActivity();">AI activity →</a>
   </h2>
-  <div class="chips" id="doc-filters" style="margin-bottom:10px;"></div>
-  <div class="docs" id="docs"><div class="docs-empty">Loading…</div></div>
+  <details class="collapsible" id="docs-collapse">
+    <summary>Show documents <span style="font-size:12px;color:var(--muted);">tap to expand</span></summary>
+    <div class="body">
+      <div class="chips" id="doc-filters" style="margin-bottom:10px;"></div>
+      <div class="docs" id="docs"><div class="docs-empty">Loading…</div></div>
+    </div>
+  </details>
 
   <!-- Family members -->
   <h2 class="section">Family members <span class="count">tag events with names</span></h2>
@@ -604,13 +612,6 @@
       Off categories stay in the hub but never push to Google Calendar.
     </p>
     <div class="chips" id="sync-toggles" style="margin:0;"></div>
-    <div style="border-top:1px solid var(--border-soft);margin:12px 0 10px;"></div>
-    <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink);cursor:pointer;">
-      <input type="checkbox" id="auto-scan" style="width:18px;height:18px;margin-top:2px;accent-color:var(--sage-600);">
-      <span><b>Auto-scan inbox for events</b><br>
-        <span style="color:var(--muted);font-size:12px;">Checks new mail every 15 min and pulls in real events — no labeling needed.</span>
-      </span>
-    </label>
     <div style="border-top:1px solid var(--border-soft);margin:12px 0 10px;"></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <b style="font-size:14px;">Scan now:</b>
@@ -1052,8 +1053,110 @@
   // ================================================================
   // Proposed events — nudge + review modal
   // ================================================================
+  // ---- Tidy: past and duplicate proposals get ignored automatically ----
+  const normTokens = (s) => (s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\b(the|a|an|at|for|to|of|and|with|day|night|nights|event|reminder)\b/g, ' ')
+    .trim().split(/\s+/).filter(Boolean);
+  function sameThing(a, b) {
+    const ta = normTokens(a.title), tb = normTokens(b.title);
+    if (!ta.length || !tb.length) return false;
+    const A = ta.join(' '), B = tb.join(' ');
+    if (A === B || A.includes(B) || B.includes(A)) return true;
+    const sa = new Set(ta);
+    const inter = tb.filter(t => sa.has(t)).length;
+    return inter / new Set([...ta, ...tb]).size >= 0.6;
+  }
+  const dayKey = (iso) => new Date(iso).toDateString();
+  async function tidyProposals(list) {
+    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+    const reject = new Set();
+    for (const ev of list) {
+      const end = ev.ends_at ? Date.parse(ev.ends_at) : Date.parse(ev.starts_at);
+      if (end < startToday.getTime()) reject.add(ev.id);
+    }
+    const live = list.filter(ev => !reject.has(ev.id));
+    let approved = [];
+    if (live.length) {
+      const times = live.map(e => Date.parse(e.starts_at));
+      const lo = new Date(Math.min(...times)); lo.setHours(0, 0, 0, 0);
+      const hi = new Date(Math.max(...times)); hi.setHours(23, 59, 59, 999);
+      const { data: ap } = await supa.from('family_events').select('id,title,starts_at')
+        .eq('status', 'approved').gte('starts_at', lo.toISOString()).lte('starts_at', hi.toISOString());
+      approved = ap || [];
+    }
+    const kept = [];
+    for (const ev of live) {
+      const k = dayKey(ev.starts_at);
+      const clash = [...approved, ...kept].some(o => dayKey(o.starts_at) === k && sameThing(o, ev));
+      if (clash) reject.add(ev.id); else kept.push(ev);
+    }
+    if (reject.size) {
+      await supa.from('family_events').update({ status: 'rejected' }).in('id', [...reject]);
+      console.log(`[tidy] ignored ${reject.size} past or duplicate proposal(s)`);
+    }
+    return kept;
+  }
+  // Weekly repeats (same title, weekday and time, 3+ dates) become one card.
+  function groupSeries(list) {
+    const groups = new Map();
+    for (const ev of list) {
+      const d = new Date(ev.starts_at);
+      const key = [ev.category, normTokens(ev.title).join(' '), d.getDay(), ev.all_day ? 'allday' : d.getHours() + ':' + d.getMinutes()].join('|');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(ev);
+    }
+    const used = new Set(), out = [];
+    for (const evs of groups.values()) {
+      if (evs.length >= 3) { out.push({ series: evs }); evs.forEach(e => used.add(e.id)); }
+    }
+    for (const ev of list) if (!used.has(ev.id)) out.push(ev);
+    const t0 = (x) => Date.parse((x.series ? x.series[0] : x).starts_at);
+    out.sort((a, b) => t0(a) - t0(b));
+    return out;
+  }
+
+  // Paperwork: every attachment from the same email as a to-do's source doc.
+  async function paperworkFor(docIds) {
+    const out = new Map();
+    const ids = [...new Set(docIds.filter(Boolean))];
+    if (!ids.length) return out;
+    const { data: docs } = await supa.from('family_documents').select('id,storage_path,file_name').in('id', ids);
+    for (const d of docs || []) {
+      const gm = (d.storage_path || '').match(/(gmail-[0-9a-z]+-)/i);
+      let files = [d];
+      if (gm) {
+        const { data: sibs } = await supa.from('family_documents')
+          .select('id,storage_path,file_name').like('storage_path', `%${gm[1]}%`);
+        if (sibs?.length) files = sibs;
+      }
+      out.set(d.id, files.filter(f => !/-body\.txt$/i.test(f.storage_path || '')));
+    }
+    return out;
+  }
+  function paperLinks(paper, docId) {
+    const files = docId ? (paper.get(docId) || []) : [];
+    if (!files.length) return '';
+    return `<div class="meta">📎 ${files.map(f =>
+      `<a href="#" class="src-link" onclick="event.preventDefault(); openDocFile('${f.id}')">${escapeHtml(f.file_name || 'file')}</a>`
+    ).join(' · ')}</div>`;
+  }
+  // Proposed to-dos that repeat each other or an open to-do get ignored.
+  async function tidyTasks(list) {
+    if (!list.length) return list;
+    const { data: open } = await supa.from('family_tasks').select('id,title').eq('status', 'open');
+    const kept = [], reject = [];
+    for (const t of list) {
+      if ([...(open || []), ...kept].some(o => sameThing(o, t))) reject.push(t.id); else kept.push(t);
+    }
+    if (reject.length) {
+      await supa.from('family_tasks').update({ status: 'rejected' }).in('id', reject);
+      console.log(`[tidy] ignored ${reject.length} duplicate to-do(s)`);
+    }
+    return kept;
+  }
+
   async function loadProposed() {
-    const [{ data, error }, { data: taskData, error: taskErr }] = await Promise.all([
+    const [{ data: rawEvents, error }, { data: taskData, error: taskErr }] = await Promise.all([
       supa.from('family_events')
         .select('id,category,title,starts_at,ends_at,all_day,location,notes,ai_confidence,ai_notes,document_id,source' + (HAS_PEOPLE ? ',people' : ''))
         .eq('status', 'proposed').order('starts_at'),
@@ -1062,8 +1165,11 @@
         .eq('status', 'proposed').order('created_at'),
     ]);
     if (error) { console.error(error); return; }
-    const propTasks = taskErr ? [] : (taskData || []);  // table may not exist yet
-    const total = data.length + propTasks.length;
+    const data = await tidyProposals(rawEvents || []);
+    const items = groupSeries(data);
+    const propTasks = taskErr ? [] : await tidyTasks(taskData || []);  // table may not exist yet
+    const paper = await paperworkFor(propTasks.map(t => t.document_id));
+    const total = items.length + propTasks.length;
     const nudge = document.getElementById('nudge');
     if (!total) { nudge.style.display = 'none'; }
     else {
@@ -1093,6 +1199,7 @@
         </div>
         <div class="when">${escapeHtml(due)}</div>
         ${t.notes ? `<div class="notes">${escapeHtml(t.notes)}</div>` : ''}
+        ${paperLinks(paper, t.document_id)}
         <div class="src">from ai · confidence ${conf}${t.document_id ? ` · <a href="#" class="src-link" onclick="event.preventDefault(); openSourceDoc('${t.document_id}')">see original email</a>` : ''}</div>
         <div class="actions">
           <button class="approve" data-task="${t.id}" data-act="approve">Add to my list</button>
@@ -1112,7 +1219,7 @@
         await Promise.all([loadTasks(), loadProposed()]);
       });
     });
-    if (data.length > 1) {
+    if (items.length > 1) {
       const bulk = document.createElement('button');
       bulk.className = 'btn-primary';
       bulk.style.cssText = 'width:100%;margin-bottom:10px;';
@@ -1125,7 +1232,35 @@
       });
       list.appendChild(bulk);
     }
-    for (const ev of data) {
+    items.forEach((item, idx) => {
+      if (item.series) {
+        const evs = item.series, first = evs[0], last = evs[evs.length - 1];
+        const d0 = new Date(first.starts_at);
+        const fmtDay = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const when = `${d0.toLocaleDateString(undefined, { weekday: 'long' })}s`
+          + (first.all_day ? '' : ' ' + d0.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))
+          + ` · ${fmtDay(first.starts_at)} – ${fmtDay(last.starts_at)} · ${evs.length} dates`;
+        const card = document.createElement('div');
+        card.className = 'prop';
+        card.innerHTML = `
+          <div class="row1">
+            <span class="pill ${first.category}">${CAT_LABELS[first.category] || first.category}</span>
+            <span class="title">${escapeHtml(first.title)}</span>
+            <span style="color:var(--muted);font-size:14px;">· repeats</span>
+          </div>
+          <div class="when">${escapeHtml(when)}${first.location ? ' · ' + escapeHtml(first.location) : ''}</div>
+          <div class="notes">${evs.map(e => fmtDay(e.starts_at)).join(', ')}</div>
+          <div class="src">from ${first.source || 'ai'}${first.document_id ? ` · <a href="#" class="src-link" onclick="event.preventDefault(); openSourceDoc('${first.document_id}')">see original email</a>` : ''}</div>
+          <div class="actions" style="grid-template-columns:1fr 1fr;">
+            <button class="approve" data-series="${idx}" data-act="approve">Add all ${evs.length} to calendar</button>
+            <button class="edit"    data-series="${idx}" data-act="save">Save only</button>
+            <button class="reject"  data-series="${idx}" data-act="reject" style="grid-column:1 / -1;">Ignore all</button>
+          </div>
+        `;
+        list.appendChild(card);
+        return;
+      }
+      const ev = item;
       const conf = ev.ai_confidence != null ? Math.round(ev.ai_confidence * 100) + '%' : '—';
       const when = ev.all_day
         ? new Date(ev.starts_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
@@ -1146,10 +1281,11 @@
           <button class="edit"    data-id="${ev.id}" data-act="save">Save only</button>
           <button class="edit"    data-id="${ev.id}" data-act="edit">Edit</button>
           <button class="reject"  data-id="${ev.id}" data-act="reject">Ignore</button>
+          <button class="edit"    data-id="${ev.id}" data-act="repeat" style="grid-column:1 / -1;">Repeat weekly…</button>
         </div>
       `;
       list.appendChild(card);
-    }
+    });
     // Approve/save with sync choice; falls back gracefully if the
     // sync_to_google column (migration 008) isn't in the database yet.
     async function setEventStatus(id, fields) {
@@ -1160,6 +1296,19 @@
       }
       if (error) alert(error.message);
     }
+    list.querySelectorAll('button[data-series]').forEach(b => {
+      b.addEventListener('click', async () => {
+        const evs = items[Number(b.dataset.series)].series, act = b.dataset.act;
+        b.disabled = true; b.textContent = 'Working…';
+        for (const ev of evs) {
+          if (act === 'approve') await setEventStatus(ev.id, { status: 'approved', sync_to_google: true });
+          else if (act === 'save') await setEventStatus(ev.id, { status: 'approved', sync_to_google: false });
+          else await supa.from('family_events').update({ status: 'rejected' }).eq('id', ev.id);
+        }
+        await Promise.all([loadUpcoming(), loadProposed()]);
+        calendar.refetchEvents();
+      });
+    });
     list.querySelectorAll('button[data-id]').forEach(b => {
       b.addEventListener('click', async () => {
         const id = b.dataset.id, act = b.dataset.act;
@@ -1169,6 +1318,25 @@
           await setEventStatus(id, { status: 'approved', sync_to_google: false });
         } else if (act === 'reject') {
           await supa.from('family_events').update({ status: 'rejected' }).eq('id', id);
+        } else if (act === 'repeat') {
+          // Turn a one-off into a weekly series: clone it for the following weeks.
+          const answer = prompt('Repeat every week for how many weeks in total? (including this one)', '8');
+          const weeks = parseInt(answer, 10);
+          if (!weeks || weeks < 2 || weeks > 52) return;
+          const { data: ev } = await supa.from('family_events').select('*').eq('id', id).single();
+          if (!ev) return;
+          const { id: _id, created_at: _c, updated_at: _u, google_event_id: _g, ...base } = ev;
+          const shift = (iso, k) => iso ? new Date(Date.parse(iso) + k * 7 * 86400000).toISOString() : null;
+          const rows = [];
+          for (let k = 1; k < weeks; k++) {
+            rows.push({ ...base, starts_at: shift(ev.starts_at, k), ends_at: shift(ev.ends_at, k), status: 'proposed' });
+          }
+          let { error } = await supa.from('family_events').insert(rows);
+          if (error && /people|sync_to_google/.test(error.message)) {
+            rows.forEach(r => { delete r.people; delete r.sync_to_google; });
+            ({ error } = await supa.from('family_events').insert(rows));
+          }
+          if (error) { alert(error.message); return; }
         } else if (act === 'edit') {
           const { data: ev } = await supa.from('family_events').select('*').eq('id', id).single();
           if (ev) {
@@ -1195,7 +1363,7 @@
   });
   async function loadTasks() {
     const { data: raw, error } = await supa.from('family_tasks')
-      .select('id,title,notes,due_date,status,completed_at' + (HAS_PEOPLE ? ',people' : ''))
+      .select('id,title,notes,due_date,status,completed_at,document_id' + (HAS_PEOPLE ? ',people' : ''))
       .in('status', ['open', 'done'])
       .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at');
@@ -1220,6 +1388,7 @@
       return;
     }
     el.innerHTML = '';
+    const paper = await paperworkFor(data.map(t => t.document_id));
     const today = new Date(); today.setHours(0, 0, 0, 0);
     for (const t of data) {
       let dueTxt = '';
@@ -1239,6 +1408,7 @@
         <div class="txt">
           <div class="title">${escapeHtml(t.title)}</div>
           ${(() => { const bits = [escapeHtml(namesOf(t)), dueTxt, t.notes ? escapeHtml(t.notes) : ''].filter(Boolean); return bits.length ? `<div class="meta">${bits.join(' · ')}</div>` : ''; })()}
+          ${paperLinks(paper, t.document_id)}
         </div>
         <button class="del" data-id="${t.id}" title="Remove">×</button>
       `;
@@ -1395,7 +1565,12 @@
     const el = document.getElementById('accounts');
     let accounts = [];
     let err = null;
-    const v = await supa.from('family_accounts').select('account_email,scopes,updated_at').order('updated_at', { ascending: false });
+    let v = await supa.from('family_accounts').select('account_email,scopes,updated_at,auto_scan').order('updated_at', { ascending: false });
+    // Pre-migration-012 view has no auto_scan column — fall back so the list still renders
+    if (v.error && v.error.message?.includes('auto_scan')) {
+      v = await supa.from('family_accounts').select('account_email,scopes,updated_at').order('updated_at', { ascending: false });
+    }
+    const HAS_DAILY = !v.error && (v.data || []).some(a => 'auto_scan' in a);
     if (!v.error) accounts = v.data || [];
     else err = v.error;
 
@@ -1415,9 +1590,23 @@
           <span class="dot"></span>
           <span class="email">${escapeHtml(a.account_email)}</span>
           <span class="scope">gmail + calendar</span>
+          ${HAS_DAILY ? `<label class="daily" title="Every morning, read the last 36 hours of this inbox for events"><input type="checkbox" ${a.auto_scan ? 'checked' : ''}> Daily scan</label>` : ''}
         `;
+        const box = row.querySelector('.daily input');
+        if (box) box.addEventListener('change', async () => {
+          box.disabled = true;
+          const { data: ok, error } = await supa.rpc('set_account_auto_scan', { p_email: a.account_email, p_enabled: box.checked });
+          box.disabled = false;
+          if (error || ok === false) { alert(error?.message || 'could not save'); box.checked = !box.checked; }
+        });
         el.appendChild(row);
       }
+      const note = document.createElement('div');
+      note.className = 'accounts-note';
+      note.textContent = HAS_DAILY
+        ? 'Daily scan reads the last 36 hours of that inbox every morning (about 6 AM Eastern). Scan now and Scan with dates always cover every account.'
+        : 'Run migration 012 to turn on per-account daily scans.';
+      el.appendChild(note);
     }
     // Add buttons
     const add = document.createElement('button');
@@ -2117,18 +2306,6 @@
   });
 
   // ================================================================
-  // Auto-scan toggle
-  // ================================================================
-  const autoScanBox = document.getElementById('auto-scan');
-  autoScanBox.checked = HH.settings?.auto_scan_email === true;
-  autoScanBox.addEventListener('change', async () => {
-    const newSettings = { ...(HH.settings || {}), auto_scan_email: autoScanBox.checked };
-    const { error } = await supa.from('households').update({ settings: newSettings }).eq('id', HH.id);
-    if (error) { alert(error.message); autoScanBox.checked = !autoScanBox.checked; return; }
-    HH.settings = newSettings;
-  });
-
-  // ================================================================
   // Whole-page drag & drop — drag a file anywhere on the page to upload
   // ================================================================
   const pageDrop = document.getElementById('page-drop');
@@ -2164,6 +2341,17 @@
   // Open the source of a proposal in a new tab. Emails open in Gmail itself
   // (the message id is embedded in the storage path); uploaded photos/PDFs
   // fall back to the stored file. Tab opened synchronously for popup blockers.
+  // Open a stored file itself (attachment), never the Gmail link.
+  window.openDocFile = async (docId) => {
+    const tab = window.open('', '_blank');
+    try {
+      const { data: doc } = await supa.from('family_documents').select('storage_path').eq('id', docId).maybeSingle();
+      if (!doc) throw new Error('That file is gone — it may have been deleted.');
+      const { data: signed, error } = await supa.storage.from('family-docs').createSignedUrl(doc.storage_path, 3600);
+      if (error || !signed?.signedUrl) throw new Error('Could not open the file: ' + (error?.message || 'no link'));
+      tab.location = signed.signedUrl;
+    } catch (e) { if (tab) tab.close(); alert(e.message); }
+  };
   window.openSourceDoc = async (docId) => {
     const tab = window.open('', '_blank');
     try {
