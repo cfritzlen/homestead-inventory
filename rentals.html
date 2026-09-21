@@ -5,6 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/auth.js"></script>
 <script>Auth.requireAuth();</script>
+<script src="assets/esign.js"></script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -5033,6 +5034,8 @@ If you cannot read something clearly, use null.`
                     if (r.key === 'landlord_name' && r.value) landlord.name = r.value;
                     if (r.key === 'landlord_email' && r.value) landlord.email = r.value;
                     if (r.key === 'landlord_phone' && r.value) landlord.phone = r.value;
+                    if (r.key === 'landlord_signature_png' && r.value) landlord.signature_png = r.value;
+                    if (r.key === 'landlord_initials_png' && r.value) landlord.initials_png = r.value;
                 }
             } catch (e) { console.warn('Landlord settings not loaded (run migration 015?):', e.message); }
             document.getElementById('ll-name').value = landlord.name;
@@ -5249,9 +5252,9 @@ If you cannot read something clearly, use null.`
             const tenantsMissingEmail = [1, 2, 3, 4].filter(i => lease[`tenant${i}_name`] && !lease[`tenant${i}_email`]).map(i => lease[`tenant${i}_name`]);
             if (st === 'draft') {
                 el.innerHTML = `<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;">
-                    <strong>✍️ Electronic signing</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">Each tenant gets an email link to read the lease and sign on their phone. You sign last. The signed copy attaches here and is emailed to everyone.</div>
+                    <strong>✍️ Electronic signing</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">You sign first, then each tenant gets an email link to read the lease and tap every initial and signature spot on their phone. The signed copy attaches here and is emailed to everyone.</div>
                     ${tenantsMissingEmail.length ? `<div style="color:var(--danger);margin-bottom:8px;">Missing email for: ${tenantsMissingEmail.join(', ')}. Add it via Renew/edit before sending.</div>` : ''}
-                    <button class="action-btn btn-primary" ${tenantsMissingEmail.length ? 'disabled' : ''} onclick="sendForSignature(${lease.id})">Send for signature</button></div>`;
+                    <button class="action-btn btn-primary" ${tenantsMissingEmail.length ? 'disabled' : ''} onclick="sendForSignature(${lease.id})">Sign & send to tenants</button></div>`;
                 return;
             }
             el.innerHTML = `<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;"><strong>✍️ ${st === 'signed' ? 'Fully signed' : 'Out for signature'}</strong><div id="lm-signers" style="margin-top:6px;">Loading…</div></div>`;
@@ -5260,7 +5263,7 @@ If you cannot read something clearly, use null.`
                 const fmt = (d) => d ? new Date(d).toLocaleDateString() : '';
                 document.getElementById('lm-signers').innerHTML = signers.map(s => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);">
                         <span>${s.status === 'signed' ? '✅' : (s.viewed_at ? '👀' : '⏳')} <strong>${s.name}</strong>${s.role === 'landlord' ? ' (you)' : ''} · ${s.email}<br><small style="color:var(--text-secondary);">${s.status === 'signed' ? 'signed ' + fmt(s.signed_at) : (s.viewed_at ? 'opened ' + fmt(s.viewed_at) + ', not signed yet' : 'sent ' + fmt(s.sent_at))}</small></span>
-                        ${s.status !== 'signed' && st === 'sent' ? `<button class="action-btn btn-secondary" onclick="remindSigner(${s.id}, ${lease.id})">Remind</button>` : ''}
+                        ${s.status !== 'signed' && st === 'sent' && s.role === 'tenant' ? `<button class="action-btn btn-secondary" onclick="remindSigner(${s.id}, ${lease.id})">Remind</button>` : ''}
                     </div>`).join('')
                     + (st === 'sent' ? `<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;"><button class="action-btn delete-btn" onclick="cancelSigning(${lease.id})">Cancel signing</button><span style="color:var(--text-secondary);align-self:center;">Cancel and re-send if the lease changes.</span></div>` : '');
             } catch (e) { document.getElementById('lm-signers').textContent = 'Could not load: ' + e.message; }
@@ -5268,15 +5271,26 @@ If you cannot read something clearly, use null.`
         async function sendForSignature(leaseId) {
             const lease = allLeases.find(l => l.id === leaseId);
             if (!lease) return;
-            if (!confirm('Email the lease to every tenant for signature (and to you as landlord)?')) return;
+            // 1. Landlord signs (draw / type / reuse saved)
+            const sig = await ESign.adopt({
+                name: landlord.name, initials: false, remember: true,
+                title: 'Sign as landlord', subtitle: 'Your signature goes on the signature page before the lease is emailed to the tenants.',
+                saved: landlord.signature_png ? { signature_png: landlord.signature_png } : null,
+            });
+            if (!sig) return;
+            if (sig.remember && !sig.reused) {
+                landlord.signature_png = sig.signature_png;
+                supabaseClient.from('rental_settings').upsert([{ key: 'landlord_signature_png', value: sig.signature_png }], { onConflict: 'key' }).then(() => {});
+            }
+            if (!confirm('Email the lease to every tenant for signature now?')) return;
             const el = document.getElementById('lm-signing');
-            el.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);">Building the PDF and sending emails…</div>';
+            el.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);">Building the PDF, adding your signature and sending emails…</div>';
             try {
                 const ok = await generatePDF(lease, lease.id, false);      // fresh PDF stored on the lease
                 if (!ok) throw new Error('could not build the PDF');
-                const r = await callSign({ action: 'send', lease_id: lease.id, site_url: SITE_URL });
+                const r = await callSign({ action: 'send', lease_id: lease.id, site_url: SITE_URL, landlord_signature_png: sig.signature_png });
                 lease.signing_status = 'sent';
-                showAlert(`Sent to ${r.sent} signer${r.sent === 1 ? '' : 's'}.` + (r.problems && r.problems.length ? ' Problems: ' + r.problems.join('; ') : ''), r.problems && r.problems.length ? 'error' : 'success');
+                showAlert(`Signed and sent to ${r.sent} tenant${r.sent === 1 ? '' : 's'}.` + (r.problems && r.problems.length ? ' Problems: ' + r.problems.join('; ') : ''), r.problems && r.problems.length ? 'error' : 'success');
                 displayLeases(allLeases);
                 openLeaseModal(lease);
             } catch (e) { showAlert('Send failed: ' + e.message, 'error'); renderSigning(lease); }
