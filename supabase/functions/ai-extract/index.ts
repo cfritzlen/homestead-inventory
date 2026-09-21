@@ -320,8 +320,10 @@ function sameThing(a: string, b: string): boolean {
   const A = ta.join(' '), B = tb.join(' ');
   if (A === B || A.includes(B) || B.includes(A)) return true;
   const sa = new Set(ta);
-  const inter = tb.filter((t) => sa.has(t)).length;
-  return inter / new Set([...ta, ...tb]).size >= 0.6;
+  const inter = new Set(tb.filter((t) => sa.has(t))).size;
+  // Enough of the shorter title's words appear in the longer one:
+  // "2-Hour Delay — Stroudsburg School District" vs "SASD 2 Hour Delay".
+  return inter / Math.min(new Set(ta).size, new Set(tb).size) >= 0.75;
 }
 
 function json(obj: any, status = 200) {
