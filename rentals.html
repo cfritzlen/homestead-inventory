@@ -2153,7 +2153,7 @@
         // Generate PDF matching the exact format of the lease page 1
         function buildLeaseDoc(leaseData, opts = {}) {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+            const doc = new jsPDF({ unit: 'mm', format: 'letter' });
             
             // Use Times Roman font (default)
             doc.setFont('times', 'normal');
@@ -2555,7 +2555,7 @@
                         <td>${lease.lease_end}</td>
                         <td>$${parseFloat(lease.rent_amount).toLocaleString()}</td>
                         <td>${lease.lease_type.replace('_', ' ')}</td>
-                        <td><span class="status-badge ${statusClass}">${statusText}</span>${signedLeaseIds.has(lease.id) ? ' <span class="status-badge status-active" title="Signed copy attached">✓ Signed</span>' : ''}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span>${signedLeaseIds.has(lease.id) ? ' <span class="status-badge status-active" title="Signed copy attached">✓ Signed</span>' : (lease.signing_status === 'sent' ? ' <span class="status-badge status-expiring" title="Waiting for signatures">✍️ Out for signature</span>' : '')}</td>
                         <td>
                             <button class="action-btn btn-primary" onclick="viewLease(${lease.id})">View</button>
                             <button class="action-btn btn-secondary" onclick="regeneratePDF(${lease.id})">PDF</button>
@@ -5096,7 +5096,7 @@ If you cannot read something clearly, use null.`
         }
 
         // ---- the full PDF ----
-        async function generatePDF(leaseData, leaseId) {
+        async function generatePDF(leaseData, leaseId, download = true) {
             const opts = (leaseData.lease_options && typeof leaseData.lease_options === 'object') ? leaseData.lease_options : {};
             try {
                 const doc = buildLeaseDoc(leaseData, opts);                               // page 1 + page 19
@@ -5112,16 +5112,20 @@ If you cannot read something clearly, use null.`
                 out.addPage(pSig);
                 const blob = new Blob([await out.save()], { type: 'application/pdf' });
                 const filename = `Lease_${(leaseData.tenant_names || 'Draft').replace(/[^A-Za-z0-9]+/g, '_')}_${leaseData.lease_start || 'Draft'}.pdf`;
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob); a.download = filename;
-                document.body.appendChild(a); a.click(); a.remove();
+                if (download) {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob); a.download = filename;
+                    document.body.appendChild(a); a.click(); a.remove();
+                }
                 if (leaseId) {
                     try { await uploadLeaseFile(leaseId, blob, filename, 'generated'); }
-                    catch (e) { console.warn('could not store generated PDF:', e.message); }
+                    catch (e) { console.warn('could not store generated PDF:', e.message); if (!download) throw e; }
                 }
+                return true;
             } catch (e) {
                 console.error('PDF failed:', e);
                 showAlert('PDF failed: ' + e.message, 'error');
+                return false;
             }
         }
 
@@ -5229,6 +5233,67 @@ If you cannot read something clearly, use null.`
             } catch (e) { showAlert('Upload failed: ' + e.message, 'error'); }
         }
 
+        // ---- e-signing (lease-sign edge function + sign.html) ----
+        const SIGN_FN = Auth.client.supabaseUrl + '/functions/v1/lease-sign';
+        const SITE_URL = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '').replace(/\/+$/, '');
+        async function callSign(body) {
+            const res = await fetch(SIGN_FN, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Auth.bearer() }, body: JSON.stringify(body) });
+            let data = {}; try { data = await res.json(); } catch (_) {}
+            if (!res.ok || data.error) throw new Error(data.error || ('request failed (' + res.status + ')'));
+            return data;
+        }
+        async function renderSigning(lease) {
+            const el = document.getElementById('lm-signing');
+            if (!el) return;
+            const st = lease.signing_status || 'draft';
+            const tenantsMissingEmail = [1, 2, 3, 4].filter(i => lease[`tenant${i}_name`] && !lease[`tenant${i}_email`]).map(i => lease[`tenant${i}_name`]);
+            if (st === 'draft') {
+                el.innerHTML = `<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;">
+                    <strong>✍️ Electronic signing</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">Each tenant gets an email link to read the lease and sign on their phone. You sign last. The signed copy attaches here and is emailed to everyone.</div>
+                    ${tenantsMissingEmail.length ? `<div style="color:var(--danger);margin-bottom:8px;">Missing email for: ${tenantsMissingEmail.join(', ')}. Add it via Renew/edit before sending.</div>` : ''}
+                    <button class="action-btn btn-primary" ${tenantsMissingEmail.length ? 'disabled' : ''} onclick="sendForSignature(${lease.id})">Send for signature</button></div>`;
+                return;
+            }
+            el.innerHTML = `<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;"><strong>✍️ ${st === 'signed' ? 'Fully signed' : 'Out for signature'}</strong><div id="lm-signers" style="margin-top:6px;">Loading…</div></div>`;
+            try {
+                const { signers } = await callSign({ action: 'status', lease_id: lease.id });
+                const fmt = (d) => d ? new Date(d).toLocaleDateString() : '';
+                document.getElementById('lm-signers').innerHTML = signers.map(s => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);">
+                        <span>${s.status === 'signed' ? '✅' : (s.viewed_at ? '👀' : '⏳')} <strong>${s.name}</strong>${s.role === 'landlord' ? ' (you)' : ''} · ${s.email}<br><small style="color:var(--text-secondary);">${s.status === 'signed' ? 'signed ' + fmt(s.signed_at) : (s.viewed_at ? 'opened ' + fmt(s.viewed_at) + ', not signed yet' : 'sent ' + fmt(s.sent_at))}</small></span>
+                        ${s.status !== 'signed' && st === 'sent' ? `<button class="action-btn btn-secondary" onclick="remindSigner(${s.id}, ${lease.id})">Remind</button>` : ''}
+                    </div>`).join('')
+                    + (st === 'sent' ? `<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;"><button class="action-btn delete-btn" onclick="cancelSigning(${lease.id})">Cancel signing</button><span style="color:var(--text-secondary);align-self:center;">Cancel and re-send if the lease changes.</span></div>` : '');
+            } catch (e) { document.getElementById('lm-signers').textContent = 'Could not load: ' + e.message; }
+        }
+        async function sendForSignature(leaseId) {
+            const lease = allLeases.find(l => l.id === leaseId);
+            if (!lease) return;
+            if (!confirm('Email the lease to every tenant for signature (and to you as landlord)?')) return;
+            const el = document.getElementById('lm-signing');
+            el.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);">Building the PDF and sending emails…</div>';
+            try {
+                const ok = await generatePDF(lease, lease.id, false);      // fresh PDF stored on the lease
+                if (!ok) throw new Error('could not build the PDF');
+                const r = await callSign({ action: 'send', lease_id: lease.id, site_url: SITE_URL });
+                lease.signing_status = 'sent';
+                showAlert(`Sent to ${r.sent} signer${r.sent === 1 ? '' : 's'}.` + (r.problems && r.problems.length ? ' Problems: ' + r.problems.join('; ') : ''), r.problems && r.problems.length ? 'error' : 'success');
+                displayLeases(allLeases);
+                openLeaseModal(lease);
+            } catch (e) { showAlert('Send failed: ' + e.message, 'error'); renderSigning(lease); }
+        }
+        async function remindSigner(signerId, leaseId) {
+            try { await callSign({ action: 'remind', signer_id: signerId, site_url: SITE_URL }); showAlert('Reminder sent', 'success'); }
+            catch (e) { showAlert('Reminder failed: ' + e.message, 'error'); }
+        }
+        async function cancelSigning(leaseId) {
+            if (!confirm('Cancel signing? Existing links stop working. You can send again later.')) return;
+            try {
+                await callSign({ action: 'cancel', lease_id: leaseId });
+                const lease = allLeases.find(l => l.id === leaseId); if (lease) lease.signing_status = 'draft';
+                displayLeases(allLeases); openLeaseModal(lease);
+            } catch (e) { showAlert('Cancel failed: ' + e.message, 'error'); }
+        }
+
         function closeLeaseModal() { document.getElementById('lease-modal').style.display = 'none'; }
         async function openLeaseModal(lease) {
             if (!lease) return;
@@ -5253,8 +5318,10 @@ If you cannot read something clearly, use null.`
                 <label class="action-btn btn-primary" style="cursor:pointer;">📎 Attach signed lease
                     <input type="file" accept="application/pdf,image/*" style="display:none;" onchange="attachSignedLease(${lease.id}, this)"></label>
             </div>
+            <div id="lm-signing" style="margin-bottom:14px;"></div>
             <div id="lm-files" style="font-size:13px;color:var(--text-secondary);">Loading files…</div>`;
             document.getElementById('lm-body').innerHTML = body;
+            renderSigning(lease);
             try {
                 const { data, error } = await supabaseClient.from('rental_lease_files').select('*').eq('lease_id', lease.id).order('created_at', { ascending: false });
                 if (error) throw error;
