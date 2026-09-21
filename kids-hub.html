@@ -780,7 +780,7 @@ async function handleVitalPhoto(input) {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514", max_tokens: 300,
+        model: "claude-sonnet-5", max_tokens: 300,
         messages: [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
           { type: "text", text: "This is a photo of a medical device showing vital signs. It could be a thermometer, pulse oximeter, or both. Read ALL numbers on the screen. Return ONLY a JSON object: {\"temp\":NUMBER_OR_NULL,\"pulse_ox\":NUMBER_OR_NULL,\"pulse\":NUMBER_OR_NULL}. Temp should be in Fahrenheit (e.g. 98.6). Pulse ox is the SpO2 percentage (e.g. 98). Pulse is heart rate BPM. Use null for anything not visible. Return ONLY the JSON." }
