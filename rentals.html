@@ -2082,8 +2082,8 @@
                 isRenewal: leaseData.is_renewal === 'true',
                 previousLeaseId: leaseData.previous_lease_id
             };
-            delete leaseData.is_renewal;
-            delete leaseData.previous_lease_id;
+            leaseData.is_renewal = renewalInfo.isRenewal;                       // kept on the row so renewals chain
+            leaseData.previous_lease_id = renewalInfo.previousLeaseId || null;
             
             // Build tenant names string for display
             const tenantNames = [];
@@ -2529,8 +2529,9 @@
             }
 
             const today = new Date();
+            const groups = groupLeasesByUnit(leases);
             
-            tbody.innerHTML = leases.map(lease => {
+            tbody.innerHTML = groups.map(({ current: lease, older }) => {
                 const endDate = new Date(lease.lease_end);
                 const daysUntilEnd = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
                 
@@ -2551,7 +2552,7 @@
                 return `
                     <tr>
                         <td>${lease.tenant_names}</td>
-                        <td>${lease.property_address}</td>
+                        <td>${lease.property_address}${older.length ? `<br><small style="color:var(--text-secondary);">+${older.length} previous lease${older.length === 1 ? '' : 's'}</small>` : ''}</td>
                         <td>${lease.lease_start}</td>
                         <td>${lease.lease_end}</td>
                         <td>$${parseFloat(lease.rent_amount).toLocaleString()}</td>
@@ -2566,6 +2567,48 @@
                     </tr>
                 `;
             }).join('');
+        }
+
+        // One "current" lease per unit: the active one with the latest start, or
+        // the most recent lease if the unit has no active one. The rest are that
+        // unit's history and show under View → Previous leases.
+        function groupLeasesByUnit(leases) {
+            const byUnit = new Map();
+            for (const l of leases) {
+                const key = (l.property_address || '').trim().toLowerCase();
+                if (!byUnit.has(key)) byUnit.set(key, []);
+                byUnit.get(key).push(l);
+            }
+            const rank = (l) => (l.status === 'active' ? '1' : '0') + (l.lease_start || '');
+            const groups = [];
+            for (const list of byUnit.values()) {
+                list.sort((a, b) => rank(b).localeCompare(rank(a)));
+                groups.push({ current: list[0], older: list.slice(1) });
+            }
+            groups.sort((a, b) => (b.current.lease_start || '').localeCompare(a.current.lease_start || ''));
+            return groups;
+        }
+        function olderLeasesFor(lease) {
+            const g = groupLeasesByUnit(allLeases).find(g => g.current.id === lease.id || g.older.some(o => o.id === lease.id));
+            return g ? [g.current, ...g.older].filter(l => l.id !== lease.id) : [];
+        }
+
+        // Delete a lease and everything attached to it
+        async function deleteLease(id) {
+            const lease = allLeases.find(l => l.id === id);
+            if (!lease) return;
+            if (!confirm(`Delete the lease for ${lease.tenant_names} at ${lease.property_address}?\n\nThis also removes its PDFs and signatures. This cannot be undone.`)) return;
+            try {
+                const { data: files } = await supabaseClient.from('rental_lease_files').select('storage_path').eq('lease_id', id);
+                const paths = (files || []).map(f => f.storage_path);
+                if (lease.signing_pdf_path) paths.push(lease.signing_pdf_path);
+                if (paths.length) await supabaseClient.storage.from(LEASE_BUCKET).remove(paths);
+                const { error } = await supabaseClient.from('rental_leases').delete().eq('id', id);
+                if (error) throw error;
+                closeLeaseModal();
+                showAlert('Lease deleted', 'success');
+                loadAllLeases(); loadDashboard();
+            } catch (e) { showAlert('Delete failed: ' + e.message, 'error'); }
         }
 
         // Filter leases
@@ -5333,7 +5376,16 @@ If you cannot read something clearly, use null.`
                     <input type="file" accept="application/pdf,image/*" style="display:none;" onchange="attachSignedLease(${lease.id}, this)"></label>
             </div>
             <div id="lm-signing" style="margin-bottom:14px;"></div>
-            <div id="lm-files" style="font-size:13px;color:var(--text-secondary);">Loading files…</div>`;
+            <div id="lm-files" style="font-size:13px;color:var(--text-secondary);">Loading files…</div>
+            ${(() => {
+                const older = olderLeasesFor(lease);
+                if (!older.length) return '';
+                return `<div style="margin-top:18px;"><strong style="font-size:14px;">Other leases for this unit</strong>
+                    ${older.map(o => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">
+                        <span>${o.lease_start} → ${o.lease_end} · <strong>${o.tenant_names}</strong> · ${money(o.rent_amount)} · ${o.status}${signedLeaseIds.has(o.id) ? ' · ✓ signed' : ''}</span>
+                        <span><button class="action-btn btn-primary" onclick="viewLease(${o.id})">View</button> <button class="action-btn btn-secondary" onclick="regeneratePDF(${o.id})">PDF</button></span></div>`).join('')}</div>`;
+            })()}
+            <div style="margin-top:18px;text-align:right;"><button class="action-btn delete-btn" onclick="deleteLease(${lease.id})">🗑 Delete this lease</button></div>`;
             document.getElementById('lm-body').innerHTML = body;
             renderSigning(lease);
             try {
