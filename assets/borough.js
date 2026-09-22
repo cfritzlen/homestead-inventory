@@ -37,7 +37,10 @@ const BOROUGH_UNIT_DEFAULTS = {
     meters_water: '1', meters_electric: '5', meters_garbage: '4',
     license_active: 'yes', license_displayed: 'no', evac_plan: 'no', smoke_detectors: 'yes',
     last_inspection: '2026-06-16', disruptive: '0',
+    pin: 'PIN 05730112853408 / Parcel 05-5.2.18.6',       // 180-182 N Courtland St, from the 2026 tax bill
 };
+// Owner details used until something else is saved under Owner details.
+const BOROUGH_OWNER_DEFAULTS = { mailing1: '1038 Poplar Valley Rd E', mailing2: 'Stroudsburg, PA 18360', deedNames: 'Martin Valdez and Colette G. Fritzlen' };
 const BOROUGH_SIGN_FN = () => Auth.client.supabaseUrl + '/functions/v1/borough-sign';
 const BOROUGH_SITE_URL = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '').replace(/\/+$/, '');
 let boroughSigners = {};        // filing_id -> [rental_borough_signers]
@@ -74,6 +77,7 @@ async function loadBorough() {
         boroughUnits = props.data || [];
         boroughLeases = leases.data || [];
         if (settings.data && settings.data.value) { try { boroughInfo = Object.assign({ owner: {}, manager: {}, managerSameAsOwner: true }, JSON.parse(settings.data.value)); } catch (_) { } }
+        boroughInfo.owner = Object.assign({}, BOROUGH_OWNER_DEFAULTS, Object.fromEntries(Object.entries(boroughInfo.owner || {}).filter(([, v]) => v)));
         if (boroughUnits.length && boroughUnits[0].borough_info === undefined) boroughSetupError = 'Run supabase/migrations/021_borough_registration.sql in Supabase → SQL Editor to save unit details and track what was sent.';
     } catch (e) {
         showAlert('Could not load rentals: ' + e.message, 'error');
@@ -140,6 +144,7 @@ function renderBoroughInfoForm() {
         <div class="form-grid">
             ${inp('owner_mailing1', 'Owner mailing address (line 1)', o.mailing1, 'Street')}
             ${inp('owner_mailing2', 'Owner mailing address (line 2)', o.mailing2, 'City, State ZIP')}
+            ${inp('owner_deed', 'Owner name(s) as on the deed', o.deedNames)}
             ${inp('owner_contact', 'Contact name (only if the owner is a company)', o.contact, 'N/A')}
             ${inp('tenant_address', 'Address tenants see on the Addendum', o.tenantAddress, 'Leave blank to use the mailing address')}
         </div>
@@ -167,7 +172,7 @@ function renderBoroughInfoForm() {
 async function saveBoroughInfo() {
     const v = (id) => (document.getElementById('bi-' + id) || {}).value?.trim() || '';
     boroughInfo = {
-        owner: { mailing1: v('owner_mailing1'), mailing2: v('owner_mailing2'), contact: v('owner_contact'), tenantAddress: v('tenant_address') },
+        owner: { mailing1: v('owner_mailing1'), mailing2: v('owner_mailing2'), deedNames: v('owner_deed'), contact: v('owner_contact'), tenantAddress: v('tenant_address') },
         managerSameAsOwner: document.getElementById('bi-same').checked,
         manager: { name: v('mgr_name'), email: v('mgr_email'), mailing1: v('mgr_mailing1'), mailing2: v('mgr_mailing2'), physical1: v('mgr_physical1'), physical2: v('mgr_physical2'), dayPhone: v('mgr_day_phone'), phone24: v('mgr_phone24'), localContact: v('mgr_local_contact') },
     };
@@ -187,6 +192,21 @@ async function setupBoroughSignature() {
 }
 
 // ---------- units ----------
+// Only units inside the Borough of East Stroudsburg register there. Guessed
+// from the address (the Courtland building); Unit details can override.
+function boroughIsBoroughUnit(u) {
+    const flag = (u.borough_info || {}).in_borough;
+    if (flag === 'yes') return true;
+    if (flag === 'no') return false;
+    return /courtland/i.test(`${u.property_name || ''} ${u.street_address || ''}`) || /east\s*stroudsburg/i.test(u.city || '');
+}
+async function setBoroughUnitFlag(propertyId, inBorough) {
+    const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
+    const info = Object.assign({}, u.borough_info || {}, { in_borough: inBorough ? 'yes' : 'no' });
+    const { error } = await supabaseClient.from('rental_properties').update({ borough_info: info }).eq('id', propertyId);
+    if (error) { showAlert('Could not save: ' + error.message + ' (run migration 021?)', 'error'); return; }
+    u.borough_info = info; renderBoroughUnits();
+}
 function boroughCurrentLease(unit) {
     const key = (unit.property_name || '').trim().toLowerCase();
     const g = groupLeasesByUnit(boroughLeases).find(g => (g.current.property_address || '').trim().toLowerCase() === key);
@@ -209,8 +229,10 @@ function renderBoroughUnits() {
     const box = document.getElementById('borough-units');
     document.getElementById('borough-setup-note').innerHTML = boroughSetupError ? `<div class="alert alert-error" style="display:block;">${boroughEsc(boroughSetupError)}</div>` : '';
     if (!boroughUnits.length) { box.innerHTML = '<p style="color:var(--text-secondary);">No units yet. Add properties on the New Lease page first.</p>'; return; }
+    const inBorough = boroughUnits.filter(boroughIsBoroughUnit);
+    const outside = boroughUnits.filter(u => !boroughIsBoroughUnit(u));
     let sent = 0;
-    const rows = boroughUnits.map(u => {
+    const rows = inBorough.map(u => {
         const lease = boroughCurrentLease(u);
         const filing = boroughFilings[u.id] || {};
         const occ = filing.occupancy || boroughGuessOccupancy(u, lease);
@@ -230,6 +252,7 @@ function renderBoroughUnits() {
                     <div style="font-weight:600;font-size:15px;">${boroughEsc(u.property_name)}</div>
                     <div style="font-size:13px;color:var(--text-secondary);">Tenants now: ${tenants}${lease ? ` · lease ${lease.lease_start} → ${lease.lease_end}` : ''}</div>
                     ${missing.length ? `<div style="font-size:12px;color:#92400e;margin-top:4px;">Missing for the form: ${missing.join(', ')} → <a href="#" onclick="openBoroughUnit(${u.id});return false;">Unit details</a></div>` : ''}
+                    <div style="font-size:11px;margin-top:2px;"><a href="#" onclick="setBoroughUnitFlag(${u.id}, false);return false;" style="color:var(--text-secondary);">Not in East Stroudsburg? Leave it out</a></div>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                     <select onchange="saveBoroughFiling(${u.id}, { occupancy: this.value })" style="padding:6px;border:1px solid var(--border);border-radius:4px;">
@@ -251,7 +274,9 @@ function renderBoroughUnits() {
             ${files ? `<div style="font-size:13px;margin-top:8px;">${files}</div>` : ''}
         </div>`;
     });
-    box.innerHTML = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">${sent} of ${boroughUnits.length} unit(s) sent for ${boroughYear}. Pick what applies to each unit, check <em>Unit details</em>, then download the filled packet, sign anything still unsigned and email it.</div>` + rows.join('');
+    box.innerHTML = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">${sent} of ${inBorough.length} East Stroudsburg unit(s) sent for ${boroughYear}. Pick what applies to each unit, check <em>Unit details</em>, then Sign & send.</div>`
+        + (inBorough.length ? rows.join('') : '<p style="color:var(--text-secondary);">No units marked as East Stroudsburg.</p>')
+        + (outside.length ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:6px;">Not in the Borough (no registration needed): ${outside.map(u => `${boroughEsc(u.property_name)} <a href="#" onclick="setBoroughUnitFlag(${u.id}, true);return false;">include</a>`).join(' · ')}</div>` : '');
 }
 async function saveBoroughFiling(propertyId, patch) {
     const existing = boroughFilings[propertyId];
@@ -337,7 +362,7 @@ function boroughFormData(u) {
     const occupancy = filing.occupancy || boroughGuessOccupancy(u, lease);
     const info = Object.assign({}, BOROUGH_UNIT_DEFAULTS, u.borough_info || {});
     const tenants = occupancy === 'vacant' ? [] : boroughTenants(lease);
-    const owner = { name: landlord.name, phone: landlord.phone, email: landlord.email, mailing1: boroughInfo.owner?.mailing1, mailing2: boroughInfo.owner?.mailing2, contact: boroughInfo.owner?.contact };
+    const owner = { name: landlord.name, deedNames: boroughInfo.owner?.deedNames, phone: landlord.phone, email: landlord.email, mailing1: boroughInfo.owner?.mailing1, mailing2: boroughInfo.owner?.mailing2, contact: boroughInfo.owner?.contact };
     const manager = boroughInfo.managerSameAsOwner === false && boroughInfo.manager?.name
         ? boroughInfo.manager
         : { name: owner.name, email: owner.email, mailing1: owner.mailing1, mailing2: owner.mailing2, physical1: owner.mailing1, physical2: owner.mailing2, dayPhone: owner.phone, phone24: owner.phone, localContact: owner.name };
@@ -512,10 +537,13 @@ async function renderBoroughDashCard() {
     let progress = '';
     try {
         const [{ data: units }, { data: filings }] = await Promise.all([
-            supabaseClient.from('rental_properties').select('id').eq('is_building_level', false).eq('status', 'active'),
+            supabaseClient.from('rental_properties').select('*').eq('is_building_level', false).eq('status', 'active'),
             supabaseClient.from('rental_borough_filings').select('property_id,status').eq('year', year),
         ]);
-        if (units && filings) progress = ` · ${filings.filter(f => f.status === 'submitted' || f.status === 'licensed').length} of ${units.length} unit(s) sent`;
+        if (units && filings) {
+            const mine = units.filter(boroughIsBoroughUnit);
+            progress = ` · ${filings.filter(f => mine.some(u => u.id === f.property_id) && (f.status === 'submitted' || f.status === 'licensed')).length} of ${mine.length} unit(s) sent`;
+        }
     } catch (_) { }
     const tone = days < 0 ? ['#fee2e2', '#991b1b', '#ef4444'] : days <= 14 ? ['#fef3c7', '#92400e', '#f59e0b'] : ['#eff6ff', '#1e3a8a', '#3b82f6'];
     card.style.display = 'block';

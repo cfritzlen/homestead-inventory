@@ -7,7 +7,7 @@
 // data = {
 //   date: 'YYYY-MM-DD',
 //   address1, address2, unit, pin, lastInspection,
-//   owner:   { name, phone, email, mailing1, mailing2, contact },
+//   owner:   { name, deedNames, phone, email, mailing1, mailing2, contact },
 //   manager: { name, email, mailing1, mailing2, physical1, physical2, dayPhone, phone24, localContact },
 //   tenants: [{ name, phone, email, employer }],   // empty when vacant
 //   vacant: bool, occupancy: 'same' | 'new' | 'vacant',
@@ -76,8 +76,8 @@
     f.text(0, 482.5, 584.1, 632.6, na(d.unit));
     f.text(0, 461.1, 584.1, 613.6, d.lastInspection ? fmtDate(d.lastInspection) : 'N/A');
     f.text(0, 228.4, 584.1, 594.3, na(d.pin));
-    // owner
-    f.text(0, 89.2, 331.1, 551.8, o.name);
+    // owner (both names from the deed when known; the signer's name goes on page 3)
+    f.text(0, 89.2, 331.1, 551.8, o.deedNames || o.name);
     f.text(0, 370.7, 584.5, 554.1, o.phone);
     f.text(0, 362.4, 584.5, 539.7, o.email);
     f.text(0, 132.0, 330.7, 536.6, o.mailing1);
@@ -184,7 +184,7 @@
     f.text(0, 84.0, 300.0, 674.7, o.name);
     f.text(0, 168.0, 391.0, 646.3, addr);
     f.text(0, 265.0, 531.0, 632.9, na(d.pin));
-    f.text(0, 90.0, 301.0, 606.3, o.name);
+    f.text(0, 90.0, 301.0, 606.3, o.deedNames || o.name);
     f.text(0, 120.0, 274.0, 593.0, o.phone);
     f.text(0, 372.0, 534.0, 593.0, [o.mailing1, o.mailing2].filter(Boolean).join(', '));
     f.text(0, 117.0, 287.0, 579.7, o.email);
