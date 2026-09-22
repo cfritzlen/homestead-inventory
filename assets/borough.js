@@ -200,6 +200,17 @@ function boroughIsBoroughUnit(u) {
     if (flag === 'no') return false;
     return /courtland/i.test(`${u.property_name || ''} ${u.street_address || ''}`) || /east\s*stroudsburg/i.test(u.city || '');
 }
+async function setBoroughUnitLease(propertyId, address) {
+    const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
+    const info = Object.assign({}, u.borough_info || {}, { lease_address: address || '' });
+    if (!address) {
+        // "change": clear the pick and show the dropdown
+        info.lease_address = ''; info.lease_unpicked = 'yes';
+    } else { delete info.lease_unpicked; }
+    const { error } = await supabaseClient.from('rental_properties').update({ borough_info: info }).eq('id', propertyId);
+    if (error) { showAlert('Could not save: ' + error.message + ' (run migration 021?)', 'error'); return; }
+    u.borough_info = info; renderBoroughUnits();
+}
 async function setBoroughUnitFlag(propertyId, inBorough) {
     const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
     const info = Object.assign({}, u.borough_info || {}, { in_borough: inBorough ? 'yes' : 'no' });
@@ -207,11 +218,35 @@ async function setBoroughUnitFlag(propertyId, inBorough) {
     if (error) { showAlert('Could not save: ' + error.message + ' (run migration 021?)', 'error'); return; }
     u.borough_info = info; renderBoroughUnits();
 }
+// Leases store the property as free text (property_address); units are
+// rental_properties rows. Match loosely (ignore punctuation, "Apt", "Unit",
+// "#", street suffixes), or use the lease the user picked in Unit details.
+const boroughNorm = (s) => String(s || '').toLowerCase().replace(/\b(apt|apartment|unit|suite|ste|#|street|st|road|rd|north|n|east|e|stroudsburg|pa|\d{5})\b/g, ' ').replace(/[^a-z0-9]/g, '');
+function boroughLeaseGroups() {
+    // one entry per distinct lease address: the current lease for it
+    return groupLeasesByUnit(boroughLeases).map(g => g.current);
+}
 function boroughCurrentLease(unit) {
-    const key = (unit.property_name || '').trim().toLowerCase();
-    const g = groupLeasesByUnit(boroughLeases).find(g => (g.current.property_address || '').trim().toLowerCase() === key);
-    if (!g) return null;
-    return g.current.status === 'active' ? g.current : null;
+    const picked = (unit.borough_info || {}).lease_address;
+    if (!picked && (unit.borough_info || {}).lease_unpicked === 'yes') return null;
+    const current = boroughLeaseGroups();
+    const active = (l) => l && l.status === 'active' ? l : null;
+    if (picked) {
+        const l = current.find(c => (c.property_address || '') === picked);
+        if (l) return active(l);
+    }
+    const exact = current.find(c => (c.property_address || '').trim().toLowerCase() === (unit.property_name || '').trim().toLowerCase());
+    if (exact) return active(exact);
+    const names = [unit.property_name, unit.street_address && unit.unit ? `${unit.street_address} ${unit.unit}` : '', unit.street_address].filter(Boolean).map(boroughNorm).filter(Boolean);
+    const loose = current.filter(c => { const n = boroughNorm(c.property_address); return n && names.some(x => x === n || (x.length >= 4 && (n.endsWith(x) || n.includes(x)))); });
+    if (loose.length === 1) return active(loose[0]);
+    if (loose.length > 1) {
+        // prefer the one whose unit letter/number matches
+        const u = boroughNorm(unit.unit || (unit.property_name || '').replace(/^.*?(\d+\s*[a-z]?)$/i, '$1'));
+        const best = loose.find(c => u && boroughNorm(c.property_address).endsWith(u));
+        return active(best || loose[0]);
+    }
+    return null;
 }
 function boroughGuessOccupancy(unit, lease) {
     if (!lease) return 'vacant';
@@ -252,6 +287,11 @@ function renderBoroughUnits() {
                     <div style="font-weight:600;font-size:15px;">${boroughEsc(u.property_name)}</div>
                     <div style="font-size:13px;color:var(--text-secondary);">Tenants now: ${tenants}${lease ? ` · lease ${lease.lease_start} → ${lease.lease_end}` : ''}</div>
                     ${missing.length ? `<div style="font-size:12px;color:#92400e;margin-top:4px;">Missing for the form: ${missing.join(', ')} → <a href="#" onclick="openBoroughUnit(${u.id});return false;">Unit details</a></div>` : ''}
+                    ${!lease ? `<div style="font-size:12px;margin-top:6px;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:6px 8px;"><strong style="color:#9a3412;">No lease matched this unit.</strong> Pick it:
+                        <select onchange="setBoroughUnitLease(${u.id}, this.value)" style="padding:4px;border:1px solid var(--border);border-radius:4px;max-width:100%;">
+                            <option value="">— choose the lease —</option>
+                            ${boroughLeaseGroups().filter(c => c.status === 'active').map(c => `<option value="${boroughEsc(c.property_address)}" ${(u.borough_info || {}).lease_address === c.property_address ? 'selected' : ''}>${boroughEsc(c.property_address)} · ${boroughEsc(c.tenant_names || '')}</option>`).join('')}
+                        </select></div>` : `<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">Lease: ${boroughEsc(lease.property_address)} <a href="#" onclick="setBoroughUnitLease(${u.id}, '');return false;">change</a></div>`}
                     <div style="font-size:11px;margin-top:2px;"><a href="#" onclick="setBoroughUnitFlag(${u.id}, false);return false;" style="color:var(--text-secondary);">Not in East Stroudsburg? Leave it out</a></div>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
