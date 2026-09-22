@@ -122,7 +122,8 @@ function renderBoroughHeader() {
         <div>📞 ${BOROUGH.phone} &nbsp; ✉️ <a href="mailto:${BOROUGH.email}">${BOROUGH.email}</a></div>
         <div>🏛 ${BOROUGH.name}, ${BOROUGH.address} · ${BOROUGH.hours} · <a href="${BOROUGH.website}" target="_blank" rel="noopener">website</a></div>
         <ul style="margin:8px 0 0 18px;padding:0;color:var(--text-secondary);font-size:13px;">
-            <li>License fee is $90 per unit. Tell the Borough within 10 days when tenants change.</li>
+            <li>License fee is $116 per unit: pay online at <a href="${BOROUGH.website}" target="_blank" rel="noopener">eaststroudsburgboro.org</a>, by check to East Stroudsburg Borough (24 Analomink St), or at Borough Hall. Late fee $30 per unit per month after Oct 1.</li>
+            <li>Tell the Borough within 10 days when tenants change (new Addendum + updated registration).</li>
             <li>You or your representative (never the tenant) must be at inspections. A missed inspection costs $129 per unit.</li>
             <li>Type the forms, leave nothing blank (write N/A), sign everything. Sue sends packets back otherwise.</li>
         </ul>`;
