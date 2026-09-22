@@ -187,6 +187,21 @@ async function setupBoroughSignature() {
 }
 
 // ---------- units ----------
+// Only units inside the Borough of East Stroudsburg register there. Guessed
+// from the address (the Courtland building); Unit details can override.
+function boroughIsBoroughUnit(u) {
+    const flag = (u.borough_info || {}).in_borough;
+    if (flag === 'yes') return true;
+    if (flag === 'no') return false;
+    return /courtland/i.test(`${u.property_name || ''} ${u.street_address || ''}`) || /east\s*stroudsburg/i.test(u.city || '');
+}
+async function setBoroughUnitFlag(propertyId, inBorough) {
+    const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
+    const info = Object.assign({}, u.borough_info || {}, { in_borough: inBorough ? 'yes' : 'no' });
+    const { error } = await supabaseClient.from('rental_properties').update({ borough_info: info }).eq('id', propertyId);
+    if (error) { showAlert('Could not save: ' + error.message + ' (run migration 021?)', 'error'); return; }
+    u.borough_info = info; renderBoroughUnits();
+}
 function boroughCurrentLease(unit) {
     const key = (unit.property_name || '').trim().toLowerCase();
     const g = groupLeasesByUnit(boroughLeases).find(g => (g.current.property_address || '').trim().toLowerCase() === key);
@@ -209,8 +224,10 @@ function renderBoroughUnits() {
     const box = document.getElementById('borough-units');
     document.getElementById('borough-setup-note').innerHTML = boroughSetupError ? `<div class="alert alert-error" style="display:block;">${boroughEsc(boroughSetupError)}</div>` : '';
     if (!boroughUnits.length) { box.innerHTML = '<p style="color:var(--text-secondary);">No units yet. Add properties on the New Lease page first.</p>'; return; }
+    const inBorough = boroughUnits.filter(boroughIsBoroughUnit);
+    const outside = boroughUnits.filter(u => !boroughIsBoroughUnit(u));
     let sent = 0;
-    const rows = boroughUnits.map(u => {
+    const rows = inBorough.map(u => {
         const lease = boroughCurrentLease(u);
         const filing = boroughFilings[u.id] || {};
         const occ = filing.occupancy || boroughGuessOccupancy(u, lease);
@@ -230,6 +247,7 @@ function renderBoroughUnits() {
                     <div style="font-weight:600;font-size:15px;">${boroughEsc(u.property_name)}</div>
                     <div style="font-size:13px;color:var(--text-secondary);">Tenants now: ${tenants}${lease ? ` · lease ${lease.lease_start} → ${lease.lease_end}` : ''}</div>
                     ${missing.length ? `<div style="font-size:12px;color:#92400e;margin-top:4px;">Missing for the form: ${missing.join(', ')} → <a href="#" onclick="openBoroughUnit(${u.id});return false;">Unit details</a></div>` : ''}
+                    <div style="font-size:11px;margin-top:2px;"><a href="#" onclick="setBoroughUnitFlag(${u.id}, false);return false;" style="color:var(--text-secondary);">Not in East Stroudsburg? Leave it out</a></div>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                     <select onchange="saveBoroughFiling(${u.id}, { occupancy: this.value })" style="padding:6px;border:1px solid var(--border);border-radius:4px;">
@@ -251,7 +269,9 @@ function renderBoroughUnits() {
             ${files ? `<div style="font-size:13px;margin-top:8px;">${files}</div>` : ''}
         </div>`;
     });
-    box.innerHTML = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">${sent} of ${boroughUnits.length} unit(s) sent for ${boroughYear}. Pick what applies to each unit, check <em>Unit details</em>, then download the filled packet, sign anything still unsigned and email it.</div>` + rows.join('');
+    box.innerHTML = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">${sent} of ${inBorough.length} East Stroudsburg unit(s) sent for ${boroughYear}. Pick what applies to each unit, check <em>Unit details</em>, then Sign & send.</div>`
+        + (inBorough.length ? rows.join('') : '<p style="color:var(--text-secondary);">No units marked as East Stroudsburg.</p>')
+        + (outside.length ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:6px;">Not in the Borough (no registration needed): ${outside.map(u => `${boroughEsc(u.property_name)} <a href="#" onclick="setBoroughUnitFlag(${u.id}, true);return false;">include</a>`).join(' · ')}</div>` : '');
 }
 async function saveBoroughFiling(propertyId, patch) {
     const existing = boroughFilings[propertyId];
@@ -512,10 +532,13 @@ async function renderBoroughDashCard() {
     let progress = '';
     try {
         const [{ data: units }, { data: filings }] = await Promise.all([
-            supabaseClient.from('rental_properties').select('id').eq('is_building_level', false).eq('status', 'active'),
+            supabaseClient.from('rental_properties').select('*').eq('is_building_level', false).eq('status', 'active'),
             supabaseClient.from('rental_borough_filings').select('property_id,status').eq('year', year),
         ]);
-        if (units && filings) progress = ` · ${filings.filter(f => f.status === 'submitted' || f.status === 'licensed').length} of ${units.length} unit(s) sent`;
+        if (units && filings) {
+            const mine = units.filter(boroughIsBoroughUnit);
+            progress = ` · ${filings.filter(f => mine.some(u => u.id === f.property_id) && (f.status === 'submitted' || f.status === 'licensed')).length} of ${mine.length} unit(s) sent`;
+        }
     } catch (_) { }
     const tone = days < 0 ? ['#fee2e2', '#991b1b', '#ef4444'] : days <= 14 ? ['#fef3c7', '#92400e', '#f59e0b'] : ['#eff6ff', '#1e3a8a', '#3b82f6'];
     card.style.display = 'block';
