@@ -15,7 +15,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="assets/borough-forms.js"></script>
+    <script src="assets/borough-forms.js?v=20260922c"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -2628,7 +2628,7 @@
 
                 return `
                     <tr ${endingSoon ? 'style="background:#fff7ed;"' : ''}>
-                        <td><strong>${lease.property_address}</strong>${older.length ? `<br><small style="color:var(--text-secondary);">+${older.length} previous lease${older.length === 1 ? '' : 's'}</small>` : ''}</td>
+                        <td><strong>${lease.property_address}</strong>${older.length ? `<br><a href="#" onclick="togglePrevLeases(${lease.id});return false;" style="font-size:12px;color:var(--primary);">▸ ${older.length} previous lease${older.length === 1 ? '' : 's'}</a>` : ''}</td>
                         <td>${lease.tenant_names}</td>
                         <td>${lease.lease_start}</td>
                         <td>${endingSoon ? `<span style="color:#c2410c;font-weight:600;">${lease.lease_end}</span><br><small style="color:#c2410c;">${daysUntilEnd <= 0 ? 'ends today' : 'in ' + daysUntilEnd + ' days'}</small>` : lease.lease_end}</td>
@@ -2638,11 +2638,21 @@
                         <td>
                             <button class="action-btn btn-primary" onclick="viewLease(${lease.id})">View</button>
                             <button class="action-btn btn-secondary" onclick="regeneratePDF(${lease.id})">PDF</button>
-                            ${lease.status === 'active' ? `<button class="action-btn" style="background: #10b981; color: white;" onclick="renewLease(${lease.id})">Renew</button>` : ''}
+                            <button class="action-btn" style="background: #10b981; color: white;" onclick="renewLease(${lease.id})" title="${lease.status === 'active' ? 'Renew this lease' : 'Start a new lease for this unit from the last one'}">${lease.status === 'active' ? 'Renew' : 'Renew / new lease'}</button>
                             ${lease.status === 'active' ? `<button class="action-btn" style="background: #ef4444; color: white;" onclick="endLease(${lease.id})">End</button>` : ''}
                         </td>
                     </tr>
-                `;
+                ` + older.map(o => `
+                    <tr class="prev-lease prev-of-${lease.id}" style="display:none;background:var(--bg-secondary);color:var(--text-secondary);font-size:13px;">
+                        <td style="padding-left:28px;">↳ previous</td>
+                        <td>${o.tenant_names}</td>
+                        <td>${o.lease_start}</td>
+                        <td>${o.lease_end}</td>
+                        <td>$${parseFloat(o.rent_amount).toLocaleString()}</td>
+                        <td>${(o.lease_type || '').replace('_', ' ')}</td>
+                        <td><span class="status-badge status-expired">${o.status === 'terminated' ? 'Terminated' : 'Ended'}</span>${signedLeaseIds.has(o.id) ? ' <span class="status-badge status-active">✓ Signed</span>' : ''}</td>
+                        <td><button class="action-btn btn-primary" onclick="viewLease(${o.id})">View</button> <button class="action-btn btn-secondary" onclick="regeneratePDF(${o.id})">PDF</button></td>
+                    </tr>`).join('');
             };
             makeColumnsResizable('leases-table');
             tbody.innerHTML = buildingNames.map(b => {
@@ -2652,6 +2662,12 @@
                 return `<tr style="background:var(--bg-tertiary);"><td colspan="8" style="font-weight:700;font-size:15px;padding:10px 12px;">🏢 ${b}
                     <span style="font-weight:400;font-size:13px;color:var(--text-secondary);margin-left:8px;">${units.length} unit${units.length === 1 ? '' : 's'} · ${active} active · $${rent.toLocaleString()}/month</span></td></tr>` + units.map(rowFor).join('');
             }).join('');
+        }
+
+        function togglePrevLeases(leaseId) {
+            const rows = document.querySelectorAll('.prev-of-' + leaseId);
+            const show = rows.length && rows[0].style.display === 'none';
+            rows.forEach(r => r.style.display = show ? '' : 'none');
         }
 
         // Drag the right edge of a column header to change its width (remembered on this device)
@@ -5645,6 +5661,6 @@ If you cannot read something clearly, use null.`
             }
         }
     </script>
-    <script src="assets/borough.js"></script>
+    <script src="assets/borough.js?v=20260922c"></script>
 </body>
 </html>

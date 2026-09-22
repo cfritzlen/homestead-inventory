@@ -228,11 +228,11 @@ function boroughLeaseGroups() {
     // one entry per distinct lease address: the current lease for it
     return groupLeasesByUnit(boroughLeases).map(g => g.current);
 }
-function boroughCurrentLease(unit) {
+function boroughCurrentLease(unit, anyStatus) {
     const picked = (unit.borough_info || {}).lease_address;
     if (!picked && (unit.borough_info || {}).lease_unpicked === 'yes') return null;
     const current = boroughLeaseGroups();
-    const active = (l) => l && l.status === 'active' ? l : null;
+    const active = (l) => l && (anyStatus || l.status === 'active') ? l : null;
     if (picked) {
         const l = current.find(c => (c.property_address || '') === picked);
         if (l) return active(l);
@@ -341,7 +341,10 @@ function boroughUnitState(u) {
     const tenants = occ === 'vacant' ? [] : boroughTenants(lease);
     const info = Object.assign({}, BOROUGH_UNIT_DEFAULTS, u.borough_info || {});
     const needs = [];
-    if (!lease && occ !== 'vacant') needs.push({ text: 'No lease matched this unit.', fix: 'pick' });
+    const ended = !lease ? boroughCurrentLease(u, true) : null;
+    if (!lease && occ !== 'vacant') needs.push(ended
+        ? { text: `The lease for ${(ended.tenant_names || 'this unit')} is ${ended.status === 'terminated' ? 'terminated' : 'not active'} (${ended.lease_start} → ${ended.lease_end}). Renew it on All Leases, or set this unit to Vacant.`, fix: 'renew', leaseId: ended.id }
+        : { text: 'No lease matched this unit.', fix: 'pick' });
     const noEmail = tenants.filter(t => !t.email).map(t => t.name);
     if (noEmail.length) needs.push({ text: `Needs an email for ${noEmail.join(' and ')} before it can be sent.`, fix: 'tenants' });
     if (!info.pin) needs.push({ text: 'Needs the PIN / Tax ID.', fix: 'unit' });
@@ -370,16 +373,17 @@ function renderBoroughUnits() {
 
 function renderBoroughCard(u, st) {
     const { lease, filing, occ, status, signing, tenants, needs, submitted } = st;
-    const names = occ === 'vacant' ? 'Vacant' : (tenants.map(t => t.name).join(' & ') || (lease ? boroughEsc(lease.tenant_names || '') : '') || 'No lease matched');
+    const endedLease = !lease ? boroughCurrentLease(u, true) : null;
+    const names = occ === 'vacant' ? 'Vacant' : (tenants.map(t => t.name).join(' & ') || (lease ? boroughEsc(lease.tenant_names || '') : '') || (endedLease ? `${boroughEsc(endedLease.tenant_names || '')} (lease ended)` : 'No lease matched'));
     const pill = submitted ? (status === 'licensed' ? ['bu-p-ok', 'License received'] : ['bu-p-sent', 'Sent to Borough' + (filing.submitted_on ? ' · ' + boroughFmt(filing.submitted_on) : '')])
         : signing === 'sent' ? ['bu-p-wait', 'Out for signature']
         : signing === 'signed' ? ['bu-p-ok', 'Signed · ready for Borough']
         : ['bu-p-todo', 'Not started'];
     const contact = tenants.map(t => [t.email, t.phone, t.employer].filter(Boolean).join(' · ')).filter(Boolean);
     const occSelect = `<select onchange="saveBoroughFiling(${u.id}, { occupancy: this.value })">${Object.entries(BOROUGH_OCC).map(([k, v]) => `<option value="${k}" ${k === occ ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
-    const fixLink = (n) => n.fix === 'pick' ? '' : n.fix === 'tenants' ? ` <a href="#" onclick="boroughToggle('bt-box-${u.id}', true);return false;">Add them</a>`
+    const fixLink = (n) => n.fix === 'pick' ? '' : n.fix === 'renew' ? ` <a href="#" onclick="renewLease(${n.leaseId});return false;">Renew now</a>` : n.fix === 'tenants' ? ` <a href="#" onclick="boroughToggle('bt-box-${u.id}', true);return false;">Add them</a>`
         : n.fix === 'unit' ? ` <a href="#" onclick="openBoroughUnit(${u.id});return false;">Unit details</a>` : ` <a href="#" onclick="document.querySelector('#borough-info-form').closest('details').open = true; document.querySelector('#borough-info-form').scrollIntoView({behavior:'smooth'});return false;">Fill it in</a>`;
-    const leasePicker = !lease && occ !== 'vacant' ? `<div class="bu-need">⚠️ No lease matched this unit. Pick it:
+    const leasePicker = !lease && occ !== 'vacant' && !needs.some(n => n.fix === 'renew') ? `<div class="bu-need">⚠️ No lease matched this unit. Pick it:
             <select onchange="setBoroughUnitLease(${u.id}, this.value)" style="font:inherit;padding:4px;border:1px solid var(--border);border-radius:4px;max-width:100%;">
                 <option value="">— choose the lease —</option>
                 ${boroughLeaseGroups().filter(c => c.status === 'active').map(c => `<option value="${boroughEsc(c.property_address)}">${boroughEsc(c.property_address)} · ${boroughEsc(c.tenant_names || '')}</option>`).join('')}
