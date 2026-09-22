@@ -1490,8 +1490,8 @@
                         <table id="leases-table">
                             <thead>
                                 <tr>
+                                    <th>Unit</th>
                                     <th>Tenant</th>
-                                    <th>Property</th>
                                     <th>Start Date</th>
                                     <th>End Date</th>
                                     <th>Monthly Rent</th>
@@ -2612,24 +2612,26 @@
                 
                 let statusClass = 'status-active';
                 let statusText = 'Active';
-                
+                let endingSoon = false;
+
                 if (lease.status === 'terminated') {
                     statusClass = 'status-expired';
                     statusText = 'Terminated';
                 } else if (daysUntilEnd < 0) {
                     statusClass = 'status-expired';
                     statusText = 'Expired';
-                } else if (daysUntilEnd <= 30) {
+                } else if (daysUntilEnd <= 90) {
                     statusClass = 'status-expiring';
-                    statusText = 'Expiring Soon';
+                    statusText = daysUntilEnd <= 30 ? 'Ending soon' : 'Ends within 90 days';
+                    endingSoon = lease.status === 'active';
                 }
 
                 return `
-                    <tr>
+                    <tr ${endingSoon ? 'style="background:#fff7ed;"' : ''}>
+                        <td><strong>${lease.property_address}</strong>${older.length ? `<br><small style="color:var(--text-secondary);">+${older.length} previous lease${older.length === 1 ? '' : 's'}</small>` : ''}</td>
                         <td>${lease.tenant_names}</td>
-                        <td>${lease.property_address}${older.length ? `<br><small style="color:var(--text-secondary);">+${older.length} previous lease${older.length === 1 ? '' : 's'}</small>` : ''}</td>
                         <td>${lease.lease_start}</td>
-                        <td>${lease.lease_end}</td>
+                        <td>${endingSoon ? `<span style="color:#c2410c;font-weight:600;">${lease.lease_end}</span><br><small style="color:#c2410c;">${daysUntilEnd <= 0 ? 'ends today' : 'in ' + daysUntilEnd + ' days'}</small>` : lease.lease_end}</td>
                         <td>$${parseFloat(lease.rent_amount).toLocaleString()}</td>
                         <td>${lease.lease_type.replace('_', ' ')}</td>
                         <td><span class="status-badge ${statusClass}">${statusText}</span>${signedLeaseIds.has(lease.id) ? ' <span class="status-badge status-active" title="Signed copy attached">✓ Signed</span>' : (lease.signing_status === 'sent' ? ' <span class="status-badge status-expiring" title="Waiting for signatures">✍️ Out for signature</span>' : '')}</td>
@@ -2642,6 +2644,7 @@
                     </tr>
                 `;
             };
+            makeColumnsResizable('leases-table');
             tbody.innerHTML = buildingNames.map(b => {
                 const units = byBuilding.get(b).sort((x, y) => (x.current.property_address || '').localeCompare(y.current.property_address || '', undefined, { numeric: true }));
                 const active = units.filter(u => u.current.status === 'active').length;
@@ -2649,6 +2652,39 @@
                 return `<tr style="background:var(--bg-tertiary);"><td colspan="8" style="font-weight:700;font-size:15px;padding:10px 12px;">🏢 ${b}
                     <span style="font-weight:400;font-size:13px;color:var(--text-secondary);margin-left:8px;">${units.length} unit${units.length === 1 ? '' : 's'} · ${active} active · $${rent.toLocaleString()}/month</span></td></tr>` + units.map(rowFor).join('');
             }).join('');
+        }
+
+        // Drag the right edge of a column header to change its width (remembered on this device)
+        function makeColumnsResizable(tableId) {
+            const table = document.getElementById(tableId);
+            if (!table || table.dataset.resizable) return;
+            table.dataset.resizable = '1';
+            table.style.tableLayout = 'fixed';
+            table.style.minWidth = '0';
+            const key = 'colwidths:' + tableId;
+            let saved = {}; try { saved = JSON.parse(localStorage.getItem(key) || '{}'); } catch (_) {}
+            const ths = [...table.querySelectorAll('thead th')];
+            ths.forEach((th, i) => {
+                th.style.position = 'relative';
+                if (saved[i]) th.style.width = saved[i] + 'px';
+                const grip = document.createElement('div');
+                grip.title = 'Drag to resize';
+                grip.style.cssText = 'position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;user-select:none;z-index:2;';
+                grip.addEventListener('mouseenter', () => grip.style.background = 'rgba(30,64,175,0.25)');
+                grip.addEventListener('mouseleave', () => grip.style.background = '');
+                const start = (clientX) => {
+                    const startX = clientX, startW = th.getBoundingClientRect().width;
+                    const move = (x) => { const w = Math.max(60, startW + (x - startX)); th.style.width = w + 'px'; saved[i] = Math.round(w); };
+                    const onMouse = (e) => move(e.clientX);
+                    const onTouch = (e) => move(e.touches[0].clientX);
+                    const stop = () => { document.removeEventListener('mousemove', onMouse); document.removeEventListener('mouseup', stop); document.removeEventListener('touchmove', onTouch); document.removeEventListener('touchend', stop); try { localStorage.setItem(key, JSON.stringify(saved)); } catch (_) {} };
+                    document.addEventListener('mousemove', onMouse); document.addEventListener('mouseup', stop);
+                    document.addEventListener('touchmove', onTouch, { passive: true }); document.addEventListener('touchend', stop);
+                };
+                grip.addEventListener('mousedown', (e) => { e.preventDefault(); start(e.clientX); });
+                grip.addEventListener('touchstart', (e) => start(e.touches[0].clientX), { passive: true });
+                th.appendChild(grip);
+            });
         }
 
         // Which building a lease address belongs to: a building-level property
