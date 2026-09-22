@@ -1428,10 +1428,12 @@
                             <div class="form-group">
                                 <label>First Month Rent</label>
                                 <input type="number" name="first_month_rent" step="0.01">
+                                <label style="font-weight:400;font-size:13px;margin-top:4px;"><input type="checkbox" name="first_month_prepaid" id="first-month-prepaid"> Previously paid (original lease)</label>
                             </div>
                             <div class="form-group">
                                 <label>Last Month Rent</label>
                                 <input type="number" name="last_month_rent" step="0.01">
+                                <label style="font-weight:400;font-size:13px;margin-top:4px;"><input type="checkbox" name="last_month_prepaid" id="last-month-prepaid"> Previously paid (original lease)</label>
                             </div>
                         </div>
 
@@ -2079,6 +2081,8 @@
                 leaseData[key] = value === '' ? null : value;
             }
             leaseData.lease_options = collectLeaseOptions();
+            leaseData.first_month_prepaid = document.getElementById('first-month-prepaid').checked;
+            leaseData.last_month_prepaid = document.getElementById('last-month-prepaid').checked;
             
             // Store renewal info for later use in PDF generation, but remove from database save
             const renewalInfo = {
@@ -2138,6 +2142,8 @@
 
                 // Reset the form
                 e.target.reset();
+                document.getElementById('first-month-prepaid').checked = false;
+                document.getElementById('last-month-prepaid').checked = false;
                 document.getElementById('is-renewal').value = 'false';
                 document.getElementById('previous-lease-id').value = '';
                 document.getElementById('renewal-indicator').style.display = 'none';
@@ -2182,16 +2188,17 @@
             y += 10;
             
             // Renewal indicator if applicable
-            if (leaseData.is_renewal === 'true' && leaseData.previous_lease_id) {
+            if ((leaseData.is_renewal === true || leaseData.is_renewal === 'true') && leaseData.previous_lease_id) {
                 doc.setFontSize(10);
                 doc.setFont('times', 'bold');
-                doc.text('☑', leftMargin, y);
+                pdfCheckbox(doc, leftMargin, y, true);
                 doc.text('LEASE RENEWAL', leftMargin + 5, y);
                 y += 5;
                 doc.setFont('times', 'normal');
                 doc.setFontSize(9);
-                // Note: We don't have the previous lease date in leaseData, so we'll just indicate it's a renewal
-                doc.text('This lease renews and replaces the previous lease agreement for this property.', leftMargin + 5, y);
+                const prev = (typeof allLeases !== 'undefined' ? allLeases : []).find(l => l.id === Number(leaseData.previous_lease_id));
+                const prevText = prev ? ` dated ${prev.lease_start} to ${prev.lease_end}` : '';
+                doc.text(`This lease renews and replaces the previous lease agreement for this property${prevText}.`, leftMargin + 5, y);
                 y += 8;
             }
             
@@ -2316,13 +2323,15 @@
             const securityDep = leaseData.security_deposit || '';
             
             // First month checkbox
-            pdfCheckbox(doc, leftMargin, y, !!firstMonth);
-            doc.text(`First month's Rent of $${firstMonth || '________'} due at lease signing.`, leftMargin + 5, y);
+            const firstPre = leaseData.first_month_prepaid === true || leaseData.first_month_prepaid === 'true';
+            pdfCheckbox(doc, leftMargin, y, !!firstMonth || firstPre);
+            doc.text(`First month's Rent of $${firstMonth || '________'} ${firstPre ? 'previously paid on the original lease.' : 'due at lease signing.'}`, leftMargin + 5, y);
             y += 5;
             
             // Last month checkbox
-            pdfCheckbox(doc, leftMargin, y, !!lastMonth);
-            doc.text(`Last month's Rent of $${lastMonth || '________'} due at lease signing.`, leftMargin + 5, y);
+            const lastPre = leaseData.last_month_prepaid === true || leaseData.last_month_prepaid === 'true';
+            pdfCheckbox(doc, leftMargin, y, !!lastMonth || lastPre);
+            doc.text(`Last month's Rent of $${lastMonth || '________'} ${lastPre ? 'previously paid on the original lease.' : 'due at lease signing.'}`, leftMargin + 5, y);
             y += 5;
             
             // Security deposit checkbox
@@ -2332,18 +2341,18 @@
             
             doc.text('A monthly non-refundable pet fee (if applicable) in the amount of', leftMargin, y);
             y += 5;
-            const catFee = leaseData.cat_fee || '';
-            const numCats = leaseData.num_cats || '';
-            const catTotal = (catFee && numCats) ? (parseFloat(catFee) * parseInt(numCats)).toFixed(2) : '';
-            const catLine = `$${catFee || '________'}/month per cat – number of cats ${numCats || '___'} - Total Monthly Fee to be paid with rent $${catTotal || '________'}`;
+            const catFee = parseFloat(leaseData.cat_fee) || 0;
+            const numCats = parseInt(leaseData.num_cats) || 0;
+            const catTotal = (catFee * numCats).toFixed(2);
+            const catLine = `$${catFee.toFixed(2)}/month per cat – number of cats ${numCats} - Total Monthly Fee to be paid with rent $${catTotal}`;
             const splitCat = doc.splitTextToSize(catLine, 165);
             doc.text(splitCat, leftMargin + 5, y);
             y += splitCat.length * 5;
             
-            const dogFee = leaseData.dog_fee || '';
-            const numDogs = leaseData.num_dogs || '';
-            const dogTotal = (dogFee && numDogs) ? (parseFloat(dogFee) * parseInt(numDogs)).toFixed(2) : '';
-            const dogLine = `$${dogFee || '________'}/month per dog – number of dogs ${numDogs || '___'} - Total Monthly Fee to be paid with rent $${dogTotal || '________'}`;
+            const dogFee = parseFloat(leaseData.dog_fee) || 0;
+            const numDogs = parseInt(leaseData.num_dogs) || 0;
+            const dogTotal = (dogFee * numDogs).toFixed(2);
+            const dogLine = `$${dogFee.toFixed(2)}/month per dog – number of dogs ${numDogs} - Total Monthly Fee to be paid with rent $${dogTotal}`;
             const splitDog = doc.splitTextToSize(dogLine, 165);
             doc.text(splitDog, leftMargin + 5, y);
             
@@ -2607,6 +2616,23 @@
             return g ? [g.current, ...g.older].filter(l => l.id !== lease.id) : [];
         }
 
+        // First lease in this tenant's chain at this unit (for deposits already paid)
+        function originalLeaseFor(lease) {
+            let cur = lease, guard = 0;
+            while (cur && cur.previous_lease_id && guard++ < 20) {
+                const prev = allLeases.find(l => l.id === Number(cur.previous_lease_id));
+                if (!prev) break;
+                cur = prev;
+            }
+            if (cur === lease) {
+                // No chain recorded: oldest lease at this unit with the same first tenant
+                const same = allLeases.filter(l => l.property_address === lease.property_address && (l.tenant1_name || '') === (lease.tenant1_name || ''))
+                    .sort((a, b) => (a.lease_start || '').localeCompare(b.lease_start || ''));
+                if (same.length) cur = same[0];
+            }
+            return cur || lease;
+        }
+
         // Delete = move to the recycle bin. Restore or "delete forever" from there.
         async function deleteLease(id) {
             const lease = allLeases.find(l => l.id === id);
@@ -2746,10 +2772,14 @@
             document.getElementById('rent-increase-percent').value = '';
             document.getElementById('rent-amount-renewal').value = '';
             
-            // Fill deposits (can be edited)
-            document.querySelector('[name="security_deposit"]').value = lease.security_deposit || '';
-            document.querySelector('[name="first_month_rent"]').value = lease.first_month_rent || '';
-            document.querySelector('[name="last_month_rent"]').value = lease.last_month_rent || '';
+            // Deposits: what was paid on the original lease (editable). Walk the
+            // renewal chain back to the first lease when we can.
+            const original = originalLeaseFor(lease);
+            document.querySelector('[name="security_deposit"]').value = original.security_deposit ?? lease.security_deposit ?? '';
+            document.querySelector('[name="first_month_rent"]').value = original.first_month_rent ?? lease.first_month_rent ?? '';
+            document.querySelector('[name="last_month_rent"]').value = original.last_month_rent ?? lease.last_month_rent ?? '';
+            document.getElementById('first-month-prepaid').checked = true;
+            document.getElementById('last-month-prepaid').checked = true;
             
             // Fill pet info (defaults from old lease, can be edited)
             document.querySelector('[name="num_cats"]').value = lease.num_cats || 0;
@@ -2761,8 +2791,7 @@
             document.querySelector('[name="notes"]').value = lease.notes || '';
 
             // Lease options: what the old lease had, else the property's defaults
-            const oldOpts = lease.lease_options && typeof lease.lease_options === 'object' && Object.keys(lease.lease_options).length ? lease.lease_options : null;
-            if (oldOpts) applyLeaseOptions(oldOpts); else onPropertyChange();
+            if (hasOptions(lease.lease_options)) applyLeaseOptions(lease.lease_options); else onPropertyChange();
             
             // Scroll to top
             window.scrollTo(0, 0);
@@ -5129,6 +5158,18 @@ If you cannot read something clearly, use null.`
             ['trash', 'Trash', 585.8], ['pest_control', 'Pest control', 564.5], ['bed_bugs', 'Bed bugs', 552.2], ['hoa_fees', 'HOA fees', 539.9],
             ['snow', 'Snow', 527.6], ['lawn', 'Lawn & shrub care', 515.3],
         ];
+        // What a new lease starts with (per property choices override these)
+        const DEFAULT_LEASE_OPTIONS = {
+            appliances: [],
+            maintenance: { smoke_detectors: 'landlord', extermination: 'landlord', locks_keys: 'landlord', outside_clean: 'tenant', appliances_maint: 'landlord', fixtures: 'landlord' },
+            utilities: { heating: 'tenant', cooling: 'tenant', cooking: 'tenant', electric: 'tenant', cable_internet: 'tenant', telephone: 'tenant',
+                         water: 'landlord', sewer: 'landlord', trash: 'landlord', pest_control: 'landlord', bed_bugs: 'tenant', hoa_fees: 'tenant', snow: 'tenant', lawn: 'tenant' },
+        };
+        const hasOptions = (o) => !!(o && typeof o === 'object' && ((o.appliances || []).length || Object.keys(o.maintenance || {}).length || Object.keys(o.utilities || {}).length));
+        // The small tick boxes on the static pages (PDF points): [box centre x for Landlord, for Tenant]
+        const MAINT_BOX_X = [47.3, 108.3];
+        const UTIL_BOX_X = [151.3, 231.3];
+
         // Initial lines "________ ________": [middle page index, y]
         const INITIAL_LINES = [[2, 137.1], [7, 297.3], [9, 428.9], [10, 302.2], [11, 390.8], [11, 117.6], [12, 356.3], [15, 585.6], [16, 435.3], [16, 74.1]];
         const INITIAL_X = [36, 252, 468, 144];   // tenant 1, 2, 3, 4
@@ -5177,7 +5218,7 @@ If you cannot read something clearly, use null.`
             const rows = (list, extraNA) => list.map(([key, label]) => `
                 <div style="display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;">
                     <span style="flex:1 1 220px;">${label}</span>
-                    <span>${radio(key, 'landlord', 'Landlord')}${radio(key, 'tenant', 'Tenant')}${extraNA && key === 'hoa_fees' ? radio(key, 'na', 'N/A') : ''}</span>
+                    <span>${radio(key, 'landlord', 'Landlord')}${radio(key, 'tenant', 'Tenant')}</span>
                 </div>`).join('');
             el.innerHTML = `
                 <div style="margin-bottom:14px;"><strong style="font-size:14px;">Appliances included (page 1)</strong><div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px;font-size:13px;">
@@ -5208,7 +5249,7 @@ If you cannot read something clearly, use null.`
         function onPropertyChange() {
             const sel = document.getElementById('property-dropdown');
             const prop = sel ? propertiesByName[sel.value] : null;
-            applyLeaseOptions(prop ? prop.lease_options : {});
+            applyLeaseOptions(prop && hasOptions(prop.lease_options) ? prop.lease_options : DEFAULT_LEASE_OPTIONS);
         }
 
         // ---- the full PDF ----
@@ -5249,7 +5290,8 @@ If you cannot read something clearly, use null.`
             const font = await middle.embedFont(PDFLib.StandardFonts.Helvetica);
             const pages = middle.getPages();
             const white = PDFLib.rgb(1, 1, 1), black = PDFLib.rgb(0, 0, 0);
-            const ring = (pg, x, y, w, h) => pg.drawRectangle({ x: x - 2, y: y - 2.5, width: w + 4, height: h + 3, borderColor: black, borderWidth: 1 });
+            const bold = await middle.embedFont(PDFLib.StandardFonts.HelveticaBold);
+            const xMark = (pg, cx, y) => { const w = bold.widthOfTextAtSize('X', 9); pg.drawText('X', { x: cx - w / 2, y, size: 9, font: bold, color: black }); };
 
             // Emergency phone (lease page 4): "...Please call 570" / "560 6626 for all Emergency calls!"
             // Preferred: cut the old number out of the page text. Fallback: paint over it.
@@ -5263,14 +5305,13 @@ If you cannot read something clearly, use null.`
             // Who handles what: box around the chosen word
             for (const [key, , y] of MAINT_ROWS) {
                 const v = (opts.maintenance || {})[key];
-                if (v === 'landlord') ring(pages[1], 63.3, y, 31.5, 9);
-                else if (v === 'tenant') ring(pages[1], 120.9, y, 25.1, 9);
+                if (v === 'landlord') xMark(pages[1], MAINT_BOX_X[0], y);
+                else if (v === 'tenant') xMark(pages[1], MAINT_BOX_X[1], y);
             }
             for (const [key, , y] of UTIL_ROWS) {
                 const v = (opts.utilities || {})[key];
-                if (v === 'landlord') ring(pages[3], 165.5, y, 29.8, 8.5);
-                else if (v === 'tenant') ring(pages[3], 245.3, y, 23.7, 8.5);
-                else if (v === 'na') ring(pages[3], 293.7, y, 12, 8.5);
+                if (v === 'landlord') xMark(pages[3], UTIL_BOX_X[0], y);
+                else if (v === 'tenant' || v === 'na') xMark(pages[3], UTIL_BOX_X[1], y);
             }
 
             // Initial lines: every tenant initials every line. Lines 1-2 exist on the
