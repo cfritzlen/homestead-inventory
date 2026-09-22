@@ -7,7 +7,13 @@ what was sent for each unit.
 
 ## One-time setup
 1. Supabase (Homestead project) → SQL Editor → paste all of
-   `supabase/migrations/021_borough_registration.sql` → Run.
+   `supabase/migrations/021_borough_registration.sql` → Run, then the same
+   with `022_borough_signing.sql`.
+1b. In a terminal in the repo folder (after `git pull`):
+   ```
+   supabase functions deploy borough-sign --no-verify-jwt
+   ```
+   Same flag as lease-sign: tenants have no login, their private link is the key.
 2. Rentals → Borough → open **Owner & property manager details**, fill in
    your mailing address (and manager info if someone else manages), Save.
    If you have not set up a signature yet, tap **Set up my signature &
@@ -25,16 +31,35 @@ what was sent for each unit.
     (send last year's signed Addendum if you still have it).
   - New tenants → Registration + Addendum (every adult signs it).
   - Vacant → Registration (tenant line says VACANT) + Affidavit of Vacant Unit.
-- Check every line, get tenant signatures on the Addendum, then email the
-  packet to rental@eaststroudsburgboro.org. Set the unit to **Sent to
-  Borough**, and attach a copy of what you sent (and later the license).
+- **Sign & send to tenants** (units with tenants): you sign, each tenant
+  gets an email link (sign.html?b=…) to read the Addendum and tap "Sign
+  here". When the last one signs, the app adds a signing-record page and,
+  if the box was ticked, emails the whole packet (Registration, affidavit if
+  any, signed Addendum) to rental@eaststroudsburgboro.org with you in copy.
+  Otherwise a **Send packet to Borough** button appears.
+- **Send packet to Borough** (vacant units): sends the Registration and the
+  Affidavit of Vacant Unit straight away.
+- The unit then shows "Sent to the Borough" with the date; set it to
+  **License received** when the license arrives and attach it.
+- Prefer paper? **Filled packet (zip)** still downloads everything to send
+  yourself.
+- Tenants only ever see the 2-page Addendum. Its manager address line uses
+  "Address tenants see on the Addendum" from Owner details (falls back to
+  the mailing address).
 
 ## Files
 - Blank forms and Sue's guides: `assets/borough/*.pdf`.
 - Form filling (line positions): `assets/borough-forms.js`. If the Borough
   sends new versions of the forms, replace the PDFs and tell Claude so the
   positions get redone.
-- Tab logic: `assets/borough.js`. Tables: `rental_borough_filings` (one row
-  per unit per year), `rental_borough_files` (copies, stored in the private
-  `rental-leases` bucket under `borough/`), `borough_info` column on
-  `rental_properties`, and the `borough_info` key in `rental_settings`.
+- Tab logic: `assets/borough.js`. Building-wide defaults (4 units, 2 bed /
+  1 bath, 1 water / 5 electric / 4 trash meters, smoke detectors yes,
+  license and evacuation plan not posted) live in `BOROUGH_UNIT_DEFAULTS`
+  there; Unit details overrides them per unit.
+- Signing: `supabase/functions/borough-sign/index.ts` (mirror of lease-sign)
+  and the `?b=` mode of `sign.html`.
+- Tables: `rental_borough_filings` (one row per unit per year, with
+  signing_status / auto_submit), `rental_borough_signers`,
+  `rental_borough_files` (copies, stored in the private `rental-leases`
+  bucket under `borough/`), `borough_info` column on `rental_properties`,
+  and the `borough_info` key in `rental_settings`.

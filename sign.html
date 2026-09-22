@@ -67,7 +67,7 @@
   <div class="card" id="sign-card" style="display:none;">
     <h2>Finish</h2>
     <p class="muted" id="finish-hint">Tap every yellow spot above first.</p>
-    <div style="margin:14px 0;padding:12px;border:1px dashed #94a3b8;border-radius:8px;">
+    <div id="id-card" style="margin:14px 0;padding:12px;border:1px dashed #94a3b8;border-radius:8px;">
       <strong>Photo of your government-issued ID</strong>
       <p class="muted" style="margin:4px 0 8px;">Driver's license or passport. Take a clear photo of the front. It is stored privately with the lease and only the landlord can see it.</p>
       <label class="btn-primary" style="display:inline-block;width:auto;padding:10px 16px;cursor:pointer;">📷 Take a photo or choose one
@@ -89,8 +89,12 @@
 </div>
 
 <script>
-const FN = 'https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/lease-sign';
-const token = new URLSearchParams(location.search).get('t') || '';
+// ?t=<token> signs a lease (lease-sign); ?b=<token> signs the Borough's Addendum to Lease (borough-sign)
+const params = new URLSearchParams(location.search);
+const BOROUGH = !!params.get('b');
+const FN = 'https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/' + (BOROUGH ? 'borough-sign' : 'lease-sign');
+const token = params.get('b') || params.get('t') || '';
+const DOC = BOROUGH ? 'addendum' : 'lease';
 let signerName = '';
 let adopted = null;          // { signature_png, initials_png }
 let idImage = null;          // resized JPEG data URL of the ID photo
@@ -114,14 +118,24 @@ async function init() {
   try {
     const data = await call({ action: 'get', token });
     signerName = data.signer.name; lease = data.lease; tags = data.tags || [];
-    document.getElementById('title').textContent = `Lease: ${data.lease.property}`;
-    document.getElementById('subtitle').textContent = `${data.lease.start} to ${data.lease.end} · $${Number(data.lease.rent).toLocaleString()}/month · from ${data.lease.landlord}`;
+    if (BOROUGH) {
+      document.title = 'Sign the addendum';
+      document.getElementById('title').textContent = `Addendum to Lease: ${data.lease.property}`;
+      document.getElementById('subtitle').textContent = `Borough of East Stroudsburg · ${data.lease.year} rental registration · from ${data.lease.landlord}`;
+      document.querySelector('#intro-card .muted').textContent = 'Two steps: set up your signature, then tap the "Sign here" spot on the addendum. This is a Borough form; it does not change your lease or rent.';
+      document.querySelector('#review-card h2').textContent = 'Read the addendum and tap the yellow spot';
+      document.getElementById('id-card').style.display = 'none';
+      document.querySelector('label.agree span').textContent = 'I have read the addendum. I agree to sign it electronically, and I understand this signature is as binding as a handwritten one.';
+    } else {
+      document.getElementById('title').textContent = `Lease: ${data.lease.property}`;
+      document.getElementById('subtitle').textContent = `${data.lease.start} to ${data.lease.end} · $${Number(data.lease.rent).toLocaleString()}/month · from ${data.lease.landlord}`;
+    }
     renderStatus(data.signers);
     const dl = (url, label) => url ? `<p style="margin-top:10px;"><a class="btn-primary" style="display:inline-block;text-decoration:none;width:auto;" href="${url}" target="_blank">⬇ ${label}</a></p>` : '';
-    if (data.lease.status === 'signed') { setMsg('This lease is fully signed. The signed copy was emailed to everyone.' + dl(data.signed_url || data.pdf_url, 'Download the signed lease for your records'), 'ok'); return; }
-    if (data.signer.status === 'signed') { setMsg(`Thanks ${esc(signerName)}, you already signed this lease. You'll get the fully signed copy by email once everyone has signed.` + dl(data.pdf_url, 'Download a copy for your records'), 'ok'); return; }
-    if (data.lease.status !== 'sent') { setMsg('This lease is not open for signing right now.', 'err'); return; }
-    if (!data.pdf_url) { setMsg('The lease PDF is not available. Please contact the landlord.', 'err'); return; }
+    if (data.lease.status === 'signed') { setMsg(`This ${DOC} is fully signed.` + (BOROUGH ? '' : ' The signed copy was emailed to everyone.') + dl(data.signed_url || data.pdf_url, `Download the signed ${DOC} for your records`), 'ok'); return; }
+    if (data.signer.status === 'signed') { setMsg(`Thanks ${esc(signerName)}, you already signed this ${DOC}.` + (BOROUGH ? '' : " You'll get the fully signed copy by email once everyone has signed.") + dl(data.pdf_url, 'Download a copy for your records'), 'ok'); return; }
+    if (data.lease.status !== 'sent') { setMsg(`This ${DOC} is not open for signing right now.`, 'err'); return; }
+    if (!data.pdf_url) { setMsg(`The ${DOC} PDF is not available. Please contact the landlord.`, 'err'); return; }
     document.getElementById('intro-title').textContent = `Hi ${signerName}`;
     show('intro-card', true);
     window.__pdfUrl = data.pdf_url;
@@ -134,7 +148,7 @@ function renderStatus(list) {
 
 // Step 1: adopt a signature (draw or type), then show the document with tags
 async function startSigning() {
-  const r = await ESign.adopt({ name: signerName, initials: true, title: 'Set up your signature and initials' });
+  const r = await ESign.adopt(BOROUGH ? { name: signerName, initials: false, title: 'Set up your signature' } : { name: signerName, initials: true, title: 'Set up your signature and initials' });
   if (!r) return;
   adopted = r;
   show('intro-card', false);
@@ -153,7 +167,7 @@ async function renderPdf(url) {
   try {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf = await pdfjsLib.getDocument(url).promise;
-    document.getElementById('page-count').textContent = `${pdf.numPages} pages. Read through, and tap each yellow spot to place your initials or signature.`;
+    document.getElementById('page-count').textContent = BOROUGH ? `${pdf.numPages} pages. Read through, then tap the yellow spot on page 2 to place your signature.` : `${pdf.numPages} pages. Read through, and tap each yellow spot to place your initials or signature.`;
     const holder = document.getElementById('pages');
     const width = Math.min(holder.clientWidth || 800, 900);
     for (let n = 1; n <= pdf.numPages; n++) {
@@ -218,9 +232,10 @@ function updateProgress() {
   if (next) next.el.classList.add('next');
   document.getElementById('next-btn').style.display = next ? '' : 'none';
   const allDone = total > 0 && done === total;
-  document.getElementById('sign-btn').disabled = !(allDone && idImage);
+  const needId = !BOROUGH;
+  document.getElementById('sign-btn').disabled = !(allDone && (idImage || !needId));
   document.getElementById('finish-hint').textContent = !allDone ? `Tap every yellow spot above first (${done} of ${total} done).`
-    : (!idImage ? 'All spots done. Now add a photo of your ID below.' : 'All set. Tick the box and finish.');
+    : (needId && !idImage ? 'All spots done. Now add a photo of your ID below.' : 'All set. Tick the box and finish.');
 }
 function gotoNext() { const next = tagEls.find(t => !t.done); if (next) next.el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 
@@ -230,16 +245,18 @@ async function submitSignature() {
   if (!adopted) { alert('Set up your signature first.'); return; }
   const done = tagEls.filter(t => t.done).length;
   if (done < tagEls.length) { alert('Please tap every yellow spot first.'); gotoNext(); return; }
-  if (!idImage) { alert('Please add a photo of your government-issued ID.'); return; }
+  if (!idImage && !BOROUGH) { alert('Please add a photo of your government-issued ID.'); return; }
   if (!document.getElementById('consent').checked) { alert('Please tick the agreement box.'); return; }
   btn.disabled = true; btn.textContent = 'Signing…';
   try {
-    const r = await call({ action: 'sign', token, signature_png: adopted.signature_png, initials_png: adopted.initials_png, tags_done: done, consent: true, id_image: idImage });
+    const r = BOROUGH
+      ? await call({ action: 'sign', token, signature_png: adopted.signature_png, consent: true })
+      : await call({ action: 'sign', token, signature_png: adopted.signature_png, initials_png: adopted.initials_png, tags_done: done, consent: true, id_image: idImage });
     show('review-card', false); show('sign-card', false); document.getElementById('footer').style.display = 'none';
     const dl = r.download_url ? `<p style="margin-top:10px;"><a class="btn-primary" style="display:inline-block;text-decoration:none;width:auto;" href="${r.download_url}" target="_blank">⬇ Download a copy for your records</a></p>` : '';
     if (r.warning) setMsg(esc(r.warning) + ' The landlord has been notified.', 'err');
-    else if (r.finalized) setMsg(`Thank you, ${esc(signerName)}. Everyone has now signed. The signed lease is on its way to your email.` + dl, 'ok');
-    else setMsg(`Thank you, ${esc(signerName)}. Your signature is recorded. ${r.remaining} more signature${r.remaining === 1 ? '' : 's'} to go; you'll get the fully signed copy by email when everyone has signed.` + dl, 'ok');
+    else if (r.finalized) setMsg(`Thank you, ${esc(signerName)}. Everyone has now signed.` + (BOROUGH ? (r.submitted ? ' The packet has been sent to the Borough.' : '') : ' The signed lease is on its way to your email.') + dl, 'ok');
+    else setMsg(`Thank you, ${esc(signerName)}. Your signature is recorded. ${r.remaining} more signature${r.remaining === 1 ? '' : 's'} to go` + (BOROUGH ? '.' : "; you'll get the fully signed copy by email when everyone has signed.") + dl, 'ok');
     try { const d = await call({ action: 'get', token }); renderStatus(d.signers); } catch (_) {}
     window.scrollTo(0, 0);
   } catch (e) {
