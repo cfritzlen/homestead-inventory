@@ -2677,7 +2677,7 @@
                         <td>${lease.lease_start}</td>
                         <td>${endingSoon ? `<span style="color:#c2410c;font-weight:600;">${m2m ? 'month to month' : lease.lease_end}</span><br><small style="color:#c2410c;">${m2m ? 'rent review ' : ''}${daysUntilEnd <= 0 ? 'due now' : 'in ' + daysUntilEnd + ' days'}</small>` : endCell}</td>
                         <td>$${parseFloat(lease.rent_amount).toLocaleString()}</td>
-                        <td>${lease.lease_type.replace('_', ' ')}</td>
+                        <td>${(lease.lease_type || '').replace(/_/g, ' ')}</td>
                         <td><span class="status-badge ${statusClass}">${statusText}</span>${signedLeaseIds.has(lease.id) ? ' <span class="status-badge status-active" title="Signed copy attached">✓ Signed</span>' : (lease.signing_status === 'sent' ? ' <span class="status-badge status-expiring" title="Waiting for signatures">✍️ Out for signature</span>' : '')}</td>
                         <td style="white-space:nowrap;">
                             <div class="row-actions">
@@ -2939,9 +2939,19 @@
                 .replace(/\b(apt|apartment|unit|suite|ste|floor|fl)\b/g, ' ')
                 .replace(/\bst\b/g, 'street').replace(/\bave\b/g, 'avenue').replace(/\brd\b/g, 'road')
                 .replace(/[^a-z0-9]/g, '');
+            // An unlinked lease still lands with its unit when the address clearly matches one
+            const units = (typeof allProperties !== 'undefined' ? allProperties : []).filter(p => !p.is_building_level);
+            const keyFor = (l) => {
+                if (l.property_id) return 'unit:' + l.property_id;
+                if (units.length) {
+                    const best = units.map(u => ({ u, s: unitMatchScore(l.property_address, u) })).sort((x, y) => y.s - x.s)[0];
+                    if (best && best.s >= 2) return 'unit:' + best.u.id;
+                }
+                return unitKey(l.property_address);
+            };
             const byUnit = new Map();
             for (const l of leases) {
-                const key = l.property_id ? 'unit:' + l.property_id : unitKey(l.property_address);
+                const key = keyFor(l);
                 if (!byUnit.has(key)) byUnit.set(key, []);
                 byUnit.get(key).push(l);
             }
