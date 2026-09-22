@@ -2939,13 +2939,14 @@
         // "180 N Courtland St" and "182 N Courtland St" are one building with two
         // front doors: merge headers on the same street whose numbers are within 2.
         function mergeNeighbourBuildings(byBuilding) {
-            const parse = (name) => { const m = String(name).match(/^\s*(\d+)\s+(.+)$/); return m ? { num: parseInt(m[1], 10), street: m[2].trim() } : null; };
+            const norm = (t) => String(t).toLowerCase().replace(/,?\s*(east\s+)?stroudsburg\b.*$/, '').replace(/\b(st|street|ave|avenue|rd|road|n|north|e|east)\b/g, ' ').replace(/[^a-z0-9]/g, '');
+            const parse = (name) => { const m = String(name).match(/^\s*(\d+)(?:\s*[-–]\s*\d+)?\s+(.+)$/); return m ? { num: parseInt(m[1], 10), street: m[2].trim(), key: norm(m[2]) } : null; };
             const keys = [...byBuilding.keys()];
             for (let i = 0; i < keys.length; i++) {
                 const a = parse(keys[i]); if (!a || !byBuilding.has(keys[i])) continue;
                 for (let j = i + 1; j < keys.length; j++) {
                     const b = parse(keys[j]); if (!b || !byBuilding.has(keys[j])) continue;
-                    if (a.street.toLowerCase() === b.street.toLowerCase() && Math.abs(a.num - b.num) <= 2) {
+                    if (a.key && a.key === b.key && Math.abs(a.num - b.num) <= 2) {
                         const lo = Math.min(a.num, b.num), hi = Math.max(a.num, b.num);
                         const merged = `${lo}-${hi} ${a.street}`;
                         const list = [...byBuilding.get(keys[i]), ...byBuilding.get(keys[j])];
@@ -2960,7 +2961,7 @@
         // whose street matches and whose number range (e.g. "180-182") covers the
         // house number; otherwise the address with its unit part stripped.
         function buildingForAddress(address) {
-            const a = String(address || '').trim();
+            const a = String(address || '').trim().replace(/,?\s*(east\s+)?stroudsburg\b.*$/i, '').replace(/,\s*[A-Za-z .]+,\s*[A-Z]{2}\s*\d{0,5}\s*$/, '');
             const base = a.replace(/,?\s*(unit|apt|apartment|suite|ste|#)\s*[\w-]+/ig, '')
                 .replace(/,?\s*(downstairs|upstairs|basement|attic|(first|second|third|1st|2nd|3rd)\s*(floor|fl)|fl\s*\d|floor\s*\d)\b/ig, '')
                 .replace(/\s+\d+\s*[a-z]\b\s*$/i, '').replace(/[\s,]+$/, '').trim();
