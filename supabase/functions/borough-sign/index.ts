@@ -16,6 +16,7 @@
 //   { action:'remind', signer_id, site_url }    resend one tenant's email
 //   { action:'cancel', filing_id }              remove signers, back to draft
 //   { action:'submit', filing_id }              email the packet (files of kind 'packet') to the Borough now
+//   { action:'submit_all', filing_ids:[…] }     one email to the Borough with every listed unit's packet
 // Signer (token):
 //   { action:'get',  token }                              summary + PDF link + where to tap
 //   { action:'sign', token, signature_png, consent }      record the signature; finalizes
@@ -127,7 +128,7 @@ Deno.serve(async (req) => {
       if (!remaining.length) {
         try {
           await finalize(supa, filing, all || [], property); finalized = true;
-          if (filing.auto_submit !== false) { await submitPacket(supa, filing, property, settings); submitted = true; }
+          if (filing.auto_submit !== false) { await submitPackets(supa, [{ ...filing, property_name: property }], settings); submitted = true; }
         } catch (e) { console.error('finalize failed', e); return json({ ok: true, finalized, warning: 'Signed, but finishing up failed: ' + e.message }); }
       }
       return json({ ok: true, finalized, submitted, remaining: remaining.length, download_url });
@@ -167,13 +168,17 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
-    if (action === 'submit') {
-      const { data: filing } = await supa.from('rental_borough_filings').select('*').eq('id', body.filing_id).maybeSingle();
-      if (!filing) return json({ error: 'filing not found' }, 404);
-      if (filing.signing_status === 'sent') return json({ error: 'Tenants are still signing the Addendum. Wait for them or cancel signing first.' }, 400);
-      const { data: prop } = await supa.from('rental_properties').select('property_name').eq('id', filing.property_id).maybeSingle();
+    if (action === 'submit' || action === 'submit_all') {
+      const ids = action === 'submit' ? [Number(body.filing_id)] : (Array.isArray(body.filing_ids) ? body.filing_ids.map(Number) : []);
+      if (!ids.filter(Boolean).length) return json({ error: 'no units selected' }, 400);
+      const { data: filings } = await supa.from('rental_borough_filings').select('*').in('id', ids);
+      if (!filings?.length) return json({ error: 'filing not found' }, 404);
+      const { data: props } = await supa.from('rental_properties').select('id,property_name').in('id', filings.map((f: any) => f.property_id));
+      for (const f of filings) f.property_name = props?.find((p: any) => p.id === f.property_id)?.property_name || 'rental unit';
+      const stillSigning = filings.filter((f: any) => f.signing_status === 'sent');
+      if (stillSigning.length) return json({ error: `Tenants are still signing the Addendum for ${stillSigning.map((f: any) => f.property_name).join(', ')}. Wait for them or cancel signing first.` }, 400);
       const settings = await landlordSettings(supa);
-      const r = await submitPacket(supa, filing, prop?.property_name || 'rental unit', settings);
+      const r = await submitPackets(supa, filings, settings);
       return json({ ok: true, ...r });
     }
 
@@ -287,28 +292,39 @@ async function finalize(supa: any, filing: any, signers: any[], property: string
   filing.signing_status = 'signed';
 }
 
-// Email every 'packet' file for this filing to the Borough, landlord in copy.
-async function submitPacket(supa: any, filing: any, property: string, settings: any) {
-  const { data: files } = await supa.from('rental_borough_files').select('*').eq('filing_id', filing.id).eq('kind', 'packet').order('created_at');
-  if (!files?.length) throw new Error('Nothing to send: build the packet first.');
-  // Newest copy of each form name only
-  const latest = new Map<string, any>();
-  for (const f of files) latest.set(f.file_name.replace(/^\d+_/, ''), f);
+// One email to the Borough (landlord in copy) with every 'packet' file of
+// each listed filing: one unit or the whole building at once.
+async function submitPackets(supa: any, filings: any[], settings: any) {
   const attachments: { name: string; bytes: Uint8Array }[] = [];
-  for (const f of latest.values()) {
-    const { data, error } = await supa.storage.from(BUCKET).download(f.storage_path);
-    if (error || !data) throw new Error('could not read ' + f.file_name);
-    attachments.push({ name: f.file_name, bytes: new Uint8Array(await data.arrayBuffer()) });
+  const perUnit: { property: string; files: string[] }[] = [];
+  for (const filing of filings) {
+    const { data: files } = await supa.from('rental_borough_files').select('*').eq('filing_id', filing.id).eq('kind', 'packet').order('created_at');
+    if (!files?.length) throw new Error(`Nothing to send for ${filing.property_name}: build the packet first.`);
+    const latest = new Map<string, any>();                 // newest copy of each form name only
+    for (const f of files) latest.set(f.file_name, f);
+    const names: string[] = [];
+    for (const f of latest.values()) {
+      const { data, error } = await supa.storage.from(BUCKET).download(f.storage_path);
+      if (error || !data) throw new Error('could not read ' + f.file_name);
+      attachments.push({ name: f.file_name, bytes: new Uint8Array(await data.arrayBuffer()) });
+      names.push(f.file_name);
+    }
+    perUnit.push({ property: filing.property_name, files: names });
   }
+  const year = filings[0].year;
+  const units = perUnit.map((u) => u.property);
   const html = `<p>Good day,</p>
-<p>Attached is the ${filing.year} Rental Registration packet for <strong>${esc(property)}</strong>:</p>
-<ul>${attachments.map((a) => `<li>${esc(a.name)}</li>`).join('')}</ul>
+<p>Attached ${units.length === 1 ? 'is' : 'are'} the ${year} Rental Registration packet${units.length === 1 ? '' : 's'} for:</p>
+${perUnit.map((u) => `<p><strong>${esc(u.property)}</strong></p><ul>${u.files.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>`).join('')}
 <p>Please let me know if anything else is needed.</p>
 <p>Thank you,<br>${esc(settings.name)}<br>${esc(settings.phone || '')}<br>${esc(settings.email || '')}</p>`;
-  await sendGmail(supa, settings.email, BOROUGH_EMAIL, `${filing.year} Rental Registration packet - ${property}`, html, attachments, settings.email);
+  const subject = units.length === 1 ? `${year} Rental Registration packet - ${units[0]}` : `${year} Rental Registration packets - ${units.length} units - ${units.join(', ')}`;
+  await sendGmail(supa, settings.email, BOROUGH_EMAIL, subject, html, attachments, settings.email);
   const today = new Date().toISOString().slice(0, 10);
-  await supa.from('rental_borough_filings').update({ status: 'submitted', submitted_on: today, submitted_to: BOROUGH_EMAIL, updated_at: new Date().toISOString() }).eq('id', filing.id);
-  return { sent_to: BOROUGH_EMAIL, files: attachments.map((a) => a.name) };
+  for (const filing of filings) {
+    await supa.from('rental_borough_filings').update({ status: 'submitted', submitted_on: today, submitted_to: BOROUGH_EMAIL, updated_at: new Date().toISOString() }).eq('id', filing.id);
+  }
+  return { sent_to: BOROUGH_EMAIL, files: attachments.map((a) => a.name), units };
 }
 
 // ---------------------------------------------------------------------------

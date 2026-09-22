@@ -256,6 +256,44 @@ function boroughGuessOccupancy(unit, lease) {
     const first = originalLeaseFor(lease);
     return (first.lease_start || '') < boroughDueDate(boroughYear - 1) ? 'same' : 'new';
 }
+// Tenant slots on the lease (1-4) with their column index, for editing details
+function boroughTenantSlots(lease) {
+    const out = [];
+    if (!lease) return out;
+    for (let i = 1; i <= 4; i++) if (lease[`tenant${i}_name`]) out.push({ i, name: lease[`tenant${i}_name`], email: lease[`tenant${i}_email`], phone: lease[`tenant${i}_phone`], employer: lease[`tenant${i}_employer`] });
+    if (!out.length && lease.tenant_names) out.push({ i: 1, name: lease.tenant_names, email: lease.tenant_email, phone: lease.tenant_phone, employer: lease.tenant_employer, legacy: true });
+    return out;
+}
+function renderBoroughTenantEditor(lease) {
+    const slots = boroughTenantSlots(lease);
+    if (!slots.length) return '';
+    const missing = slots.filter(t => !t.email).length;
+    const inp = (i, k, v, ph) => `<input id="bt-${lease.id}-${i}-${k}" value="${boroughEsc(v || '')}" placeholder="${ph}" style="flex:1;min-width:150px;padding:6px;border:1px solid var(--border);border-radius:4px;">`;
+    return `<details ${missing ? 'open' : ''} style="margin-top:8px;font-size:13px;">
+        <summary style="cursor:pointer;color:${missing ? '#9a3412' : 'var(--text-secondary)'};">${missing ? `⚠️ ${missing} tenant${missing === 1 ? '' : 's'} missing an email (needed for the signing link)` : 'Edit tenant details (email, phone, employer)'}</summary>
+        <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px;">
+            ${slots.map(t => `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;"><strong style="min-width:150px;">${boroughEsc(t.name)}</strong>
+                ${inp(t.i, 'email', t.email, 'email')} ${inp(t.i, 'phone', t.phone, 'phone')} ${inp(t.i, 'employer', t.employer, 'employer (business name)')}</div>`).join('')}
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button class="action-btn btn-primary" onclick="saveBoroughTenantDetails(${lease.id})">Save to the lease</button>
+            <span style="font-size:12px;color:var(--text-secondary);">Sue wants the employer as a business name (e.g. "St. Luke's University Health Network"), or Retired / Unemployed / Student.</span></div>
+        </div></details>`;
+}
+async function saveBoroughTenantDetails(leaseId) {
+    const lease = boroughLeases.find(l => l.id === leaseId); if (!lease) return;
+    const patch = {};
+    for (const t of boroughTenantSlots(lease)) {
+        const v = (k) => (document.getElementById(`bt-${leaseId}-${t.i}-${k}`) || {}).value?.trim() ?? '';
+        const email = v('email');
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAlert(`"${email}" does not look like an email address.`, 'error'); return; }
+        patch[`tenant${t.i}_email`] = email; patch[`tenant${t.i}_phone`] = v('phone'); patch[`tenant${t.i}_employer`] = v('employer');
+        if (t.legacy) { patch.tenant1_name = t.name; patch.tenant_email = email; patch.tenant_phone = v('phone'); patch.tenant_employer = v('employer'); }
+    }
+    const { error } = await supabaseClient.from('rental_leases').update(patch).eq('id', leaseId);
+    if (error) { showAlert('Could not save: ' + error.message, 'error'); return; }
+    Object.assign(lease, patch);
+    showAlert('Saved to the lease.', 'success');
+    renderBoroughUnits();
+}
 function boroughTenants(lease) {
     const out = [];
     if (!lease) return out;
@@ -290,6 +328,7 @@ function renderBoroughUnits() {
                     <div style="font-weight:600;font-size:15px;">${boroughEsc(u.property_name)}</div>
                     <div style="font-size:13px;color:var(--text-secondary);">Tenants now: ${tenants}${lease ? ` · lease ${lease.lease_start} → ${lease.lease_end}` : ''}</div>
                     ${missing.length ? `<div style="font-size:12px;color:#92400e;margin-top:4px;">Missing for the form: ${missing.join(', ')} → <a href="#" onclick="openBoroughUnit(${u.id});return false;">Unit details</a></div>` : ''}
+                    ${lease ? renderBoroughTenantEditor(lease) : ''}
                     ${!lease ? `<div style="font-size:12px;margin-top:6px;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:6px 8px;"><strong style="color:#9a3412;">No lease matched this unit.</strong> Pick it:
                         <select onchange="setBoroughUnitLease(${u.id}, this.value)" style="padding:4px;border:1px solid var(--border);border-radius:4px;max-width:100%;">
                             <option value="">— choose the lease —</option>
@@ -317,7 +356,12 @@ function renderBoroughUnits() {
             ${files ? `<div style="font-size:13px;margin-top:8px;">${files}</div>` : ''}
         </div>`;
     });
-    box.innerHTML = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">${sent} of ${inBorough.length} East Stroudsburg unit(s) sent for ${boroughYear}. Pick what applies to each unit, check <em>Unit details</em>, then Sign & send.</div>`
+    const readyToSend = inBorough.filter(u => { const f = boroughFilings[u.id] || {}; const occ = f.occupancy || boroughGuessOccupancy(u, boroughCurrentLease(u)); return !(f.status === 'submitted' || f.status === 'licensed') && (occ === 'vacant' || f.signing_status === 'signed'); });
+    box.innerHTML = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">${sent} of ${inBorough.length} East Stroudsburg unit(s) sent for ${boroughYear}. Pick what applies to each unit, check <em>Unit details</em>, then Review & send.</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;font-size:13px;">
+            <button class="action-btn btn-primary" ${readyToSend.length ? '' : 'disabled'} onclick="boroughSubmitAll()">📤 Review & send all ready units to the Borough in one email</button>
+            <span style="color:var(--text-secondary);">${readyToSend.length ? `Ready: ${readyToSend.map(u => boroughEsc(u.property_name)).join(', ')}.` : 'A unit is ready once its Addendum is signed (or it is vacant). Leave the auto-send box unticked on each unit to send them all together here.'}</span>
+        </div>`
         + (inBorough.length ? rows.join('') : '<p style="color:var(--text-secondary);">No units marked as East Stroudsburg.</p>')
         + (outside.length ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:6px;">Not in the Borough (no registration needed): ${outside.map(u => `${boroughEsc(u.property_name)} <a href="#" onclick="setBoroughUnitFlag(${u.id}, true);return false;">include</a>`).join(' · ')}</div>` : '');
 }
@@ -600,6 +644,35 @@ async function boroughCancelSigning(propertyId) {
     try { await callBoroughSign({ action: 'cancel', filing_id: filing.id }); }
     catch (e) { showAlert('Cancel failed: ' + e.message, 'error'); }
     await loadBoroughFilings(); renderBoroughUnits();
+}
+
+async function boroughSubmitAll() {
+    const units = boroughUnits.filter(boroughIsBoroughUnit).filter(u => { const f = boroughFilings[u.id] || {}; const occ = f.occupancy || boroughGuessOccupancy(u, boroughCurrentLease(u)); return !(f.status === 'submitted' || f.status === 'licensed') && (occ === 'vacant' || f.signing_status === 'signed'); });
+    if (!units.length) { showAlert('No unit is ready yet.', 'error'); return; }
+    try {
+        if (!(await boroughEnsureSignature())) return;
+        showAlert('Building the forms for you to review…', 'success');
+        const files = [], filingIds = [];
+        for (const u of units) {
+            const filing = await ensureBoroughFiling(u.id); if (!filing) return;
+            filingIds.push(filing.id);
+            const d = boroughFormData(u);
+            files.push({ name: `${u.property_name} · Registration ${boroughYear}`, path: await boroughUploadForm(u, filing, 'registration', d, 'packet') });
+            if (d.vacant) files.push({ name: `${u.property_name} · Affidavit of Vacant Unit`, path: await boroughUploadForm(u, filing, 'vacant', d, 'packet') });
+            else if (d.occupancy === 'same') files.push({ name: `${u.property_name} · Affidavit of Same Tenants`, path: await boroughUploadForm(u, filing, 'same', d, 'packet') });
+        }
+        await loadBoroughFilings();
+        for (const u of units) {
+            const filing = boroughFilings[u.id];
+            for (const f of (boroughFiles[filing.id] || []).filter(f => f.kind === 'packet' && /Addendum/i.test(f.file_name))) files.push({ name: `${u.property_name} · ${f.file_name}`, note: 'Signed Addendum.', path: f.storage_path });
+        }
+        boroughReview(`${units.length} unit(s) · review before sending to the Borough`, `One email to ${BOROUGH.submitEmail} with you in copy, containing every file below.`,
+            files, 'Send to Borough', async () => {
+                const r = await callBoroughSign({ action: 'submit_all', filing_ids: filingIds });
+                showAlert(`Sent to ${r.sent_to} for ${(r.units || []).join(', ')}.`, 'success');
+                await loadBoroughFilings(); renderBoroughUnits();
+            });
+    } catch (e) { showAlert('Could not build the forms: ' + e.message, 'error'); }
 }
 
 // ---------- dashboard reminder ----------

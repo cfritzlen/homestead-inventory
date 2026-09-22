@@ -37,8 +37,13 @@ what was sent for each unit.
   if the box was ticked, emails the whole packet (Registration, affidavit if
   any, signed Addendum) to rental@eaststroudsburgboro.org with you in copy.
   Otherwise a **Send packet to Borough** button appears.
-- **Send packet to Borough** (vacant units): sends the Registration and the
-  Affidavit of Vacant Unit straight away.
+- **Send packet to Borough** (vacant units, or after signing when auto-send
+  was off): you see every file first, then it emails.
+- **Review & send all ready units in one email** (top of the unit list):
+  one email to the Borough with every ready unit's packet. A unit is ready
+  once its Addendum is signed or it is vacant.
+- Each unit card has **Edit tenant details** (email, phone, employer) that
+  saves straight to the lease.
 - The unit then shows "Sent to the Borough" with the date; set it to
   **License received** when the license arrives and attach it.
 - Prefer paper? **Filled packet (zip)** still downloads everything to send
