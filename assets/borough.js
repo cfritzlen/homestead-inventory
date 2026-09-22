@@ -269,14 +269,13 @@ function renderBoroughTenantEditor(lease) {
     if (!slots.length) return '';
     const missing = slots.filter(t => !t.email).length;
     const inp = (i, k, v, ph) => `<input id="bt-${lease.id}-${i}-${k}" value="${boroughEsc(v || '')}" placeholder="${ph}" style="flex:1;min-width:150px;padding:6px;border:1px solid var(--border);border-radius:4px;">`;
-    return `<details ${missing ? 'open' : ''} style="margin-top:8px;font-size:13px;">
-        <summary style="cursor:pointer;color:${missing ? '#9a3412' : 'var(--text-secondary)'};">${missing ? `⚠️ ${missing} tenant${missing === 1 ? '' : 's'} missing an email (needed for the signing link)` : 'Edit tenant details (email, phone, employer)'}</summary>
+    return `<div style="margin-top:8px;font-size:13px;">
         <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px;">
             ${slots.map(t => `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;"><strong style="min-width:150px;">${boroughEsc(t.name)}</strong>
                 ${inp(t.i, 'email', t.email, 'email')} ${inp(t.i, 'phone', t.phone, 'phone')} ${inp(t.i, 'employer', t.employer, 'employer (business name)')}</div>`).join('')}
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><button class="action-btn btn-primary" onclick="saveBoroughTenantDetails(${lease.id})">Save to the lease</button>
-            <span style="font-size:12px;color:var(--text-secondary);">Sue wants the employer as a business name (e.g. "St. Luke's University Health Network"), or Retired / Unemployed / Student.</span></div>
-        </div></details>`;
+            <span style="font-size:12px;color:var(--text-secondary);">Sue wants the employer as a business name (e.g. "St. Luke's University Health Network"), or Retired / Unemployed / Student / Self-employed.</span></div>
+        </div></div>`;
 }
 async function saveBoroughTenantDetails(leaseId) {
     const lease = boroughLeases.find(l => l.id === leaseId); if (!lease) return;
@@ -301,69 +300,157 @@ function boroughTenants(lease) {
     if (!out.length && lease.tenant_names) out.push({ name: lease.tenant_names, phone: lease.tenant_phone, email: lease.tenant_email, employer: lease.tenant_employer });
     return out;
 }
+// Small stylesheet for the unit cards (kept here so rentals.html stays untouched)
+(function () {
+    if (document.getElementById('borough-css')) return;
+    const css = document.createElement('style'); css.id = 'borough-css';
+    css.textContent = `
+      .bu-card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:12px; }
+      .bu-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+      .bu-unit { color:var(--text-secondary); font-size:12px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; }
+      .bu-names { font-size:22px; font-weight:700; margin:2px 0 4px; line-height:1.2; }
+      .bu-meta { color:var(--text-secondary); font-size:13px; line-height:1.5; }
+      .bu-meta select { font:inherit; font-size:13px; padding:2px 4px; border:1px solid var(--border); border-radius:4px; background:#fff; }
+      .bu-pill { font-size:12px; font-weight:600; padding:5px 10px; border-radius:999px; white-space:nowrap; }
+      .bu-p-todo { background:#f1f5f9; color:#475569; } .bu-p-wait { background:#fef3c7; color:#92400e; } .bu-p-ok { background:#dcfce7; color:#166534; } .bu-p-sent { background:#dbeafe; color:#1e3a8a; }
+      .bu-steps { display:flex; gap:6px; margin:14px 0 10px; flex-wrap:wrap; }
+      .bu-step { flex:1; min-width:140px; font-size:13px; padding:8px 10px; border-radius:8px; background:#f8fafc; border:1px solid var(--border); }
+      .bu-step.done { background:#f0fdf4; border-color:#bbf7d0; } .bu-step.now { background:#eff6ff; border-color:#bfdbfe; }
+      .bu-step b { display:block; font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.02em; margin-bottom:2px; }
+      .bu-need { background:#fff7ed; border:1px solid #fdba74; color:#9a3412; border-radius:8px; padding:8px 10px; font-size:13px; margin:8px 0; }
+      .bu-need a { color:#9a3412; font-weight:600; }
+      .bu-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; font-size:13px; color:var(--text-secondary); }
+      .bu-btn { border:0; border-radius:8px; padding:10px 16px; font:inherit; font-weight:600; cursor:pointer; background:var(--primary); color:#fff; }
+      .bu-btn:disabled { background:#cbd5e1; color:#64748b; cursor:not-allowed; }
+      .bu-btn.sec { background:#f1f5f9; color:var(--text-primary); font-weight:500; padding:8px 12px; font-size:13px; }
+      .bu-more { color:var(--text-secondary); font-size:13px; margin-top:10px; display:flex; gap:14px; flex-wrap:wrap; }
+      .bu-more a, .bu-more label { color:var(--primary); cursor:pointer; }
+      .bu-signers { font-size:13px; margin-top:6px; } .bu-signers div { padding:3px 0; }
+      .bu-files { font-size:13px; margin-top:8px; } .bu-files div { padding:2px 0; }
+    `;
+    document.head.appendChild(css);
+})();
+
+// Everything the card needs to know about one unit, in one place
+function boroughUnitState(u) {
+    const lease = boroughCurrentLease(u);
+    const filing = boroughFilings[u.id] || {};
+    const occ = filing.occupancy || boroughGuessOccupancy(u, lease);
+    const status = filing.status || 'todo';
+    const signing = filing.signing_status || 'draft';
+    const tenants = occ === 'vacant' ? [] : boroughTenants(lease);
+    const info = Object.assign({}, BOROUGH_UNIT_DEFAULTS, u.borough_info || {});
+    const needs = [];
+    if (!lease && occ !== 'vacant') needs.push({ text: 'No lease matched this unit.', fix: 'pick' });
+    const noEmail = tenants.filter(t => !t.email).map(t => t.name);
+    if (noEmail.length) needs.push({ text: `Needs an email for ${noEmail.join(' and ')} before it can be sent.`, fix: 'tenants' });
+    if (!info.pin) needs.push({ text: 'Needs the PIN / Tax ID.', fix: 'unit' });
+    if (!boroughInfo.owner?.mailing1) needs.push({ text: 'Needs your mailing address (Owner details at the bottom).', fix: 'owner' });
+    const submitted = status === 'submitted' || status === 'licensed';
+    const readyForBorough = !submitted && (occ === 'vacant' || signing === 'signed');
+    return { lease, filing, occ, status, signing, tenants, info, needs, submitted, readyForBorough };
+}
+
 function renderBoroughUnits() {
     const box = document.getElementById('borough-units');
     document.getElementById('borough-setup-note').innerHTML = boroughSetupError ? `<div class="alert alert-error" style="display:block;">${boroughEsc(boroughSetupError)}</div>` : '';
     if (!boroughUnits.length) { box.innerHTML = '<p style="color:var(--text-secondary);">No units yet. Add properties on the New Lease page first.</p>'; return; }
     const inBorough = boroughUnits.filter(boroughIsBoroughUnit);
     const outside = boroughUnits.filter(u => !boroughIsBoroughUnit(u));
-    let sent = 0;
-    const rows = inBorough.map(u => {
-        const lease = boroughCurrentLease(u);
-        const filing = boroughFilings[u.id] || {};
-        const occ = filing.occupancy || boroughGuessOccupancy(u, lease);
-        const status = filing.status || 'todo';
-        if (status === 'submitted' || status === 'licensed') sent++;
-        const tenants = boroughTenants(lease).map(t => t.name).join(', ') || '<em>vacant</em>';
-        const fileLabel = { packet: '📄', signing: '✍️', sent: '📎', license: '🪪', other: '📎' };
-        const files = (boroughFiles[filing.id] || []).map(f => `<div>${fileLabel[f.kind] || '📎'} <a href="#" onclick="openLeaseFile('${f.storage_path}');return false;">${boroughEsc(f.file_name)}</a> <small>${(f.created_at || '').slice(0, 10)}</small> <a href="#" onclick="removeBoroughFile(${f.id}, '${f.storage_path}');return false;" style="color:var(--danger);">✕</a></div>`).join('');
-        const info = Object.assign({}, BOROUGH_UNIT_DEFAULTS, u.borough_info || {});
-        const missing = [!info.pin && 'PIN/Tax ID', !boroughInfo.owner?.mailing1 && 'your mailing address (Owner details below)'].filter(Boolean);
-        const forms = occ === 'vacant'
-            ? `<button class="action-btn btn-secondary" onclick="boroughDownload(${u.id}, 'registration')">Registration</button> <button class="action-btn btn-secondary" onclick="boroughDownload(${u.id}, 'vacant')">Vacant affidavit</button>`
-            : `<button class="action-btn btn-secondary" onclick="boroughDownload(${u.id}, 'registration')">Registration</button> <button class="action-btn btn-secondary" onclick="boroughDownload(${u.id}, 'addendum')">Addendum</button>${occ === 'same' ? ` <button class="action-btn btn-secondary" onclick="boroughDownload(${u.id}, 'same')">Same-tenants affidavit</button>` : ''}`;
-        return `<div class="card" style="margin-bottom:12px;">
-            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start;">
-                <div>
-                    <div style="font-weight:600;font-size:15px;">${boroughEsc(u.property_name)}</div>
-                    <div style="font-size:13px;color:var(--text-secondary);">Tenants now: ${tenants}${lease ? ` · lease ${lease.lease_start} → ${lease.lease_end}` : ''}</div>
-                    ${missing.length ? `<div style="font-size:12px;color:#92400e;margin-top:4px;">Missing for the form: ${missing.join(', ')} → <a href="#" onclick="openBoroughUnit(${u.id});return false;">Unit details</a></div>` : ''}
-                    ${lease ? renderBoroughTenantEditor(lease) : ''}
-                    ${!lease ? `<div style="font-size:12px;margin-top:6px;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:6px 8px;"><strong style="color:#9a3412;">No lease matched this unit.</strong> Pick it:
-                        <select onchange="setBoroughUnitLease(${u.id}, this.value)" style="padding:4px;border:1px solid var(--border);border-radius:4px;max-width:100%;">
-                            <option value="">— choose the lease —</option>
-                            ${boroughLeaseGroups().filter(c => c.status === 'active').map(c => `<option value="${boroughEsc(c.property_address)}" ${(u.borough_info || {}).lease_address === c.property_address ? 'selected' : ''}>${boroughEsc(c.property_address)} · ${boroughEsc(c.tenant_names || '')}</option>`).join('')}
-                        </select></div>` : `<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">Lease: ${boroughEsc(lease.property_address)} <a href="#" onclick="setBoroughUnitLease(${u.id}, '');return false;">change</a></div>`}
-                    <div style="font-size:11px;margin-top:2px;"><a href="#" onclick="setBoroughUnitFlag(${u.id}, false);return false;" style="color:var(--text-secondary);">Not in East Stroudsburg? Leave it out</a></div>
-                </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                    <select onchange="saveBoroughFiling(${u.id}, { occupancy: this.value })" style="padding:6px;border:1px solid var(--border);border-radius:4px;">
-                        ${Object.entries(BOROUGH_OCC).map(([k, v]) => `<option value="${k}" ${k === occ ? 'selected' : ''}>${v}</option>`).join('')}
-                    </select>
-                    <select onchange="saveBoroughFiling(${u.id}, { status: this.value })" style="padding:6px;border:1px solid var(--border);border-radius:4px;">
-                        ${Object.entries(BOROUGH_STATUS).map(([k, v]) => `<option value="${k}" ${k === status ? 'selected' : ''}>${v}</option>`).join('')}
-                    </select>
-                </div>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
-                <button class="action-btn btn-primary" onclick="boroughDownload(${u.id}, 'packet')">⬇ Filled packet (zip)</button>
-                ${forms}
-                <button class="action-btn btn-secondary" onclick="openBoroughUnit(${u.id})">Unit details</button>
-                <label class="action-btn btn-secondary" style="cursor:pointer;">📎 Attach what was sent / the license
-                    <input type="file" accept="application/pdf,image/*" style="display:none;" onchange="attachBoroughFile(${u.id}, this)"></label>
-            </div>
-            ${renderBoroughSigning(u, filing, occ)}
-            ${files ? `<div style="font-size:13px;margin-top:8px;">${files}</div>` : ''}
-        </div>`;
-    });
-    const readyToSend = inBorough.filter(u => { const f = boroughFilings[u.id] || {}; const occ = f.occupancy || boroughGuessOccupancy(u, boroughCurrentLease(u)); return !(f.status === 'submitted' || f.status === 'licensed') && (occ === 'vacant' || f.signing_status === 'signed'); });
-    box.innerHTML = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">${sent} of ${inBorough.length} East Stroudsburg unit(s) sent for ${boroughYear}. Pick what applies to each unit, check <em>Unit details</em>, then Review & send.</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;font-size:13px;">
-            <button class="action-btn btn-primary" ${readyToSend.length ? '' : 'disabled'} onclick="boroughSubmitAll()">📤 Review & send all ready units to the Borough in one email</button>
-            <span style="color:var(--text-secondary);">${readyToSend.length ? `Ready: ${readyToSend.map(u => boroughEsc(u.property_name)).join(', ')}.` : 'A unit is ready once its Addendum is signed (or it is vacant). Leave the auto-send box unticked on each unit to send them all together here.'}</span>
-        </div>`
-        + (inBorough.length ? rows.join('') : '<p style="color:var(--text-secondary);">No units marked as East Stroudsburg.</p>')
+    const states = inBorough.map(u => ({ u, st: boroughUnitState(u) }));
+    const sent = states.filter(x => x.st.submitted).length;
+    const ready = states.filter(x => x.st.readyForBorough);
+    const toolbar = `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;background:#fff;border:1px solid var(--border);border-radius:10px;font-size:13px;">
+        <button class="bu-btn" ${ready.length ? '' : 'disabled'} onclick="boroughSubmitAll()">📤 Send ${ready.length ? ready.length + ' ready unit' + (ready.length === 1 ? '' : 's') : 'all units'} to the Borough in one email</button>
+        <span style="color:var(--text-secondary);">${sent} of ${inBorough.length} sent. ${ready.length ? `Ready now: ${ready.map(x => boroughEsc(x.u.property_name)).join(', ')}.` : 'Lights up once each unit\'s Addendum is signed. You see every file before it goes.'}</span></div>`;
+    box.innerHTML = toolbar
+        + (states.length ? states.map(x => renderBoroughCard(x.u, x.st)).join('') : '<p style="color:var(--text-secondary);">No units marked as East Stroudsburg.</p>')
         + (outside.length ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:6px;">Not in the Borough (no registration needed): ${outside.map(u => `${boroughEsc(u.property_name)} <a href="#" onclick="setBoroughUnitFlag(${u.id}, true);return false;">include</a>`).join(' · ')}</div>` : '');
+}
+
+function renderBoroughCard(u, st) {
+    const { lease, filing, occ, status, signing, tenants, needs, submitted } = st;
+    const names = occ === 'vacant' ? 'Vacant' : (tenants.map(t => t.name).join(' & ') || (lease ? boroughEsc(lease.tenant_names || '') : '') || 'No lease matched');
+    const pill = submitted ? (status === 'licensed' ? ['bu-p-ok', 'License received'] : ['bu-p-sent', 'Sent to Borough' + (filing.submitted_on ? ' · ' + boroughFmt(filing.submitted_on) : '')])
+        : signing === 'sent' ? ['bu-p-wait', 'Out for signature']
+        : signing === 'signed' ? ['bu-p-ok', 'Signed · ready for Borough']
+        : ['bu-p-todo', 'Not started'];
+    const contact = tenants.map(t => [t.email, t.phone, t.employer].filter(Boolean).join(' · ')).filter(Boolean);
+    const occSelect = `<select onchange="saveBoroughFiling(${u.id}, { occupancy: this.value })">${Object.entries(BOROUGH_OCC).map(([k, v]) => `<option value="${k}" ${k === occ ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
+    const fixLink = (n) => n.fix === 'pick' ? '' : n.fix === 'tenants' ? ` <a href="#" onclick="boroughToggle('bt-box-${u.id}', true);return false;">Add them</a>`
+        : n.fix === 'unit' ? ` <a href="#" onclick="openBoroughUnit(${u.id});return false;">Unit details</a>` : ` <a href="#" onclick="document.querySelector('#borough-info-form').closest('details').open = true; document.querySelector('#borough-info-form').scrollIntoView({behavior:'smooth'});return false;">Fill it in</a>`;
+    const leasePicker = !lease && occ !== 'vacant' ? `<div class="bu-need">⚠️ No lease matched this unit. Pick it:
+            <select onchange="setBoroughUnitLease(${u.id}, this.value)" style="font:inherit;padding:4px;border:1px solid var(--border);border-radius:4px;max-width:100%;">
+                <option value="">— choose the lease —</option>
+                ${boroughLeaseGroups().filter(c => c.status === 'active').map(c => `<option value="${boroughEsc(c.property_address)}">${boroughEsc(c.property_address)} · ${boroughEsc(c.tenant_names || '')}</option>`).join('')}
+            </select></div>` : '';
+    const needLines = needs.filter(n => n.fix !== 'pick').map(n => `<div class="bu-need">⚠️ ${boroughEsc(n.text)}${fixLink(n)}</div>`).join('');
+
+    // 3-step tracker
+    const detailsDone = !needs.some(n => n.fix === 'unit' || n.fix === 'owner');
+    const signers = boroughSigners[filing.id] || [];
+    const signedCount = signers.filter(s => s.status === 'signed').length;
+    const step2 = occ === 'vacant' ? ['done', 'Nothing to sign (vacant)']
+        : signing === 'signed' ? ['done', `✓ Signed${signers.length ? ' by ' + signedCount + ' of ' + signers.length : ''}`]
+        : signing === 'sent' ? ['now', `${signedCount} of ${signers.length} signed`]
+        : [needs.length ? '' : 'now', needs.length ? 'Blocked' : 'Not sent yet'];
+    const step3 = submitted ? ['done', `✓ Sent${filing.submitted_on ? ' ' + boroughFmt(filing.submitted_on) : ''}`] : st.readyForBorough ? ['now', 'Ready to send'] : ['', 'Waiting'];
+    const steps = `<div class="bu-steps">
+        <div class="bu-step ${detailsDone ? 'done' : 'now'}"><b>1 · Details</b>${detailsDone ? '✓ All filled in' : 'Something missing'}</div>
+        <div class="bu-step ${step2[0]}"><b>2 · Tenant${tenants.length === 1 ? '' : 's'} sign</b>${step2[1]}</div>
+        <div class="bu-step ${step3[0]}"><b>3 · Borough</b>${step3[1]}</div></div>`;
+
+    // main action
+    const fmt = (d) => d ? new Date(d).toLocaleDateString() : '';
+    let action = '';
+    if (submitted) {
+        action = `<div class="bu-actions">${status === 'licensed' ? '✅ License received.' : `Sent to ${boroughEsc(filing.submitted_to || BOROUGH.submitEmail)}. <a href="#" onclick="saveBoroughFiling(${u.id}, { status: 'licensed' });return false;">Mark license received</a>`}</div>`;
+    } else if (occ === 'vacant') {
+        action = `<div class="bu-actions"><span>Vacant: nothing for tenants to sign. Goes to the Borough with the others above, or</span> <button class="bu-btn sec" onclick="boroughSubmitNow(${u.id})">Review & send this unit now</button></div>`;
+    } else if (signing === 'draft') {
+        const first = tenants.length === 1 ? tenants[0].name.split(' ')[0] : 'tenants';
+        action = `<div class="bu-actions">
+            <button class="bu-btn" ${needs.length ? 'disabled' : ''} onclick="boroughSendForSignature(${u.id})">Review & send to ${boroughEsc(first)}</button>
+            <span>${needs.length ? 'Fix the items above first.' : `You see the PDFs first. Only the Addendum goes to the tenant${tenants.length === 1 ? '' : 's'}.`}</span>
+            <label style="display:flex;gap:6px;align-items:center;font-size:12px;"><input type="checkbox" id="bauto-${u.id}"> also email the Borough automatically when signed</label></div>`;
+    } else if (signing === 'sent') {
+        action = `<div class="bu-signers">${signers.map(s => `<div>${s.status === 'signed' ? '✅' : (s.viewed_at ? '👀' : '⏳')} <strong>${boroughEsc(s.name)}</strong> ${s.status === 'signed' ? 'signed ' + fmt(s.signed_at) : (s.viewed_at ? 'opened ' + fmt(s.viewed_at) + ', not signed yet' : 'sent ' + fmt(s.sent_at))}${s.status !== 'signed' ? ` &nbsp;<button class="bu-btn sec" onclick="boroughRemind(${s.id})">Remind</button>` : ''}</div>`).join('')}</div>`;
+    } else {
+        action = `<div class="bu-actions"><span>Signed. Send with the others above, or</span> <button class="bu-btn sec" onclick="boroughSubmitNow(${u.id})">Review & send this unit now</button></div>`;
+    }
+
+    // more links + hidden panels
+    const fileLabel = { packet: '📄', signing: '✍️', sent: '📎', license: '🪪', other: '📎' };
+    const files = boroughFiles[filing.id] || [];
+    const more = `<div class="bu-more">
+        ${lease && !submitted ? `<a href="#" onclick="boroughToggle('bt-box-${u.id}');return false;">Edit tenant details</a>` : ''}
+        <a href="#" onclick="openBoroughUnit(${u.id});return false;">Unit details</a>
+        <a href="#" onclick="boroughDownload(${u.id}, 'packet');return false;">Download filled forms</a>
+        <label>Attach a file<input type="file" accept="application/pdf,image/*" style="display:none;" onchange="attachBoroughFile(${u.id}, this)"></label>
+        ${files.length ? `<a href="#" onclick="boroughToggle('bf-box-${u.id}');return false;">Files (${files.length})</a>` : ''}
+        ${signing === 'sent' ? `<a href="#" onclick="boroughCancelSigning(${u.id});return false;" style="color:var(--danger);">Cancel signing</a>` : ''}
+        ${!submitted ? `<a href="#" onclick="if (confirm('Mark this unit as already sent to the Borough another way?')) saveBoroughFiling(${u.id}, { status: 'submitted' });return false;">Sent another way</a>` : ''}
+        ${lease ? `<a href="#" onclick="setBoroughUnitLease(${u.id}, '');return false;" title="Lease: ${boroughEsc(lease.property_address)}">Change lease</a>` : ''}
+        <a href="#" onclick="setBoroughUnitFlag(${u.id}, false);return false;">Not in East Stroudsburg</a></div>
+        ${lease ? `<div id="bt-box-${u.id}" style="display:${needs.some(n => n.fix === 'tenants') ? 'block' : 'none'};">${renderBoroughTenantEditor(lease)}</div>` : ''}
+        ${files.length ? `<div id="bf-box-${u.id}" class="bu-files" style="display:none;">${files.map(f => `<div>${fileLabel[f.kind] || '📎'} <a href="#" onclick="openLeaseFile('${f.storage_path}');return false;">${boroughEsc(f.file_name)}</a> <small>${(f.created_at || '').slice(0, 10)}</small> <a href="#" onclick="removeBoroughFile(${f.id}, '${f.storage_path}');return false;" style="color:var(--danger);">✕</a></div>`).join('')}</div>` : ''}`;
+
+    return `<div class="bu-card">
+        <div class="bu-head">
+            <div style="min-width:0;">
+                <div class="bu-unit">${boroughEsc(u.property_name)}</div>
+                <div class="bu-names">${boroughEsc(names)}</div>
+                <div class="bu-meta">${occSelect}${contact.length ? '<br>' + contact.map(boroughEsc).join('<br>') : ''}</div>
+            </div>
+            <span class="bu-pill ${pill[0]}">${pill[1]}</span>
+        </div>
+        ${leasePicker}${needLines}${steps}${action}${more}
+    </div>`;
+}
+function boroughToggle(id, open) {
+    const el = document.getElementById(id); if (!el) return;
+    el.style.display = (open || el.style.display === 'none') ? 'block' : 'none';
+    if (el.style.display === 'block') el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 async function saveBoroughFiling(propertyId, patch) {
     const existing = boroughFilings[propertyId];
@@ -506,37 +593,6 @@ async function callBoroughSign(body) {
     let data = {}; try { data = await res.json(); } catch (_) { }
     if (!res.ok || data.error) throw new Error(data.error || ('request failed (' + res.status + ')'));
     return data;
-}
-function renderBoroughSigning(u, filing, occ) {
-    const box = (inner) => `<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;margin-top:10px;">${inner}</div>`;
-    const st = filing.signing_status || 'draft';
-    if (filing.status === 'submitted' || filing.status === 'licensed') {
-        return box(`<strong>✅ Sent to the Borough</strong>${filing.submitted_on ? ' on ' + boroughFmt(filing.submitted_on) : ''}${filing.submitted_to ? ' (' + boroughEsc(filing.submitted_to) + ')' : ''}. ${filing.status === 'licensed' ? 'License received.' : 'Set the status to <em>License received</em> when it arrives.'}`);
-    }
-    if (occ === 'vacant') {
-        return box(`<strong>📤 Vacant unit: nothing for tenants to sign.</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">Sends the Registration and the Affidavit of Vacant Unit, with your saved signature, to ${BOROUGH.submitEmail} with you in copy.</div>
-            <button class="action-btn btn-primary" onclick="boroughSubmitNow(${u.id})">Review & send packet to Borough</button>`);
-    }
-    if (st === 'draft') {
-        const lease = boroughCurrentLease(u);
-        const missing = boroughTenants(lease).filter(t => !t.email).map(t => t.name);
-        return box(`<strong>✍️ Electronic signing</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">You sign, each tenant gets an email link to read the Addendum and tap "Sign here" on their phone. When the last one signs, the whole packet (Registration${occ === 'same' ? ', Affidavit of Same Tenants' : ''}, signed Addendum) is emailed to ${BOROUGH.submitEmail} with you in copy.</div>
-            ${missing.length ? `<div style="color:var(--danger);margin-bottom:8px;">Missing email for: ${boroughEsc(missing.join(', '))}. Add it on the lease first.</div>` : ''}
-            <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><input type="checkbox" id="bauto-${u.id}"> Email the Borough automatically when everyone has signed (off = you review and press Send yourself)</label>
-            <button class="action-btn btn-primary" ${missing.length ? 'disabled' : ''} onclick="boroughSendForSignature(${u.id})">Review & send to tenants</button>`);
-    }
-    const signers = boroughSigners[filing.id] || [];
-    const fmt = (d) => d ? new Date(d).toLocaleDateString() : '';
-    const rows = signers.map(s => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);">
-        <span>${s.status === 'signed' ? '✅' : (s.viewed_at ? '👀' : '⏳')} <strong>${boroughEsc(s.name)}</strong> · ${boroughEsc(s.email)}<br><small style="color:var(--text-secondary);">${s.status === 'signed' ? 'signed ' + fmt(s.signed_at) : (s.viewed_at ? 'opened ' + fmt(s.viewed_at) + ', not signed yet' : 'sent ' + fmt(s.sent_at))}</small></span>
-        ${s.status !== 'signed' && st === 'sent' ? `<button class="action-btn btn-secondary" onclick="boroughRemind(${s.id})">Remind</button>` : ''}</div>`).join('');
-    if (st === 'sent') {
-        return box(`<strong>✍️ Out for signature</strong><div style="margin-top:6px;">${rows}</div>
-            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><button class="action-btn delete-btn" onclick="boroughCancelSigning(${u.id})">Cancel signing</button><span style="color:var(--text-secondary);">Cancel and re-send if something changes.</span></div>`);
-    }
-    // signed but not yet submitted
-    return box(`<strong>✍️ Addendum fully signed</strong><div style="margin-top:6px;">${rows}</div>
-        <div style="margin-top:8px;"><button class="action-btn btn-primary" onclick="boroughSubmitNow(${u.id})">Review & send packet to Borough</button> <span style="color:var(--text-secondary);">You see every file first; then it emails to ${BOROUGH.submitEmail} with you in copy.</span></div>`);
 }
 async function ensureBoroughFiling(propertyId) {
     return boroughFilings[propertyId] || await saveBoroughFiling(propertyId, {});
