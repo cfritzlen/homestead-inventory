@@ -37,7 +37,10 @@ const BOROUGH_UNIT_DEFAULTS = {
     meters_water: '1', meters_electric: '5', meters_garbage: '4',
     license_active: 'yes', license_displayed: 'no', evac_plan: 'no', smoke_detectors: 'yes',
     last_inspection: '2026-06-16', disruptive: '0',
+    pin: 'PIN 05730112853408 / Parcel 05-5.2.18.6',       // 180-182 N Courtland St, from the 2026 tax bill
 };
+// Owner details used until something else is saved under Owner details.
+const BOROUGH_OWNER_DEFAULTS = { mailing1: '1038 Poplar Valley Rd E', mailing2: 'Stroudsburg, PA 18360', deedNames: 'Martin Valdez and Colette G. Fritzlen' };
 const BOROUGH_SIGN_FN = () => Auth.client.supabaseUrl + '/functions/v1/borough-sign';
 const BOROUGH_SITE_URL = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '').replace(/\/+$/, '');
 let boroughSigners = {};        // filing_id -> [rental_borough_signers]
@@ -74,6 +77,7 @@ async function loadBorough() {
         boroughUnits = props.data || [];
         boroughLeases = leases.data || [];
         if (settings.data && settings.data.value) { try { boroughInfo = Object.assign({ owner: {}, manager: {}, managerSameAsOwner: true }, JSON.parse(settings.data.value)); } catch (_) { } }
+        boroughInfo.owner = Object.assign({}, BOROUGH_OWNER_DEFAULTS, Object.fromEntries(Object.entries(boroughInfo.owner || {}).filter(([, v]) => v)));
         if (boroughUnits.length && boroughUnits[0].borough_info === undefined) boroughSetupError = 'Run supabase/migrations/021_borough_registration.sql in Supabase → SQL Editor to save unit details and track what was sent.';
     } catch (e) {
         showAlert('Could not load rentals: ' + e.message, 'error');
@@ -140,6 +144,7 @@ function renderBoroughInfoForm() {
         <div class="form-grid">
             ${inp('owner_mailing1', 'Owner mailing address (line 1)', o.mailing1, 'Street')}
             ${inp('owner_mailing2', 'Owner mailing address (line 2)', o.mailing2, 'City, State ZIP')}
+            ${inp('owner_deed', 'Owner name(s) as on the deed', o.deedNames)}
             ${inp('owner_contact', 'Contact name (only if the owner is a company)', o.contact, 'N/A')}
             ${inp('tenant_address', 'Address tenants see on the Addendum', o.tenantAddress, 'Leave blank to use the mailing address')}
         </div>
@@ -167,7 +172,7 @@ function renderBoroughInfoForm() {
 async function saveBoroughInfo() {
     const v = (id) => (document.getElementById('bi-' + id) || {}).value?.trim() || '';
     boroughInfo = {
-        owner: { mailing1: v('owner_mailing1'), mailing2: v('owner_mailing2'), contact: v('owner_contact'), tenantAddress: v('tenant_address') },
+        owner: { mailing1: v('owner_mailing1'), mailing2: v('owner_mailing2'), deedNames: v('owner_deed'), contact: v('owner_contact'), tenantAddress: v('tenant_address') },
         managerSameAsOwner: document.getElementById('bi-same').checked,
         manager: { name: v('mgr_name'), email: v('mgr_email'), mailing1: v('mgr_mailing1'), mailing2: v('mgr_mailing2'), physical1: v('mgr_physical1'), physical2: v('mgr_physical2'), dayPhone: v('mgr_day_phone'), phone24: v('mgr_phone24'), localContact: v('mgr_local_contact') },
     };
@@ -357,7 +362,7 @@ function boroughFormData(u) {
     const occupancy = filing.occupancy || boroughGuessOccupancy(u, lease);
     const info = Object.assign({}, BOROUGH_UNIT_DEFAULTS, u.borough_info || {});
     const tenants = occupancy === 'vacant' ? [] : boroughTenants(lease);
-    const owner = { name: landlord.name, phone: landlord.phone, email: landlord.email, mailing1: boroughInfo.owner?.mailing1, mailing2: boroughInfo.owner?.mailing2, contact: boroughInfo.owner?.contact };
+    const owner = { name: landlord.name, deedNames: boroughInfo.owner?.deedNames, phone: landlord.phone, email: landlord.email, mailing1: boroughInfo.owner?.mailing1, mailing2: boroughInfo.owner?.mailing2, contact: boroughInfo.owner?.contact };
     const manager = boroughInfo.managerSameAsOwner === false && boroughInfo.manager?.name
         ? boroughInfo.manager
         : { name: owner.name, email: owner.email, mailing1: owner.mailing1, mailing2: owner.mailing2, physical1: owner.mailing1, physical2: owner.mailing2, dayPhone: owner.phone, phone24: owner.phone, localContact: owner.name };
