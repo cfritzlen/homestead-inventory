@@ -1424,6 +1424,7 @@
                             <div class="form-group">
                                 <label>Security Deposit</label>
                                 <input type="number" name="security_deposit" step="0.01">
+                                <label style="font-weight:400;font-size:13px;margin-top:4px;"><input type="checkbox" name="deposit_prepaid" id="deposit-prepaid"> Previously paid (original lease)</label>
                             </div>
                             <div class="form-group">
                                 <label>First Month Rent</label>
@@ -2081,6 +2082,7 @@
                 leaseData[key] = value === '' ? null : value;
             }
             leaseData.lease_options = collectLeaseOptions();
+            leaseData.deposit_prepaid = document.getElementById('deposit-prepaid').checked;
             leaseData.first_month_prepaid = document.getElementById('first-month-prepaid').checked;
             leaseData.last_month_prepaid = document.getElementById('last-month-prepaid').checked;
             
@@ -2142,6 +2144,7 @@
 
                 // Reset the form
                 e.target.reset();
+                document.getElementById('deposit-prepaid').checked = false;
                 document.getElementById('first-month-prepaid').checked = false;
                 document.getElementById('last-month-prepaid').checked = false;
                 document.getElementById('is-renewal').value = 'false';
@@ -2335,8 +2338,9 @@
             y += 5;
             
             // Security deposit checkbox
-            pdfCheckbox(doc, leftMargin, y, !!securityDep);
-            doc.text(`Security Deposit of $${securityDep || '________'} due at lease signing.`, leftMargin + 5, y);
+            const depPre = leaseData.deposit_prepaid === true || leaseData.deposit_prepaid === 'true';
+            pdfCheckbox(doc, leftMargin, y, !!securityDep || depPre);
+            doc.text(`Security Deposit of $${securityDep || '________'} ${depPre ? 'previously paid on the original lease and held by Landlord.' : 'due at lease signing.'}`, leftMargin + 5, y);
             y += 6;
             
             doc.text('A monthly non-refundable pet fee (if applicable) in the amount of', leftMargin, y);
@@ -2778,6 +2782,7 @@
             document.querySelector('[name="security_deposit"]').value = original.security_deposit ?? lease.security_deposit ?? '';
             document.querySelector('[name="first_month_rent"]').value = original.first_month_rent ?? lease.first_month_rent ?? '';
             document.querySelector('[name="last_month_rent"]').value = original.last_month_rent ?? lease.last_month_rent ?? '';
+            document.getElementById('deposit-prepaid').checked = true;
             document.getElementById('first-month-prepaid').checked = true;
             document.getElementById('last-month-prepaid').checked = true;
             
@@ -5160,7 +5165,7 @@ If you cannot read something clearly, use null.`
         ];
         // What a new lease starts with (per property choices override these)
         const DEFAULT_LEASE_OPTIONS = {
-            appliances: [],
+            appliances: ['Refrigerator', 'Range'],
             maintenance: { smoke_detectors: 'landlord', extermination: 'landlord', locks_keys: 'landlord', outside_clean: 'tenant', appliances_maint: 'landlord', fixtures: 'landlord' },
             utilities: { heating: 'tenant', cooling: 'tenant', cooking: 'tenant', electric: 'tenant', cable_internet: 'tenant', telephone: 'tenant',
                          water: 'landlord', sewer: 'landlord', trash: 'landlord', pest_control: 'landlord', bed_bugs: 'tenant', hoa_fees: 'tenant', snow: 'tenant', lawn: 'tenant' },
