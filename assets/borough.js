@@ -431,7 +431,13 @@ function renderBoroughCard(u, st) {
         ${signing === 'sent' ? `<a href="#" onclick="boroughCancelSigning(${u.id});return false;" style="color:var(--danger);">Cancel signing</a>` : ''}
         ${!submitted ? `<a href="#" onclick="if (confirm('Mark this unit as already sent to the Borough another way?')) saveBoroughFiling(${u.id}, { status: 'submitted' });return false;">Sent another way</a>` : ''}
         ${lease ? `<a href="#" onclick="setBoroughUnitLease(${u.id}, '');return false;" title="Lease: ${boroughEsc(lease.property_address)}">Change lease</a>` : ''}
+        <a href="#" onclick="boroughToggle('bl-box-${u.id}');return false;">License number</a>
         <a href="#" onclick="setBoroughUnitFlag(${u.id}, false);return false;">Not in East Stroudsburg</a></div>
+        <div id="bl-box-${u.id}" style="display:none;margin-top:8px;font-size:13px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px;">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><strong>Rental license # for ${boroughYear}</strong>
+                <input id="bl-${u.id}" value="${boroughEsc(filing.license_no || '')}" placeholder="from the license Sue sends back" style="flex:1;min-width:180px;padding:6px;border:1px solid var(--border);border-radius:4px;">
+                <button class="bu-btn sec" onclick="saveBoroughLicense(${u.id})">Save</button></div>
+            <div style="color:var(--text-secondary);margin-top:4px;">Saving a number also marks the unit <em>License received</em>. Next year's online payment asks for it.</div></div>
         ${lease ? `<div id="bt-box-${u.id}" style="display:${needs.some(n => n.fix === 'tenants') ? 'block' : 'none'};">${renderBoroughTenantEditor(lease)}</div>` : ''}
         ${files.length ? `<div id="bf-box-${u.id}" class="bu-files" style="display:none;">${files.map(f => `<div>${fileLabel[f.kind] || '📎'} <a href="#" onclick="openLeaseFile('${f.storage_path}');return false;">${boroughEsc(f.file_name)}</a> <small>${(f.created_at || '').slice(0, 10)}</small> <a href="#" onclick="removeBoroughFile(${f.id}, '${f.storage_path}');return false;" style="color:var(--danger);">✕</a></div>`).join('')}</div>` : ''}`;
 
@@ -442,10 +448,17 @@ function renderBoroughCard(u, st) {
                 <div class="bu-names">${boroughEsc(names)}</div>
                 <div class="bu-meta">${occSelect}${contact.length ? '<br>' + contact.map(boroughEsc).join('<br>') : ''}</div>
             </div>
-            <span class="bu-pill ${pill[0]}">${pill[1]}</span>
+            <div style="text-align:right;"><span class="bu-pill ${pill[0]}">${pill[1]}</span>${filing.license_no ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:6px;">License # <strong>${boroughEsc(filing.license_no)}</strong></div>` : ''}</div>
         </div>
         ${leasePicker}${needLines}${steps}${action}${more}
     </div>`;
+}
+async function saveBoroughLicense(propertyId) {
+    const v = (document.getElementById('bl-' + propertyId) || {}).value?.trim() || '';
+    const patch = { license_no: v };
+    if (v) patch.status = 'licensed';
+    const r = await saveBoroughFiling(propertyId, patch);
+    if (r) showAlert(v ? 'License number saved.' : 'License number cleared.', 'success');
 }
 function boroughToggle(id, open) {
     const el = document.getElementById(id); if (!el) return;

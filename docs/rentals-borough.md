@@ -8,7 +8,7 @@ what was sent for each unit.
 ## One-time setup
 1. Supabase (Homestead project) → SQL Editor → paste all of
    `supabase/migrations/021_borough_registration.sql` → Run, then the same
-   with `022_borough_signing.sql`.
+   with `022_borough_signing.sql` and `023_borough_license_no.sql`.
 1b. In a terminal in the repo folder (after `git pull`):
    ```
    supabase functions deploy borough-sign --no-verify-jwt
@@ -44,8 +44,10 @@ what was sent for each unit.
   once its Addendum is signed or it is vacant.
 - Each unit card has **Edit tenant details** (email, phone, employer) that
   saves straight to the lease.
-- The unit then shows "Sent to the Borough" with the date; set it to
-  **License received** when the license arrives and attach it.
+- The unit then shows "Sent to the Borough" with the date. When the license
+  arrives, tap **License number** on the card, type it and Save: the unit
+  flips to *License received* and the number is kept for next year's
+  online payment (the Borough's payment page asks for it).
 - Prefer paper? **Filled packet (zip)** still downloads everything to send
   yourself.
 - Tenants only ever see the 2-page Addendum. Its manager address line uses
