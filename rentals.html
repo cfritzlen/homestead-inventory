@@ -2642,7 +2642,12 @@
                         <td><em style="color:var(--text-secondary);">Vacant</em></td>
                         <td>—</td><td>—</td><td>—</td><td>—</td>
                         <td><span class="status-badge status-expired">No lease</span></td>
-                        <td style="white-space:nowrap;"><div class="row-actions"><button class="act act-green" onclick="startLeaseForUnit(${unit.id})">➕ New lease</button></div></td>
+                        <td style="white-space:nowrap;"><div class="row-actions"><button class="act act-green" onclick="startLeaseForUnit(${unit.id})">➕ New lease</button>
+                            <details class="act-menu"><summary class="act" title="More">⋯</summary><div class="act-menu-list">
+                                <a href="#" onclick="renameUnit(${unit.id});return false;">✏️ Rename unit</a>
+                                <a href="#" onclick="mergeUnit(${unit.id});return false;">🔀 Merge into another unit</a>
+                                <a href="#" onclick="removeUnit(${unit.id});return false;" style="color:var(--danger);">🗑 Remove unit</a>
+                            </div></details></div></td>
                     </tr>`;
                 }
                 const { current: lease, older } = group;
@@ -2689,6 +2694,9 @@
                                         <a href="#" onclick="regeneratePDF(${lease.id});return false;">📄 Download PDF</a>
                                         ${unit ? `<a href="#" onclick="startLeaseForUnit(${unit.id});return false;">➕ New lease, new tenants</a>` : ''}
                                         ${lease.status === 'active' ? `<a href="#" onclick="endLease(${lease.id});return false;" style="color:var(--danger);">⏹ End this lease</a>` : `<a href="#" onclick="reactivateLease(${lease.id});return false;">↩ Reactivate (mark active)</a>`}
+                                        ${unit ? `<div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+                                        <a href="#" onclick="renameUnit(${unit.id});return false;">✏️ Rename unit</a>
+                                        <a href="#" onclick="mergeUnit(${unit.id});return false;">🔀 Merge into another unit</a>` : ''}
                                     </div>
                                 </details>
                             </div>
@@ -2839,6 +2847,47 @@
         document.addEventListener('click', (e) => {
             document.querySelectorAll('details.act-menu[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
         });
+        // ---- unit housekeeping ----
+        async function renameUnit(unitId) {
+            const u = allProperties.find(p => p.id === unitId); if (!u) return;
+            const name = (prompt('Unit name (this is what shows in the New Lease dropdown and on the Borough forms):', u.property_name) || '').trim();
+            if (!name || name === u.property_name) return;
+            const { error } = await supabaseClient.from('rental_properties').update({ property_name: name }).eq('id', unitId);
+            if (error) { showAlert('Could not rename: ' + error.message, 'error'); return; }
+            u.property_name = name; await loadProperties(); loadAllLeases();
+        }
+        function mergeUnit(unitId) {
+            const u = allProperties.find(p => p.id === unitId); if (!u) return;
+            const others = allProperties.filter(p => !p.is_building_level && p.id !== unitId && p.status !== 'archived');
+            const modal = document.getElementById('lease-modal');
+            modal.style.display = 'flex';
+            document.getElementById('lm-title').textContent = `Merge "${u.property_name}"`;
+            document.getElementById('lm-body').innerHTML = `<p style="font-size:14px;">Its leases move to the unit you pick, and "${u.property_name}" is removed from the list. Nothing is deleted; leases keep their history.</p>
+                <select id="merge-target" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;margin:10px 0;">
+                    <option value="">— keep which unit? —</option>${others.map(o => `<option value="${o.id}">${o.property_name}</option>`).join('')}</select>
+                <div style="display:flex;gap:8px;"><button class="btn btn-primary" onclick="doMergeUnit(${unitId})">Merge</button><button class="btn btn-secondary" onclick="closeLeaseModal()">Cancel</button></div>`;
+        }
+        async function doMergeUnit(unitId) {
+            const target = Number(document.getElementById('merge-target').value); if (!target) { showAlert('Pick the unit to keep.', 'error'); return; }
+            const u = allProperties.find(p => p.id === unitId), t = allProperties.find(p => p.id === target);
+            try {
+                let r = await supabaseClient.from('rental_leases').update({ property_id: target }).eq('property_id', unitId); if (r.error) throw r.error;
+                // also catch leases that were only matched by the old unit's name
+                r = await supabaseClient.from('rental_leases').update({ property_id: target }).is('property_id', null).eq('property_address', u.property_name); if (r.error) throw r.error;
+                r = await supabaseClient.from('rental_properties').update({ status: 'archived' }).eq('id', unitId); if (r.error) throw r.error;
+                u.status = 'archived';
+                showAlert(`Merged into ${t.property_name}.`, 'success');
+                closeLeaseModal(); await loadProperties(); loadAllLeases();
+            } catch (e) { showAlert('Could not merge: ' + e.message, 'error'); }
+        }
+        async function removeUnit(unitId) {
+            const u = allProperties.find(p => p.id === unitId); if (!u) return;
+            if (allLeases.some(l => l.property_id === unitId && l.status === 'active')) { showAlert('This unit has an active lease. Merge it or end the lease first.', 'error'); return; }
+            if (!confirm(`Remove "${u.property_name}" from the unit list? (It is hidden, not deleted.)`)) return;
+            const { error } = await supabaseClient.from('rental_properties').update({ status: 'archived' }).eq('id', unitId);
+            if (error) { showAlert('Could not remove: ' + error.message, 'error'); return; }
+            u.status = 'archived'; await loadProperties(); loadAllLeases();
+        }
         async function reactivateLease(id) {
             const lease = allLeases.find(l => l.id === id); if (!lease) return;
             if (!confirm(`Mark the lease for ${lease.tenant_names} as active again?`)) return;
