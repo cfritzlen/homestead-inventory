@@ -1178,8 +1178,7 @@
                 <div class="logo"><a href="index.html" style="color:inherit;text-decoration:none;opacity:0.7;font-weight:500;">&larr; Homestead</a> &nbsp;Rentals</div>
                 <nav class="nav">
                     <button class="nav-btn active" onclick="showView('dashboard')">Dashboard</button>
-                    <button class="nav-btn" onclick="resetAndShowNewLease()">New Lease</button>
-                    <button class="nav-btn" onclick="showView('leases')">All Leases</button>
+                    <button class="nav-btn" onclick="showView('leases')">Units &amp; Leases</button>
                     <button class="nav-btn" onclick="showView('expenses')">Expenses</button>
                     <button class="nav-btn" onclick="showView('payments')">Payments</button>
                     <button class="nav-btn" onclick="showView('borough')">Borough</button>
@@ -1222,7 +1221,8 @@
             <!-- New Lease View -->
             <div id="new-lease" class="view">
                 <div class="card">
-                    <div class="card-header">Create New Lease Agreement</div>
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;"><span id="new-lease-title">New Lease</span>
+                        <button class="setup-toggle" style="margin:0;" onclick="showView('leases')">← Back to units</button></div>
                     <div id="alert-container"></div>
 
                     <details style="margin-bottom:16px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">
@@ -1480,7 +1480,7 @@
             <div id="leases" class="view">
                 <div class="card">
                     <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                        <span>All Lease Agreements</span>
+                        <span>Units &amp; Leases</span>
                         <button class="setup-toggle" onclick="openRecycleBin()">🗑 Recycle bin</button>
                     </div>
                     <div class="search-bar">
@@ -1968,6 +1968,7 @@
         function resetAndShowNewLease() {
             // Reset the form
             document.getElementById('lease-form').reset();
+            const t = document.getElementById('new-lease-title'); if (t) t.textContent = 'New Lease';
             
             // Reset renewal mode
             document.getElementById('is-renewal').value = 'false';
@@ -2204,7 +2205,7 @@
                     if (fresh) await openLeaseModal(fresh);
                     showAlert('Lease saved and PDF downloaded. Review it, then press "Sign & send to tenants".', 'success');
                 } else {
-                    showView('dashboard');
+                    showView('leases');
                 }
 
             } catch (error) {
@@ -2602,15 +2603,37 @@
             const today = new Date();
             const groups = groupLeasesByUnit(leases);
 
-            // Group the units under their building, buildings in address order
+            // One entry per unit record (even with no lease), plus any lease that
+            // isn't linked to a unit yet. Grouped under their building.
+            const units = allProperties.filter(p => !p.is_building_level && p.status !== 'archived');
+            const used = new Set();
+            const entries = units.map(u => {
+                const g = groups.find(x => x.current.property_id === u.id) || groups.find(x => !x.current.property_id && unitMatchScore(x.current.property_address, u) >= 2);
+                if (g) used.add(g);
+                return { unit: u, group: g || null };
+            });
+            for (const g of groups) if (!used.has(g)) entries.push({ unit: null, group: g });
             const byBuilding = new Map();
-            for (const g of groups) {
-                const b = buildingForAddress(leaseUnitAddress(g.current));
+            for (const e of entries) {
+                const b = buildingForAddress(e.unit ? (e.unit.street_address ? `${e.unit.street_address}${e.unit.unit ? ', Unit ' + e.unit.unit : ''}` : e.unit.property_name) : leaseUnitAddress(e.group.current));
                 if (!byBuilding.has(b)) byBuilding.set(b, []);
-                byBuilding.get(b).push(g);
+                byBuilding.get(b).push(e);
             }
             const buildingNames = [...byBuilding.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-            const rowFor = ({ current: lease, older }) => {
+            const rowFor = ({ unit, group }) => {
+                const label = unit ? unitLabel(unit.unit || unit.property_name) : unitLabel(leaseUnitAddress(group.current));
+                const fullName = unit ? unit.property_name : group.current.property_address;
+                if (!group) {
+                    // a unit with no lease at all
+                    return `<tr>
+                        <td><strong style="font-size:15px;" title="${fullName}">${label}</strong></td>
+                        <td><em style="color:var(--text-secondary);">Vacant</em></td>
+                        <td>—</td><td>—</td><td>—</td><td>—</td>
+                        <td><span class="status-badge status-expired">No lease</span></td>
+                        <td><button class="action-btn" style="background: #10b981; color: white;" onclick="startLeaseForUnit(${unit.id})">➕ New lease</button></td>
+                    </tr>`;
+                }
+                const { current: lease, older } = group;
                 const m2m = lease.lease_type === 'month_to_month';
                 // Month-to-month never "expires": the date that matters is the yearly
                 // anniversary of the start, when the rent gets reviewed.
@@ -2637,7 +2660,7 @@
 
                 return `
                     <tr ${endingSoon ? 'style="background:#fff7ed;"' : ''}>
-                        <td><strong style="font-size:15px;" title="${lease.property_address}">${unitLabel(leaseUnitAddress(lease))}</strong>${older.length ? `<br><a href="#" onclick="togglePrevLeases(${lease.id});return false;" style="font-size:12px;color:var(--primary);">▸ ${older.length} previous lease${older.length === 1 ? '' : 's'}</a>` : ''}</td>
+                        <td><strong style="font-size:15px;" title="${fullName}">${label}</strong>${older.length ? `<br><a href="#" onclick="togglePrevLeases(${lease.id});return false;" style="font-size:12px;color:var(--primary);">▸ ${older.length} previous lease${older.length === 1 ? '' : 's'}</a>` : ''}</td>
                         <td>${lease.tenant_names}</td>
                         <td>${lease.lease_start}</td>
                         <td>${endingSoon ? `<span style="color:#c2410c;font-weight:600;">${m2m ? 'month to month' : lease.lease_end}</span><br><small style="color:#c2410c;">${m2m ? 'rent review ' : ''}${daysUntilEnd <= 0 ? 'due now' : 'in ' + daysUntilEnd + ' days'}</small>` : endCell}</td>
@@ -2648,6 +2671,7 @@
                             <button class="action-btn btn-primary" onclick="viewLease(${lease.id})">View</button>
                             <button class="action-btn btn-secondary" onclick="regeneratePDF(${lease.id})">PDF</button>
                             <button class="action-btn" style="background: #10b981; color: white;" onclick="renewLease(${lease.id})" title="${lease.status === 'active' ? 'Renew this lease' : 'Start a new lease for this unit from the last one'}">${lease.status === 'active' ? 'Renew' : 'Renew / new lease'}</button>
+                            ${lease.status !== 'active' && unit ? `<button class="action-btn btn-secondary" onclick="startLeaseForUnit(${unit.id})" title="Blank lease for new tenants">New tenants</button>` : ''}
                             ${lease.status === 'active' ? `<button class="action-btn" style="background: #ef4444; color: white;" onclick="endLease(${lease.id})">End</button>` : ''}
                         </td>
                     </tr>
@@ -2665,11 +2689,14 @@
             };
             makeColumnsResizable('leases-table');
             tbody.innerHTML = buildingNames.map(b => {
-                const units = byBuilding.get(b).sort((x, y) => (x.current.property_address || '').localeCompare(y.current.property_address || '', undefined, { numeric: true }));
-                const active = units.filter(u => u.current.status === 'active').length;
-                const rent = units.filter(u => u.current.status === 'active').reduce((t, u) => t + (parseFloat(u.current.rent_amount) || 0), 0);
+                const list = byBuilding.get(b).sort((x, y) => {
+                    const ax = x.unit ? (x.unit.unit || x.unit.property_name) : x.group.current.property_address, ay = y.unit ? (y.unit.unit || y.unit.property_name) : y.group.current.property_address;
+                    return String(ax).localeCompare(String(ay), undefined, { numeric: true });
+                });
+                const activeLeases = list.filter(e => e.group && e.group.current.status === 'active').map(e => e.group.current);
+                const rent = activeLeases.reduce((t, l) => t + (parseFloat(l.rent_amount) || 0), 0);
                 return `<tr style="background:var(--bg-tertiary);"><td colspan="8" style="font-weight:700;font-size:15px;padding:10px 12px;">🏢 ${b}
-                    <span style="font-weight:400;font-size:13px;color:var(--text-secondary);margin-left:8px;">${units.length} unit${units.length === 1 ? '' : 's'} · ${active} active · $${rent.toLocaleString()}/month</span></td></tr>` + units.map(rowFor).join('');
+                    <span style="font-weight:400;font-size:13px;color:var(--text-secondary);margin-left:8px;">${list.length} unit${list.length === 1 ? '' : 's'} · ${activeLeases.length} rented · $${rent.toLocaleString()}/month</span></td></tr>` + list.map(rowFor).join('');
             }).join('');
         }
 
@@ -2681,6 +2708,15 @@
             d.setFullYear(d.getFullYear() + 1);
             while (d < today) d.setFullYear(d.getFullYear() + 1);
             return d;
+        }
+
+        // Blank New Lease form for a unit, opened from the Units & Leases page
+        function startLeaseForUnit(unitId) {
+            const u = allProperties.find(p => p.id === unitId); if (!u) return;
+            resetAndShowNewLease();
+            document.getElementById('new-lease-title').textContent = `New lease · ${u.property_name}`;
+            const dd = document.getElementById('property-dropdown');
+            if (dd) { dd.value = u.property_name; onPropertyChange(); }
         }
 
         // The unit a lease is linked to (rental_properties row), if any
@@ -2944,9 +2980,11 @@
 
         // Filter leases
         function filterLeases(searchTerm) {
-            const filtered = allLeases.filter(lease => 
-                lease.tenant_names.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                lease.property_address.toLowerCase().includes(searchTerm.toLowerCase())
+            const q = searchTerm.toLowerCase();
+            const filtered = allLeases.filter(lease =>
+                (lease.tenant_names || '').toLowerCase().includes(q) ||
+                (lease.property_address || '').toLowerCase().includes(q) ||
+                ((leaseUnit(lease) || {}).property_name || '').toLowerCase().includes(q)
             );
             displayLeases(filtered);
         }
@@ -2997,6 +3035,7 @@
             showView('new-lease');
             
             // Mark as renewal
+            const t = document.getElementById('new-lease-title'); if (t) t.textContent = `Renew · ${lease.property_address}`;
             document.getElementById('is-renewal').value = 'true';
             document.getElementById('previous-lease-id').value = id;
             
