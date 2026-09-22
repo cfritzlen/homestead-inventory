@@ -15,7 +15,7 @@
 //   meters: { water, electric, garbage },
 //   answers: { license_active, license_displayed, evac_plan, smoke_detectors },  // 'yes' | 'no' | ''
 //   pets: { count, breeds }, maxOccupants, disruptive, leaseSignedOn,
-//   tenantContactAddress,        // optional: address shown to tenants on the Addendum instead of the owner's
+//   tenantContactAddress,        // optional: address shown to tenants on the Addendum (blank if not given)
 //   signaturePng, initialsPng   // data URLs or null
 // }
 (function (global) {
@@ -162,8 +162,8 @@
     // C. responsible person for management / code compliance
     const who = m.name ? m : { name: o.name, physical1: o.mailing1, physical2: o.mailing2, dayPhone: o.phone, email: o.email };
     f.text(0, 126.5, 536.5, 363.0, who.name, 11);
-    // Tenants see this page: a separate contact address can be shown here
-    f.text(0, 126.5, 536.5, 312.0, d.tenantContactAddress || [who.physical1 || who.mailing1, who.physical2 || who.mailing2].filter(Boolean).join(', '), 11);
+    // Tenants see this page: only a contact address the owner chose to give (blank otherwise, never the mailing address)
+    f.text(0, 126.5, 536.5, 312.0, d.tenantContactAddress || '', 11);
     f.text(0, 126.0, 295.5, 261.0, who.dayPhone || who.phone24, 11);
     f.text(0, 336.0, 538.0, 261.0, who.email, 11);
     f.text(0, 319.0, 351.5, 133.0, String(d.maxOccupants || 4), 11);

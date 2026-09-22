@@ -40,7 +40,8 @@ const BOROUGH_UNIT_DEFAULTS = {
     pin: 'PIN 05730112853408 / Parcel 05-5.2.18.6',       // 180-182 N Courtland St, from the 2026 tax bill
 };
 // Owner details used until something else is saved under Owner details.
-const BOROUGH_OWNER_DEFAULTS = { mailing1: '1038 Poplar Valley Rd E', mailing2: 'Stroudsburg, PA 18360', deedNames: 'Martin Valdez and Colette G. Fritzlen' };
+const BOROUGH_OWNER_DEFAULTS = { mailing1: '1038 Poplar Valley Rd E', mailing2: 'Stroudsburg, PA 18360', deedNames: 'Martin Valdez and Colette G. Fritzlen',
+    tenantAddress: '' };   // address line on the tenant-facing Addendum: left blank unless typed under Owner details
 const BOROUGH_SIGN_FN = () => Auth.client.supabaseUrl + '/functions/v1/borough-sign';
 const BOROUGH_SITE_URL = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '').replace(/\/+$/, '');
 let boroughSigners = {};        // filing_id -> [rental_borough_signers]
@@ -146,9 +147,9 @@ function renderBoroughInfoForm() {
             ${inp('owner_mailing2', 'Owner mailing address (line 2)', o.mailing2, 'City, State ZIP')}
             ${inp('owner_deed', 'Owner name(s) as on the deed', o.deedNames)}
             ${inp('owner_contact', 'Contact name (only if the owner is a company)', o.contact, 'N/A')}
-            ${inp('tenant_address', 'Address tenants see on the Addendum', o.tenantAddress, 'Leave blank to use the mailing address')}
+            ${inp('tenant_address', 'Address tenants see on the Addendum (optional)', o.tenantAddress, 'Left blank on the Addendum unless you type one')}
         </div>
-        <div style="font-size:12px;color:var(--text-secondary);margin-top:-6px;">Tenants only ever see the 2-page Addendum. The Registration form and affidavits go to the Borough alone. The Addendum lists a contact address for the manager; use a PO box or the building's address here if you'd rather not show your home address.</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:-6px;">Tenants only ever see the 2-page Addendum. The Registration form and affidavits, with your mailing address, go to the Borough alone. The Addendum's address line stays blank unless you type something here.</div>
         <label style="display:flex;align-items:center;gap:8px;margin:12px 0;"><input type="checkbox" id="bi-same" ${same ? 'checked' : ''} onchange="document.getElementById('bi-mgr').style.display = this.checked ? 'none' : 'block'"> I manage the property myself (use my details as Property Manager)</label>
         <div id="bi-mgr" style="display:${same ? 'none' : 'block'};">
             <div class="form-grid">
@@ -200,6 +201,17 @@ function boroughIsBoroughUnit(u) {
     if (flag === 'no') return false;
     return /courtland/i.test(`${u.property_name || ''} ${u.street_address || ''}`) || /east\s*stroudsburg/i.test(u.city || '');
 }
+async function setBoroughUnitLease(propertyId, address) {
+    const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
+    const info = Object.assign({}, u.borough_info || {}, { lease_address: address || '' });
+    if (!address) {
+        // "change": clear the pick and show the dropdown
+        info.lease_address = ''; info.lease_unpicked = 'yes';
+    } else { delete info.lease_unpicked; }
+    const { error } = await supabaseClient.from('rental_properties').update({ borough_info: info }).eq('id', propertyId);
+    if (error) { showAlert('Could not save: ' + error.message + ' (run migration 021?)', 'error'); return; }
+    u.borough_info = info; renderBoroughUnits();
+}
 async function setBoroughUnitFlag(propertyId, inBorough) {
     const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
     const info = Object.assign({}, u.borough_info || {}, { in_borough: inBorough ? 'yes' : 'no' });
@@ -207,11 +219,35 @@ async function setBoroughUnitFlag(propertyId, inBorough) {
     if (error) { showAlert('Could not save: ' + error.message + ' (run migration 021?)', 'error'); return; }
     u.borough_info = info; renderBoroughUnits();
 }
+// Leases store the property as free text (property_address); units are
+// rental_properties rows. Match loosely (ignore punctuation, "Apt", "Unit",
+// "#", street suffixes), or use the lease the user picked in Unit details.
+const boroughNorm = (s) => String(s || '').toLowerCase().replace(/\b(apt|apartment|unit|suite|ste|#|street|st|road|rd|north|n|east|e|stroudsburg|pa|\d{5})\b/g, ' ').replace(/[^a-z0-9]/g, '');
+function boroughLeaseGroups() {
+    // one entry per distinct lease address: the current lease for it
+    return groupLeasesByUnit(boroughLeases).map(g => g.current);
+}
 function boroughCurrentLease(unit) {
-    const key = (unit.property_name || '').trim().toLowerCase();
-    const g = groupLeasesByUnit(boroughLeases).find(g => (g.current.property_address || '').trim().toLowerCase() === key);
-    if (!g) return null;
-    return g.current.status === 'active' ? g.current : null;
+    const picked = (unit.borough_info || {}).lease_address;
+    if (!picked && (unit.borough_info || {}).lease_unpicked === 'yes') return null;
+    const current = boroughLeaseGroups();
+    const active = (l) => l && l.status === 'active' ? l : null;
+    if (picked) {
+        const l = current.find(c => (c.property_address || '') === picked);
+        if (l) return active(l);
+    }
+    const exact = current.find(c => (c.property_address || '').trim().toLowerCase() === (unit.property_name || '').trim().toLowerCase());
+    if (exact) return active(exact);
+    const names = [unit.property_name, unit.street_address && unit.unit ? `${unit.street_address} ${unit.unit}` : '', unit.street_address].filter(Boolean).map(boroughNorm).filter(Boolean);
+    const loose = current.filter(c => { const n = boroughNorm(c.property_address); return n && names.some(x => x === n || (x.length >= 4 && (n.endsWith(x) || n.includes(x)))); });
+    if (loose.length === 1) return active(loose[0]);
+    if (loose.length > 1) {
+        // prefer the one whose unit letter/number matches
+        const u = boroughNorm(unit.unit || (unit.property_name || '').replace(/^.*?(\d+\s*[a-z]?)$/i, '$1'));
+        const best = loose.find(c => u && boroughNorm(c.property_address).endsWith(u));
+        return active(best || loose[0]);
+    }
+    return null;
 }
 function boroughGuessOccupancy(unit, lease) {
     if (!lease) return 'vacant';
@@ -252,6 +288,11 @@ function renderBoroughUnits() {
                     <div style="font-weight:600;font-size:15px;">${boroughEsc(u.property_name)}</div>
                     <div style="font-size:13px;color:var(--text-secondary);">Tenants now: ${tenants}${lease ? ` · lease ${lease.lease_start} → ${lease.lease_end}` : ''}</div>
                     ${missing.length ? `<div style="font-size:12px;color:#92400e;margin-top:4px;">Missing for the form: ${missing.join(', ')} → <a href="#" onclick="openBoroughUnit(${u.id});return false;">Unit details</a></div>` : ''}
+                    ${!lease ? `<div style="font-size:12px;margin-top:6px;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:6px 8px;"><strong style="color:#9a3412;">No lease matched this unit.</strong> Pick it:
+                        <select onchange="setBoroughUnitLease(${u.id}, this.value)" style="padding:4px;border:1px solid var(--border);border-radius:4px;max-width:100%;">
+                            <option value="">— choose the lease —</option>
+                            ${boroughLeaseGroups().filter(c => c.status === 'active').map(c => `<option value="${boroughEsc(c.property_address)}" ${(u.borough_info || {}).lease_address === c.property_address ? 'selected' : ''}>${boroughEsc(c.property_address)} · ${boroughEsc(c.tenant_names || '')}</option>`).join('')}
+                        </select></div>` : `<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">Lease: ${boroughEsc(lease.property_address)} <a href="#" onclick="setBoroughUnitLease(${u.id}, '');return false;">change</a></div>`}
                     <div style="font-size:11px;margin-top:2px;"><a href="#" onclick="setBoroughUnitFlag(${u.id}, false);return false;" style="color:var(--text-secondary);">Not in East Stroudsburg? Leave it out</a></div>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -428,15 +469,15 @@ function renderBoroughSigning(u, filing, occ) {
     }
     if (occ === 'vacant') {
         return box(`<strong>📤 Vacant unit: nothing for tenants to sign.</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">Sends the Registration and the Affidavit of Vacant Unit, with your saved signature, to ${BOROUGH.submitEmail} with you in copy.</div>
-            <button class="action-btn btn-primary" onclick="boroughSubmitNow(${u.id})">Send packet to Borough</button>`);
+            <button class="action-btn btn-primary" onclick="boroughSubmitNow(${u.id})">Review & send packet to Borough</button>`);
     }
     if (st === 'draft') {
         const lease = boroughCurrentLease(u);
         const missing = boroughTenants(lease).filter(t => !t.email).map(t => t.name);
         return box(`<strong>✍️ Electronic signing</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">You sign, each tenant gets an email link to read the Addendum and tap "Sign here" on their phone. When the last one signs, the whole packet (Registration${occ === 'same' ? ', Affidavit of Same Tenants' : ''}, signed Addendum) is emailed to ${BOROUGH.submitEmail} with you in copy.</div>
             ${missing.length ? `<div style="color:var(--danger);margin-bottom:8px;">Missing email for: ${boroughEsc(missing.join(', '))}. Add it on the lease first.</div>` : ''}
-            <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><input type="checkbox" id="bauto-${u.id}" checked> Email the Borough automatically when everyone has signed</label>
-            <button class="action-btn btn-primary" ${missing.length ? 'disabled' : ''} onclick="boroughSendForSignature(${u.id})">Sign & send to tenants</button>`);
+            <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><input type="checkbox" id="bauto-${u.id}"> Email the Borough automatically when everyone has signed (off = you review and press Send yourself)</label>
+            <button class="action-btn btn-primary" ${missing.length ? 'disabled' : ''} onclick="boroughSendForSignature(${u.id})">Review & send to tenants</button>`);
     }
     const signers = boroughSigners[filing.id] || [];
     const fmt = (d) => d ? new Date(d).toLocaleDateString() : '';
@@ -449,7 +490,7 @@ function renderBoroughSigning(u, filing, occ) {
     }
     // signed but not yet submitted
     return box(`<strong>✍️ Addendum fully signed</strong><div style="margin-top:6px;">${rows}</div>
-        <div style="margin-top:8px;"><button class="action-btn btn-primary" onclick="boroughSubmitNow(${u.id})">Send packet to Borough</button> <span style="color:var(--text-secondary);">Emails everything to ${BOROUGH.submitEmail} with you in copy.</span></div>`);
+        <div style="margin-top:8px;"><button class="action-btn btn-primary" onclick="boroughSubmitNow(${u.id})">Review & send packet to Borough</button> <span style="color:var(--text-secondary);">You see every file first; then it emails to ${BOROUGH.submitEmail} with you in copy.</span></div>`);
 }
 async function ensureBoroughFiling(propertyId) {
     return boroughFilings[propertyId] || await saveBoroughFiling(propertyId, {});
@@ -484,6 +525,25 @@ async function boroughUploadForm(u, filing, kind, d, fileKind) {
     }
     return path;
 }
+// Review pop-up: every file that is about to go out, with Open links, and a
+// Send button that only works after each file has been opened.
+function boroughReview(title, intro, files, sendLabel, onSend) {
+    const modal = document.getElementById('lease-modal');
+    modal.style.display = 'flex';
+    document.getElementById('lm-title').textContent = title;
+    const opened = new Set();
+    window.__boroughReviewOpen = (i, path) => { opened.add(i); openLeaseFile(path); document.getElementById('br-' + i).textContent = '✓ opened'; document.getElementById('br-send').disabled = opened.size < files.length; };
+    window.__boroughReviewSend = async () => { document.getElementById('br-send').disabled = true; document.getElementById('br-send').textContent = 'Sending…'; try { await onSend(); closeLeaseModal(); } catch (e) { showAlert('Send failed: ' + e.message, 'error'); closeLeaseModal(); } };
+    document.getElementById('lm-body').innerHTML = `
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">${intro}</div>
+        ${files.map((f, i) => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span>📄 <strong>${boroughEsc(f.name)}</strong>${f.note ? `<br><small style="color:var(--text-secondary);">${f.note}</small>` : ''}</span>
+            <span style="white-space:nowrap;"><small id="br-${i}" style="color:var(--text-secondary);margin-right:8px;">not opened yet</small><button class="action-btn btn-secondary" onclick="window.__boroughReviewOpen(${i}, '${f.path}')">Open</button></span></div>`).join('')}
+        <div style="display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap;">
+            <button class="action-btn btn-primary" id="br-send" disabled onclick="window.__boroughReviewSend()">${sendLabel}</button>
+            <button class="action-btn btn-secondary" onclick="closeLeaseModal()">Not yet</button>
+            <span style="font-size:12px;color:var(--text-secondary);">Open every file first. Nothing is sent until you press ${sendLabel}.</span></div>`;
+}
 async function boroughSendForSignature(propertyId) {
     const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
     try {
@@ -492,30 +552,41 @@ async function boroughSendForSignature(propertyId) {
         const filing = await ensureBoroughFiling(propertyId); if (!filing) return;
         const d = boroughFormData(u);
         if (!d.tenants.length) throw new Error('No tenants on the current lease. Mark the unit Vacant instead.');
-        showAlert('Building the forms…', 'success');
-        await boroughUploadForm(u, filing, 'registration', d, 'packet');
-        if (d.occupancy === 'same') await boroughUploadForm(u, filing, 'same', d, 'packet');
+        showAlert('Building the forms for you to review…', 'success');
+        const files = [];
+        files.push({ name: `Registration ${boroughYear}`, note: 'Goes to the Borough only.', path: await boroughUploadForm(u, filing, 'registration', d, 'packet') });
+        if (d.occupancy === 'same') files.push({ name: 'Affidavit of Same Tenants', note: 'Goes to the Borough only.', path: await boroughUploadForm(u, filing, 'same', d, 'packet') });
         const addendumPath = await boroughUploadForm(u, filing, 'addendum', d, null);
-        const r = await callBoroughSign({ action: 'send', filing_id: filing.id, site_url: BOROUGH_SITE_URL(), addendum_path: addendumPath, tenants: d.tenants.map(t => ({ name: t.name, email: t.email })), auto_submit: auto });
-        showAlert(`Sent to ${r.sent} tenant${r.sent === 1 ? '' : 's'}.` + (r.problems && r.problems.length ? ' Problems: ' + r.problems.join('; ') : ''), r.problems && r.problems.length ? 'error' : 'success');
-    } catch (e) { showAlert('Send failed: ' + e.message, 'error'); }
+        files.push({ name: 'Addendum to Lease', note: `This is what ${d.tenants.map(t => t.name).join(' and ')} will see and sign.`, path: addendumPath });
+        boroughReview(`${u.property_name} · review before sending`, `Check every line. When you press Send, each tenant gets an email link to sign the Addendum.${auto ? ' When the last one signs, the packet emails to the Borough automatically.' : ' After they sign, you review once more and send the packet to the Borough yourself.'}`,
+            files, 'Send to tenants', async () => {
+                const r = await callBoroughSign({ action: 'send', filing_id: filing.id, site_url: BOROUGH_SITE_URL(), addendum_path: addendumPath, tenants: d.tenants.map(t => ({ name: t.name, email: t.email })), auto_submit: auto });
+                showAlert(`Sent to ${r.sent} tenant${r.sent === 1 ? '' : 's'}.` + (r.problems && r.problems.length ? ' Problems: ' + r.problems.join('; ') : ''), r.problems && r.problems.length ? 'error' : 'success');
+                await loadBoroughFilings(); renderBoroughUnits();
+            });
+    } catch (e) { showAlert('Could not build the forms: ' + e.message, 'error'); }
     await loadBoroughFilings(); renderBoroughUnits();
 }
 async function boroughSubmitNow(propertyId) {
     const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
-    if (!confirm(`Email the ${boroughYear} packet for ${u.property_name} to ${BOROUGH.submitEmail} now?`)) return;
     try {
         if (!(await boroughEnsureSignature())) return;
         const filing = await ensureBoroughFiling(propertyId); if (!filing) return;
         const d = boroughFormData(u);
-        showAlert('Building the forms…', 'success');
-        await boroughUploadForm(u, filing, 'registration', d, 'packet');
-        if (d.vacant) await boroughUploadForm(u, filing, 'vacant', d, 'packet');
-        else if (d.occupancy === 'same') await boroughUploadForm(u, filing, 'same', d, 'packet');
-        const r = await callBoroughSign({ action: 'submit', filing_id: filing.id });
-        showAlert(`Sent to ${r.sent_to}: ${(r.files || []).join(', ')}`, 'success');
-    } catch (e) { showAlert('Send failed: ' + e.message, 'error'); }
-    await loadBoroughFilings(); renderBoroughUnits();
+        showAlert('Building the forms for you to review…', 'success');
+        const files = [];
+        files.push({ name: `Registration ${boroughYear}`, path: await boroughUploadForm(u, filing, 'registration', d, 'packet') });
+        if (d.vacant) files.push({ name: 'Affidavit of Vacant Unit', path: await boroughUploadForm(u, filing, 'vacant', d, 'packet') });
+        else if (d.occupancy === 'same') files.push({ name: 'Affidavit of Same Tenants', path: await boroughUploadForm(u, filing, 'same', d, 'packet') });
+        await loadBoroughFilings();
+        for (const f of (boroughFiles[filing.id] || []).filter(f => f.kind === 'packet' && /Addendum/i.test(f.file_name))) files.push({ name: f.file_name, note: 'Signed Addendum.', path: f.storage_path });
+        boroughReview(`${u.property_name} · review before sending to the Borough`, `These files will be emailed to ${BOROUGH.submitEmail} with you in copy.`,
+            files, 'Send to Borough', async () => {
+                const r = await callBoroughSign({ action: 'submit', filing_id: filing.id });
+                showAlert(`Sent to ${r.sent_to}: ${(r.files || []).join(', ')}`, 'success');
+                await loadBoroughFilings(); renderBoroughUnits();
+            });
+    } catch (e) { showAlert('Could not build the forms: ' + e.message, 'error'); }
 }
 async function boroughRemind(signerId) {
     try { await callBoroughSign({ action: 'remind', signer_id: signerId, site_url: BOROUGH_SITE_URL() }); showAlert('Reminder sent', 'success'); }
