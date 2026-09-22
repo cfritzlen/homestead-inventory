@@ -1930,6 +1930,7 @@
         }
 
         let allLeases = [];
+        let allProperties = [];   // buildings and units, for grouping All Leases by building
 
         // Navigation
         function showView(viewName) {
@@ -2575,6 +2576,7 @@
 
                 allLeases = leases;
                 await loadSignedIds();
+                try { const { data: props } = await supabaseClient.from('rental_properties').select('property_name,is_building_level,street_address,unit,status'); allProperties = props || []; } catch (_) { allProperties = []; }
                 displayLeases(leases);
 
             } catch (error) {
@@ -2595,8 +2597,16 @@
 
             const today = new Date();
             const groups = groupLeasesByUnit(leases);
-            
-            tbody.innerHTML = groups.map(({ current: lease, older }) => {
+
+            // Group the units under their building, buildings in address order
+            const byBuilding = new Map();
+            for (const g of groups) {
+                const b = buildingForAddress(g.current.property_address);
+                if (!byBuilding.has(b)) byBuilding.set(b, []);
+                byBuilding.get(b).push(g);
+            }
+            const buildingNames = [...byBuilding.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            const rowFor = ({ current: lease, older }) => {
                 const endDate = new Date(lease.lease_end);
                 const daysUntilEnd = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
                 
@@ -2631,7 +2641,36 @@
                         </td>
                     </tr>
                 `;
+            };
+            tbody.innerHTML = buildingNames.map(b => {
+                const units = byBuilding.get(b).sort((x, y) => (x.current.property_address || '').localeCompare(y.current.property_address || '', undefined, { numeric: true }));
+                const active = units.filter(u => u.current.status === 'active').length;
+                const rent = units.filter(u => u.current.status === 'active').reduce((t, u) => t + (parseFloat(u.current.rent_amount) || 0), 0);
+                return `<tr style="background:var(--bg-tertiary);"><td colspan="8" style="font-weight:700;font-size:15px;padding:10px 12px;">🏢 ${b}
+                    <span style="font-weight:400;font-size:13px;color:var(--text-secondary);margin-left:8px;">${units.length} unit${units.length === 1 ? '' : 's'} · ${active} active · $${rent.toLocaleString()}/month</span></td></tr>` + units.map(rowFor).join('');
             }).join('');
+        }
+
+        // Which building a lease address belongs to: a building-level property
+        // whose street matches and whose number range (e.g. "180-182") covers the
+        // house number; otherwise the address with its unit part stripped.
+        function buildingForAddress(address) {
+            const a = String(address || '').trim();
+            const base = a.replace(/,?\s*(unit|apt|apartment|suite|ste|#)\s*[\w-]+/ig, '')
+                .replace(/,?\s*(downstairs|upstairs|basement|attic|(first|second|third|1st|2nd|3rd)\s*(floor|fl)|fl\s*\d|floor\s*\d)\b/ig, '')
+                .replace(/\s+\d+\s*[a-z]\b\s*$/i, '').replace(/[\s,]+$/, '').trim();
+            const num = parseInt((a.match(/^\s*(\d+)/) || [])[1], 10);
+            const street = base.replace(/^\s*[\d\s-]+/, '').toLowerCase().replace(/\b(st|street|rd|road|ave|avenue|dr|drive|ln|lane|n|s|e|w|north|south|east|west)\b/g, '').replace(/[^a-z]/g, '');
+            for (const p of allProperties.filter(x => x.is_building_level)) {
+                const name = String(p.property_name || '');
+                const pStreet = name.replace(/^\s*[\d\s-]+/, '').toLowerCase().replace(/\b(st|street|rd|road|ave|avenue|dr|drive|ln|lane|n|s|e|w|north|south|east|west)\b/g, '').replace(/[^a-z]/g, '');
+                if (!street || !pStreet || !(street.includes(pStreet) || pStreet.includes(street))) continue;
+                const m = name.match(/^\s*(\d+)\s*[-–]\s*(\d+)/);
+                const lo = m ? parseInt(m[1], 10) : parseInt((name.match(/^\s*(\d+)/) || [])[1], 10), hi = m ? parseInt(m[2], 10) : lo;
+                if (!isNaN(num) && !isNaN(lo) && num >= lo && num <= hi) return name;
+                if (isNaN(lo)) return name;
+            }
+            return base || a || 'Other';
         }
 
         // One "current" lease per unit: the active one with the latest start, or
