@@ -30,6 +30,18 @@ const boroughDueDate = (year) => `${year - 1}-10-01`;
 const BOROUGH_STATUS = { todo: 'Not started', ready: 'Ready to send', submitted: 'Sent to Borough', licensed: 'License received' };
 const BOROUGH_OCC = { same: 'Same tenants as last year', new: 'New tenants this year', vacant: 'Vacant' };
 
+// Answers that are the same for every unit in the Courtland building unless
+// Unit details says otherwise (from Colette, Sept 2026).
+const BOROUGH_UNIT_DEFAULTS = {
+    units_in_building: '4', bedrooms: '2', bathrooms: '1',
+    meters_water: '1', meters_electric: '5', meters_garbage: '4',
+    license_active: 'yes', license_displayed: 'no', evac_plan: 'no', smoke_detectors: 'yes',
+    last_inspection: '2026-06-16', disruptive: '0',
+};
+const BOROUGH_SIGN_FN = () => Auth.client.supabaseUrl + '/functions/v1/borough-sign';
+const BOROUGH_SITE_URL = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '').replace(/\/+$/, '');
+let boroughSigners = {};        // filing_id -> [rental_borough_signers]
+
 let boroughYear = BOROUGH_DEFAULT_YEAR;
 let boroughUnits = [];          // rental_properties rows (units only)
 let boroughLeases = [];         // rental_leases rows (not deleted)
@@ -81,6 +93,9 @@ async function loadBoroughFilings() {
         if (ids.length) {
             const { data: files } = await supabaseClient.from('rental_borough_files').select('*').in('filing_id', ids).order('created_at', { ascending: false });
             for (const fl of files || []) (boroughFiles[fl.filing_id] = boroughFiles[fl.filing_id] || []).push(fl);
+            boroughSigners = {};
+            const { data: signers } = await supabaseClient.from('rental_borough_signers').select('id,filing_id,role,name,email,status,sent_at,viewed_at,signed_at').in('filing_id', ids).order('id');
+            for (const sg of signers || []) (boroughSigners[sg.filing_id] = boroughSigners[sg.filing_id] || []).push(sg);
         }
     } catch (e) {
         boroughSetupError = boroughSetupError || 'Run supabase/migrations/021_borough_registration.sql in Supabase → SQL Editor to save unit details and track what was sent.';
@@ -126,7 +141,9 @@ function renderBoroughInfoForm() {
             ${inp('owner_mailing1', 'Owner mailing address (line 1)', o.mailing1, 'Street')}
             ${inp('owner_mailing2', 'Owner mailing address (line 2)', o.mailing2, 'City, State ZIP')}
             ${inp('owner_contact', 'Contact name (only if the owner is a company)', o.contact, 'N/A')}
+            ${inp('tenant_address', 'Address tenants see on the Addendum', o.tenantAddress, 'Leave blank to use the mailing address')}
         </div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:-6px;">Tenants only ever see the 2-page Addendum. The Registration form and affidavits go to the Borough alone. The Addendum lists a contact address for the manager; use a PO box or the building's address here if you'd rather not show your home address.</div>
         <label style="display:flex;align-items:center;gap:8px;margin:12px 0;"><input type="checkbox" id="bi-same" ${same ? 'checked' : ''} onchange="document.getElementById('bi-mgr').style.display = this.checked ? 'none' : 'block'"> I manage the property myself (use my details as Property Manager)</label>
         <div id="bi-mgr" style="display:${same ? 'none' : 'block'};">
             <div class="form-grid">
@@ -150,7 +167,7 @@ function renderBoroughInfoForm() {
 async function saveBoroughInfo() {
     const v = (id) => (document.getElementById('bi-' + id) || {}).value?.trim() || '';
     boroughInfo = {
-        owner: { mailing1: v('owner_mailing1'), mailing2: v('owner_mailing2'), contact: v('owner_contact') },
+        owner: { mailing1: v('owner_mailing1'), mailing2: v('owner_mailing2'), contact: v('owner_contact'), tenantAddress: v('tenant_address') },
         managerSameAsOwner: document.getElementById('bi-same').checked,
         manager: { name: v('mgr_name'), email: v('mgr_email'), mailing1: v('mgr_mailing1'), mailing2: v('mgr_mailing2'), physical1: v('mgr_physical1'), physical2: v('mgr_physical2'), dayPhone: v('mgr_day_phone'), phone24: v('mgr_phone24'), localContact: v('mgr_local_contact') },
     };
@@ -200,9 +217,10 @@ function renderBoroughUnits() {
         const status = filing.status || 'todo';
         if (status === 'submitted' || status === 'licensed') sent++;
         const tenants = boroughTenants(lease).map(t => t.name).join(', ') || '<em>vacant</em>';
-        const files = (boroughFiles[filing.id] || []).map(f => `<div><a href="#" onclick="openLeaseFile('${f.storage_path}');return false;">${boroughEsc(f.file_name)}</a> <small>${(f.created_at || '').slice(0, 10)}</small> <a href="#" onclick="removeBoroughFile(${f.id}, '${f.storage_path}');return false;" style="color:var(--danger);">✕</a></div>`).join('');
-        const info = u.borough_info || {};
-        const missing = [!info.pin && 'PIN/Tax ID', !info.units_in_building && 'units in building', !(u.bedrooms || info.bedrooms) && 'bedrooms', !info.meters_water && 'meters'].filter(Boolean);
+        const fileLabel = { packet: '📄', signing: '✍️', sent: '📎', license: '🪪', other: '📎' };
+        const files = (boroughFiles[filing.id] || []).map(f => `<div>${fileLabel[f.kind] || '📎'} <a href="#" onclick="openLeaseFile('${f.storage_path}');return false;">${boroughEsc(f.file_name)}</a> <small>${(f.created_at || '').slice(0, 10)}</small> <a href="#" onclick="removeBoroughFile(${f.id}, '${f.storage_path}');return false;" style="color:var(--danger);">✕</a></div>`).join('');
+        const info = Object.assign({}, BOROUGH_UNIT_DEFAULTS, u.borough_info || {});
+        const missing = [!info.pin && 'PIN/Tax ID', !boroughInfo.owner?.mailing1 && 'your mailing address (Owner details below)'].filter(Boolean);
         const forms = occ === 'vacant'
             ? `<button class="action-btn btn-secondary" onclick="boroughDownload(${u.id}, 'registration')">Registration</button> <button class="action-btn btn-secondary" onclick="boroughDownload(${u.id}, 'vacant')">Vacant affidavit</button>`
             : `<button class="action-btn btn-secondary" onclick="boroughDownload(${u.id}, 'registration')">Registration</button> <button class="action-btn btn-secondary" onclick="boroughDownload(${u.id}, 'addendum')">Addendum</button>${occ === 'same' ? ` <button class="action-btn btn-secondary" onclick="boroughDownload(${u.id}, 'same')">Same-tenants affidavit</button>` : ''}`;
@@ -229,6 +247,7 @@ function renderBoroughUnits() {
                 <label class="action-btn btn-secondary" style="cursor:pointer;">📎 Attach what was sent / the license
                     <input type="file" accept="application/pdf,image/*" style="display:none;" onchange="attachBoroughFile(${u.id}, this)"></label>
             </div>
+            ${renderBoroughSigning(u, filing, occ)}
             ${files ? `<div style="font-size:13px;margin-top:8px;">${files}</div>` : ''}
         </div>`;
     });
@@ -271,7 +290,7 @@ async function removeBoroughFile(id, path) {
 function openBoroughUnit(propertyId) {
     const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
     const lease = boroughCurrentLease(u);
-    const info = u.borough_info || {};
+    const info = Object.assign({}, BOROUGH_UNIT_DEFAULTS, u.borough_info || {});
     const pets = lease ? (parseInt(lease.num_cats, 10) || 0) + (parseInt(lease.num_dogs, 10) || 0) : 0;
     const modal = document.getElementById('lease-modal');
     modal.style.display = 'flex';
@@ -316,7 +335,7 @@ function boroughFormData(u) {
     const lease = boroughCurrentLease(u);
     const filing = boroughFilings[u.id] || {};
     const occupancy = filing.occupancy || boroughGuessOccupancy(u, lease);
-    const info = u.borough_info || {};
+    const info = Object.assign({}, BOROUGH_UNIT_DEFAULTS, u.borough_info || {});
     const tenants = occupancy === 'vacant' ? [] : boroughTenants(lease);
     const owner = { name: landlord.name, phone: landlord.phone, email: landlord.email, mailing1: boroughInfo.owner?.mailing1, mailing2: boroughInfo.owner?.mailing2, contact: boroughInfo.owner?.contact };
     const manager = boroughInfo.managerSameAsOwner === false && boroughInfo.manager?.name
@@ -335,6 +354,7 @@ function boroughFormData(u) {
         pets: { count: info.pets_count ?? (lease ? (parseInt(lease.num_cats, 10) || 0) + (parseInt(lease.num_dogs, 10) || 0) : 0), breeds: info.pets_breeds },
         maxOccupants: 4, disruptive: info.disruptive,
         leaseSignedOn: info.lease_signed_on || (lease && originalLeaseFor(lease).lease_start) || '',
+        tenantContactAddress: boroughInfo.owner?.tenantAddress || '',
         signaturePng: landlord.signature_png || null, initialsPng: landlord.initials_png || null,
     };
 }
@@ -366,6 +386,122 @@ async function boroughDownload(propertyId, kind) {
         boroughSaveBlob(await zip.generateAsync({ type: 'blob' }), `${tag}-Borough-${boroughYear}.zip`);
         if ((boroughFilings[u.id]?.status || 'todo') === 'todo') saveBoroughFiling(u.id, { status: 'ready' });
     } catch (e) { showAlert('Could not build the form: ' + e.message, 'error'); }
+}
+
+// ---------- sign & send (borough-sign edge function) ----------
+async function callBoroughSign(body) {
+    const res = await fetch(BOROUGH_SIGN_FN(), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Auth.bearer() }, body: JSON.stringify(body) });
+    let data = {}; try { data = await res.json(); } catch (_) { }
+    if (!res.ok || data.error) throw new Error(data.error || ('request failed (' + res.status + ')'));
+    return data;
+}
+function renderBoroughSigning(u, filing, occ) {
+    const box = (inner) => `<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;margin-top:10px;">${inner}</div>`;
+    const st = filing.signing_status || 'draft';
+    if (filing.status === 'submitted' || filing.status === 'licensed') {
+        return box(`<strong>✅ Sent to the Borough</strong>${filing.submitted_on ? ' on ' + boroughFmt(filing.submitted_on) : ''}${filing.submitted_to ? ' (' + boroughEsc(filing.submitted_to) + ')' : ''}. ${filing.status === 'licensed' ? 'License received.' : 'Set the status to <em>License received</em> when it arrives.'}`);
+    }
+    if (occ === 'vacant') {
+        return box(`<strong>📤 Vacant unit: nothing for tenants to sign.</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">Sends the Registration and the Affidavit of Vacant Unit, with your saved signature, to ${BOROUGH.submitEmail} with you in copy.</div>
+            <button class="action-btn btn-primary" onclick="boroughSubmitNow(${u.id})">Send packet to Borough</button>`);
+    }
+    if (st === 'draft') {
+        const lease = boroughCurrentLease(u);
+        const missing = boroughTenants(lease).filter(t => !t.email).map(t => t.name);
+        return box(`<strong>✍️ Electronic signing</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">You sign, each tenant gets an email link to read the Addendum and tap "Sign here" on their phone. When the last one signs, the whole packet (Registration${occ === 'same' ? ', Affidavit of Same Tenants' : ''}, signed Addendum) is emailed to ${BOROUGH.submitEmail} with you in copy.</div>
+            ${missing.length ? `<div style="color:var(--danger);margin-bottom:8px;">Missing email for: ${boroughEsc(missing.join(', '))}. Add it on the lease first.</div>` : ''}
+            <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><input type="checkbox" id="bauto-${u.id}" checked> Email the Borough automatically when everyone has signed</label>
+            <button class="action-btn btn-primary" ${missing.length ? 'disabled' : ''} onclick="boroughSendForSignature(${u.id})">Sign & send to tenants</button>`);
+    }
+    const signers = boroughSigners[filing.id] || [];
+    const fmt = (d) => d ? new Date(d).toLocaleDateString() : '';
+    const rows = signers.map(s => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);">
+        <span>${s.status === 'signed' ? '✅' : (s.viewed_at ? '👀' : '⏳')} <strong>${boroughEsc(s.name)}</strong> · ${boroughEsc(s.email)}<br><small style="color:var(--text-secondary);">${s.status === 'signed' ? 'signed ' + fmt(s.signed_at) : (s.viewed_at ? 'opened ' + fmt(s.viewed_at) + ', not signed yet' : 'sent ' + fmt(s.sent_at))}</small></span>
+        ${s.status !== 'signed' && st === 'sent' ? `<button class="action-btn btn-secondary" onclick="boroughRemind(${s.id})">Remind</button>` : ''}</div>`).join('');
+    if (st === 'sent') {
+        return box(`<strong>✍️ Out for signature</strong><div style="margin-top:6px;">${rows}</div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><button class="action-btn delete-btn" onclick="boroughCancelSigning(${u.id})">Cancel signing</button><span style="color:var(--text-secondary);">Cancel and re-send if something changes.</span></div>`);
+    }
+    // signed but not yet submitted
+    return box(`<strong>✍️ Addendum fully signed</strong><div style="margin-top:6px;">${rows}</div>
+        <div style="margin-top:8px;"><button class="action-btn btn-primary" onclick="boroughSubmitNow(${u.id})">Send packet to Borough</button> <span style="color:var(--text-secondary);">Emails everything to ${BOROUGH.submitEmail} with you in copy.</span></div>`);
+}
+async function ensureBoroughFiling(propertyId) {
+    return boroughFilings[propertyId] || await saveBoroughFiling(propertyId, {});
+}
+async function boroughEnsureSignature() {
+    if (landlord.signature_png && landlord.initials_png) return true;
+    const r = await ESign.adopt({ name: landlord.name, initials: true, title: 'Sign as landlord', subtitle: 'Goes on the Borough forms and the Addendum before it is sent.', saved: landlord.signature_png ? { signature_png: landlord.signature_png, initials_png: landlord.initials_png } : null });
+    if (!r) return false;
+    landlord.signature_png = r.signature_png; if (r.initials_png) landlord.initials_png = r.initials_png;
+    const rows = [{ key: 'landlord_signature_png', value: r.signature_png }];
+    if (r.initials_png) rows.push({ key: 'landlord_initials_png', value: r.initials_png });
+    await supabaseClient.from('rental_settings').upsert(rows, { onConflict: 'key' });
+    return true;
+}
+// Fill a form, upload it, and list it on the filing (replacing an older copy with the same name).
+async function boroughUploadForm(u, filing, kind, d, fileKind) {
+    const names = { registration: `Registration-${boroughYear}`, addendum: 'Addendum-to-Lease', same: 'Affidavit-Same-Tenants', vacant: 'Affidavit-Vacant-Unit' };
+    const tag = (u.property_name || 'unit').replace(/[^A-Za-z0-9]+/g, '_');
+    const fileName = `${tag}-${names[kind]}.pdf`;
+    const bytes = await boroughFill(kind, d);
+    const path = `borough/${boroughYear}/${u.id}/${Date.now()}_${fileName}`;
+    const { error } = await supabaseClient.storage.from(LEASE_BUCKET).upload(path, new Blob([bytes], { type: 'application/pdf' }), { upsert: false, contentType: 'application/pdf' });
+    if (error) throw new Error('upload failed: ' + error.message);
+    if (fileKind) {
+        const old = (boroughFiles[filing.id] || []).filter(f => f.kind === fileKind && f.file_name === fileName);
+        if (old.length) {
+            await supabaseClient.from('rental_borough_files').delete().in('id', old.map(f => f.id));
+            await supabaseClient.storage.from(LEASE_BUCKET).remove(old.map(f => f.storage_path));
+        }
+        const { error: e2 } = await supabaseClient.from('rental_borough_files').insert([{ filing_id: filing.id, kind: fileKind, file_name: fileName, storage_path: path }]);
+        if (e2) throw new Error(e2.message);
+    }
+    return path;
+}
+async function boroughSendForSignature(propertyId) {
+    const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
+    try {
+        if (!(await boroughEnsureSignature())) return;
+        const auto = !!(document.getElementById('bauto-' + propertyId) || {}).checked;
+        const filing = await ensureBoroughFiling(propertyId); if (!filing) return;
+        const d = boroughFormData(u);
+        if (!d.tenants.length) throw new Error('No tenants on the current lease. Mark the unit Vacant instead.');
+        showAlert('Building the forms…', 'success');
+        await boroughUploadForm(u, filing, 'registration', d, 'packet');
+        if (d.occupancy === 'same') await boroughUploadForm(u, filing, 'same', d, 'packet');
+        const addendumPath = await boroughUploadForm(u, filing, 'addendum', d, null);
+        const r = await callBoroughSign({ action: 'send', filing_id: filing.id, site_url: BOROUGH_SITE_URL(), addendum_path: addendumPath, tenants: d.tenants.map(t => ({ name: t.name, email: t.email })), auto_submit: auto });
+        showAlert(`Sent to ${r.sent} tenant${r.sent === 1 ? '' : 's'}.` + (r.problems && r.problems.length ? ' Problems: ' + r.problems.join('; ') : ''), r.problems && r.problems.length ? 'error' : 'success');
+    } catch (e) { showAlert('Send failed: ' + e.message, 'error'); }
+    await loadBoroughFilings(); renderBoroughUnits();
+}
+async function boroughSubmitNow(propertyId) {
+    const u = boroughUnits.find(x => x.id === propertyId); if (!u) return;
+    if (!confirm(`Email the ${boroughYear} packet for ${u.property_name} to ${BOROUGH.submitEmail} now?`)) return;
+    try {
+        if (!(await boroughEnsureSignature())) return;
+        const filing = await ensureBoroughFiling(propertyId); if (!filing) return;
+        const d = boroughFormData(u);
+        showAlert('Building the forms…', 'success');
+        await boroughUploadForm(u, filing, 'registration', d, 'packet');
+        if (d.vacant) await boroughUploadForm(u, filing, 'vacant', d, 'packet');
+        else if (d.occupancy === 'same') await boroughUploadForm(u, filing, 'same', d, 'packet');
+        const r = await callBoroughSign({ action: 'submit', filing_id: filing.id });
+        showAlert(`Sent to ${r.sent_to}: ${(r.files || []).join(', ')}`, 'success');
+    } catch (e) { showAlert('Send failed: ' + e.message, 'error'); }
+    await loadBoroughFilings(); renderBoroughUnits();
+}
+async function boroughRemind(signerId) {
+    try { await callBoroughSign({ action: 'remind', signer_id: signerId, site_url: BOROUGH_SITE_URL() }); showAlert('Reminder sent', 'success'); }
+    catch (e) { showAlert('Reminder failed: ' + e.message, 'error'); }
+}
+async function boroughCancelSigning(propertyId) {
+    const filing = boroughFilings[propertyId]; if (!filing) return;
+    if (!confirm('Cancel signing? Existing links stop working. You can send again later.')) return;
+    try { await callBoroughSign({ action: 'cancel', filing_id: filing.id }); }
+    catch (e) { showAlert('Cancel failed: ' + e.message, 'error'); }
+    await loadBoroughFilings(); renderBoroughUnits();
 }
 
 // ---------- dashboard reminder ----------
