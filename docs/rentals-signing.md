@@ -22,8 +22,13 @@ time a tenant signs. Emails go out from your connected Gmail.
 3. Make sure every tenant on the lease has an email address.
 
 ## Using it
-- All Leases → **View** → **Sign & send to tenants**. Sign in the pop-up; the
-  app builds a fresh PDF with your signature and emails each tenant a link.
+- New Lease → **Generate PDF** saves the lease, downloads the PDF for your
+  records and opens the lease. Review it, then **Sign & send to tenants**:
+  sign in the pop-up and the app builds a fresh PDF with your signature and
+  emails each tenant a link.
+- Files on the lease: "Generated (unsigned)" is your backup copy, "In
+  signing" is the working copy with every signature so far (yours first),
+  and "Signed copy" is the final one with the signing record.
 - The lease shows "✍️ Out for signature" until done, then "✓ Signed".
 - In the lease view you can see who opened and who signed, send a
   **Remind**, or **Cancel signing** (links stop working; send again after

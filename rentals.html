@@ -1463,7 +1463,7 @@
 
                         <div class="form-actions">
                             <button type="button" class="btn btn-secondary" onclick="document.getElementById('lease-form').reset()">Clear Form</button>
-                            <button type="submit" class="btn btn-primary">Save & Generate PDF</button>
+                            <button type="submit" class="btn btn-primary">Generate PDF</button>
                         </div>
                     </form>
                 </div>
@@ -2144,13 +2144,14 @@
                 document.getElementById('renewal-rent-section').style.display = 'none';
                 document.getElementById('initial-rent-section').style.display = 'block';
 
-                // Straight into signing: open the new lease and start Sign & send.
-                // (New and renewed leases both need signatures.)
+                // Open the new lease so it can be reviewed, then sent for signature
+                // from there. (New and renewed leases both need signatures.)
                 if (newId) {
                     showView('leases');
                     await loadAllLeases();
                     const fresh = allLeases.find(l => l.id === newId);
-                    if (fresh) { await openLeaseModal(fresh); sendForSignature(newId); }
+                    if (fresh) await openLeaseModal(fresh);
+                    showAlert('Lease saved and PDF downloaded. Review it, then press "Sign & send to tenants".', 'success');
                 } else {
                     showView('dashboard');
                 }
@@ -5211,7 +5212,7 @@ If you cannot read something clearly, use null.`
         }
 
         // ---- the full PDF ----
-        async function generatePDF(leaseData, leaseId, download = true) {
+        async function generatePDF(leaseData, leaseId, download = true, kind = 'generated') {
             const opts = (leaseData.lease_options && typeof leaseData.lease_options === 'object') ? leaseData.lease_options : {};
             try {
                 const doc = buildLeaseDoc(leaseData, opts);                               // page 1 + page 19
@@ -5233,7 +5234,7 @@ If you cannot read something clearly, use null.`
                     document.body.appendChild(a); a.click(); a.remove();
                 }
                 if (leaseId) {
-                    try { await uploadLeaseFile(leaseId, blob, filename, 'generated'); }
+                    try { await uploadLeaseFile(leaseId, blob, filename, kind); }
                     catch (e) { console.warn('could not store generated PDF:', e.message); if (!download) throw e; }
                 }
                 return true;
@@ -5367,7 +5368,7 @@ If you cannot read something clearly, use null.`
             const tenantsMissingEmail = [1, 2, 3, 4].filter(i => lease[`tenant${i}_name`] && !lease[`tenant${i}_email`]).map(i => lease[`tenant${i}_name`]);
             if (st === 'draft') {
                 el.innerHTML = `<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;">
-                    <strong>✍️ Electronic signing</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">You sign first, then each tenant gets an email link to read the lease and tap every initial and signature spot on their phone. The signed copy attaches here and is emailed to everyone.</div>
+                    <strong>✍️ Electronic signing</strong><div style="color:var(--text-secondary);margin:4px 0 8px;">Review the PDF first (Download full lease PDF above). Then: you sign, each tenant gets an email link to read the lease and tap every initial and signature spot on their phone, and the signed copy attaches here and is emailed to everyone.</div>
                     ${tenantsMissingEmail.length ? `<div style="color:var(--danger);margin-bottom:8px;">Missing email for: ${tenantsMissingEmail.join(', ')}. Add it via Renew/edit before sending.</div>` : ''}
                     <button class="action-btn btn-primary" ${tenantsMissingEmail.length ? 'disabled' : ''} onclick="sendForSignature(${lease.id})">Sign & send to tenants</button></div>`;
                 return;
@@ -5403,7 +5404,7 @@ If you cannot read something clearly, use null.`
                     supabaseClient.from('rental_settings').upsert([{ key: 'landlord_signature_png', value: sig.signature_png }], { onConflict: 'key' }).then(() => {});
                 }
                 step('Step 2 of 4: building the lease PDF…');
-                const ok = await generatePDF(lease, lease.id, false);      // fresh PDF stored on the lease
+                const ok = await generatePDF(lease, lease.id, false, 'draft');   // fresh PDF; the function replaces it with the signed one
                 if (!ok) throw new Error('could not build the PDF');
                 step('Step 3 of 4: adding your signature and emailing the tenants…');
                 const r = await callSign({ action: 'send', lease_id: lease.id, site_url: SITE_URL, landlord_signature_png: sig.signature_png });
@@ -5473,7 +5474,7 @@ If you cannot read something clearly, use null.`
             try {
                 const { data, error } = await supabaseClient.from('rental_lease_files').select('*').eq('lease_id', lease.id).order('created_at', { ascending: false });
                 if (error) throw error;
-                const label = { signed: '✅ Signed copy', generated: '📄 Generated', id: '🪪 Tenant ID', other: '📎 File' };
+                const label = { signed: '✅ Signed copy', signing: '✍️ In signing (latest, with signatures so far)', generated: '📄 Generated (unsigned)', draft: '📄 Draft', id: '🪪 Tenant ID', other: '📎 File' };
                 document.getElementById('lm-files').innerHTML = (data || []).length
                     ? data.map(f => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
                         <span>${label[f.kind] || label.other} · <a href="#" onclick="openLeaseFile('${f.storage_path}');return false;">${f.file_name}</a> <small>${(f.created_at || '').slice(0, 10)}</small></span>
