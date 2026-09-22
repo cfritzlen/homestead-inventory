@@ -1490,8 +1490,8 @@
                         <table id="leases-table">
                             <thead>
                                 <tr>
+                                    <th>Unit</th>
                                     <th>Tenant</th>
-                                    <th>Property</th>
                                     <th>Start Date</th>
                                     <th>End Date</th>
                                     <th>Monthly Rent</th>
@@ -1930,6 +1930,7 @@
         }
 
         let allLeases = [];
+        let allProperties = [];   // buildings and units, for grouping All Leases by building
 
         // Navigation
         function showView(viewName) {
@@ -2575,6 +2576,7 @@
 
                 allLeases = leases;
                 await loadSignedIds();
+                try { const { data: props } = await supabaseClient.from('rental_properties').select('property_name,is_building_level,street_address,unit,status'); allProperties = props || []; } catch (_) { allProperties = []; }
                 displayLeases(leases);
 
             } catch (error) {
@@ -2595,31 +2597,41 @@
 
             const today = new Date();
             const groups = groupLeasesByUnit(leases);
-            
-            tbody.innerHTML = groups.map(({ current: lease, older }) => {
+
+            // Group the units under their building, buildings in address order
+            const byBuilding = new Map();
+            for (const g of groups) {
+                const b = buildingForAddress(g.current.property_address);
+                if (!byBuilding.has(b)) byBuilding.set(b, []);
+                byBuilding.get(b).push(g);
+            }
+            const buildingNames = [...byBuilding.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            const rowFor = ({ current: lease, older }) => {
                 const endDate = new Date(lease.lease_end);
                 const daysUntilEnd = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
                 
                 let statusClass = 'status-active';
                 let statusText = 'Active';
-                
+                let endingSoon = false;
+
                 if (lease.status === 'terminated') {
                     statusClass = 'status-expired';
                     statusText = 'Terminated';
                 } else if (daysUntilEnd < 0) {
                     statusClass = 'status-expired';
                     statusText = 'Expired';
-                } else if (daysUntilEnd <= 30) {
+                } else if (daysUntilEnd <= 90) {
                     statusClass = 'status-expiring';
-                    statusText = 'Expiring Soon';
+                    statusText = daysUntilEnd <= 30 ? 'Ending soon' : 'Ends within 90 days';
+                    endingSoon = lease.status === 'active';
                 }
 
                 return `
-                    <tr>
+                    <tr ${endingSoon ? 'style="background:#fff7ed;"' : ''}>
+                        <td><strong>${lease.property_address}</strong>${older.length ? `<br><small style="color:var(--text-secondary);">+${older.length} previous lease${older.length === 1 ? '' : 's'}</small>` : ''}</td>
                         <td>${lease.tenant_names}</td>
-                        <td>${lease.property_address}${older.length ? `<br><small style="color:var(--text-secondary);">+${older.length} previous lease${older.length === 1 ? '' : 's'}</small>` : ''}</td>
                         <td>${lease.lease_start}</td>
-                        <td>${lease.lease_end}</td>
+                        <td>${endingSoon ? `<span style="color:#c2410c;font-weight:600;">${lease.lease_end}</span><br><small style="color:#c2410c;">${daysUntilEnd <= 0 ? 'ends today' : 'in ' + daysUntilEnd + ' days'}</small>` : lease.lease_end}</td>
                         <td>$${parseFloat(lease.rent_amount).toLocaleString()}</td>
                         <td>${lease.lease_type.replace('_', ' ')}</td>
                         <td><span class="status-badge ${statusClass}">${statusText}</span>${signedLeaseIds.has(lease.id) ? ' <span class="status-badge status-active" title="Signed copy attached">✓ Signed</span>' : (lease.signing_status === 'sent' ? ' <span class="status-badge status-expiring" title="Waiting for signatures">✍️ Out for signature</span>' : '')}</td>
@@ -2631,7 +2643,70 @@
                         </td>
                     </tr>
                 `;
+            };
+            makeColumnsResizable('leases-table');
+            tbody.innerHTML = buildingNames.map(b => {
+                const units = byBuilding.get(b).sort((x, y) => (x.current.property_address || '').localeCompare(y.current.property_address || '', undefined, { numeric: true }));
+                const active = units.filter(u => u.current.status === 'active').length;
+                const rent = units.filter(u => u.current.status === 'active').reduce((t, u) => t + (parseFloat(u.current.rent_amount) || 0), 0);
+                return `<tr style="background:var(--bg-tertiary);"><td colspan="8" style="font-weight:700;font-size:15px;padding:10px 12px;">🏢 ${b}
+                    <span style="font-weight:400;font-size:13px;color:var(--text-secondary);margin-left:8px;">${units.length} unit${units.length === 1 ? '' : 's'} · ${active} active · $${rent.toLocaleString()}/month</span></td></tr>` + units.map(rowFor).join('');
             }).join('');
+        }
+
+        // Drag the right edge of a column header to change its width (remembered on this device)
+        function makeColumnsResizable(tableId) {
+            const table = document.getElementById(tableId);
+            if (!table || table.dataset.resizable) return;
+            table.dataset.resizable = '1';
+            table.style.tableLayout = 'fixed';
+            table.style.minWidth = '0';
+            const key = 'colwidths:' + tableId;
+            let saved = {}; try { saved = JSON.parse(localStorage.getItem(key) || '{}'); } catch (_) {}
+            const ths = [...table.querySelectorAll('thead th')];
+            ths.forEach((th, i) => {
+                th.style.position = 'relative';
+                if (saved[i]) th.style.width = saved[i] + 'px';
+                const grip = document.createElement('div');
+                grip.title = 'Drag to resize';
+                grip.style.cssText = 'position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;user-select:none;z-index:2;';
+                grip.addEventListener('mouseenter', () => grip.style.background = 'rgba(30,64,175,0.25)');
+                grip.addEventListener('mouseleave', () => grip.style.background = '');
+                const start = (clientX) => {
+                    const startX = clientX, startW = th.getBoundingClientRect().width;
+                    const move = (x) => { const w = Math.max(60, startW + (x - startX)); th.style.width = w + 'px'; saved[i] = Math.round(w); };
+                    const onMouse = (e) => move(e.clientX);
+                    const onTouch = (e) => move(e.touches[0].clientX);
+                    const stop = () => { document.removeEventListener('mousemove', onMouse); document.removeEventListener('mouseup', stop); document.removeEventListener('touchmove', onTouch); document.removeEventListener('touchend', stop); try { localStorage.setItem(key, JSON.stringify(saved)); } catch (_) {} };
+                    document.addEventListener('mousemove', onMouse); document.addEventListener('mouseup', stop);
+                    document.addEventListener('touchmove', onTouch, { passive: true }); document.addEventListener('touchend', stop);
+                };
+                grip.addEventListener('mousedown', (e) => { e.preventDefault(); start(e.clientX); });
+                grip.addEventListener('touchstart', (e) => start(e.touches[0].clientX), { passive: true });
+                th.appendChild(grip);
+            });
+        }
+
+        // Which building a lease address belongs to: a building-level property
+        // whose street matches and whose number range (e.g. "180-182") covers the
+        // house number; otherwise the address with its unit part stripped.
+        function buildingForAddress(address) {
+            const a = String(address || '').trim();
+            const base = a.replace(/,?\s*(unit|apt|apartment|suite|ste|#)\s*[\w-]+/ig, '')
+                .replace(/,?\s*(downstairs|upstairs|basement|attic|(first|second|third|1st|2nd|3rd)\s*(floor|fl)|fl\s*\d|floor\s*\d)\b/ig, '')
+                .replace(/\s+\d+\s*[a-z]\b\s*$/i, '').replace(/[\s,]+$/, '').trim();
+            const num = parseInt((a.match(/^\s*(\d+)/) || [])[1], 10);
+            const street = base.replace(/^\s*[\d\s-]+/, '').toLowerCase().replace(/\b(st|street|rd|road|ave|avenue|dr|drive|ln|lane|n|s|e|w|north|south|east|west)\b/g, '').replace(/[^a-z]/g, '');
+            for (const p of allProperties.filter(x => x.is_building_level)) {
+                const name = String(p.property_name || '');
+                const pStreet = name.replace(/^\s*[\d\s-]+/, '').toLowerCase().replace(/\b(st|street|rd|road|ave|avenue|dr|drive|ln|lane|n|s|e|w|north|south|east|west)\b/g, '').replace(/[^a-z]/g, '');
+                if (!street || !pStreet || !(street.includes(pStreet) || pStreet.includes(street))) continue;
+                const m = name.match(/^\s*(\d+)\s*[-–]\s*(\d+)/);
+                const lo = m ? parseInt(m[1], 10) : parseInt((name.match(/^\s*(\d+)/) || [])[1], 10), hi = m ? parseInt(m[2], 10) : lo;
+                if (!isNaN(num) && !isNaN(lo) && num >= lo && num <= hi) return name;
+                if (isNaN(lo)) return name;
+            }
+            return base || a || 'Other';
         }
 
         // One "current" lease per unit: the active one with the latest start, or
