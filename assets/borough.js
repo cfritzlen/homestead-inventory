@@ -414,7 +414,8 @@ function renderBoroughCard(u, st) {
             <span>${needs.length ? 'Fix the items above first.' : `You see the PDFs first. Only the Addendum goes to the tenant${tenants.length === 1 ? '' : 's'}.`}</span>
             <label style="display:flex;gap:6px;align-items:center;font-size:12px;"><input type="checkbox" id="bauto-${u.id}"> also email the Borough automatically when signed</label></div>`;
     } else if (signing === 'sent') {
-        action = `<div class="bu-signers">${signers.map(s => `<div>${s.status === 'signed' ? '✅' : (s.viewed_at ? '👀' : '⏳')} <strong>${boroughEsc(s.name)}</strong> ${s.status === 'signed' ? 'signed ' + fmt(s.signed_at) : (s.viewed_at ? 'opened ' + fmt(s.viewed_at) + ', not signed yet' : 'sent ' + fmt(s.sent_at))}${s.status !== 'signed' ? ` &nbsp;<button class="bu-btn sec" onclick="boroughRemind(${s.id})">Remind</button>` : ''}</div>`).join('')}</div>`;
+        action = `<div class="bu-signers">${signers.map(s => `<div>${s.status === 'signed' ? '✅' : (s.viewed_at ? '👀' : '⏳')} <strong>${boroughEsc(s.name)}</strong> <span style="color:var(--text-secondary);">${boroughEsc(s.email)}</span> · ${s.status === 'signed' ? 'signed ' + fmt(s.signed_at) : (s.viewed_at ? 'opened ' + fmt(s.viewed_at) + ', not signed yet' : 'sent ' + fmt(s.sent_at))}${s.status !== 'signed' ? ` &nbsp;<button class="bu-btn sec" onclick="boroughRemind(${s.id})">Remind</button> <a href="#" onclick="boroughFixSignerEmail(${s.id}, ${u.id});return false;" style="font-size:12px;">Wrong email? Fix & resend</a>` : ''}</div>`).join('')}
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">If an email bounced ("Address not found"), use Fix & resend with the corrected address.</div></div>`;
     } else {
         action = `<div class="bu-actions"><span>Signed. Send with the others above, or</span> <button class="bu-btn sec" onclick="boroughSubmitNow(${u.id})">Review & send this unit now</button></div>`;
     }
@@ -702,6 +703,24 @@ async function boroughSubmitNow(propertyId) {
                 await loadBoroughFilings(); renderBoroughUnits();
             });
     } catch (e) { showAlert('Could not build the forms: ' + e.message, 'error'); }
+}
+// A signing email bounced: correct the address on the signer and on the lease, then resend the link
+async function boroughFixSignerEmail(signerId, propertyId) {
+    const filing = boroughFilings[propertyId]; if (!filing) return;
+    const signer = (boroughSigners[filing.id] || []).find(x => x.id === signerId); if (!signer) return;
+    const email = (prompt(`Correct email for ${signer.name}:`, signer.email) || '').trim();
+    if (!email || email === signer.email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAlert(`"${email}" does not look like an email address.`, 'error'); return; }
+    const { error } = await supabaseClient.from('rental_borough_signers').update({ email }).eq('id', signerId);
+    if (error) { showAlert('Could not save: ' + error.message, 'error'); return; }
+    // keep the lease in step so next year is right too
+    const lease = boroughCurrentLease(boroughUnits.find(x => x.id === propertyId));
+    if (lease) {
+        const slot = boroughTenantSlots(lease).find(t => t.name === signer.name);
+        if (slot) { const patch = {}; patch[`tenant${slot.i}_email`] = email; if (slot.legacy) patch.tenant_email = email; await supabaseClient.from('rental_leases').update(patch).eq('id', lease.id); Object.assign(lease, patch); }
+    }
+    await boroughRemind(signerId);
+    await loadBoroughFilings(); renderBoroughUnits();
 }
 async function boroughRemind(signerId) {
     try { await callBoroughSign({ action: 'remind', signer_id: signerId, site_url: BOROUGH_SITE_URL() }); showAlert('Reminder sent', 'success'); }
