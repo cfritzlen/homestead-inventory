@@ -41,7 +41,7 @@ const BOROUGH_UNIT_DEFAULTS = {
 };
 // Owner details used until something else is saved under Owner details.
 const BOROUGH_OWNER_DEFAULTS = { mailing1: '1038 Poplar Valley Rd E', mailing2: 'Stroudsburg, PA 18360', deedNames: 'Martin Valdez and Colette G. Fritzlen',
-    tenantAddress: '180-182 N Courtland St, East Stroudsburg, PA 18301' };   // what tenants see on the Addendum: the building, never the home address
+    tenantAddress: '' };   // address line on the tenant-facing Addendum: left blank unless typed under Owner details
 const BOROUGH_SIGN_FN = () => Auth.client.supabaseUrl + '/functions/v1/borough-sign';
 const BOROUGH_SITE_URL = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '').replace(/\/+$/, '');
 let boroughSigners = {};        // filing_id -> [rental_borough_signers]
@@ -147,9 +147,9 @@ function renderBoroughInfoForm() {
             ${inp('owner_mailing2', 'Owner mailing address (line 2)', o.mailing2, 'City, State ZIP')}
             ${inp('owner_deed', 'Owner name(s) as on the deed', o.deedNames)}
             ${inp('owner_contact', 'Contact name (only if the owner is a company)', o.contact, 'N/A')}
-            ${inp('tenant_address', 'Address tenants see on the Addendum', o.tenantAddress, 'Building address is used if blank')}
+            ${inp('tenant_address', 'Address tenants see on the Addendum (optional)', o.tenantAddress, 'Left blank on the Addendum unless you type one')}
         </div>
-        <div style="font-size:12px;color:var(--text-secondary);margin-top:-6px;">Tenants only ever see the 2-page Addendum. The Registration form and affidavits go to the Borough alone. Your mailing address is never printed on the Addendum; it shows this contact address instead (the building's address unless you change it).</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:-6px;">Tenants only ever see the 2-page Addendum. The Registration form and affidavits, with your mailing address, go to the Borough alone. The Addendum's address line stays blank unless you type something here.</div>
         <label style="display:flex;align-items:center;gap:8px;margin:12px 0;"><input type="checkbox" id="bi-same" ${same ? 'checked' : ''} onchange="document.getElementById('bi-mgr').style.display = this.checked ? 'none' : 'block'"> I manage the property myself (use my details as Property Manager)</label>
         <div id="bi-mgr" style="display:${same ? 'none' : 'block'};">
             <div class="form-grid">
@@ -420,7 +420,7 @@ function boroughFormData(u) {
         pets: { count: info.pets_count ?? (lease ? (parseInt(lease.num_cats, 10) || 0) + (parseInt(lease.num_dogs, 10) || 0) : 0), breeds: info.pets_breeds },
         maxOccupants: 4, disruptive: info.disruptive,
         leaseSignedOn: info.lease_signed_on || (lease && originalLeaseFor(lease).lease_start) || '',
-        tenantContactAddress: boroughInfo.owner?.tenantAddress || `${u.street_address || u.property_name}, ${city}`,
+        tenantContactAddress: boroughInfo.owner?.tenantAddress || '',
         signaturePng: landlord.signature_png || null, initialsPng: landlord.initials_png || null,
     };
 }
