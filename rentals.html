@@ -15,7 +15,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="assets/borough-forms.js"></script>
+    <script src="assets/borough-forms.js?v=20260922c"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -2509,14 +2509,14 @@
                 const today = new Date();
                 const activeLeases = leases.filter(l => {
                     const endDate = new Date(l.lease_end);
-                    return l.status === 'active' && endDate >= today;
+                    return l.status === 'active' && (l.lease_type === 'month_to_month' || endDate >= today);
                 });
                 const uniqueProperties = new Set(leases.map(l => l.property_address)).size;
                 
                 // Calculate expiring soon (30 days)
                 const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
                 const expiringSoon = activeLeases.filter(l => {
-                    const endDate = new Date(l.lease_end);
+                    const endDate = l.lease_type === 'month_to_month' ? nextAnniversary(l.lease_start, today) : new Date(l.lease_end);
                     return endDate >= today && endDate <= thirtyDaysFromNow;
                 });
 
@@ -2607,42 +2607,57 @@
             }
             const buildingNames = [...byBuilding.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
             const rowFor = ({ current: lease, older }) => {
-                const endDate = new Date(lease.lease_end);
+                const m2m = lease.lease_type === 'month_to_month';
+                // Month-to-month never "expires": the date that matters is the yearly
+                // anniversary of the start, when the rent gets reviewed.
+                const endDate = m2m ? nextAnniversary(lease.lease_start, today) : new Date(lease.lease_end);
                 const daysUntilEnd = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
-                
+                let endCell = lease.lease_end;
+                if (m2m) endCell = `month to month<br><small style="color:var(--text-secondary);">rent review ${endDate.toISOString().slice(0, 10)}</small>`;
+
                 let statusClass = 'status-active';
-                let statusText = 'Active';
+                let statusText = m2m ? 'Active · month to month' : 'Active';
                 let endingSoon = false;
 
                 if (lease.status === 'terminated') {
                     statusClass = 'status-expired';
                     statusText = 'Terminated';
-                } else if (daysUntilEnd < 0) {
+                } else if (!m2m && daysUntilEnd < 0) {
                     statusClass = 'status-expired';
                     statusText = 'Expired';
-                } else if (daysUntilEnd <= 90) {
+                } else if (daysUntilEnd <= 90 && lease.status === 'active') {
                     statusClass = 'status-expiring';
-                    statusText = daysUntilEnd <= 30 ? 'Ending soon' : 'Ends within 90 days';
-                    endingSoon = lease.status === 'active';
+                    statusText = m2m ? '12 months: rent review' : (daysUntilEnd <= 30 ? 'Ending soon' : 'Ends within 90 days');
+                    endingSoon = true;
                 }
 
                 return `
                     <tr ${endingSoon ? 'style="background:#fff7ed;"' : ''}>
-                        <td><strong>${lease.property_address}</strong>${older.length ? `<br><small style="color:var(--text-secondary);">+${older.length} previous lease${older.length === 1 ? '' : 's'}</small>` : ''}</td>
+                        <td><strong style="font-size:15px;" title="${lease.property_address}">${unitLabel(lease.property_address)}</strong>${older.length ? `<br><a href="#" onclick="togglePrevLeases(${lease.id});return false;" style="font-size:12px;color:var(--primary);">▸ ${older.length} previous lease${older.length === 1 ? '' : 's'}</a>` : ''}</td>
                         <td>${lease.tenant_names}</td>
                         <td>${lease.lease_start}</td>
-                        <td>${endingSoon ? `<span style="color:#c2410c;font-weight:600;">${lease.lease_end}</span><br><small style="color:#c2410c;">${daysUntilEnd <= 0 ? 'ends today' : 'in ' + daysUntilEnd + ' days'}</small>` : lease.lease_end}</td>
+                        <td>${endingSoon ? `<span style="color:#c2410c;font-weight:600;">${m2m ? 'month to month' : lease.lease_end}</span><br><small style="color:#c2410c;">${m2m ? 'rent review ' : ''}${daysUntilEnd <= 0 ? 'due now' : 'in ' + daysUntilEnd + ' days'}</small>` : endCell}</td>
                         <td>$${parseFloat(lease.rent_amount).toLocaleString()}</td>
                         <td>${lease.lease_type.replace('_', ' ')}</td>
                         <td><span class="status-badge ${statusClass}">${statusText}</span>${signedLeaseIds.has(lease.id) ? ' <span class="status-badge status-active" title="Signed copy attached">✓ Signed</span>' : (lease.signing_status === 'sent' ? ' <span class="status-badge status-expiring" title="Waiting for signatures">✍️ Out for signature</span>' : '')}</td>
                         <td>
                             <button class="action-btn btn-primary" onclick="viewLease(${lease.id})">View</button>
                             <button class="action-btn btn-secondary" onclick="regeneratePDF(${lease.id})">PDF</button>
-                            ${lease.status === 'active' ? `<button class="action-btn" style="background: #10b981; color: white;" onclick="renewLease(${lease.id})">Renew</button>` : ''}
+                            <button class="action-btn" style="background: #10b981; color: white;" onclick="renewLease(${lease.id})" title="${lease.status === 'active' ? 'Renew this lease' : 'Start a new lease for this unit from the last one'}">${lease.status === 'active' ? 'Renew' : 'Renew / new lease'}</button>
                             ${lease.status === 'active' ? `<button class="action-btn" style="background: #ef4444; color: white;" onclick="endLease(${lease.id})">End</button>` : ''}
                         </td>
                     </tr>
-                `;
+                ` + older.map(o => `
+                    <tr class="prev-lease prev-of-${lease.id}" style="display:none;background:var(--bg-secondary);color:var(--text-secondary);font-size:13px;">
+                        <td style="padding-left:28px;">↳ previous</td>
+                        <td>${o.tenant_names}</td>
+                        <td>${o.lease_start}</td>
+                        <td>${o.lease_end}</td>
+                        <td>$${parseFloat(o.rent_amount).toLocaleString()}</td>
+                        <td>${(o.lease_type || '').replace('_', ' ')}</td>
+                        <td><span class="status-badge status-expired">${o.status === 'terminated' ? 'Terminated' : 'Ended'}</span>${signedLeaseIds.has(o.id) ? ' <span class="status-badge status-active">✓ Signed</span>' : ''}</td>
+                        <td><button class="action-btn btn-primary" onclick="viewLease(${o.id})">View</button> <button class="action-btn btn-secondary" onclick="regeneratePDF(${o.id})">PDF</button></td>
+                    </tr>`).join('');
             };
             makeColumnsResizable('leases-table');
             tbody.innerHTML = buildingNames.map(b => {
@@ -2652,6 +2667,33 @@
                 return `<tr style="background:var(--bg-tertiary);"><td colspan="8" style="font-weight:700;font-size:15px;padding:10px 12px;">🏢 ${b}
                     <span style="font-weight:400;font-size:13px;color:var(--text-secondary);margin-left:8px;">${units.length} unit${units.length === 1 ? '' : 's'} · ${active} active · $${rent.toLocaleString()}/month</span></td></tr>` + units.map(rowFor).join('');
             }).join('');
+        }
+
+        // Next yearly anniversary of a lease start on or after today (month-to-month rent review date)
+        function nextAnniversary(startIso, today) {
+            const start = new Date(startIso + 'T00:00:00');
+            if (isNaN(start)) return new Date(NaN);
+            const d = new Date(start);
+            d.setFullYear(d.getFullYear() + 1);
+            while (d < today) d.setFullYear(d.getFullYear() + 1);
+            return d;
+        }
+
+        // Just the unit part of a lease address ("180A", "Downstairs"); the building row shows the rest
+        function unitLabel(address) {
+            const a = String(address || '').trim();
+            let m = a.match(/(?:unit|apt|apartment|suite|ste|#)\s*([\w-]+)/i);
+            if (m) return m[1];
+            m = a.match(/\b(downstairs|upstairs|basement|attic|main floor|(?:first|second|third|1st|2nd|3rd)\s*(?:floor|fl)|fl(?:oor)?\s*\d)\b/i);
+            if (m) return m[1].replace(/^\w/, c => c.toUpperCase());
+            m = a.match(/(\d+\s*[a-z])\s*(?:,|$)/i);
+            if (m) return m[1].replace(/\s+/, '');
+            return a.replace(/,?\s*East Stroudsburg.*$|,?\s*Stroudsburg.*$/i, '') || a;
+        }
+        function togglePrevLeases(leaseId) {
+            const rows = document.querySelectorAll('.prev-of-' + leaseId);
+            const show = rows.length && rows[0].style.display === 'none';
+            rows.forEach(r => r.style.display = show ? '' : 'none');
         }
 
         // Drag the right edge of a column header to change its width (remembered on this device)
@@ -2713,9 +2755,15 @@
         // the most recent lease if the unit has no active one. The rest are that
         // unit's history and show under View → Previous leases.
         function groupLeasesByUnit(leases) {
+            // Same unit even if one lease has the city/zip on the end or different punctuation
+            const unitKey = (addr) => String(addr || '').toLowerCase()
+                .replace(/,?\s*(east\s+)?stroudsburg\b.*$/, '')
+                .replace(/\b(apt|apartment|unit|suite|ste|floor|fl)\b/g, ' ')
+                .replace(/\bst\b/g, 'street').replace(/\bave\b/g, 'avenue').replace(/\brd\b/g, 'road')
+                .replace(/[^a-z0-9]/g, '');
             const byUnit = new Map();
             for (const l of leases) {
-                const key = (l.property_address || '').trim().toLowerCase();
+                const key = unitKey(l.property_address);
                 if (!byUnit.has(key)) byUnit.set(key, []);
                 byUnit.get(key).push(l);
             }
@@ -5645,6 +5693,6 @@ If you cannot read something clearly, use null.`
             }
         }
     </script>
-    <script src="assets/borough.js"></script>
+    <script src="assets/borough.js?v=20260922c"></script>
 </body>
 </html>
