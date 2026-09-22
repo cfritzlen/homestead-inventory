@@ -124,29 +124,26 @@ Deno.serve(async (req) => {
           `<p>${esc(signer.name)} just signed the lease for ${esc(lease.property_address)}.</p><p>${left ? `${left} more signature${left === 1 ? '' : 's'} to go.` : 'That was the last one; the signed copy is on its way to everyone.'}</p>`);
       } catch (e) { console.warn('landlord notice failed', e.message); }
 
-      // Stamp this signature and initials onto the working PDF now, so the
-      // next tenant (and this one's download) already shows it.
+      // Rebuild the working copy: landlord-signed base + every tenant who has
+      // signed so far. Rebuilding (rather than adding to the last copy) means
+      // two tenants finishing at the same moment can't overwrite each other.
+      const { data: all } = await supa.from('rental_lease_signers').select('*').eq('lease_id', lease.id).order('id');
+      const remaining = (all || []).filter((s: any) => s.status !== 'signed');
       let download_url: string | null = null;
       try {
-        const { data: file } = await supa.storage.from(BUCKET).download(lease.signing_pdf_path);
-        if (!file) throw new Error('no working PDF');
-        const pdf = await PDFDocument.load(await file.arrayBuffer());
-        const { count } = await supa.from('rental_lease_signers').select('id', { count: 'exact', head: true }).eq('lease_id', lease.id).eq('role', 'tenant');
-        await stampSigner(pdf, { ...signer, signature_png: sig, initials_png: ini, signed_at: new Date().toISOString() }, count || 1);
+        const pdf = await workingCopy(supa, lease, all || []);
         const newPath = `${lease.id}/${Date.now()}_for_signing.pdf`;
         const { error: upErr } = await supa.storage.from(BUCKET).upload(newPath, await pdf.save(), { contentType: 'application/pdf' });
         if (upErr) throw upErr;
+        const oldPath = lease.signing_pdf_path;
         await supa.from('rental_leases').update({ signing_pdf_path: newPath }).eq('id', lease.id);
         await supa.from('rental_lease_signers').update({ stamped: true }).eq('id', signer.id);
         await supa.from('rental_lease_files').update({ storage_path: newPath }).eq('lease_id', lease.id).eq('kind', 'signing');
-        if (lease.signing_pdf_path && lease.signing_pdf_path !== newPath) await supa.storage.from(BUCKET).remove([lease.signing_pdf_path]);
+        if (oldPath && oldPath !== newPath && oldPath !== lease.signing_base_path) await supa.storage.from(BUCKET).remove([oldPath]);
         lease.signing_pdf_path = newPath;
         const { data: u } = await supa.storage.from(BUCKET).createSignedUrl(newPath, 3600);
         download_url = u?.signedUrl || null;
-      } catch (e) { console.warn('immediate stamp failed; finalize will do it:', e.message); }
-
-      const { data: all } = await supa.from('rental_lease_signers').select('*').eq('lease_id', lease.id).order('id');
-      const remaining = (all || []).filter((s: any) => s.status !== 'signed');
+      } catch (e) { console.warn('working copy rebuild failed; finalize will redo it:', e.message); }
       let finalized = false;
       if (!remaining.length) {
         try { await finalize(supa, lease, all || [], settings || []); finalized = true; }
@@ -178,7 +175,9 @@ Deno.serve(async (req) => {
       const { data: w } = await supa.from('rental_lease_files').select('storage_path').eq('lease_id', body.lease_id).eq('kind', 'signing');
       if (w?.length) { await supa.storage.from(BUCKET).remove(w.map((f: any) => f.storage_path)); await supa.from('rental_lease_files').delete().eq('lease_id', body.lease_id).eq('kind', 'signing'); }
       await supa.from('rental_lease_signers').delete().eq('lease_id', body.lease_id);
-      await supa.from('rental_leases').update({ signing_status: 'draft', signing_pdf_path: null }).eq('id', body.lease_id);
+      const { data: lz } = await supa.from('rental_leases').select('signing_base_path').eq('id', body.lease_id).maybeSingle();
+      if (lz?.signing_base_path) await supa.storage.from(BUCKET).remove([lz.signing_base_path]);
+      await supa.from('rental_leases').update({ signing_status: 'draft', signing_pdf_path: null, signing_base_path: null }).eq('id', body.lease_id);
       return json({ ok: true });
     }
 
@@ -247,7 +246,7 @@ Deno.serve(async (req) => {
       await supa.from('rental_lease_signers').delete().eq('lease_id', lease.id);
       const { data: rows, error } = await supa.from('rental_lease_signers').insert(signers).select();
       if (error) return json({ error: error.message }, 500);
-      await supa.from('rental_leases').update({ signing_status: 'sent', signing_pdf_path: signingPath }).eq('id', lease.id);
+      await supa.from('rental_leases').update({ signing_status: 'sent', signing_pdf_path: signingPath, signing_base_path: signingPath }).eq('id', lease.id);
 
       const problems: string[] = [];
       let sent = 0;
@@ -314,16 +313,29 @@ async function stampSigner(pdf: any, s: any, tenantCount: number) {
 
 // Final PDF: anyone not stamped yet, plus a signing record page. Then stored
 // on the lease and emailed.
-async function finalize(supa: any, lease: any, signers: any[], settings: any[]) {
-  if (!lease.signing_pdf_path) throw new Error('no PDF on this lease');
-  const { data: file, error } = await supa.storage.from(BUCKET).download(lease.signing_pdf_path);
-  if (error || !file) throw new Error('could not read the lease PDF: ' + (error?.message || ''));
-  const pdf = await PDFDocument.load(await file.arrayBuffer());
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+// The PDF as it stands: the landlord-signed base with every signed tenant
+// stamped on. Leases sent before the base was recorded fall back to the last
+// working copy plus whoever isn't stamped yet.
+async function workingCopy(supa: any, lease: any, signers: any[]) {
   const tenants = signers.filter((s) => s.role === 'tenant');
   tenants.forEach((t, i) => { if (t.tenant_index == null) t.tenant_index = i; });   // rows from before v2
-  for (const s of signers) if (!s.stamped) await stampSigner(pdf, s, tenants.length);
+  const basePath = lease.signing_base_path || lease.signing_pdf_path;
+  if (!basePath) throw new Error('no PDF on this lease');
+  const { data: file, error } = await supa.storage.from(BUCKET).download(basePath);
+  if (error || !file) throw new Error('could not read the lease PDF: ' + (error?.message || ''));
+  const pdf = await PDFDocument.load(await file.arrayBuffer());
+  const fromBase = !!lease.signing_base_path;
+  for (const s of signers) {
+    if (s.status !== 'signed' || !s.signature_png) continue;
+    if (fromBase ? s.role === 'tenant' : !s.stamped) await stampSigner(pdf, s, tenants.length);
+  }
+  return pdf;
+}
+
+async function finalize(supa: any, lease: any, signers: any[], settings: any[]) {
+  const pdf = await workingCopy(supa, lease, signers);
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
   // Signing record
   const rec = pdf.addPage([612, 792]);
