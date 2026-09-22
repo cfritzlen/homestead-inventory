@@ -211,6 +211,11 @@ async function setBoroughUnitLease(propertyId, address) {
     } else { delete info.lease_unpicked; }
     const { error } = await supabaseClient.from('rental_properties').update({ borough_info: info }).eq('id', propertyId);
     if (error) { showAlert('Could not save: ' + error.message + ' (run migration 021?)', 'error'); return; }
+    if (address) {
+        // link every lease with that address to this unit for good
+        const ids = boroughLeases.filter(l => (l.property_address || '') === address).map(l => l.id);
+        if (ids.length) { const { error: e2 } = await supabaseClient.from('rental_leases').update({ property_id: propertyId }).in('id', ids); if (!e2) boroughLeases.forEach(l => { if (ids.includes(l.id)) l.property_id = propertyId; }); }
+    }
     u.borough_info = info; renderBoroughUnits();
 }
 async function setBoroughUnitFlag(propertyId, inBorough) {
@@ -229,10 +234,13 @@ function boroughLeaseGroups() {
     return groupLeasesByUnit(boroughLeases).map(g => g.current);
 }
 function boroughCurrentLease(unit, anyStatus) {
-    const picked = (unit.borough_info || {}).lease_address;
-    if (!picked && (unit.borough_info || {}).lease_unpicked === 'yes') return null;
     const current = boroughLeaseGroups();
     const active = (l) => l && (anyStatus || l.status === 'active') ? l : null;
+    // Leases linked to this unit record win over any text matching
+    const linked = current.find(c => c.property_id === unit.id);
+    if (linked) return active(linked);
+    const picked = (unit.borough_info || {}).lease_address;
+    if (!picked && (unit.borough_info || {}).lease_unpicked === 'yes') return null;
     if (picked) {
         const l = current.find(c => (c.property_address || '') === picked);
         if (l) return active(l);
