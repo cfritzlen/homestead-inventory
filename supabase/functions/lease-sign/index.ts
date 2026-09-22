@@ -138,6 +138,8 @@ Deno.serve(async (req) => {
         if (upErr) throw upErr;
         await supa.from('rental_leases').update({ signing_pdf_path: newPath }).eq('id', lease.id);
         await supa.from('rental_lease_signers').update({ stamped: true }).eq('id', signer.id);
+        await supa.from('rental_lease_files').update({ storage_path: newPath }).eq('lease_id', lease.id).eq('kind', 'signing');
+        if (lease.signing_pdf_path && lease.signing_pdf_path !== newPath) await supa.storage.from(BUCKET).remove([lease.signing_pdf_path]);
         lease.signing_pdf_path = newPath;
         const { data: u } = await supa.storage.from(BUCKET).createSignedUrl(newPath, 3600);
         download_url = u?.signedUrl || null;
@@ -173,6 +175,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'cancel') {
+      const { data: w } = await supa.from('rental_lease_files').select('storage_path').eq('lease_id', body.lease_id).eq('kind', 'signing');
+      if (w?.length) { await supa.storage.from(BUCKET).remove(w.map((f: any) => f.storage_path)); await supa.from('rental_lease_files').delete().eq('lease_id', body.lease_id).eq('kind', 'signing'); }
       await supa.from('rental_lease_signers').delete().eq('lease_id', body.lease_id);
       await supa.from('rental_leases').update({ signing_status: 'draft', signing_pdf_path: null }).eq('id', body.lease_id);
       return json({ ok: true });
@@ -194,7 +198,7 @@ Deno.serve(async (req) => {
       if (!isPng(landlordSig)) return json({ error: 'Sign first: your signature is missing.' }, 400);
       const { data: lease } = await supa.from('rental_leases').select('*').eq('id', body.lease_id).maybeSingle();
       if (!lease) return json({ error: 'lease not found' }, 404);
-      const { data: gen } = await supa.from('rental_lease_files').select('*').eq('lease_id', lease.id).eq('kind', 'generated')
+      const { data: gen } = await supa.from('rental_lease_files').select('*').eq('lease_id', lease.id).in('kind', ['draft', 'generated'])
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (!gen) return json({ error: 'Generate the lease PDF first (Download full lease PDF), then send.' }, 400);
       const settings = await landlordSettings(supa);
@@ -226,6 +230,14 @@ Deno.serve(async (req) => {
       const signingPath = `${lease.id}/${Date.now()}_for_signing.pdf`;
       const { error: upErr } = await supa.storage.from(BUCKET).upload(signingPath, await pdf.save(), { contentType: 'application/pdf' });
       if (upErr) return json({ error: 'could not store the PDF: ' + upErr.message }, 500);
+      // List it on the lease as the working copy; a temporary draft is replaced by it
+      await supa.from('rental_lease_files').delete().eq('lease_id', lease.id).eq('kind', 'signing');
+      await supa.from('rental_lease_files').insert({ lease_id: lease.id, kind: 'signing', storage_path: signingPath,
+        file_name: `Lease_${String(lease.tenant_names || '').replace(/[^A-Za-z0-9]+/g, '_')}_${lease.lease_start}_in_signing.pdf` });
+      if (gen.kind === 'draft') {
+        await supa.from('rental_lease_files').delete().eq('id', gen.id);
+        await supa.storage.from(BUCKET).remove([gen.storage_path]);
+      }
 
       const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || null;
       signers.push({ lease_id: lease.id, role: 'landlord', name: settings.name, email: settings.email, tenant_index: null, status: 'signed', stamped: true,
@@ -335,6 +347,7 @@ async function finalize(supa: any, lease: any, signers: any[], settings: any[]) 
   const { error: upErr } = await supa.storage.from(BUCKET).upload(path, bytes, { contentType: 'application/pdf' });
   if (upErr) throw new Error('could not store signed PDF: ' + upErr.message);
   await supa.from('rental_lease_files').insert({ lease_id: lease.id, kind: 'signed', file_name: fileName, storage_path: path });
+  await supa.from('rental_lease_files').delete().eq('lease_id', lease.id).eq('kind', 'signing');
   await supa.from('rental_leases').update({ signing_status: 'signed' }).eq('id', lease.id);
 
   // Everyone gets the signed copy

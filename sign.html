@@ -70,7 +70,8 @@
     <div style="margin:14px 0;padding:12px;border:1px dashed #94a3b8;border-radius:8px;">
       <strong>Photo of your government-issued ID</strong>
       <p class="muted" style="margin:4px 0 8px;">Driver's license or passport. Take a clear photo of the front. It is stored privately with the lease and only the landlord can see it.</p>
-      <input type="file" id="id-file" accept="image/*" capture="environment" onchange="pickId(this)">
+      <label class="btn-primary" style="display:inline-block;width:auto;padding:10px 16px;cursor:pointer;">📷 Take a photo or choose one
+        <input type="file" id="id-file" accept="image/*" style="display:none;" onchange="pickId(this)"></label>
       <div id="id-preview" style="margin-top:8px;"></div>
     </div>
     <label class="agree"><input type="checkbox" id="consent"> <span>I have read the entire lease. I agree to sign it electronically, and I understand this signature is as binding as a handwritten one.</span></label>
