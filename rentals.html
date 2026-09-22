@@ -2761,8 +2761,7 @@
             document.querySelector('[name="notes"]').value = lease.notes || '';
 
             // Lease options: what the old lease had, else the property's defaults
-            const oldOpts = lease.lease_options && typeof lease.lease_options === 'object' && Object.keys(lease.lease_options).length ? lease.lease_options : null;
-            if (oldOpts) applyLeaseOptions(oldOpts); else onPropertyChange();
+            if (hasOptions(lease.lease_options)) applyLeaseOptions(lease.lease_options); else onPropertyChange();
             
             // Scroll to top
             window.scrollTo(0, 0);
@@ -5129,6 +5128,18 @@ If you cannot read something clearly, use null.`
             ['trash', 'Trash', 585.8], ['pest_control', 'Pest control', 564.5], ['bed_bugs', 'Bed bugs', 552.2], ['hoa_fees', 'HOA fees', 539.9],
             ['snow', 'Snow', 527.6], ['lawn', 'Lawn & shrub care', 515.3],
         ];
+        // What a new lease starts with (per property choices override these)
+        const DEFAULT_LEASE_OPTIONS = {
+            appliances: [],
+            maintenance: { smoke_detectors: 'landlord', extermination: 'landlord', locks_keys: 'landlord', outside_clean: 'tenant', appliances_maint: 'landlord', fixtures: 'landlord' },
+            utilities: { heating: 'tenant', cooling: 'tenant', cooking: 'tenant', electric: 'tenant', cable_internet: 'tenant', telephone: 'tenant',
+                         water: 'landlord', sewer: 'landlord', trash: 'landlord', pest_control: 'landlord', bed_bugs: 'tenant', hoa_fees: 'tenant', snow: 'tenant', lawn: 'tenant' },
+        };
+        const hasOptions = (o) => !!(o && typeof o === 'object' && ((o.appliances || []).length || Object.keys(o.maintenance || {}).length || Object.keys(o.utilities || {}).length));
+        // The small tick boxes on the static pages (PDF points): [box centre x for Landlord, for Tenant]
+        const MAINT_BOX_X = [47.3, 108.3];
+        const UTIL_BOX_X = [151.3, 231.3];
+
         // Initial lines "________ ________": [middle page index, y]
         const INITIAL_LINES = [[2, 137.1], [7, 297.3], [9, 428.9], [10, 302.2], [11, 390.8], [11, 117.6], [12, 356.3], [15, 585.6], [16, 435.3], [16, 74.1]];
         const INITIAL_X = [36, 252, 468, 144];   // tenant 1, 2, 3, 4
@@ -5177,7 +5188,7 @@ If you cannot read something clearly, use null.`
             const rows = (list, extraNA) => list.map(([key, label]) => `
                 <div style="display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;">
                     <span style="flex:1 1 220px;">${label}</span>
-                    <span>${radio(key, 'landlord', 'Landlord')}${radio(key, 'tenant', 'Tenant')}${extraNA && key === 'hoa_fees' ? radio(key, 'na', 'N/A') : ''}</span>
+                    <span>${radio(key, 'landlord', 'Landlord')}${radio(key, 'tenant', 'Tenant')}</span>
                 </div>`).join('');
             el.innerHTML = `
                 <div style="margin-bottom:14px;"><strong style="font-size:14px;">Appliances included (page 1)</strong><div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px;font-size:13px;">
@@ -5208,7 +5219,7 @@ If you cannot read something clearly, use null.`
         function onPropertyChange() {
             const sel = document.getElementById('property-dropdown');
             const prop = sel ? propertiesByName[sel.value] : null;
-            applyLeaseOptions(prop ? prop.lease_options : {});
+            applyLeaseOptions(prop && hasOptions(prop.lease_options) ? prop.lease_options : DEFAULT_LEASE_OPTIONS);
         }
 
         // ---- the full PDF ----
@@ -5249,7 +5260,8 @@ If you cannot read something clearly, use null.`
             const font = await middle.embedFont(PDFLib.StandardFonts.Helvetica);
             const pages = middle.getPages();
             const white = PDFLib.rgb(1, 1, 1), black = PDFLib.rgb(0, 0, 0);
-            const ring = (pg, x, y, w, h) => pg.drawRectangle({ x: x - 2, y: y - 2.5, width: w + 4, height: h + 3, borderColor: black, borderWidth: 1 });
+            const bold = await middle.embedFont(PDFLib.StandardFonts.HelveticaBold);
+            const xMark = (pg, cx, y) => { const w = bold.widthOfTextAtSize('X', 9); pg.drawText('X', { x: cx - w / 2, y, size: 9, font: bold, color: black }); };
 
             // Emergency phone (lease page 4): "...Please call 570" / "560 6626 for all Emergency calls!"
             // Preferred: cut the old number out of the page text. Fallback: paint over it.
@@ -5263,14 +5275,13 @@ If you cannot read something clearly, use null.`
             // Who handles what: box around the chosen word
             for (const [key, , y] of MAINT_ROWS) {
                 const v = (opts.maintenance || {})[key];
-                if (v === 'landlord') ring(pages[1], 63.3, y, 31.5, 9);
-                else if (v === 'tenant') ring(pages[1], 120.9, y, 25.1, 9);
+                if (v === 'landlord') xMark(pages[1], MAINT_BOX_X[0], y);
+                else if (v === 'tenant') xMark(pages[1], MAINT_BOX_X[1], y);
             }
             for (const [key, , y] of UTIL_ROWS) {
                 const v = (opts.utilities || {})[key];
-                if (v === 'landlord') ring(pages[3], 165.5, y, 29.8, 8.5);
-                else if (v === 'tenant') ring(pages[3], 245.3, y, 23.7, 8.5);
-                else if (v === 'na') ring(pages[3], 293.7, y, 12, 8.5);
+                if (v === 'landlord') xMark(pages[3], UTIL_BOX_X[0], y);
+                else if (v === 'tenant' || v === 'na') xMark(pages[3], UTIL_BOX_X[1], y);
             }
 
             // Initial lines: every tenant initials every line. Lines 1-2 exist on the
