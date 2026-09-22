@@ -31,6 +31,13 @@ uploads the signed PDF (or a photo); the lease then shows a "✓ Signed" badge.
 Files live in the private `rental-leases` bucket; links expire after 10
 minutes and only work when signed in.
 
+## Units and leases
+Every lease points at its unit (`rental_leases.property_id` →
+`rental_properties.id`, migration 024). All Leases groups by that link and
+falls back to matching the address text for anything not linked yet; the
+orange banner on All Leases → **Link leases to units** finishes the job and
+can create missing unit records from a lease address.
+
 ## Tables
 `rental_settings` (landlord contact), `rental_lease_files` (files on a
 lease), plus a `lease_options` column on `rental_properties` and

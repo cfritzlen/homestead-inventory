@@ -2141,6 +2141,9 @@
             if (leaseData.tenant4_name) tenantNames.push(leaseData.tenant4_name);
             leaseData.tenant_names = tenantNames.join(', ');
             
+            // The unit this lease belongs to (rental_properties.id); the address text stays for display
+            leaseData.property_id = (propertiesByName[leaseData.property_address] || {}).id || null;
+
             // Add calculated fields
             leaseData.status = 'active';
             leaseData.created_at = new Date().toISOString();
@@ -2511,7 +2514,7 @@
                     const endDate = new Date(l.lease_end);
                     return l.status === 'active' && (l.lease_type === 'month_to_month' || endDate >= today);
                 });
-                const uniqueProperties = new Set(leases.map(l => l.property_address)).size;
+                const uniqueProperties = new Set(leases.map(l => l.property_id ? 'unit:' + l.property_id : String(l.property_address || '').toLowerCase().replace(/,?\s*(east\s+)?stroudsburg\b.*$/, '').replace(/[^a-z0-9]/g, ''))).size;
                 
                 // Calculate expiring soon (30 days)
                 const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -2576,7 +2579,8 @@
 
                 allLeases = leases;
                 await loadSignedIds();
-                try { const { data: props } = await supabaseClient.from('rental_properties').select('property_name,is_building_level,street_address,unit,status'); allProperties = props || []; } catch (_) { allProperties = []; }
+                try { const { data: props } = await supabaseClient.from('rental_properties').select('id,property_name,is_building_level,street_address,unit,city,state,zip,status'); allProperties = props || []; } catch (_) { allProperties = []; }
+                renderLinkBanner(leases);
                 displayLeases(leases);
 
             } catch (error) {
@@ -2601,7 +2605,7 @@
             // Group the units under their building, buildings in address order
             const byBuilding = new Map();
             for (const g of groups) {
-                const b = buildingForAddress(g.current.property_address);
+                const b = buildingForAddress(leaseUnitAddress(g.current));
                 if (!byBuilding.has(b)) byBuilding.set(b, []);
                 byBuilding.get(b).push(g);
             }
@@ -2633,7 +2637,7 @@
 
                 return `
                     <tr ${endingSoon ? 'style="background:#fff7ed;"' : ''}>
-                        <td><strong style="font-size:15px;" title="${lease.property_address}">${unitLabel(lease.property_address)}</strong>${older.length ? `<br><a href="#" onclick="togglePrevLeases(${lease.id});return false;" style="font-size:12px;color:var(--primary);">▸ ${older.length} previous lease${older.length === 1 ? '' : 's'}</a>` : ''}</td>
+                        <td><strong style="font-size:15px;" title="${lease.property_address}">${unitLabel(leaseUnitAddress(lease))}</strong>${older.length ? `<br><a href="#" onclick="togglePrevLeases(${lease.id});return false;" style="font-size:12px;color:var(--primary);">▸ ${older.length} previous lease${older.length === 1 ? '' : 's'}</a>` : ''}</td>
                         <td>${lease.tenant_names}</td>
                         <td>${lease.lease_start}</td>
                         <td>${endingSoon ? `<span style="color:#c2410c;font-weight:600;">${m2m ? 'month to month' : lease.lease_end}</span><br><small style="color:#c2410c;">${m2m ? 'rent review ' : ''}${daysUntilEnd <= 0 ? 'due now' : 'in ' + daysUntilEnd + ' days'}</small>` : endCell}</td>
@@ -2677,6 +2681,93 @@
             d.setFullYear(d.getFullYear() + 1);
             while (d < today) d.setFullYear(d.getFullYear() + 1);
             return d;
+        }
+
+        // The unit a lease is linked to (rental_properties row), if any
+        function leaseUnit(lease) { return lease && lease.property_id ? allProperties.find(p => p.id === lease.property_id) : null; }
+        // Best address text for grouping/labels: the linked unit's, else the lease's own
+        function leaseUnitAddress(lease) {
+            const u = leaseUnit(lease);
+            if (!u) return lease.property_address;
+            return u.street_address ? `${u.street_address}${u.unit ? ', Unit ' + u.unit : ''}` : u.property_name;
+        }
+
+        // ---- one-time clean-up: link every lease to its unit ----
+        function renderLinkBanner(leases) {
+            let el = document.getElementById('link-banner');
+            if (!el) {
+                el = document.createElement('div'); el.id = 'link-banner';
+                const table = document.querySelector('#leases .table-container');
+                if (table) table.parentNode.insertBefore(el, table);
+            }
+            const hasColumn = leases.length && Object.prototype.hasOwnProperty.call(leases[0], 'property_id');
+            const unlinked = hasColumn ? groupLeasesByUnit(leases.filter(l => !l.property_id)).length : 0;
+            if (!hasColumn) { el.innerHTML = `<div class="alert alert-error" style="display:block;">Run <code>supabase/migrations/024_lease_units.sql</code> in Supabase → SQL Editor, then reload, to link leases to their units.</div>`; return; }
+            el.innerHTML = unlinked ? `<div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <span>⚠️ ${unlinked} unit${unlinked === 1 ? '' : 's'} ${unlinked === 1 ? 'has' : 'have'} leases not yet linked to a unit record.</span>
+                <button class="action-btn btn-primary" onclick="openLinkLeases()">🔗 Link leases to units</button></div>` : '';
+        }
+        function unitMatchScore(addr, unit) {
+            const norm = (t) => String(t || '').toLowerCase().replace(/,?\s*(east\s+)?stroudsburg\b.*$/, '').replace(/\b(apt|apartment|unit|suite|ste|#|st|street|ave|avenue|rd|road|n|north|e|east)\b/g, ' ').replace(/[^a-z0-9]/g, '');
+            const a = norm(addr), n = norm(unit.property_name), sa = norm(unit.street_address ? `${unit.street_address} ${unit.unit || ''}` : '');
+            if (!a) return 0;
+            if (a === n || (sa && a === sa)) return 3;
+            const tok = unitLabel(addr).toLowerCase().replace(/[^a-z0-9]/g, '');
+            const utok = String(unit.unit || unitLabel(unit.property_name)).toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (tok && utok && tok === utok && (a.includes(n.slice(0, 6)) || n.includes(a.slice(0, 6)))) return 2;
+            if (a.includes(n) || n.includes(a)) return 1;
+            return 0;
+        }
+        function openLinkLeases() {
+            const units = allProperties.filter(p => !p.is_building_level && p.status !== 'archived');
+            const groups = groupLeasesByUnit(allLeases.filter(l => !l.property_id));
+            const modal = document.getElementById('lease-modal');
+            modal.style.display = 'flex';
+            document.getElementById('lm-title').textContent = 'Link leases to units';
+            const rows = groups.map((g, i) => {
+                const best = units.map(u => ({ u, s: unitMatchScore(g.current.property_address, u) })).filter(x => x.s > 0).sort((x, y) => y.s - x.s)[0];
+                return `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+                    <div style="flex:1;min-width:220px;"><strong>${g.current.property_address}</strong><br><small style="color:var(--text-secondary);">${g.current.tenant_names}${g.older.length ? ` + ${g.older.length} previous` : ''}</small></div>
+                    <select id="link-${i}" data-key="${i}" style="padding:6px;border:1px solid var(--border);border-radius:4px;max-width:100%;">
+                        <option value="new">➕ Create a new unit from this address</option>
+                        ${units.map(u => `<option value="${u.id}" ${best && best.u.id === u.id ? 'selected' : ''}>${u.property_name}</option>`).join('')}
+                    </select></div>`;
+            }).join('');
+            document.getElementById('lm-body').innerHTML = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">Each lease address below gets tied to a unit record. I pre-picked the best match; change any that look wrong. "Create a new unit" makes the unit record from the address.</div>
+                ${rows || '<p>Everything is already linked.</p>'}
+                <div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-primary" onclick="saveLinkLeases()">Save links</button><button class="btn btn-secondary" onclick="closeLeaseModal()">Cancel</button></div>`;
+            window.__linkGroups = groups;
+        }
+        async function saveLinkLeases() {
+            const groups = window.__linkGroups || [];
+            let linked = 0, created = 0;
+            try {
+                for (let i = 0; i < groups.length; i++) {
+                    const g = groups[i];
+                    const sel = document.getElementById('link-' + i); if (!sel) continue;
+                    let unitId = sel.value === 'new' ? null : Number(sel.value);
+                    if (!unitId) {
+                        // Create the unit from the address: "180 N Courtland St, Unit 180A, East Stroudsburg, PA 18301"
+                        const addr = g.current.property_address || '';
+                        const cityM = addr.match(/,\s*([A-Za-z .]+),\s*([A-Z]{2})\s*(\d{5})?\s*$/);
+                        const street = addr.replace(/,\s*(unit|apt|apartment|suite|ste|#)\s*[\w-]+/i, '').replace(/,\s*[A-Za-z .]+,\s*[A-Z]{2}\s*\d{0,5}\s*$/, '').replace(/,?\s*(downstairs|upstairs|basement|(?:first|second|third|1st|2nd|3rd)\s*(?:floor|fl))\b/i, '').trim();
+                        const row = { property_name: addr.replace(/,\s*[A-Za-z .]+,\s*[A-Z]{2}\s*\d{0,5}\s*$/, '').trim(), is_building_level: false, status: 'active',
+                            street_address: street, unit: unitLabel(addr), city: cityM ? cityM[1].trim() : null, state: cityM ? cityM[2] : null, zip: cityM && cityM[3] ? cityM[3] : null };
+                        const { data, error } = await supabaseClient.from('rental_properties').insert([row]).select().single();
+                        if (error) throw error;
+                        unitId = data.id; allProperties.push(data); created++;
+                    }
+                    const ids = [g.current, ...g.older].map(l => l.id);
+                    const { error } = await supabaseClient.from('rental_leases').update({ property_id: unitId }).in('id', ids);
+                    if (error) throw error;
+                    [g.current, ...g.older].forEach(l => l.property_id = unitId);
+                    linked += ids.length;
+                }
+                showAlert(`Linked ${linked} lease${linked === 1 ? '' : 's'}${created ? `, created ${created} unit${created === 1 ? '' : 's'}` : ''}.`, 'success');
+                closeLeaseModal();
+                await loadProperties();
+                loadAllLeases();
+            } catch (e) { showAlert('Could not save: ' + e.message, 'error'); }
         }
 
         // Just the unit part of a lease address ("180A", "Downstairs"); the building row shows the rest
@@ -2763,7 +2854,7 @@
                 .replace(/[^a-z0-9]/g, '');
             const byUnit = new Map();
             for (const l of leases) {
-                const key = unitKey(l.property_address);
+                const key = l.property_id ? 'unit:' + l.property_id : unitKey(l.property_address);
                 if (!byUnit.has(key)) byUnit.set(key, []);
                 byUnit.get(key).push(l);
             }
@@ -2929,8 +3020,9 @@
                 }
             }
             
-            // Fill property
-            document.querySelector('[name="property_address"]').value = lease.property_address;
+            // Fill property: the linked unit if we have it, else whatever the old lease said
+            const linkedUnit = lease.property_id ? Object.values(propertiesByName).find(p => p.id === lease.property_id) : null;
+            document.querySelector('[name="property_address"]').value = linkedUnit ? linkedUnit.property_name : lease.property_address;
             
             // Set previous rent and prepare for increase
             document.getElementById('previous-rent').value = lease.rent_amount;
