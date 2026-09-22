@@ -15,6 +15,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="assets/borough-forms.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -1181,6 +1182,7 @@
                     <button class="nav-btn" onclick="showView('leases')">All Leases</button>
                     <button class="nav-btn" onclick="showView('expenses')">Expenses</button>
                     <button class="nav-btn" onclick="showView('payments')">Payments</button>
+                    <button class="nav-btn" onclick="showView('borough')">Borough</button>
                 </nav>
             </div>
         </div>
@@ -1208,6 +1210,8 @@
                         <div class="stat-value" id="stat-revenue">$0</div>
                     </div>
                 </div>
+
+                <div class="card" id="borough-dash-card" style="display:none;padding:0;border:none;box-shadow:none;background:transparent;"></div>
 
                 <div class="card">
                     <div class="card-header">Upcoming Renewals</div>
@@ -1501,6 +1505,39 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- Borough View: East Stroudsburg rental registration paperwork -->
+            <div id="borough" class="view">
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <span>Borough of East Stroudsburg · Rental Registration</span>
+                        <label style="font-size:13px;font-weight:normal;">License year
+                            <select id="borough-year" onchange="changeBoroughYear(this.value)" style="padding:6px;border:1px solid var(--border);border-radius:4px;margin-left:6px;">
+                                <option>2026</option><option selected>2027</option><option>2028</option><option>2029</option>
+                            </select></label>
+                    </div>
+                    <div id="borough-deadline" style="padding:12px;border-radius:6px;margin-bottom:12px;"></div>
+                    <div id="borough-contact" style="font-size:14px;line-height:1.6;"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Your units</div>
+                    <div id="borough-setup-note"></div>
+                    <div id="borough-units"><p class="loading">Loading…</p></div>
+                </div>
+
+                <div class="card">
+                    <details>
+                        <summary style="cursor:pointer;font-weight:600;">Owner &amp; property manager details (printed on the forms)</summary>
+                        <div id="borough-info-form" style="margin-top:12px;"></div>
+                    </details>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Blank forms &amp; guides from the Borough</div>
+                    <div id="borough-forms"></div>
                 </div>
             </div>
 
@@ -1923,6 +1960,7 @@
                 loadExpenseProperties(); loadExpenses();
             }
             if (viewName === 'payments') { loadPaymentProperties(); loadRateSchedules().then(() => { loadPaymentDefaults(); loadMonthlyPayments(); loadZelle(); }); }
+            if (viewName === 'borough') loadBorough();
         }
 
         // Reset form and show new lease view (not a renewal)
@@ -4360,6 +4398,7 @@
             loadDashboard();
             loadProperties();
             loadRateSchedules();
+            renderBoroughDashCard();
 
             // Init API key
             const savedKey = getApiKey();
@@ -5531,5 +5570,6 @@ If you cannot read something clearly, use null.`
             }
         }
     </script>
+    <script src="assets/borough.js"></script>
 </body>
 </html>
