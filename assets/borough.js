@@ -239,14 +239,15 @@ function boroughCurrentLease(unit) {
     const exact = current.find(c => (c.property_address || '').trim().toLowerCase() === (unit.property_name || '').trim().toLowerCase());
     if (exact) return active(exact);
     const names = [unit.property_name, unit.street_address && unit.unit ? `${unit.street_address} ${unit.unit}` : '', unit.street_address].filter(Boolean).map(boroughNorm).filter(Boolean);
-    const loose = current.filter(c => { const n = boroughNorm(c.property_address); return n && names.some(x => x === n || (x.length >= 4 && (n.endsWith(x) || n.includes(x)))); });
+    // the unit token: "180A", "182B", "B", "Downstairs"… (last word of the name, or the unit column)
+    const token = boroughNorm(unit.unit || (unit.property_name || '').split(/[\s,]+/).pop());
+    const loose = current.filter(c => {
+        const n = boroughNorm(c.property_address); if (!n) return false;
+        return names.some(x => x === n || (x.length >= 3 && n.length >= 3 && (n.includes(x) || x.includes(n))));
+    });
+    const withToken = token ? loose.filter(c => boroughNorm(c.property_address).endsWith(token)) : [];
+    if (withToken.length) return active(withToken[0]);
     if (loose.length === 1) return active(loose[0]);
-    if (loose.length > 1) {
-        // prefer the one whose unit letter/number matches
-        const u = boroughNorm(unit.unit || (unit.property_name || '').replace(/^.*?(\d+\s*[a-z]?)$/i, '$1'));
-        const best = loose.find(c => u && boroughNorm(c.property_address).endsWith(u));
-        return active(best || loose[0]);
-    }
     return null;
 }
 function boroughGuessOccupancy(unit, lease) {
