@@ -36,7 +36,7 @@ const BOROUGH_UNIT_DEFAULTS = {
     units_in_building: '4', bedrooms: '2', bathrooms: '1',
     meters_water: '1', meters_electric: '5', meters_garbage: '4',
     license_active: 'yes', license_displayed: 'no', evac_plan: 'no', smoke_detectors: 'yes',
-    last_inspection: '2026-06-16', disruptive: '0',
+    last_inspection: '', disruptive: '0',      // the June 2026 inspection was never confirmed; type the real date under Unit details
     pin: 'PIN 05730112853408 / Parcel 05-5.2.18.6',       // 180-182 N Courtland St, from the 2026 tax bill
 };
 // Owner details used until something else is saved under Owner details.
