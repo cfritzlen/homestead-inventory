@@ -2755,9 +2755,15 @@
         // the most recent lease if the unit has no active one. The rest are that
         // unit's history and show under View → Previous leases.
         function groupLeasesByUnit(leases) {
+            // Same unit even if one lease has the city/zip on the end or different punctuation
+            const unitKey = (addr) => String(addr || '').toLowerCase()
+                .replace(/,?\s*(east\s+)?stroudsburg\b.*$/, '')
+                .replace(/\b(apt|apartment|unit|suite|ste|floor|fl)\b/g, ' ')
+                .replace(/\bst\b/g, 'street').replace(/\bave\b/g, 'avenue').replace(/\brd\b/g, 'road')
+                .replace(/[^a-z0-9]/g, '');
             const byUnit = new Map();
             for (const l of leases) {
-                const key = (l.property_address || '').trim().toLowerCase();
+                const key = unitKey(l.property_address);
                 if (!byUnit.has(key)) byUnit.set(key, []);
                 byUnit.get(key).push(l);
             }
