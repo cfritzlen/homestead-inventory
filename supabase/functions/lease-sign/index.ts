@@ -342,7 +342,7 @@ async function finalize(supa: any, lease: any, signers: any[], settings: any[]) 
   let y = 740;
   rec.drawText('SIGNING RECORD', { x: 54, y, size: 14, font: bold }); y -= 22;
   rec.drawText(`Lease: ${lease.property_address}, ${lease.lease_start} to ${lease.lease_end}`, { x: 54, y, size: 10, font }); y -= 14;
-  rec.drawText('Each party reviewed the full lease online and signed electronically by drawing their signature and initials,', { x: 54, y, size: 9, font }); y -= 12;
+  rec.drawText('Each party reviewed the full lease online and signed electronically (drawn or typed signature and initials),', { x: 54, y, size: 9, font }); y -= 12;
   rec.drawText('after agreeing to sign electronically. Details of each signature:', { x: 54, y, size: 9, font }); y -= 22;
   for (const s of signers) {
     rec.drawText(`${s.name} (${s.role})`, { x: 54, y, size: 10, font: bold }); y -= 13;
