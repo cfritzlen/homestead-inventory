@@ -926,6 +926,20 @@ function renderBills(){
             }).filter(Boolean).join('');
             const actualAmt=p?.actual_amount!=null?p.actual_amount:b.expected_amount;
             const paidDate=p?.paid_date||'';
+            if(b.frequency==='weekly'){
+                // Weekly bills are tracked week-by-week on Weekly Entry; change the amount with Edit
+                html+=`<tr data-bill-id="${b.id}">
+                <td></td>
+                <td><strong>${b.name}</strong><br><span class="badge badge-auto" style="background:rgba(52,152,219,0.12);color:#2980b9;">Weekly</span></td>
+                <td>Every wk</td>
+                <td colspan="1" style="font-size:0.75rem;color:var(--sage-500);">Mark paid on Weekly Entry</td>
+                <td class="amount">${fmt(b.expected_amount)}<br><span style="font-size:0.7rem;color:var(--sage-400);">/wk · use Edit</span></td>
+                <td></td>
+                <td>${b.is_auto_pay?'<span class="badge badge-auto">Auto</span>':''}</td>
+                <td><button class="btn btn-small btn-secondary" onclick="editBill('${b.id}')">Edit</button><button class="btn btn-small btn-danger" onclick="deleteBill('${b.id}')">Del</button></td>
+            </tr>`;
+                return;
+            }
             html+=`<tr data-bill-id="${b.id}">
                 <td><input type="checkbox" class="check-paid" ${p?.is_paid?'checked':''} ${b.is_auto_pay?'disabled title="Auto"':''} onchange="billTabSave('${b.id}',this.closest('tr'))"></td>
                 <td><strong>${b.name}</strong>${b.is_variable_amount?'<br><span class="badge badge-variable">Variable</span>':''}${b.frequency==='weekly'?'<br><span class="badge badge-auto" style="background:rgba(52,152,219,0.12);color:#2980b9;">Weekly</span>':''}</td>
@@ -954,7 +968,8 @@ async function billTabSave(billId,row){
     const amt=parseFloat(amtInput?.value)||bill?.expected_amount||0;
     if(isPaid&&!dateInput.value) dateInput.value=new Date().toISOString().split('T')[0];
     const paidDate=dateInput?.value||null;
-    const data={is_paid:isPaid,actual_amount:amt,paid_date:isPaid?paidDate:null,week_assigned:weekAssigned};
+    const isDefault=!isPaid&&Math.abs(amt-(parseFloat(bill?.expected_amount)||0))<0.005;
+    const data={is_paid:isPaid,actual_amount:isDefault?null:amt,paid_date:isPaid?paidDate:null,week_assigned:weekAssigned};
     try{
         if(ex) await supaFetch('finance_bill_payments','PATCH',data,`?id=eq.${ex.id}`);
         else await supaFetch('finance_bill_payments','POST',{bill_id:billId,bill_month:mk,...data});
@@ -983,8 +998,9 @@ async function saveBill(){
     const startDate=document.getElementById('bill-amount-start').value;
     try{
         const old=editingBillId?bills.find(x=>x.id===editingBillId):null;
-        if(old && startDate && parseFloat(old.expected_amount||0)!==data.expected_amount){
-            await applyAmountFromDate({...old,...data,id:old.id},parseFloat(old.expected_amount)||0,data.expected_amount,startDate);
+        if(old && parseFloat(old.expected_amount||0)!==data.expected_amount){
+            // No date = change every unpaid week/month
+            await applyAmountFromDate({...old,...data,id:old.id},parseFloat(old.expected_amount)||0,data.expected_amount,startDate||'0000-00-00');
         }
         if(editingBillId){await supaFetch('finance_bills','PATCH',data,`?id=eq.${editingBillId}`);editingBillId=null;document.getElementById('btn-cancel-bill').style.display='none';}
         else await supaFetch('finance_bills','POST',data);
@@ -1020,9 +1036,10 @@ async function applyAmountFromDate(bill,oldAmt,newAmt,startDate){
         else if(r.actual_amount==null) await supaFetch('finance_bill_payments','PATCH',{actual_amount:oldAmt},`?id=eq.${r.id}`);
     }
     for(let i=0;i<toPost.length;i+=50) await supaFetch('finance_bill_payments','POST',toPost.slice(i,i+50));
+    // Unpaid periods still on the old amount switch to the new one (hand-typed amounts are left alone)
     for(const r of existing){
-        if(!r.is_paid && periodDate(r.bill_month)>=startDate && parseFloat(r.actual_amount)!==newAmt)
-            await supaFetch('finance_bill_payments','PATCH',{actual_amount:newAmt},`?id=eq.${r.id}`);
+        if(!r.is_paid && periodDate(r.bill_month)>=startDate && r.actual_amount!=null && Math.abs(parseFloat(r.actual_amount)-oldAmt)<0.005)
+            await supaFetch('finance_bill_payments','PATCH',{actual_amount:null},`?id=eq.${r.id}`);
     }
 }
 function editBill(id){
@@ -1122,11 +1139,14 @@ function updateTaxDueDates(){
     const weekDate=new Date(dt+'T12:00:00');
     const taxes=accounts.filter(a=>a.account_type==='tax_debt');
     taxes.forEach(a=>{
-        const bill=bills.find(b=>b.name.toLowerCase().includes(a.name.toLowerCase())||
-            (a.name.toLowerCase().includes('fed')&&b.name.toLowerCase().includes('irs'))||
-            (a.name.toLowerCase().includes('pa')&&b.name.toLowerCase().includes('pa')));
-        if(bill){
-            loanDueDates[a.id]=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-${String(bill.due_day).padStart(2,'0')}`;
+        const billId=document.querySelector(`.debt-bill-row[data-acct-id="${a.id}"]`)?.dataset.debtBillId;
+        const bill=bills.find(b=>b.id===billId);
+        if(!bill?.due_day)return;
+        // First due date on or after the start of this week
+        for(let m=0;m<2;m++){
+            const y=weekDate.getFullYear(), mo=weekDate.getMonth()+m;
+            const d=new Date(y,mo,Math.min(bill.due_day,new Date(y,mo+1,0).getDate()),12);
+            if(d>=weekDate||m===1){loanDueDates[a.id]=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;break;}
         }
     });
     updateDueDateLabels();
@@ -1207,9 +1227,9 @@ async function autoFillFromPrior(){
     try{
         const prevEntries=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${prevWed}`);
         if(!prevEntries?.length)return;
-        const taxAccs=accounts.filter(a=>a.account_type==='tax_debt');
+        const carryAccs=accounts.filter(a=>a.account_type==='tax_debt'||(a.is_debt&&a.account_type==='loan'));
         prevEntries.forEach(e=>{
-            const isTax=taxAccs.some(a=>a.id===e.account_id);
+            const isTax=carryAccs.some(a=>a.id===e.account_id);
             if(isTax){
                 const bI=document.querySelector(`input[data-id="${e.account_id}"][data-f="bal"]`);
                 if(bI) bI.value=e.ending_balance||0;
@@ -1443,6 +1463,12 @@ function loadDebtBillRows(payments,mkCurrent,wednesdays,currentWeek){
         const weekSel=row.querySelector('.debt-bill-week');
 
         if(checkbox) checkbox.checked=paid;
+        const acct=accounts.find(a=>a.id===row.dataset.acctId);
+        const payIn=document.querySelector(`input[data-id="${row.dataset.acctId}"][data-f="pay"]`);
+        const hasSchedule=acct?.account_type==='loan'&&loanDueDates[acct.id];
+        if(payIn && !hasSchedule && weekAssigned===currentWeek && !(parseFloat(payIn.value)>0)){
+            payIn.value=(parseFloat(p?.actual_amount??bill?.expected_amount)||0).toFixed(2);
+        }
         if(dateInput){
             dateInput.value=paidDate;
             dateInput.className='debt-bill-date '+(paid?'paid-date-confirmed':'paid-date-gray');
@@ -1495,10 +1521,13 @@ async function autoSaveDebtBill(billId,billMonth,row){
     const paidDate=dateInput?.value||null;
     const weekAssigned=weekSel?.value||null;
     const bill=bills.find(b=>b.id===billId);
-    const amt=bill?.expected_amount||0;
+    const acctId=row.dataset.acctId;
+    const payVal=parseFloat(document.querySelector(`input[data-id="${acctId}"][data-f="pay"]`)?.value)||0;
     try{
         const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
-        const data={is_paid:isPaid, paid_date:isPaid?paidDate:null, week_assigned:weekAssigned, actual_amount:amt};
+        const data={is_paid:isPaid, paid_date:isPaid?paidDate:null, week_assigned:weekAssigned};
+        // Only lock in an amount once it's paid; otherwise keep following the bill
+        if(isPaid) data.actual_amount=existing?.[0]?.actual_amount??(payVal||parseFloat(bill?.expected_amount)||0);
         if(existing?.length){
             await supaFetch('finance_bill_payments','PATCH',data,`?id=eq.${existing[0].id}`);
         }else{
@@ -1790,7 +1819,9 @@ async function autoSaveBillField(billId,billMonth,el){
     }
     try{
         const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${billId}&bill_month=eq.${billMonth}`);
-        const data={is_paid:isPaid, actual_amount:amt, paid_date:isPaid?paidDate:null, week_assigned:weekAssigned};
+        const expAmt=parseFloat(bills.find(b=>b.id===billId)?.expected_amount)||0;
+        const isDefault=!isPaid&&Math.abs(amt-expAmt)<0.005;
+        const data={is_paid:isPaid, actual_amount:isDefault?null:amt, paid_date:isPaid?paidDate:null, week_assigned:weekAssigned};
         if(existing?.length){
             await supaFetch('finance_bill_payments','PATCH',data,`?id=eq.${existing[0].id}`);
         }else{
@@ -2199,8 +2230,10 @@ async function saveWeeklyEntries(){
     });
     if(!entries.length)return alert('Enter at least one balance.');
     try{
+        const oldEntries=await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${dt}`)||[];
         await supaFetch('finance_weekly_entries','DELETE',null,`?entry_date=eq.${dt}`);
         await supaFetch('finance_weekly_entries','POST',entries);
+        await cascadeBalances(dt,oldEntries,entries);
         const billRows=document.querySelectorAll('#weekly-bills-list [data-bill-id]');
         const billPairs=new Set();
         billRows.forEach(el=>{
@@ -2224,6 +2257,30 @@ async function saveWeeklyEntries(){
         const extraMsg=await saveExtraPayment(dt);
         alert('Week saved!' + (extraMsg||''));
     }catch(e){alert('Error: '+e.message);}
+}
+
+// Tax & loan balances: push a changed ending balance into later saved weeks,
+// but only where that week was still carrying the old number (hand edits are kept)
+async function cascadeBalances(dt,oldEntries,newEntries){
+    const carry=new Set(accounts.filter(a=>a.account_type==='tax_debt'||(a.is_debt&&a.account_type==='loan')).map(a=>a.id));
+    for(const ne of newEntries){
+        if(!carry.has(ne.account_id))continue;
+        const oe=oldEntries.find(x=>x.account_id===ne.account_id);
+        if(!oe)continue;
+        let oldEnd=parseFloat(oe.ending_balance)||0, newEnd=ne.ending_balance;
+        let wk=new Date(dt+'T12:00:00');
+        for(let i=0;i<60 && Math.abs(oldEnd-newEnd)>=0.005;i++){
+            wk.setDate(wk.getDate()+7);
+            const wkStr=`${wk.getFullYear()}-${String(wk.getMonth()+1).padStart(2,'0')}-${String(wk.getDate()).padStart(2,'0')}`;
+            const nx=(await supaFetch('finance_weekly_entries','GET',null,`?entry_date=eq.${wkStr}&account_id=eq.${ne.account_id}`))?.[0];
+            if(!nx || Math.abs((parseFloat(nx.starting_balance)||0)-oldEnd)>=0.005)break;
+            // Shift that week by the same difference (keeps its payment and any extra payment)
+            const nxOldEnd=parseFloat(nx.ending_balance)||0;
+            const nxNewEnd=Math.round((nxOldEnd+(newEnd-oldEnd))*100)/100;
+            await supaFetch('finance_weekly_entries','PATCH',{starting_balance:newEnd,ending_balance:nxNewEnd},`?id=eq.${nx.id}`);
+            oldEnd=nxOldEnd; newEnd=nxNewEnd;
+        }
+    }
 }
 
 async function saveBillPayment(billId,billMonth,amt,paidDate,isPaid,weekAssigned){
