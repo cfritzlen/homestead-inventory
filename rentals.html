@@ -15,7 +15,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="assets/borough-forms.js?v=20260922c"></script>
+    <script src="assets/borough-forms.js?v=20260923a"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -1192,6 +1192,7 @@
                     <button class="nav-btn" onclick="showView('leases')">Units &amp; Leases</button>
                     <button class="nav-btn" onclick="showView('expenses')">Expenses</button>
                     <button class="nav-btn" onclick="showView('payments')">Payments</button>
+                    <button class="nav-btn" onclick="showView('properties')">Properties</button>
                     <button class="nav-btn" onclick="showView('borough')">Borough</button>
                 </nav>
             </div>
@@ -1516,6 +1517,23 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- Properties View: per-building facts, paperwork by year, reminders -->
+            <div id="properties" class="view">
+                <div id="properties-reminders"></div>
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <span>Properties</span>
+                        <span style="display:flex;gap:10px;align-items:center;font-size:13px;font-weight:normal;">
+                            <label>Year <select id="prop-year" onchange="changePropYear(this.value)" style="padding:6px;border:1px solid var(--border);border-radius:4px;margin-left:4px;">
+                                <option>2024</option><option>2025</option><option>2026</option><option>2027</option></select></label>
+                            <button class="setup-toggle" style="margin:0;" onclick="addProperty()">➕ Add property</button></span>
+                    </div>
+                    <div id="properties-note"></div>
+                    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">One card per building. Tap <strong>Add</strong> next to any item to file the bill, statement or form for the year (photo or PDF). Mark bills paid so they drop off "Coming up".</div>
+                    <div id="properties-list"><p class="loading">Loading…</p></div>
                 </div>
             </div>
 
@@ -1973,6 +1991,7 @@
             }
             if (viewName === 'payments') { loadPaymentProperties(); loadRateSchedules().then(() => { loadPaymentDefaults(); loadMonthlyPayments(); loadZelle(); }); }
             if (viewName === 'borough') loadBorough();
+            if (viewName === 'properties') loadPropertiesTab();
         }
 
         // Reset form and show new lease view (not a renewal)
@@ -5935,6 +5954,7 @@ If you cannot read something clearly, use null.`
             }
         }
     </script>
-    <script src="assets/borough.js?v=20260922c"></script>
+    <script src="assets/borough.js?v=20260923a"></script>
+    <script src="assets/properties.js?v=20260923a"></script>
 </body>
 </html>

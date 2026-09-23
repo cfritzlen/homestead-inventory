@@ -269,7 +269,7 @@ async function finalize(supa: any, filing: any, signers: any[], property: string
   let y = 740;
   rec.drawText('ELECTRONIC SIGNING RECORD', { x: 54, y, size: 14, font: bold }); y -= 22;
   rec.drawText(`Addendum to Lease for ${property} (${BOROUGH_NAME}, ${filing.year} rental registration)`, { x: 54, y, size: 10, font }); y -= 14;
-  rec.drawText('Each occupant reviewed the addendum online and signed electronically by drawing their signature,', { x: 54, y, size: 9, font }); y -= 12;
+  rec.drawText('Each occupant reviewed the addendum online and signed electronically (a drawn or typed signature),', { x: 54, y, size: 9, font }); y -= 12;
   rec.drawText('after agreeing to sign electronically. Details of each signature:', { x: 54, y, size: 9, font }); y -= 22;
   for (const s of signers) {
     rec.drawText(`${s.name} (${s.role})`, { x: 54, y, size: 10, font: bold }); y -= 13;
