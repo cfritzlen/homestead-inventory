@@ -2772,7 +2772,7 @@
             const addr = (typeof leaseUnitAddress === 'function' && lease.id) ? leaseUnitAddress(lease) : (lease.property_address || '');
             const num = (String(addr).match(/^\s*(\d+)/) || [])[1] || '';
             let unit = unitLabel(addr) || addr;
-            if (!/\d/.test(unit) && num) unit = `${num} ${unit}`;
+            if (!/^\d+\s*[a-z]?$/i.test(unit) && num) unit = `${num} ${unit}`;
             const names = [1, 2, 3, 4].map(i => lease[`tenant${i}_name`]).filter(Boolean);
             const list = names.length ? names : String(lease.tenant_names || '').split(',').map(x => x.trim()).filter(Boolean);
             const initials = list.map(n => n.split(/[\s,]+/).filter(Boolean).map(w => w[0].toUpperCase()).join('')).join(' ') || 'Draft';

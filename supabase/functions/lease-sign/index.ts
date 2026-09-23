@@ -275,7 +275,7 @@ function leaseFileName(lease: any, state: string) {
   else if ((m = addr.match(/\b(downstairs|upstairs|basement|attic|main floor|(?:first|second|third|1st|2nd|3rd)\s*(?:floor|fl)|fl(?:oor)?\s*\d)\b/i))) unit = m[1].replace(/^\w/, (c) => c.toUpperCase());
   else if ((m = addr.match(/(\d+\s*[a-z])\s*(?:,|$)/i))) unit = m[1].replace(/\s+/, '');
   else unit = addr.replace(/,?\s*East Stroudsburg.*$|,?\s*Stroudsburg.*$/i, '');
-  if (!/\d/.test(unit) && num) unit = `${num} ${unit}`;
+  if (!/^\d+\s*[a-z]?$/i.test(unit) && num) unit = `${num} ${unit}`;
   const names = [1, 2, 3, 4].map((i) => lease[`tenant${i}_name`]).filter(Boolean);
   const list = names.length ? names : String(lease.tenant_names || '').split(',').map((x: string) => x.trim()).filter(Boolean);
   const initials = list.map((n: string) => n.split(/[\s,]+/).filter(Boolean).map((w: string) => w[0].toUpperCase()).join('')).join(' ') || 'Draft';
