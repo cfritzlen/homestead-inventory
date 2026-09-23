@@ -2765,6 +2765,21 @@
             if (dd) { dd.value = u.property_name; onPropertyChange(); }
         }
 
+        // File name for a lease PDF: "Lease 261001 - 503 2nd Floor - MC - MTM - Signed.pdf"
+        // (start date YYMMDD, unit, tenant initials, term, state). Mirrored in lease-sign.
+        function leaseFileName(lease, state) {
+            const d = String(lease.lease_start || '').replace(/-/g, '').slice(2, 8) || 'draft';
+            const addr = (typeof leaseUnitAddress === 'function' && lease.id) ? leaseUnitAddress(lease) : (lease.property_address || '');
+            const num = (String(addr).match(/^\s*(\d+)/) || [])[1] || '';
+            let unit = unitLabel(addr) || addr;
+            if (!/\d/.test(unit) && num) unit = `${num} ${unit}`;
+            const names = [1, 2, 3, 4].map(i => lease[`tenant${i}_name`]).filter(Boolean);
+            const list = names.length ? names : String(lease.tenant_names || '').split(',').map(x => x.trim()).filter(Boolean);
+            const initials = list.map(n => n.split(/[\s,]+/).filter(Boolean).map(w => w[0].toUpperCase()).join('')).join(' ') || 'Draft';
+            const term = lease.lease_type === 'month_to_month' ? 'MTM' : lease.lease_type === '24_month' ? '24 month' : '12 month';
+            return `Lease ${d} - ${unit} - ${initials} - ${term} - ${state}.pdf`.replace(/[\\/:*?"<>|]+/g, '');
+        }
+
         // The unit a lease is linked to (rental_properties row), if any
         function leaseUnit(lease) { return lease && lease.property_id ? allProperties.find(p => p.id === lease.property_id) : null; }
         // Best address text for grouping/labels: the linked unit's, else the lease's own
@@ -5696,7 +5711,7 @@ If you cannot read something clearly, use null.`
                 for (const pg of await out.copyPages(middle, middle.getPageIndices())) out.addPage(pg);
                 out.addPage(pSig);
                 const blob = new Blob([await out.save()], { type: 'application/pdf' });
-                const filename = `Lease_${(leaseData.tenant_names || 'Draft').replace(/[^A-Za-z0-9]+/g, '_')}_${leaseData.lease_start || 'Draft'}.pdf`;
+                const filename = leaseFileName(leaseData, kind === 'draft' ? 'Draft' : 'Unsigned');
                 if (download) {
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(blob); a.download = filename;

@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
       // List it on the lease as the working copy; a temporary draft is replaced by it
       await supa.from('rental_lease_files').delete().eq('lease_id', lease.id).eq('kind', 'signing');
       await supa.from('rental_lease_files').insert({ lease_id: lease.id, kind: 'signing', storage_path: signingPath,
-        file_name: `Lease_${String(lease.tenant_names || '').replace(/[^A-Za-z0-9]+/g, '_')}_${lease.lease_start}_in_signing.pdf` });
+        file_name: leaseFileName(lease, 'In signing') });
       if (gen.kind === 'draft') {
         await supa.from('rental_lease_files').delete().eq('id', gen.id);
         await supa.storage.from(BUCKET).remove([gen.storage_path]);
@@ -264,6 +264,25 @@ Deno.serve(async (req) => {
 });
 
 // ---------------------------------------------------------------------------
+// "Lease 261001 - 503 2nd Floor - MC - MTM - Signed.pdf" — same rule as rentals.html
+function leaseFileName(lease: any, state: string) {
+  const d = String(lease.lease_start || '').replace(/-/g, '').slice(2, 8) || 'draft';
+  const addr = String(lease.property_address || '');
+  const num = (addr.match(/^\s*(\d+)/) || [])[1] || '';
+  let unit = '';
+  let m = addr.match(/(?:unit|apt|apartment|suite|ste|#)\s*([\w-]+)/i);
+  if (m) unit = m[1];
+  else if ((m = addr.match(/\b(downstairs|upstairs|basement|attic|main floor|(?:first|second|third|1st|2nd|3rd)\s*(?:floor|fl)|fl(?:oor)?\s*\d)\b/i))) unit = m[1].replace(/^\w/, (c) => c.toUpperCase());
+  else if ((m = addr.match(/(\d+\s*[a-z])\s*(?:,|$)/i))) unit = m[1].replace(/\s+/, '');
+  else unit = addr.replace(/,?\s*East Stroudsburg.*$|,?\s*Stroudsburg.*$/i, '');
+  if (!/\d/.test(unit) && num) unit = `${num} ${unit}`;
+  const names = [1, 2, 3, 4].map((i) => lease[`tenant${i}_name`]).filter(Boolean);
+  const list = names.length ? names : String(lease.tenant_names || '').split(',').map((x: string) => x.trim()).filter(Boolean);
+  const initials = list.map((n: string) => n.split(/[\s,]+/).filter(Boolean).map((w: string) => w[0].toUpperCase()).join('')).join(' ') || 'Draft';
+  const term = lease.lease_type === 'month_to_month' ? 'MTM' : lease.lease_type === '24_month' ? '24 month' : '12 month';
+  return `Lease ${d} - ${unit} - ${initials} - ${term} - ${state}.pdf`.replace(/[\\/:*?"<>|]+/g, '');
+}
+
 async function landlordSettings(supa: any) {
   const { data } = await supa.from('rental_settings').select('key,value');
   const get = (k: string) => (data || []).find((r: any) => r.key === k)?.value || '';
@@ -354,7 +373,7 @@ async function finalize(supa: any, lease: any, signers: any[], settings: any[]) 
   rec.drawText(`Record generated ${new Date().toUTCString()}`, { x: 54, y, size: 8, font, color: rgb(0.4, 0.4, 0.4) });
 
   const bytes = await pdf.save();
-  const fileName = `Signed_Lease_${String(lease.tenant_names || '').replace(/[^A-Za-z0-9]+/g, '_')}_${lease.lease_start}.pdf`;
+  const fileName = leaseFileName(lease, 'Signed');
   const path = `${lease.id}/${Date.now()}_${fileName}`;
   const { error: upErr } = await supa.storage.from(BUCKET).upload(path, bytes, { contentType: 'application/pdf' });
   if (upErr) throw new Error('could not store signed PDF: ' + upErr.message);
