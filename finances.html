@@ -529,6 +529,10 @@ function pinClear(){pinCode=pinCode.slice(0,-1);const dots=document.querySelecto
                 </div>
                 <div class="form-group"><label>Notes</label><input type="text" id="bill-notes" placeholder="Optional"></div>
             </div>
+            <div class="form-row" id="bill-start-row" style="display:none;background:var(--sage-50);padding:12px;border-radius:8px;border:1px dashed var(--sage-300);">
+                <div class="form-group"><label>New Amount Starts On</label><input type="date" id="bill-amount-start"></div>
+                <div class="form-group" style="flex:2;align-self:center;font-size:0.8rem;color:var(--sage-500);">If you change the amount, earlier weeks keep the old amount and this date onward uses the new one. Leave blank to change every week.</div>
+            </div>
             <div class="btn-row">
                 <button class="btn btn-primary" onclick="saveBill()">Save Bill</button>
                 <button class="btn btn-secondary" id="btn-cancel-bill" style="display:none" onclick="cancelEditBill()">Cancel</button>
@@ -976,11 +980,50 @@ async function saveBill(){
         frequency:document.getElementById('bill-frequency').value||'monthly',
         pays_from:document.getElementById('bill-pays-from').value.trim(),category:document.getElementById('bill-category').value,notes:document.getElementById('bill-notes').value.trim()};
     if(!data.name)return alert('Enter a name.');
+    const startDate=document.getElementById('bill-amount-start').value;
     try{
+        const old=editingBillId?bills.find(x=>x.id===editingBillId):null;
+        if(old && startDate && parseFloat(old.expected_amount||0)!==data.expected_amount){
+            await applyAmountFromDate({...old,...data,id:old.id},parseFloat(old.expected_amount)||0,data.expected_amount,startDate);
+        }
         if(editingBillId){await supaFetch('finance_bills','PATCH',data,`?id=eq.${editingBillId}`);editingBillId=null;document.getElementById('btn-cancel-bill').style.display='none';}
         else await supaFetch('finance_bills','POST',data);
         clearBillForm();await loadBills();await loadBillPayments();
     }catch(e){alert('Error: '+e.message);}
+}
+// Keep the old amount on periods before startDate; use the new amount from startDate on (unpaid only)
+async function applyAmountFromDate(bill,oldAmt,newAmt,startDate){
+    const existing=await supaFetch('finance_bill_payments','GET',null,`?bill_id=eq.${bill.id}`)||[];
+    const byKey={}; existing.forEach(r=>{byKey[r.bill_month]=r;});
+    const isWeekly=bill.frequency==='weekly';
+    const created=(bill.created_at||'2024-06-01').slice(0,10);
+    // Date the money actually goes out for a period key
+    const periodDate=k=>{
+        if(isWeekly)return k;
+        const [y,m]=k.split('-').map(Number);
+        const day=Math.min(bill.due_day||1,new Date(y,m,0).getDate());
+        return `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    };
+    let keys;
+    if(isWeekly) keys=getWednesdays();
+    else{
+        keys=[]; const d=new Date(created.slice(0,7)+'-01T12:00:00'), end=new Date(startDate+'T12:00:00');
+        while(d<=end){keys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`);d.setMonth(d.getMonth()+1);}
+    }
+    const createdWeek=new Date(created+'T12:00:00'); createdWeek.setDate(createdWeek.getDate()-6);
+    const createdWeekStr=createdWeek.toISOString().slice(0,10);
+    const toPost=[];
+    for(const k of keys){
+        if(periodDate(k)>=startDate||periodDate(k)<createdWeekStr)continue;
+        const r=byKey[k];
+        if(!r) toPost.push({bill_id:bill.id,bill_month:k,actual_amount:oldAmt,is_paid:false});
+        else if(r.actual_amount==null) await supaFetch('finance_bill_payments','PATCH',{actual_amount:oldAmt},`?id=eq.${r.id}`);
+    }
+    for(let i=0;i<toPost.length;i+=50) await supaFetch('finance_bill_payments','POST',toPost.slice(i,i+50));
+    for(const r of existing){
+        if(!r.is_paid && periodDate(r.bill_month)>=startDate && parseFloat(r.actual_amount)!==newAmt)
+            await supaFetch('finance_bill_payments','PATCH',{actual_amount:newAmt},`?id=eq.${r.id}`);
+    }
 }
 function editBill(id){
     const b=bills.find(x=>x.id===id);if(!b)return;editingBillId=id;
@@ -990,10 +1033,11 @@ function editBill(id){
     document.getElementById('bill-frequency').value=b.frequency||'monthly';
     document.getElementById('bill-pays-from').value=b.pays_from||'';document.getElementById('bill-category').value=b.category||'other';
     document.getElementById('bill-notes').value=b.notes||'';document.getElementById('btn-cancel-bill').style.display='inline-block';
+    document.getElementById('bill-amount-start').value='';document.getElementById('bill-start-row').style.display='flex';
     window.scrollTo({top:0,behavior:'smooth'});
 }
 function cancelEditBill(){editingBillId=null;document.getElementById('btn-cancel-bill').style.display='none';clearBillForm();}
-function clearBillForm(){['bill-name','bill-amount','bill-due-day','bill-pays-from','bill-notes'].forEach(id=>document.getElementById(id).value='');
+function clearBillForm(){document.getElementById('bill-start-row').style.display='none';['bill-name','bill-amount','bill-due-day','bill-pays-from','bill-notes','bill-amount-start'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('bill-variable-amt').value='false';document.getElementById('bill-variable-date').value='false';
     document.getElementById('bill-autopay').value='false';document.getElementById('bill-frequency').value='monthly';document.getElementById('bill-category').value='other';}
 async function deleteBill(id){if(!confirm('Delete?'))return;try{await supaFetch('finance_bills','PATCH',{is_active:false},`?id=eq.${id}`);await loadBills();await loadBillPayments();}catch(e){alert(e.message);}}
