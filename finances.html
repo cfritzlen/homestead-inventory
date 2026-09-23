@@ -1184,12 +1184,11 @@ async function autoFillLoans(weekStr, hasSavedData){
     const weekDate=new Date(weekStr+'T12:00:00');
     const nextWed=new Date(weekDate);
     nextWed.setDate(nextWed.getDate()+7);
-    const priorWed=new Date(weekDate);
-    priorWed.setDate(priorWed.getDate()-7);
-    const priorWedStr=priorWed.toISOString().split('T')[0];
+    const nextWedStr=nextWed.toISOString().split('T')[0];
     try{
+        // Week runs Wed through the following Tue
         const weekPayments=await supaFetch('finance_loan_schedules','GET',null,
-            `?due_date=gt.${priorWedStr}&due_date=lte.${weekStr}&order=due_date`);
+            `?due_date=gte.${weekStr}&due_date=lt.${nextWedStr}&order=due_date`);
         const loanAccounts=accounts.filter(a=>a.account_type==='loan');
         for(const a of loanAccounts){
             const bI=document.querySelector(`input[data-id="${a.id}"][data-f="bal"]`);
@@ -1199,7 +1198,7 @@ async function autoFillLoans(weekStr, hasSavedData){
             const existingPay=parseFloat(pI.value)||0;
             if(hasSavedData && (existingBal!==0 || existingPay!==0)) continue;
             const balEntries=await supaFetch('finance_loan_schedules','GET',null,
-                `?account_id=eq.${a.id}&due_date=lte.${weekStr}&order=due_date.desc&limit=1`);
+                `?account_id=eq.${a.id}&due_date=lt.${nextWedStr}&order=due_date.desc&limit=1`);
             if(balEntries?.length){
                 bI.value=balEntries[0].balance_after;
             }
@@ -1213,7 +1212,7 @@ async function autoFillLoans(weekStr, hasSavedData){
         for(const a of loanAccounts){
             if(!loanDueDates[a.id]){
                 const next=await supaFetch('finance_loan_schedules','GET',null,
-                    `?account_id=eq.${a.id}&due_date=gt.${weekStr}&order=due_date&limit=1`);
+                    `?account_id=eq.${a.id}&due_date=gte.${nextWedStr}&order=due_date&limit=1`);
                 if(next?.length) loanDueDates[a.id]=next[0].due_date;
             }
         }
@@ -1250,13 +1249,13 @@ function isDueThisWeek(dueDay,weekStart,weekEnd){
 
 async function fetchLoanDueDates(weekStr){
     if(!weekStr)return;
-    const priorWed=new Date(weekStr+'T12:00:00');
-    priorWed.setDate(priorWed.getDate()-7);
-    const priorWedStr=priorWed.toISOString().split('T')[0];
+    const nextWed=new Date(weekStr+'T12:00:00');
+    nextWed.setDate(nextWed.getDate()+7);
+    const nextWedStr=nextWed.toISOString().split('T')[0];
     const loanAccounts=accounts.filter(a=>a.account_type==='loan');
     try{
         const weekPayments=await supaFetch('finance_loan_schedules','GET',null,
-            `?due_date=gt.${priorWedStr}&due_date=lte.${weekStr}&order=due_date`);
+            `?due_date=gte.${weekStr}&due_date=lt.${nextWedStr}&order=due_date`);
         loanAccounts.forEach(a=>{
             const due=weekPayments?.find(p=>p.account_id===a.id);
             if(due) loanDueDates[a.id]=due.due_date;
@@ -1264,7 +1263,7 @@ async function fetchLoanDueDates(weekStr){
         for(const a of loanAccounts){
             if(!loanDueDates[a.id]){
                 const next=await supaFetch('finance_loan_schedules','GET',null,
-                    `?account_id=eq.${a.id}&due_date=gt.${weekStr}&order=due_date&limit=1`);
+                    `?account_id=eq.${a.id}&due_date=gte.${nextWedStr}&order=due_date&limit=1`);
                 if(next?.length) loanDueDates[a.id]=next[0].due_date;
             }
         }
@@ -1289,7 +1288,8 @@ function getMonthWednesdays(monthKey){
 
 function defaultWedForDueDay(dueDay,monthKey,wednesdays){
     const [y,m]=monthKey.split('-').map(Number);
-    const dueDate=new Date(y,m-1,Math.min(dueDay,28),12,0,0);
+    const lastDay=new Date(y,m,0).getDate();
+    const dueDate=new Date(y,m-1,Math.min(dueDay,lastDay),12,0,0);
     // Assign to the last Wednesday on or before the due date
     let result=wednesdays[0];
     for(const w of wednesdays){
@@ -1322,8 +1322,12 @@ async function loadWeeklyBills(){
     const mkCurrent=`${weekDate.getFullYear()}-${String(weekDate.getMonth()+1).padStart(2,'0')}-01`;
     const currentWeek=dt;
 
+    // If this week (Wed-Tue) runs into next month, bring in next month's bills too
+    const weekEnd=new Date(weekDate); weekEnd.setDate(weekEnd.getDate()+6);
+    const mkNext=weekEnd.getMonth()!==weekDate.getMonth()?`${weekEnd.getFullYear()}-${String(weekEnd.getMonth()+1).padStart(2,'0')}-01`:null;
+
     let payments=[];
-    try{ payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=gte.${mkCurrent}&bill_month=lte.${mkCurrent.replace('-01','-31')}`); }catch(e){payments=[];}
+    try{ payments=await supaFetch('finance_bill_payments','GET',null,`?bill_month=gte.${mkCurrent}&bill_month=lte.${(mkNext||mkCurrent).replace('-01','-31')}`); }catch(e){payments=[];}
 
     // Hide bills tracked in debt sub-rows above (IRS, Side by Side, Kubota, Prudential, PA Tax)
     const HIDDEN_FROM_BILLS_SECTION=['irs','side by side','kubota','prudential','pa tax'];
@@ -1362,6 +1366,16 @@ async function loadWeeklyBills(){
             const weekAssigned=p?.week_assigned||defaultWedForDueDay(b.due_day,billMonth,wednesdays);
             const isThisWeek=(weekAssigned===currentWeek);
             allBillData.push({bill:b, billMonth, amt, paid, paidDate, weekAssigned, isThisWeek, wednesdays});
+        }
+        // Next month's bill that's due inside this week (e.g. due the 2nd, week starts the 30th)
+        if(mkNext && b.frequency!=='weekly'){
+            const nextWeds=getMonthWednesdays(mkNext);
+            const p=payments.find(x=>x.bill_id===b.id && x.bill_month===mkNext);
+            const weekAssigned=p?.week_assigned||defaultWedForDueDay(b.due_day,mkNext,nextWeds);
+            if(weekAssigned===currentWeek){
+                const amt=p?.actual_amount||b.expected_amount||0;
+                allBillData.push({bill:b, billMonth:mkNext, amt, paid:p?.is_paid||false, paidDate:p?.paid_date||'', weekAssigned, isThisWeek:true, wednesdays:nextWeds, nextMonth:true});
+            }
         }
     });
 
@@ -1678,6 +1692,7 @@ function renderBillsTable(){
                 ${b.is_auto_pay?'<span style="font-size:0.6rem;background:rgba(122,144,97,0.15);color:var(--sage-600);padding:1px 4px;border-radius:3px;margin-left:3px;">Auto</span>':''}
                 ${b.is_variable_amount?'<span style="font-size:0.6rem;background:rgba(192,57,43,0.1);color:var(--dusty-rose);padding:1px 4px;border-radius:3px;margin-left:3px;">~</span>':''}
                 ${d.isWeekly?'<span style="font-size:0.6rem;background:rgba(52,152,219,0.12);color:#2980b9;padding:1px 5px;border-radius:3px;margin-left:3px;font-weight:600;">Weekly</span>':''}
+                ${d.nextMonth?'<span style="font-size:0.6rem;background:rgba(230,126,34,0.15);color:#d35400;padding:1px 5px;border-radius:3px;margin-left:3px;font-weight:600;">Next month</span>':''}
             </div>
             <div style="font-size:0.8rem;color:var(--sage-500);">${d.isWeekly?'Every wk':(b.due_day?b.due_day+ordSuffix(b.due_day):'-')}</div>
             <div><select data-field="week" onchange="autoSaveBillField('${b.id}','${d.billMonth}',this)" style="padding:3px 4px;border:1px solid var(--sage-200);border-radius:6px;font-family:'Karla',sans-serif;font-size:0.8rem;width:100%;${isThisWeek?'font-weight:600;border-color:var(--sage-400);':''}">${weekOpts}</select></div>
@@ -1787,6 +1802,9 @@ function buildWeeklyForm(){
             <div class="calc" data-id="${pnc.id}" data-f="end">-</div>
         </div>
         <div style="font-size:0.75rem;color:var(--sage-400);padding:2px 0 6px;font-style:italic;">↑ Auto-totals from all payments + bills + other below</div>`;
+
+        h+=`<div class="section-divider">🧾 Coming Out of PNC This Week</div>`;
+        h+=`<div id="coming-out"></div>`;
 
         h+=`<div class="section-divider" style="font-size:0.9rem;">💸 Other PNC Payments</div>`;
         h+=`<div id="other-pnc-rows"></div>`;
@@ -2027,9 +2045,77 @@ function calcWeekly(){
     setSum('sum-cc-bal',ccBal);setSum('sum-cc-pay',ccPay);setSum('sum-cc-end',ccEnd);
     setSum('sum-taxloan-bal',taxBal+loanBal);setSum('sum-taxloan-pay',taxPay+loanPay);setSum('sum-taxloan-end',taxEnd+loanEnd);
 
+    renderComingOut(pncBal);
+
     document.getElementById('we-total-debt').textContent=fmt(totalDebt);
     document.getElementById('we-total-payments').textContent=fmt(totalDebtPay);
     updateCCSpentDisplay();
+}
+
+// One list of everything leaving PNC this week (Wed through next Tue): loans, taxes, cards, bills, other
+function renderComingOut(pncBal){
+    const box=document.getElementById('coming-out');
+    if(!box)return;
+    const wk=document.getElementById('entry-date').value;
+    if(!wk){box.innerHTML='';return;}
+    const wkStart=new Date(wk+'T12:00:00');
+    const wkEnd=new Date(wkStart); wkEnd.setDate(wkEnd.getDate()+6);
+    const typeTag={loan:'Loan',tax_debt:'Tax',credit_card:'Card',bill:'Bill',other:'Other',rental:'Rental'};
+    const items=[];
+
+    const rentalAcc=accounts.find(a=>a.name.toLowerCase().includes('rental'));
+    accounts.forEach(a=>{
+        const pI=document.querySelector(`input[data-id="${a.id}"][data-f="pay"]`);
+        const pay=parseFloat(pI?.value)||0;
+        if(!pay)return;
+        if(rentalAcc && a.id===rentalAcc.id){items.push({name:a.name+' transfer',amt:pay,type:'rental',due:null});return;}
+        if(!(a.pays_from && a.pays_from.toLowerCase().includes('pnc')))return;
+        items.push({name:a.name,amt:pay,type:a.account_type==='credit_card'||a.account_type==='loan'||a.account_type==='tax_debt'?a.account_type:'other',due:loanDueDates[a.id]||null});
+    });
+    const extra=parseFloat(document.getElementById('prudential-extra')?.value)||0;
+    if(extra) items.push({name:'Prudential extra payment',amt:extra,type:'loan',due:null});
+
+    allBillData.filter(d=>d.weekAssigned===wk).forEach(d=>{
+        let due=null;
+        if(d.isWeekly) due=d.billMonth;
+        else if(d.bill.due_day){
+            const [y,m]=d.billMonth.split('-').map(Number);
+            const day=Math.min(d.bill.due_day,new Date(y,m,0).getDate());
+            due=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        }
+        items.push({name:d.bill.name,amt:d.amt,type:'bill',due,paid:d.paid});
+    });
+    // Bills total can be hand-edited; show the difference so the list still adds up
+    const billsCalc=allBillData.filter(d=>d.weekAssigned===wk&&!d.paid).reduce((s,d)=>s+d.amt,0);
+    const billsUsed=parseFloat(document.getElementById('bills-override-total')?.value)||0;
+    if(Math.abs(billsUsed-billsCalc)>0.005) items.push({name:'Bills total adjustment (typed in)',amt:billsUsed-billsCalc,type:'bill',due:null});
+
+    getOtherPNCData().forEach(o=>{if(o.amount) items.push({name:o.description||'Other payment',amt:o.amount,type:'other',due:null});});
+
+    items.sort((a,b)=>(a.paid?1:0)-(b.paid?1:0)||(a.due||'9999').localeCompare(b.due||'9999'));
+    const total=items.filter(i=>!i.paid).reduce((s,i)=>s+i.amt,0);
+    const left=pncBal-total;
+    const outsideWeek=d=>{if(!d)return false;const x=new Date(d+'T12:00:00');return x<wkStart||x>wkEnd;};
+
+    let h=`<div style="font-size:0.8rem;color:var(--sage-500);margin-bottom:6px;">${fmtShort(wk)} – ${fmtShort(wkEnd.toISOString().split('T')[0])} · sorted by due date</div>`;
+    if(!items.length) h+=`<div style="color:var(--sage-400);font-style:italic;padding:6px 0;">Nothing scheduled.</div>`;
+    items.forEach(i=>{
+        const dueTxt=i.due?(outsideWeek(i.due)?`<span style="color:var(--sage-300);">next: ${fmtShort(i.due)}</span>`:fmtShort(i.due)):'-';
+        h+=`<div style="display:grid;grid-template-columns:70px 1fr 55px 100px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--sage-100);font-size:0.88rem;${i.paid?'color:var(--sage-400);text-decoration:line-through;':''}">
+            <div style="font-size:0.8rem;">${dueTxt}</div>
+            <div style="font-weight:600;">${i.name}${i.paid?' ✓':''}</div>
+            <div style="font-size:0.7rem;color:var(--sage-500);">${typeTag[i.type]}</div>
+            <div style="text-align:right;">${fmt(i.amt)}</div>
+        </div>`;
+    });
+    h+=`<div style="display:grid;grid-template-columns:1fr 120px;gap:4px 8px;padding:10px 0 4px;font-size:0.9rem;">
+        <div style="font-weight:700;">Total coming out</div><div style="text-align:right;font-weight:700;">${fmt(total)}</div>
+        <div>PNC balance now</div><div style="text-align:right;">${fmt(pncBal)}</div>
+        <div style="font-weight:700;">Left after these</div><div style="text-align:right;font-weight:700;color:${left<0?'var(--red-soft)':'var(--green-soft)'};">${fmt(left)}</div>
+    </div>`;
+    if(pncBal && left<0) h+=`<div style="background:rgba(192,57,43,0.12);color:var(--red-soft);border:1px solid var(--red-soft);border-radius:8px;padding:10px;font-weight:700;margin:6px 0 12px;">⚠️ Not enough in PNC for this week. Short by ${fmt(-left)}.</div>`;
+    else if(pncBal && left<500) h+=`<div style="background:rgba(230,126,34,0.12);color:#d35400;border-radius:8px;padding:10px;font-weight:600;margin:6px 0 12px;">Heads up: less than $500 cushion left.</div>`;
+    box.innerHTML=h;
 }
 
 async function loadPreviousWeek(){
