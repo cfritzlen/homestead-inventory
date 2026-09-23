@@ -444,13 +444,13 @@ function renderBoroughCard(u, st) {
         ${signing === 'sent' ? `<a href="#" onclick="boroughCancelSigning(${u.id});return false;" style="color:var(--danger);">Cancel signing</a>` : ''}
         ${!submitted ? `<a href="#" onclick="if (confirm('Mark this unit as already sent to the Borough another way?')) saveBoroughFiling(${u.id}, { status: 'submitted' });return false;">Sent another way</a>` : ''}
         ${lease ? `<a href="#" onclick="setBoroughUnitLease(${u.id}, '');return false;" title="Lease: ${boroughEsc(lease.property_address)}">Change lease</a>` : ''}
-        <a href="#" onclick="boroughToggle('bl-box-${u.id}');return false;">License number</a>
+        <a href="#" onclick="boroughToggle('bl-box-${u.id}');return false;">${filing.license_no ? 'License' : 'Add license'}</a>
         <a href="#" onclick="setBoroughUnitFlag(${u.id}, false);return false;">Not in East Stroudsburg</a></div>
         <div id="bl-box-${u.id}" style="display:none;margin-top:8px;font-size:13px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:8px;">
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><strong>Rental license # for ${boroughYear}</strong>
-                <input id="bl-${u.id}" value="${boroughEsc(filing.license_no || '')}" placeholder="from the license Sue sends back" style="flex:1;min-width:180px;padding:6px;border:1px solid var(--border);border-radius:4px;">
-                <button class="bu-btn sec" onclick="saveBoroughLicense(${u.id})">Save</button></div>
-            <div style="color:var(--text-secondary);margin-top:4px;">Saving a number also marks the unit <em>License received</em>. Next year's online payment asks for it.</div></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><strong>${boroughYear} rental license</strong>
+                <label class="bu-btn sec" style="cursor:pointer;">📎 Attach the license (PDF or photo)<input type="file" accept="application/pdf,image/*" style="display:none;" onchange="attachBoroughLicense(${u.id}, this)"></label>
+                ${filing.license_no ? `<span>License # <strong>${boroughEsc(filing.license_no)}</strong></span> <a href="#" onclick="saveBoroughLicense(${u.id});return false;" style="font-size:12px;">edit number</a>` : `<a href="#" onclick="saveBoroughLicense(${u.id});return false;" style="font-size:12px;">or type the number</a>`}</div>
+            <div style="color:var(--text-secondary);margin-top:4px;">From a PDF the number is read automatically and shown to you to confirm. The unit is then marked <em>License received</em>; the number is kept for next year's online payment.</div></div>
         ${lease ? `<div id="bt-box-${u.id}" style="display:${needs.some(n => n.fix === 'tenants') ? 'block' : 'none'};">${renderBoroughTenantEditor(lease)}</div>` : ''}
         ${files.length ? `<div id="bf-box-${u.id}" class="bu-files" style="display:none;">${files.map(f => `<div>${fileLabel[f.kind] || '📎'} <a href="#" onclick="openLeaseFile('${f.storage_path}');return false;">${boroughEsc(f.file_name)}</a> <small>${(f.created_at || '').slice(0, 10)}</small> <a href="#" onclick="removeBoroughFile(${f.id}, '${f.storage_path}');return false;" style="color:var(--danger);">✕</a></div>`).join('')}</div>` : ''}`;
 
@@ -466,12 +466,50 @@ function renderBoroughCard(u, st) {
         ${leasePicker}${needLines}${steps}${action}${more}
     </div>`;
 }
-async function saveBoroughLicense(propertyId) {
-    const v = (document.getElementById('bl-' + propertyId) || {}).value?.trim() || '';
-    const patch = { license_no: v };
-    if (v) patch.status = 'licensed';
+async function saveBoroughLicense(propertyId, suggested) {
+    const cur = (boroughFilings[propertyId] || {}).license_no || '';
+    const v = (prompt(suggested ? `License number found on the PDF (edit if wrong):` : 'Rental license number:', suggested || cur) || '').trim();
+    if (!v) return;
+    const patch = { license_no: v, status: 'licensed' };
     const r = await saveBoroughFiling(propertyId, patch);
-    if (r) showAlert(v ? 'License number saved.' : 'License number cleared.', 'success');
+    if (r) showAlert('License number saved.', 'success');
+}
+// Attach the license file; read the number out of a PDF with pdf.js
+async function attachBoroughLicense(propertyId, input) {
+    const file = input.files && input.files[0]; if (!file) return;
+    try {
+        const filing = await ensureBoroughFiling(propertyId); if (!filing) return;
+        const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, '_');
+        const path = `borough/${boroughYear}/${propertyId}/${Date.now()}_license_${safe}`;
+        const { error } = await supabaseClient.storage.from(LEASE_BUCKET).upload(path, file, { upsert: false, contentType: file.type || undefined });
+        if (error) throw error;
+        const { error: e2 } = await supabaseClient.from('rental_borough_files').insert([{ filing_id: filing.id, kind: 'license', file_name: file.name, storage_path: path }]);
+        if (e2) throw e2;
+        let found = '';
+        if (/pdf$/i.test(file.name) || file.type === 'application/pdf') {
+            try { found = boroughFindLicenseNo(await boroughPdfText(file)); } catch (e) { console.warn('pdf text failed', e); }
+        }
+        await saveBoroughLicense(propertyId, found || undefined);
+        await loadBoroughFilings(); renderBoroughUnits();
+    } catch (e) { showAlert('Upload failed: ' + e.message, 'error'); }
+}
+async function boroughPdfText(file) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    let text = '';
+    for (let n = 1; n <= Math.min(pdf.numPages, 3); n++) { const c = await (await pdf.getPage(n)).getTextContent(); text += c.items.map(i => i.str).join(' ') + '\n'; }
+    return text;
+}
+function boroughFindLicenseNo(text) {
+    const t = String(text || '').replace(/\s+/g, ' ');
+    const pats = [
+        /licen[cs]e\s*(?:no\.?|number|#|id)\s*[:#.]?\s*([A-Z]{0,4}[-\s]?\d[\dA-Z-\/]{2,})/i,
+        /(?:no\.?|number|#)\s*[:#.]?\s*([A-Z]{0,4}[-]?\d{3,}[\dA-Z-\/]*)\s*(?=.*licen[cs]e)/i,
+        /\b(R{1,2}L[-\s]?\d{3,})\b/i,
+        /\b(\d{2,4}-\d{3,})\b/,
+    ];
+    for (const p of pats) { const m = t.match(p); if (m) return m[1].trim(); }
+    return '';
 }
 function boroughToggle(id, open) {
     const el = document.getElementById(id); if (!el) return;
