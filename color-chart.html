@@ -77,7 +77,7 @@
   .circle.on { opacity: 1; transform: scale(1.12); box-shadow: 0 0 0 6px #fff, 0 0 0 10px rgba(155,89,182,0.35), 0 10px 30px rgba(0,0,0,0.18); }
   .knob-rail { position: relative; width: 20px; margin: calc(var(--c) / 2) 0; border-radius: 10px; background: rgba(155,89,182,0.12); }
   .knob-rail .tick { position: absolute; left: 5px; width: 10px; height: 10px; border-radius: 50%; background: #D7B4F0; transform: translateY(-50%); }
-  .knob { position: absolute; left: 50%; transform: translate(-50%, -50%); transition: top 0.6s cubic-bezier(.34,1.4,.64,1);
+  .knob { position: absolute; left: 50%; transform: translate(-50%, -50%); cursor: pointer; font-family: 'Fredoka', sans-serif; transition: top 0.6s cubic-bezier(.34,1.4,.64,1);
           padding: 10px 18px; border-radius: 30px; color: #fff; font-weight: 700; font-size: clamp(15px, 2.4vw, 24px); white-space: nowrap;
           box-shadow: 0 6px 18px rgba(0,0,0,0.2); border: 3px solid #fff; }
   .knob-col { display: flex; flex-direction: column; align-items: center; min-width: clamp(120px, 18vw, 200px); }
@@ -201,7 +201,7 @@
         <div class="knob-col">
           <div class="knob-rail" id="knob-rail" style="flex:1">
             <div id="ticks"></div>
-            <div class="knob" id="knob" style="top:0%">…</div>
+            <button class="knob" id="knob" style="top:0%" onclick="nameTap()">…</button>
           </div>
         </div>
       </div>
@@ -212,14 +212,6 @@
       <div class="sec-title">🦄 Nap Unicorns <span style="font-weight:600;color:#A88BC3;font-size:12px">· a nap at school keeps one</span></div>
       <div class="naps" id="naps"></div>
       <div class="nap-sum" id="nap-sum"></div>
-    </div>
-
-    <div class="card teacher-only">
-      <div class="sec-title">🏫 From daycare</div>
-      <div class="grown">
-        <button class="btn btn-up" onclick="teacherAdd('up')">⬆️ Move up</button>
-        <button class="btn btn-down" onclick="teacherAdd('down')">⬇️ Move down</button>
-      </div>
     </div>
 
     <div class="card">
@@ -238,13 +230,6 @@
       <div class="sec-title">⬆️ Ways to move up</div>
       <div class="chores" id="chores"></div>
       <div class="knob-hint" style="margin-top:12px">Tap one when you did it, then a grown-up says yes</div>
-    </div>
-    <div class="card">
-      <div class="sec-title">🔒 Grown-ups (PIN)</div>
-      <div class="grown">
-        <button class="btn btn-up" onclick="parentUp()">⬆️ Move up</button>
-        <button class="btn btn-down" onclick="parentDown()">⬇️ Move down</button>
-      </div>
     </div>
   </div>
 </div>
@@ -352,7 +337,7 @@ function renderKid(name, lvl) {
   document.getElementById('meter').innerHTML = m;
   ['green','yellow','red'].forEach(function(c) { document.getElementById('c-' + c).classList.toggle('on', L.zone === c); });
   var k = document.getElementById('knob'); k.style.top = L.pos + '%'; k.style.background = L.color; k.textContent = '⭐ ' + name;
-  document.getElementById('knob-hint').textContent = 'Spot ' + lvl + ' of ' + MAX;
+  document.getElementById('knob-hint').textContent = 'Spot ' + lvl + ' of ' + MAX + ' · tap her name to move her';
 }
 function renderLog(rows, family) {
   var el = document.getElementById('log');
@@ -567,18 +552,34 @@ async function removeEvent(eventId) {
   await refresh();
 }
 async function parentUp() {
-  if (!(await askPin('Move up'))) return;
   var opts = actions.filter(function(a) { return a.kind === 'up' && a.active; });
   var c = await askChoice('What did she do?', opts, false); if (!c) return;
   var before = level;
   if (await addEvent('up', 'approved', c.label, c.note, c.weight)) { confetti(); showBanner(level > before ? '⬆️ Moved up to ' + levelInfo(level).word + '!' : '⭐ Already at the top!'); }
 }
 async function parentDown() {
-  if (!(await askPin('Move down'))) return;
   var opts = actions.filter(function(a) { return a.kind === 'down' && a.active; });
   var c = await askChoice('What happened?', opts, true, 'Details (optional)'); if (!c) return;
   var before = level;
   if (await addEvent('down', 'approved', c.label, c.note, c.weight)) showBanner(level < before ? '⬇️ Moved down to ' + levelInfo(level).word : 'Already at red');
+}
+
+// Tap her name: (PIN at home) → up or down → what it was
+function askDirection() {
+  return new Promise(function(resolve) {
+    var bg = openModal('<h2>Move ' + esc(kid ? kid.name : (teacherName || 'her')) + '…</h2><div class="grown" style="margin-bottom:12px">' +
+      '<button class="btn btn-up" data-v="up" style="padding:22px 10px;font-size:20px">⬆️ Up</button><button class="btn btn-down" data-v="down" style="padding:22px 10px;font-size:20px">⬇️ Down</button></div>' +
+      '<button class="btn btn-out" id="dir-cancel" style="width:100%">Cancel</button>');
+    bg.querySelector('.grown').addEventListener('click', function(ev) { var b = ev.target.closest('button'); if (!b) return; closeModal(bg); resolve(b.getAttribute('data-v')); });
+    bg.querySelector('#dir-cancel').onclick = function() { closeModal(bg); resolve(null); };
+  });
+}
+async function nameTap() {
+  if (SHARE_TOKEN) { var d = await askDirection(); if (d) teacherAdd(d); return; }
+  if (!kid) return;
+  if (!(await askPin('Grown-up PIN'))) return;
+  var dir = await askDirection(); if (!dir) return;
+  if (dir === 'up') parentUp(); else parentDown();
 }
 
 // ═══ FIRST-TIME SETUP ═══
@@ -689,14 +690,14 @@ async function newShare() {
 }
 
 // ═══ TEACHER MODE ═══
-var teacherActions = [], teacherLevel = 5;
+var teacherActions = [], teacherLevel = MAX, teacherName = '';
 async function teacherRefresh(extra) {
   try {
     var body = Object.assign({ token: SHARE_TOKEN, day: todayStr() }, extra || {});
     var r = await fetch(FN_SHARE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     var d = {}; try { d = await r.json(); } catch (_) {}
     if (!r.ok || d.error) { setSync(d.error || 'Could not load', '#E84A4A'); return false; }
-    teacherActions = d.actions || []; teacherLevel = d.level;
+    teacherActions = d.actions || []; teacherLevel = d.level; teacherName = d.name;
     renderKid(d.name, d.level);
     renderNaps(d.naps || [], false);
     if (d.share_reasons) renderLog(d.events || [], false);
