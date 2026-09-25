@@ -11,7 +11,7 @@ works on the big table in landscape and on a phone stacked.
 ## One-time setup
 1. Supabase (Homestead project) → SQL Editor → run
    `supabase/migrations/026_color_chart.sql`, then
-   `027_color_chart_ten_spots.sql`.
+   `027_color_chart_ten_spots.sql` and `028_color_chart_naps.sql`.
 2. In a terminal in the repo folder (after `git pull`):
    ```
    supabase functions deploy color-chart-share --no-verify-jwt
@@ -34,10 +34,16 @@ works on the big table in landscape and on a phone stacked.
   day to see its log, remove a mistake, or add an up or down for that day
   with a time (PIN).
 
+## Nap unicorns
+Five unicorns a week, Monday to Friday. A nap at school lights one up;
+no nap greys it out. Tap a day to mark it: the teacher from her link, or
+a grown-up with the PIN. Fresh five every Monday, with last week's count
+underneath.
+
 ## Teacher link
 ⚙ settings → **Copy link** and text it to the teacher. On her phone she
 sees the ladder, today's log, and can add an up or down from daycare
-(no PIN, she picks the spots, marked 🏫 Teacher at home). Switch off
+(no PIN, she picks the spots, marked 🏫 Teacher at home) and mark naps. Switch off
 "Teacher sees today's log" to show her only the color and counts.
 **New link** makes the old one stop working.
 

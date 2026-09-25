@@ -8,7 +8,11 @@
 //   { token, day }                                → today's chart
 //   { token, day, action:'add', kind, label, note, weight } → the teacher logs
 //                                                   an up or down from daycare
-//   → { name, level, ups, downs, share_reasons, events?, actions }
+//   { token, day, action:'nap', nap_day, napped }  → mark a school nap (or no nap);
+//                                                   napped: true | false | null (clear)
+//   → { name, level, ups, downs, share_reasons, events?, actions, naps }
+//
+// `naps` covers the Mon-Fri week that contains `day`.
 //
 // `day` is the phone's local calendar day (YYYY-MM-DD). Events are only sent
 // when the parent left "teacher sees reasons" on. Teacher entries are marked
@@ -43,6 +47,25 @@ Deno.serve(async (req) => {
       if (error) return json({ error: error.message }, 500);
     }
 
+    if (String(body.action || '') === 'nap') {
+      const napDay = String(body.nap_day || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(napDay)) return json({ error: 'bad day' }, 400);
+      if (body.napped === null || body.napped === undefined) {
+        await supa.from('color_chart_naps').delete().eq('kid_id', kid.id).eq('day', napDay);
+      } else {
+        const { error } = await supa.from('color_chart_naps').upsert({ kid_id: kid.id, day: napDay, napped: !!body.napped, source: 'teacher' }, { onConflict: 'kid_id,day' });
+        if (error) return json({ error: error.message }, 500);
+      }
+    }
+
+    // Mon-Fri of the week containing `day`
+    const d = new Date(day + 'T12:00:00Z');
+    const dow = (d.getUTCDay() + 6) % 7;            // Mon = 0
+    const mon = new Date(d); mon.setUTCDate(d.getUTCDate() - dow);
+    const fri = new Date(mon); fri.setUTCDate(mon.getUTCDate() + 4);
+    const iso = (x: Date) => x.toISOString().slice(0, 10);
+    const { data: naps } = await supa.from('color_chart_naps').select('day,napped').eq('kid_id', kid.id).gte('day', iso(mon)).lte('day', iso(fri));
+
     const { data: acts } = await supa.from('color_chart_actions').select('kind,label,emoji').eq('kid_id', kid.id).eq('active', true).order('sort').order('id');
     const { data: events } = await supa.from('color_chart_events')
       .select('at,kind,label,note,weight,source').eq('kid_id', kid.id).eq('day', day).eq('status', 'approved')
@@ -60,6 +83,7 @@ Deno.serve(async (req) => {
       ok: true, name: kid.name, level, ups, downs, share_reasons: kid.share_reasons,
       events: kid.share_reasons ? rows : undefined,
       actions: acts || [],
+      naps: naps || [],
     });
   } catch (e: any) {
     return json({ error: e?.message || String(e) }, 500);
