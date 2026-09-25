@@ -45,10 +45,11 @@
   .who { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 18px; }
   .kid-name { font-size: clamp(28px, 5vw, 48px); font-weight: 700; color: #5B2D8E; }
   .kid-date { font-size: 13px; color: #A88BC3; font-weight: 600; }
-  .meter { display: flex; align-items: center; gap: 8px; }
-  .dot { width: clamp(16px, 2.6vw, 26px); height: clamp(16px, 2.6vw, 26px); border-radius: 50%; opacity: 0.35; transition: all 0.3s; }
+  .meter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .meter-word small { font-size: 0.75em; opacity: 0.8; }
+  .dot { width: clamp(11px, 1.7vw, 20px); height: clamp(11px, 1.7vw, 20px); border-radius: 50%; opacity: 0.35; transition: all 0.3s; }
   .dot.on { opacity: 1; transform: scale(1.45); box-shadow: 0 0 0 4px #fff, 0 0 0 6px currentColor; }
-  .meter-word { font-size: clamp(14px, 2.2vw, 20px); font-weight: 700; margin-left: 8px; }
+  .meter-word { font-size: clamp(14px, 2.2vw, 20px); font-weight: 700; margin-left: 6px; }
 
   /* ── the three circles (vertical ladder, green on top) ── */
   .chart { padding: 18px 12px; --c: min(22vw, 20vh, 190px); }
@@ -100,7 +101,7 @@
   .log-x { background: none; border: none; color: #C0A3D6; font-size: 18px; padding: 4px 8px; }
   .empty { text-align: center; color: #A88BC3; padding: 18px 0; font-size: 14px; font-weight: 600; }
   .days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
-  .day { text-align: center; flex-shrink: 0; width: 44px; }
+  .day { text-align: center; flex-shrink: 0; width: 48px; background: none; border: none; padding: 0; }
   .day .b { width: 34px; height: 34px; border-radius: 50%; margin: 0 auto 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
   .day .t { font-size: 10px; color: #A88BC3; font-weight: 700; }
 
@@ -120,6 +121,9 @@
   .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
   .opts button { padding: 14px 8px; border-radius: 12px; border: 1.5px solid #E0CCF0; background: #FDF8FF; font-size: 15px; font-weight: 600; color: #2D1B4E; }
   .opts button.sel { background: #9B59B6; color: #fff; border-color: #9B59B6; }
+  .spots { display: flex; gap: 8px; }
+  .spots button { flex: 1; padding: 14px 0; font-size: 20px; font-weight: 700; border-radius: 12px; border: 1.5px solid #E0CCF0; background: #FDF8FF; color: #2D1B4E; }
+  .spots button.sel { background: #9B59B6; color: #fff; border-color: #9B59B6; }
   input, textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #E0CCF0; font-size: 16px; font-family: 'Fredoka', sans-serif; color: #2D1B4E; background: #FDF8FF; outline: none; }
   input:focus, textarea:focus { border-color: #9B59B6; }
   .label { display: block; font-size: 11px; font-weight: 700; color: #A88BC3; text-transform: uppercase; letter-spacing: 0.6px; margin: 12px 0 5px; }
@@ -139,6 +143,19 @@
   .wsel { font-family: 'Fredoka', sans-serif; font-size: 13px; padding: 6px 4px; border-radius: 8px; border: 1.5px solid #E0CCF0; background: #FDF8FF; color: #2D1B4E; }
   .teacher-only { display: none; }
   .teacher .teacher-only { display: block; }
+  .naps { display: flex; justify-content: space-between; gap: 6px; }
+  .nap { flex: 1; background: none; border: none; padding: 6px 0; text-align: center; border-radius: 14px; transition: transform 0.15s; }
+  .nap:active { transform: scale(0.95); }
+  .nap .u { font-size: clamp(34px, 6vw, 64px); line-height: 1.1; display: block; filter: grayscale(1) opacity(0.28); transition: filter 0.3s, transform 0.3s; }
+  .nap.yes .u { filter: none; transform: scale(1.08); }
+  .nap.no .u { filter: grayscale(1) opacity(0.5); }
+  .nap .d { font-size: 12px; font-weight: 700; color: #A88BC3; margin-top: 2px; }
+  .nap.yes .d { color: #7D3C98; }
+  .nap .m { font-size: 11px; font-weight: 600; color: #C0A3D6; }
+  .nap.no .m { color: #E84A4A; }
+  .nap.yes .m { color: #3DB84D; }
+  .nap-sum { text-align: center; font-size: 14px; font-weight: 700; color: #7D3C98; margin-top: 8px; }
+  .nap-sum small { display: block; font-size: 12px; color: #A88BC3; font-weight: 600; margin-top: 2px; }
   .teacher-note { text-align: center; font-size: 13px; color: #A88BC3; font-weight: 600; padding: 6px 0 12px; }
 </style>
 </head>
@@ -162,6 +179,12 @@
       <div class="meter" id="meter"></div>
     </div>
 
+    <div class="card">
+      <div class="sec-title">🦄 Nap Unicorns <span style="font-weight:600;color:#A88BC3;font-size:12px">· a nap at school keeps one</span></div>
+      <div class="naps" id="naps"></div>
+      <div class="nap-sum" id="nap-sum"></div>
+    </div>
+
     <div class="card chart">
       <div class="chart-body">
         <div class="ladder">
@@ -172,7 +195,7 @@
         </div>
         <div class="knob-col">
           <div class="knob-rail" id="knob-rail" style="flex:1">
-            <div class="tick" style="top:0%"></div><div class="tick" style="top:25%"></div><div class="tick" style="top:50%"></div><div class="tick" style="top:75%"></div><div class="tick" style="top:100%"></div>
+            <div id="ticks"></div>
             <div class="knob" id="knob" style="top:0%">…</div>
           </div>
         </div>
@@ -220,17 +243,16 @@
 <script>
 // ═══ CONSTANTS ═══
 var FN_SHARE = 'https://jzpipxvxrtdhmsdkveog.supabase.co/functions/v1/color-chart-share';
-var LEVELS = {
-  5: { word: 'Super Green',  color: '#3DB84D', circle: 'green',  pos: 0 },
-  4: { word: 'Green-Yellow', color: '#A3D43D', circle: null,     pos: 25 },
-  3: { word: 'Yellow',       color: '#F2C21B', circle: 'yellow', pos: 50 },
-  2: { word: 'Orange',       color: '#FF9838', circle: null,     pos: 75 },
-  1: { word: 'Red',          color: '#E84A4A', circle: 'red',    pos: 100 },
-};
+var MAX = 10;   // spots on the ladder; every morning starts at MAX
+var LEVEL_COLORS = { 10:'#2EAF48', 9:'#4CC05A', 8:'#7BCB4C', 7:'#A8D43E', 6:'#D5D62F', 5:'#F2C21B', 4:'#FFA62B', 3:'#FF7F3A', 2:'#F25A4A', 1:'#E84A4A' };
+var LEVEL_WORDS  = { 10:'Super Green', 9:'Green', 8:'Green', 7:'Green-Yellow', 6:'Yellow', 5:'Yellow', 4:'Orange', 3:'Red-Orange', 2:'Red', 1:'Red' };
+function levelInfo(n) {
+  return { word: LEVEL_WORDS[n], color: LEVEL_COLORS[n], zone: n >= 8 ? 'green' : n >= 4 ? 'yellow' : 'red', pos: (MAX - n) / (MAX - 1) * 100 };
+}
 var SEED_UP   = [['🛏️','Cleaned my room'],['🪥','Brushed teeth'],['🧸','Put toys away'],['🍽️','Helped with dinner'],['💛','Was kind']];
 var SEED_DOWN = [['👂','Not listening'],['🗣️','Not nice words'],['✋','Hitting'],['😤','Screaming'],['🧹','Would not clean up']];
 
-var kid = null, actions = [], events = [], level = 5, pollTimer = null;
+var kid = null, actions = [], events = [], level = MAX, pollTimer = null, daysCache = {};
 var supa = (window.Auth && Auth.client) || null;
 
 // ═══ HELPERS ═══
@@ -255,25 +277,71 @@ function pinHash(pin) { return sha('color-chart:' + pin); }
 // Walk the day in order, clamping at every step: an extra "up" while already
 // at super green does not bank against a later "down".
 function levelFrom(rows) {
-  var lvl = 5;
+  var lvl = MAX;
   rows.filter(function(e) { return e.status === 'approved'; })
     .sort(function(a, b) { return new Date(a.at) - new Date(b.at); })
-    .forEach(function(e) { lvl = Math.max(1, Math.min(5, lvl + (e.kind === 'up' ? 1 : -1) * (e.weight || 1))); });
+    .forEach(function(e) { lvl = Math.max(1, Math.min(MAX, lvl + (e.kind === 'up' ? 1 : -1) * (e.weight || 1))); });
   return lvl;
+}
+
+// ── Nap unicorns: Mon-Fri of the week containing `d` ──
+function weekDays(d) {
+  var dow = (d.getDay() + 6) % 7; var mon = new Date(d); mon.setDate(d.getDate() - dow); mon.setHours(12,0,0,0);
+  var out = []; for (var i = 0; i < 5; i++) { var x = new Date(mon); x.setDate(mon.getDate() + i); out.push(x); }
+  return out;
+}
+var naps = [], lastWeekNaps = null;
+function renderNaps(rows, family) {
+  var today = todayStr(), byDay = {}; (rows || []).forEach(function(n) { byDay[n.day] = n.napped; });
+  var kept = 0, html = '';
+  weekDays(new Date()).forEach(function(d) {
+    var key = dayStr(d), v = byDay[key], cls = v === true ? 'yes' : v === false ? 'no' : '';
+    if (v === true) kept++;
+    var mark = v === true ? 'Nap ✓' : v === false ? 'No nap' : (key < today ? 'Not marked' : key === today ? 'Today' : '');
+    html += '<button class="nap ' + cls + '" onclick="markNap(\'' + key + '\')"><span class="u">🦄</span><div class="d">' + d.toLocaleDateString('en-US', { weekday: 'short' }) + '</div><div class="m">' + mark + '</div></button>';
+  });
+  document.getElementById('naps').innerHTML = html;
+  document.getElementById('nap-sum').innerHTML = kept + ' of 5 unicorns this week' + (lastWeekNaps != null ? '<small>Last week: ' + lastWeekNaps + ' 🦄</small>' : '') +
+    (family ? '<small>Tap a day to mark it (PIN)</small>' : '<small>Tap a day to mark her nap</small>');
+}
+// Tap a unicorn: Nap / No nap / Clear. Family needs the PIN; the teacher's link is her key.
+async function markNap(key) {
+  if (!SHARE_TOKEN && !(await askPin('Mark a nap'))) return;
+  var nice = new Date(key + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  var choice = await new Promise(function(resolve) {
+    var bg = openModal('<h2>🦄 ' + esc(nice) + '</h2><div class="opts" style="grid-template-columns:1fr">' +
+      '<button data-v="yes" style="font-size:18px;padding:18px">😴 She napped 🦄</button><button data-v="no" style="font-size:18px;padding:18px">🙈 No nap today</button><button data-v="clear">Clear</button></div>' +
+      '<button class="btn btn-out" id="np-cancel" style="width:100%">Cancel</button>');
+    bg.querySelector('.opts').addEventListener('click', function(ev) { var b = ev.target.closest('button'); if (!b) return; closeModal(bg); resolve(b.getAttribute('data-v')); });
+    bg.querySelector('#np-cancel').onclick = function() { closeModal(bg); resolve(null); };
+  });
+  if (!choice) return;
+  var napped = choice === 'yes' ? true : choice === 'no' ? false : null;
+  if (SHARE_TOKEN) {
+    var ok = await teacherRefresh({ action: 'nap', nap_day: key, napped: napped });
+    if (!ok) { showBanner('Could not save 😕'); return; }
+  } else {
+    var r = napped === null
+      ? await supa.from('color_chart_naps').delete().eq('kid_id', kid.id).eq('day', key)
+      : await supa.from('color_chart_naps').upsert({ kid_id: kid.id, day: key, napped: napped, source: 'home' }, { onConflict: 'kid_id,day' });
+    if (r.error) { showBanner('Could not save 😕'); console.error(r.error); return; }
+    await refresh();
+  }
+  if (napped === true) { confetti(); showBanner('🦄 Unicorn kept!'); }
 }
 
 // ═══ RENDER ═══
 function renderKid(name, lvl) {
-  var L = LEVELS[lvl];
+  var L = levelInfo(lvl);
   document.getElementById('kid-name').textContent = name;
   document.getElementById('kid-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   var m = '';
-  [5,4,3,2,1].forEach(function(n) { m += '<div class="dot' + (n === lvl ? ' on' : '') + '" style="background:' + LEVELS[n].color + ';color:' + LEVELS[n].color + '"></div>'; });
-  m += '<div class="meter-word" style="color:' + L.color + '">' + L.word + '</div>';
+  for (var n = MAX; n >= 1; n--) m += '<div class="dot' + (n === lvl ? ' on' : '') + '" style="background:' + LEVEL_COLORS[n] + ';color:' + LEVEL_COLORS[n] + '"></div>';
+  m += '<div class="meter-word" style="color:' + L.color + '">' + L.word + ' <small>' + lvl + '/' + MAX + '</small></div>';
   document.getElementById('meter').innerHTML = m;
-  ['green','yellow','red'].forEach(function(c) { document.getElementById('c-' + c).classList.toggle('on', L.circle === c); });
+  ['green','yellow','red'].forEach(function(c) { document.getElementById('c-' + c).classList.toggle('on', L.zone === c); });
   var k = document.getElementById('knob'); k.style.top = L.pos + '%'; k.style.background = L.color; k.textContent = '⭐ ' + name;
-  document.getElementById('knob-hint').textContent = L.circle ? '' : (lvl === 4 ? 'Between green and yellow' : 'Between yellow and red');
+  document.getElementById('knob-hint').textContent = 'Spot ' + lvl + ' of ' + MAX;
 }
 function renderLog(rows, family) {
   var el = document.getElementById('log');
@@ -304,15 +372,48 @@ function renderChores() {
   }).join('');
 }
 function renderDays(rowsByDay) {
+  daysCache = rowsByDay;
   var el = document.getElementById('days'), out = '';
   for (var i = 13; i >= 1; i--) {
     var d = new Date(); d.setDate(d.getDate() - i); var key = dayStr(d);
-    var rows = rowsByDay[key];
-    if (!rows) { out += '<div class="day"><div class="b" style="background:#F0E6FA"></div><div class="t">' + d.toLocaleDateString('en-US', { weekday: 'short' }) + '</div></div>'; continue; }
-    var L = LEVELS[levelFrom(rows)];
-    out += '<div class="day" title="' + key + ': ' + L.word + '"><div class="b" style="background:' + L.color + '">' + (L.circle === 'green' ? '😊' : L.circle === 'red' ? '☹️' : L.circle === 'yellow' ? '😐' : '') + '</div><div class="t">' + d.toLocaleDateString('en-US', { weekday: 'short' }) + '</div></div>';
+    var rows = rowsByDay[key], wd = d.toLocaleDateString('en-US', { weekday: 'short' }), dn = d.getDate();
+    if (!rows || !rows.length) { out += '<button class="day" onclick="openDay(\'' + key + '\')"><div class="b" style="background:#F0E6FA"></div><div class="t">' + wd + ' ' + dn + '</div></button>'; continue; }
+    var L = levelInfo(levelFrom(rows));
+    out += '<button class="day" onclick="openDay(\'' + key + '\')" title="' + key + ': ' + L.word + '"><div class="b" style="background:' + L.color + '">' + (L.zone === 'green' ? '😊' : L.zone === 'red' ? '☹️' : '😐') + '</div><div class="t">' + wd + ' ' + dn + '</div></button>';
   }
   el.innerHTML = out;
+}
+// Tap a past day: see that day's log and add what happened (PIN).
+async function openDay(key) {
+  var r = await supa.from('color_chart_events').select('*').eq('kid_id', kid.id).eq('day', key).order('at', { ascending: false });
+  var rows = (r.data || []).filter(function(e) { return e.status === 'approved'; });
+  var L = levelInfo(levelFrom(rows));
+  var nice = new Date(key + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  var old = document.getElementById('day-bg'); if (old) closeModal(old);
+  var bg = openModal('<h2>📅 ' + esc(nice) + '</h2>' +
+    '<div style="text-align:center;font-weight:700;color:' + L.color + ';margin-bottom:12px">Ended at ' + L.word + ' · ' + levelFrom(rows) + '/' + MAX + '</div>' +
+    '<div class="grown" style="margin-bottom:12px"><button class="btn btn-up" onclick="pastAdd(\'' + key + '\', \'up\')">⬆️ Add up</button><button class="btn btn-down" onclick="pastAdd(\'' + key + '\', \'down\')">⬇️ Add down</button></div>' +
+    '<div id="day-log">' + (rows.length ? rows.map(function(e) {
+      return '<div class="log-row"><div class="log-ic ' + e.kind + '">' + (e.kind === 'up' ? '⬆️' : '⬇️') + '</div><div class="log-main"><div class="log-label">' + esc(e.label) +
+        (e.source === 'teacher' ? ' <span class="tag">🏫 Teacher</span>' : '') + ((e.weight || 1) > 1 ? ' <span class="tag">' + e.weight + ' spots</span>' : '') + '</div>' +
+        (e.note ? '<div class="log-note">' + esc(e.note) + '</div>' : '') + '<div class="log-time">' + fmtTime(e.at) + '</div></div>' +
+        '<button class="log-x" onclick="pastRemove(' + e.id + ', \'' + key + '\')">✕</button></div>';
+    }).join('') : '<div class="empty">Nothing logged that day</div>') + '</div>' +
+    '<button class="btn btn-out" style="width:100%;margin-top:14px" onclick="closeModal(document.getElementById(\'day-bg\'))">Done</button>');
+  bg.id = 'day-bg';
+}
+async function pastAdd(key, kind) {
+  if (!(await askPin(kind === 'up' ? 'Add an up' : 'Add a down'))) return;
+  var opts = actions.filter(function(a) { return a.kind === kind && a.active; });
+  var c = await askChoice(kind === 'up' ? 'What did she do?' : 'What happened?', opts, true, 'Details (optional)', key); if (!c) return;
+  var r = await supa.from('color_chart_events').insert({ kid_id: kid.id, day: key, at: c.at, kind: kind, status: 'approved', label: c.label, note: c.note || null, weight: c.weight }).select().single();
+  if (r.error) { showBanner('Could not save 😕'); console.error(r.error); return; }
+  showBanner('Added ✓'); await refresh(); openDay(key);
+}
+async function pastRemove(id, key) {
+  if (!(await askPin('Remove this?'))) return;
+  await supa.from('color_chart_events').delete().eq('id', id);
+  await refresh(); openDay(key);
 }
 
 // ═══ MODALS ═══
@@ -342,31 +443,48 @@ function askPin(title) {
   });
 }
 
-// Pick a chore / reason, with optional note. Resolves {label, note} or null.
-function askChoice(title, opts, withNote, extraLabel) {
+// Pick a chore / reason, how many spots, optional note (and a time when
+// filling in a past day). Resolves {label, note, weight, at} or null.
+function spotsRow(def) { return '<span class="label">How many spots?</span><div class="spots" id="spots">' + [1,2,3,4,5].map(function(n) { return '<button data-n="' + n + '"' + (n === def ? ' class="sel"' : '') + '>' + n + '</button>'; }).join('') + '</div>'; }
+function askChoice(title, opts, withNote, extraLabel, pastDay) {
   return new Promise(function(resolve) {
-    var sel = null;
+    var sel = null, spots = 1;
     var bg = openModal('<h2>' + esc(title) + '</h2><div class="opts">' +
-      opts.map(function(o, i) { return '<button data-i="' + i + '">' + esc((o.emoji ? o.emoji + ' ' : '') + o.label) + ((o.weight || 1) > 1 ? ' <small>(' + o.weight + ' spots)</small>' : '') + '</button>'; }).join('') +
+      opts.map(function(o, i) { return '<button data-i="' + i + '">' + esc((o.emoji ? o.emoji + ' ' : '') + o.label) + '</button>'; }).join('') +
       '<button data-i="other">✏️ Other…</button></div>' +
       '<div id="other-wrap" class="hidden"><input id="other-txt" placeholder="What was it?" maxlength="60"></div>' +
+      spotsRow(1) +
+      (pastDay ? '<span class="label">What time?</span><input type="time" id="at-txt" value="12:00">' : '') +
       (withNote ? '<span class="label">' + esc(extraLabel || 'Note (optional)') + '</span><textarea id="note-txt" rows="2" placeholder="What happened?"></textarea>' : '') +
       '<div class="row" style="margin-top:14px"><button class="btn btn-out" id="ch-cancel">Cancel</button><button class="btn btn-pri" id="ch-ok">Save</button></div>');
+    function setSpots(n) { spots = n; bg.querySelectorAll('#spots button').forEach(function(x) { x.classList.toggle('sel', +x.getAttribute('data-n') === n); }); }
     bg.querySelector('.opts').addEventListener('click', function(ev) {
       var b = ev.target.closest('button'); if (!b) return;
       bg.querySelectorAll('.opts button').forEach(function(x) { x.classList.remove('sel'); }); b.classList.add('sel');
       sel = b.getAttribute('data-i');
       bg.querySelector('#other-wrap').classList.toggle('hidden', sel !== 'other');
+      setSpots(sel === 'other' ? 1 : Math.min(5, opts[+sel].weight || 1));
       if (sel === 'other') bg.querySelector('#other-txt').focus();
     });
+    bg.querySelector('#spots').addEventListener('click', function(ev) { var b = ev.target.closest('button'); if (b) setSpots(+b.getAttribute('data-n')); });
     bg.querySelector('#ch-cancel').onclick = function() { closeModal(bg); resolve(null); };
     bg.querySelector('#ch-ok').onclick = function() {
       var label = sel === 'other' ? bg.querySelector('#other-txt').value.trim() : (sel != null ? opts[+sel].label : '');
       if (!label) { showBanner('Pick one first'); return; }
       var note = withNote ? bg.querySelector('#note-txt').value.trim() : '';
-      var weight = sel === 'other' ? 1 : (opts[+sel].weight || 1);
-      closeModal(bg); resolve({ label: label, note: note, weight: weight });
+      var at = pastDay ? new Date(pastDay + 'T' + (bg.querySelector('#at-txt').value || '12:00') + ':00').toISOString() : new Date().toISOString();
+      closeModal(bg); resolve({ label: label, note: note, weight: spots, at: at });
     };
+  });
+}
+// Just "how many spots?" (approving a chore the kid tapped). Resolves a number or null.
+function askSpots(def) {
+  return new Promise(function(resolve) {
+    var spots = def || 1;
+    var bg = openModal('<h2>How many spots?</h2>' + spotsRow(spots) + '<div class="row" style="margin-top:14px"><button class="btn btn-out" id="sp-cancel">Cancel</button><button class="btn btn-pri" id="sp-ok">Yes ✓</button></div>');
+    bg.querySelector('#spots').addEventListener('click', function(ev) { var b = ev.target.closest('button'); if (!b) return; spots = +b.getAttribute('data-n'); bg.querySelectorAll('#spots button').forEach(function(x) { x.classList.toggle('sel', +x.getAttribute('data-n') === spots); }); });
+    bg.querySelector('#sp-cancel').onclick = function() { closeModal(bg); resolve(null); };
+    bg.querySelector('#sp-ok').onclick = function() { closeModal(bg); resolve(spots); };
   });
 }
 
@@ -395,6 +513,13 @@ async function refresh() {
   var h = await supa.from('color_chart_events').select('day,kind,status').eq('kid_id', kid.id).eq('status', 'approved').gte('day', dayStr(since)).lt('day', today);
   var byDay = {}; (h.data || []).forEach(function(r) { (byDay[r.day] = byDay[r.day] || []).push(r); });
   renderDays(byDay);
+  var wk = weekDays(new Date()), lastMon = new Date(wk[0]); lastMon.setDate(lastMon.getDate() - 7);
+  var n = await supa.from('color_chart_naps').select('day,napped').eq('kid_id', kid.id).gte('day', dayStr(lastMon)).lte('day', dayStr(wk[4]));
+  var all = n.data || [], monKey = dayStr(wk[0]);
+  naps = all.filter(function(x) { return x.day >= monKey; });
+  var lw = all.filter(function(x) { return x.day < monKey; });
+  lastWeekNaps = lw.length ? lw.filter(function(x) { return x.napped; }).length : null;
+  renderNaps(naps, true);
 }
 async function addEvent(kind, status, label, note, weight) {
   var r = await supa.from('color_chart_events').insert({ kid_id: kid.id, day: todayStr(), kind: kind, status: status, label: label, note: note || null, weight: weight || 1 }).select().single();
@@ -412,11 +537,13 @@ async function kidTap(actionId) {
 }
 async function approve(eventId) {
   if (!(await askPin('Say yes?'))) return;
+  var ev = events.find(function(e) { return e.id === eventId; });
+  var spots = await askSpots(Math.min(5, (ev && ev.weight) || 1)); if (!spots) return;
   var before = level;
-  var r = await supa.from('color_chart_events').update({ status: 'approved', at: new Date().toISOString() }).eq('id', eventId);
+  var r = await supa.from('color_chart_events').update({ status: 'approved', at: new Date().toISOString(), weight: spots }).eq('id', eventId);
   if (r.error) { showBanner('Could not save 😕'); return; }
   await refresh();
-  confetti(); showBanner(level > before ? '⬆️ Moved up to ' + LEVELS[level].word + '!' : '⭐ Already at the top!');
+  confetti(); showBanner(level > before ? '⬆️ Moved up to ' + levelInfo(level).word + '!' : '⭐ Already at the top!');
 }
 async function deny(eventId) {
   if (!(await askPin('Not yet?'))) return;
@@ -433,14 +560,14 @@ async function parentUp() {
   var opts = actions.filter(function(a) { return a.kind === 'up' && a.active; });
   var c = await askChoice('What did she do?', opts, false); if (!c) return;
   var before = level;
-  if (await addEvent('up', 'approved', c.label, c.note, c.weight)) { confetti(); showBanner(level > before ? '⬆️ Moved up to ' + LEVELS[level].word + '!' : '⭐ Already at the top!'); }
+  if (await addEvent('up', 'approved', c.label, c.note, c.weight)) { confetti(); showBanner(level > before ? '⬆️ Moved up to ' + levelInfo(level).word + '!' : '⭐ Already at the top!'); }
 }
 async function parentDown() {
   if (!(await askPin('Move down'))) return;
   var opts = actions.filter(function(a) { return a.kind === 'down' && a.active; });
   var c = await askChoice('What happened?', opts, true, 'Details (optional)'); if (!c) return;
   var before = level;
-  if (await addEvent('down', 'approved', c.label, c.note, c.weight)) showBanner(level < before ? '⬇️ Moved down to ' + LEVELS[level].word : 'Already at red');
+  if (await addEvent('down', 'approved', c.label, c.note, c.weight)) showBanner(level < before ? '⬇️ Moved down to ' + levelInfo(level).word : 'Already at red');
 }
 
 // ═══ FIRST-TIME SETUP ═══
@@ -473,12 +600,12 @@ async function openSettings() {
   if (!(await askPin('Settings'))) return;
   var bg = openModal('<h2>⚙ Settings</h2>' +
     '<span class="label">Kid\'s name</span><div class="row"><input id="st-name" value="' + esc(kid.name) + '" maxlength="30"><button class="btn btn-pri btn-sm" onclick="saveName()">Save</button></div>' +
-    '<span class="label">Chores (move up)</span><div id="st-up"></div><div class="row" style="margin-top:6px"><input id="new-up-em" placeholder="⭐" maxlength="4" style="flex:0 0 58px;text-align:center"><input id="new-up" placeholder="New chore" maxlength="40">' + weightSelect(1, 'id="new-up-w" style="flex:0 0 92px"') + '<button class="btn btn-pri btn-sm" onclick="addAction(\'up\')">Add</button></div>' +
+    '<span class="label">Chores (move up) · usual spots, you can change it each time</span><div id="st-up"></div><div class="row" style="margin-top:6px"><input id="new-up-em" placeholder="⭐" maxlength="4" style="flex:0 0 58px;text-align:center"><input id="new-up" placeholder="New chore" maxlength="40">' + weightSelect(1, 'id="new-up-w" style="flex:0 0 92px"') + '<button class="btn btn-pri btn-sm" onclick="addAction(\'up\')">Add</button></div>' +
     '<span class="label">Reasons (move down)</span><div id="st-down"></div><div class="row" style="margin-top:6px"><input id="new-down-em" placeholder="⭐" maxlength="4" style="flex:0 0 58px;text-align:center"><input id="new-down" placeholder="New reason" maxlength="40">' + weightSelect(1, 'id="new-down-w" style="flex:0 0 92px"') + '<button class="btn btn-pri btn-sm" onclick="addAction(\'down\')">Add</button></div>' +
     '<span class="label">Teacher link</span><div class="share-box" id="share-url"></div>' +
     '<div class="row"><button class="btn btn-out btn-sm" onclick="copyShare()">📋 Copy link</button><button class="btn btn-out btn-sm" onclick="newShare()">🔄 New link</button></div>' +
     '<div class="switch"><span>Teacher sees today\'s log</span><input type="checkbox" id="st-reasons" ' + (kid.share_reasons ? 'checked' : '') + ' onchange="saveShareReasons(this.checked)"></div>' +
-    '<div class="knob-hint" style="text-align:left;margin-top:0">Off = the teacher only sees the color and how many ups and downs. Either way the teacher can add an up or down from daycare (1 spot each).</div>' +
+    '<div class="knob-hint" style="text-align:left;margin-top:0">Off = the teacher only sees the color and how many ups and downs. Either way the teacher can add an up or down from daycare.</div>' +
     '<span class="label">Change PIN</span><div class="row"><input id="st-pin" inputmode="numeric" maxlength="4" placeholder="New 4-digit PIN"><button class="btn btn-pri btn-sm" onclick="savePin()">Save</button></div>' +
     '<button class="btn btn-out" style="width:100%;margin-top:18px" onclick="closeSettings()">Done</button>');
   bg.id = 'settings-bg';
@@ -529,7 +656,7 @@ async function removeAction(id) {
   renderSettingsLists();
 }
 function weightSelect(v, attrs) {
-  return '<select class="wsel" ' + attrs + '>' + [1,2,3,4].map(function(n) { return '<option value="' + n + '"' + (n === +v ? ' selected' : '') + '>' + n + (n === 1 ? ' spot' : ' spots') + '</option>'; }).join('') + '</select>';
+  return '<select class="wsel" ' + attrs + '>' + [1,2,3,4,5].map(function(n) { return '<option value="' + n + '"' + (n === +v ? ' selected' : '') + '>' + n + (n === 1 ? ' spot' : ' spots') + '</option>'; }).join('') + '</select>';
 }
 async function setWeight(id, v) {
   var r = await supa.from('color_chart_actions').update({ weight: +v }).eq('id', id);
@@ -560,6 +687,7 @@ async function teacherRefresh(extra) {
     if (!r.ok || d.error) { setSync(d.error || 'Could not load', '#E84A4A'); return false; }
     teacherActions = d.actions || []; teacherLevel = d.level;
     renderKid(d.name, d.level);
+    renderNaps(d.naps || [], false);
     if (d.share_reasons) renderLog(d.events || [], false);
     else document.getElementById('log').innerHTML = '<div class="empty">⬆️ ' + d.ups + ' up · ⬇️ ' + d.downs + ' down today</div>';
     setSync('Updated ' + fmtTime(new Date().toISOString()), '#9B59B6');
@@ -570,14 +698,16 @@ async function teacherAdd(kind) {
   var opts = teacherActions.filter(function(a) { return a.kind === kind; });
   var c = await askChoice(kind === 'up' ? 'What did she do?' : 'What happened?', opts, true, 'Details (optional)'); if (!c) return;
   var before = teacherLevel;
-  var ok = await teacherRefresh({ action: 'add', kind: kind, label: c.label, note: c.note });
+  var ok = await teacherRefresh({ action: 'add', kind: kind, label: c.label, note: c.note, weight: c.weight });
   if (!ok) { showBanner('Could not save 😕'); return; }
-  if (kind === 'up') { confetti(); showBanner(teacherLevel > before ? '⬆️ Moved up to ' + LEVELS[teacherLevel].word + '!' : '⭐ Already at the top!'); }
-  else showBanner(teacherLevel < before ? '⬇️ Moved down to ' + LEVELS[teacherLevel].word : 'Already at red');
+  if (kind === 'up') { confetti(); showBanner(teacherLevel > before ? '⬆️ Moved up to ' + levelInfo(teacherLevel).word + '!' : '⭐ Already at the top!'); }
+  else showBanner(teacherLevel < before ? '⬇️ Moved down to ' + levelInfo(teacherLevel).word : 'Already at red');
 }
 
 // ═══ START ═══
 (async function() {
+  var ticks = ''; for (var i = 0; i < MAX; i++) ticks += '<div class="tick" style="top:' + (i / (MAX - 1) * 100) + '%"></div>';
+  document.getElementById('ticks').innerHTML = ticks;
   if (SHARE_TOKEN) {
     document.body.classList.add('teacher');
     document.querySelectorAll('.family-only').forEach(function(el) { el.classList.add('hidden'); });
