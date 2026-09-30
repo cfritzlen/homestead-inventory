@@ -1,0 +1,32 @@
+# Deploys the Supabase edge functions whenever a merge to main changes them,
+# so no terminal is needed. One-time setup: GitHub → Settings → Secrets and
+# variables → Actions → New repository secret named SUPABASE_ACCESS_TOKEN,
+# with a token from https://supabase.com/dashboard/account/tokens.
+name: Deploy Supabase functions
+
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/functions/**']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: jzpipxvxrtdhmsdkveog
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # Public functions (tenants open private links without an account)
+      - run: supabase functions deploy lease-sign --project-ref $PROJECT_REF --no-verify-jwt --use-api
+      - run: supabase functions deploy borough-sign --project-ref $PROJECT_REF --no-verify-jwt --use-api
+      - run: supabase functions deploy google-oauth-exchange --project-ref $PROJECT_REF --no-verify-jwt --use-api
+      # Signed-in / cron functions
+      - run: |
+          for f in ai-extract calendar-pull gmail-ingest invite-user push-to-calendar zelle-ingest; do
+            supabase functions deploy $f --project-ref $PROJECT_REF --use-api
+          done

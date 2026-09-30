@@ -9,11 +9,11 @@ what was sent for each unit.
 1. Supabase (Homestead project) → SQL Editor → paste all of
    `supabase/migrations/021_borough_registration.sql` → Run, then the same
    with `022_borough_signing.sql` and `023_borough_license_no.sql`.
-1b. In a terminal in the repo folder (after `git pull`):
-   ```
-   supabase functions deploy borough-sign --no-verify-jwt
-   ```
-   Same flag as lease-sign: tenants have no login, their private link is the key.
+1b. Functions deploy themselves when a merge to main changes them (GitHub
+   Actions, `.github/workflows/deploy-functions.yml`). One-time: add a
+   repository secret `SUPABASE_ACCESS_TOKEN` (GitHub → Settings → Secrets and
+   variables → Actions) with a token from supabase.com/dashboard/account/tokens.
+   Manual fallback: `supabase functions deploy borough-sign --no-verify-jwt`.
 2. Rentals → Borough → open **Owner & property manager details**, fill in
    your mailing address (and manager info if someone else manages), Save.
    If you have not set up a signature yet, tap **Set up my signature &
