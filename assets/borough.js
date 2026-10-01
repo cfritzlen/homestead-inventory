@@ -259,10 +259,13 @@ function boroughCurrentLease(unit, anyStatus) {
     if (loose.length === 1) return active(loose[0]);
     return null;
 }
+// "Same tenants" = already registered with the Borough. Anyone in place since
+// before July of the packet year was on last year's registration (or a mid-year
+// update), so only a summer/fall move-in counts as new. The dropdown overrides.
 function boroughGuessOccupancy(unit, lease) {
     if (!lease) return 'vacant';
     const first = originalLeaseFor(lease);
-    return (first.lease_start || '') < boroughDueDate(boroughYear - 1) ? 'same' : 'new';
+    return (first.lease_start || '') < `${boroughYear - 1}-07-01` ? 'same' : 'new';
 }
 // Tenant slots on the lease (1-4) with their column index, for editing details
 function boroughTenantSlots(lease) {
