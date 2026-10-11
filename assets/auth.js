@@ -11,6 +11,9 @@
 //   Auth.client                       — the supabase client
 //   Auth.requireAuth()                — call at top of every gated page
 //   Auth.sendMagicLink(email)         — for login.html
+//   Auth.signInWithPassword(email, pw)— for login.html (password tab)
+//   Auth.sendPasswordReset(email)     — emails a link to set-password.html
+//   Auth.updatePassword(newPw)        — for set-password.html (must be signed in)
 //   Auth.signOut()                    — logs out and bounces to /login.html
 //   Auth.getUser()                    — returns { email } or null
 //   Auth.renderHeader(containerId)    — drops a shared header w/ sign-out button
@@ -93,6 +96,25 @@
     if (error) throw error;
   }
 
+  async function signInWithPassword(email, password) {
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
+
+  // Sends a "set / reset your password" email. The link lands on
+  // set-password.html already signed in, so the user can pick a password there.
+  async function sendPasswordReset(email) {
+    const { error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: BASE + 'set-password.html',
+    });
+    if (error) throw error;
+  }
+
+  async function updatePassword(password) {
+    const { error } = await client.auth.updateUser({ password });
+    if (error) throw error;
+  }
+
   async function signOut() {
     await client.auth.signOut();
     location.replace(LOGIN_URL);
@@ -122,6 +144,7 @@
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span id="__auth_email" style="color:#666;"></span>
+          <a href="${BASE}set-password.html" style="color:#555;font-size:13px;">Password</a>
           <button id="__auth_signout" style="font-size:13px;padding:4px 10px;cursor:pointer;">Sign out</button>
         </div>
       </div>`;
@@ -132,5 +155,5 @@
     document.getElementById('__auth_signout').addEventListener('click', signOut);
   }
 
-  global.Auth = { client, ready, bearer, requireAuth, sendMagicLink, signOut, getUser, renderHeader };
+  global.Auth = { client, ready, bearer, requireAuth, sendMagicLink, signInWithPassword, sendPasswordReset, updatePassword, signOut, getUser, renderHeader };
 })(window);

@@ -12,7 +12,13 @@
   h1 { margin: 0 0 6px; font-size: 22px; }
   p  { margin: 0 0 18px; color: #666; font-size: 14px; }
   label { display: block; font-size: 13px; margin-bottom: 4px; color: #333; }
-  input[type=email] { width: 100%; padding: 10px 12px; font-size: 15px; border: 1px solid #ccc;
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .tabs button { flex: 1; background: #eee; color: #333; font-size: 14px; padding: 8px; }
+  .tabs button.on { background: #06408d; color: #fff; }
+  .hidden { display: none; }
+  .linkbtn { background: none; color: #06408d; font-size: 13px; padding: 8px 0 0; text-decoration: underline; }
+  .linkbtn:disabled { background: none; color: #999; }
+  input[type=email], input[type=password] { width: 100%; padding: 10px 12px; font-size: 15px; border: 1px solid #ccc;
                       border-radius: 6px; box-sizing: border-box; margin-bottom: 14px; }
   button { width: 100%; padding: 10px 12px; font-size: 15px; background: #06408d; color: #fff;
            border: none; border-radius: 6px; cursor: pointer; }
@@ -28,12 +34,28 @@
 <body>
 <div class="card">
   <h1>Homestead sign-in</h1>
-  <p>Enter your email. We'll send you a link to sign in — no password needed.</p>
-  <form id="f">
-    <label for="email">Email</label>
-    <input type="email" id="email" required autocomplete="email" placeholder="you@gmail.com">
-    <button id="btn" type="submit">Send magic link</button>
+  <div class="tabs">
+    <button type="button" id="tab-pw" class="on">Password</button>
+    <button type="button" id="tab-ml">Magic link</button>
+  </div>
+
+  <form id="f-pw">
+    <p>Sign in with your email and password.</p>
+    <label for="email-pw">Email</label>
+    <input type="email" id="email-pw" required autocomplete="email" placeholder="you@gmail.com">
+    <label for="pw">Password</label>
+    <input type="password" id="pw" required autocomplete="current-password">
+    <button id="btn-pw" type="submit">Sign in</button>
+    <button type="button" id="btn-reset" class="linkbtn">Forgot password, or don't have one yet? Email me a link to set one.</button>
   </form>
+
+  <form id="f-ml" class="hidden">
+    <p>Enter your email. We'll send you a link to sign in — no password needed.</p>
+    <label for="email-ml">Email</label>
+    <input type="email" id="email-ml" required autocomplete="email" placeholder="you@gmail.com">
+    <button id="btn-ml" type="submit">Send magic link</button>
+  </form>
+
   <div id="out"></div>
   <div class="foot">Only invited emails work. Ask the account admin to add you in Supabase.</div>
 </div>
@@ -47,21 +69,71 @@
     }
   })();
 
-  const f = document.getElementById('f');
-  const btn = document.getElementById('btn');
   const out = document.getElementById('out');
-  f.addEventListener('submit', async (e) => {
+  const fPw = document.getElementById('f-pw');
+  const fMl = document.getElementById('f-ml');
+  const tabPw = document.getElementById('tab-pw');
+  const tabMl = document.getElementById('tab-ml');
+  const emailPw = document.getElementById('email-pw');
+  const emailMl = document.getElementById('email-ml');
+
+  function show(mode) {
+    const pw = mode === 'pw';
+    fPw.classList.toggle('hidden', !pw);
+    fMl.classList.toggle('hidden', pw);
+    tabPw.classList.toggle('on', pw);
+    tabMl.classList.toggle('on', !pw);
+    out.innerHTML = '';
+    // carry the typed email across tabs
+    if (pw && !emailPw.value) emailPw.value = emailMl.value;
+    if (!pw && !emailMl.value) emailMl.value = emailPw.value;
+    try { localStorage.setItem('loginMode', mode); } catch (_) {}
+  }
+  tabPw.addEventListener('click', () => show('pw'));
+  tabMl.addEventListener('click', () => show('ml'));
+  try { if (localStorage.getItem('loginMode') === 'ml') show('ml'); } catch (_) {}
+
+  const ok  = (m) => { out.innerHTML = `<div class="msg ok">${m}</div>`; };
+  const err = (e) => { out.innerHTML = `<div class="msg err">${e.message || e}</div>`; };
+
+  // --- Password sign-in ---
+  const btnPw = document.getElementById('btn-pw');
+  fPw.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = document.getElementById('email').value.trim();
-    btn.disabled = true; btn.textContent = 'Sending…'; out.innerHTML = '';
+    btnPw.disabled = true; btnPw.textContent = 'Signing in…'; out.innerHTML = '';
     try {
-      await Auth.sendMagicLink(email);
-      out.innerHTML = `<div class="msg ok">Check your inbox for a sign-in link. You can close this tab.</div>`;
-    } catch (err) {
-      out.innerHTML = `<div class="msg err">${err.message || err}</div>`;
-    } finally {
-      btn.disabled = false; btn.textContent = 'Send magic link';
+      await Auth.signInWithPassword(emailPw.value.trim(), document.getElementById('pw').value);
+      const next = new URLSearchParams(location.search).get('next') || 'index.html';
+      location.replace(next);
+    } catch (e2) {
+      err(/invalid/i.test(e2.message || '') ? 'Wrong email or password. If you have never set a password, use the link below to set one.' : e2);
+      btnPw.disabled = false; btnPw.textContent = 'Sign in';
     }
+  });
+
+  // --- Forgot / set password ---
+  const btnReset = document.getElementById('btn-reset');
+  btnReset.addEventListener('click', async () => {
+    const email = emailPw.value.trim();
+    if (!email) { err('Type your email first, then tap this link.'); emailPw.focus(); return; }
+    btnReset.disabled = true; out.innerHTML = '';
+    try {
+      await Auth.sendPasswordReset(email);
+      ok('Check your inbox for a "set your password" email. Open it on a phone or computer if links don\'t open on this tablet — once your password is set, you can sign in here with it.');
+    } catch (e2) { err(e2); }
+    finally { btnReset.disabled = false; }
+  });
+
+  // --- Magic link ---
+  const btnMl = document.getElementById('btn-ml');
+  fMl.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btnMl.disabled = true; btnMl.textContent = 'Sending…'; out.innerHTML = '';
+    try {
+      await Auth.sendMagicLink(emailMl.value.trim());
+      ok('Check your inbox for a sign-in link. You can close this tab.');
+    } catch (e2) { err(e2); }
+    finally { btnMl.disabled = false; btnMl.textContent = 'Send magic link'; }
   });
 </script>
 </body>
