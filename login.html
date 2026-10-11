@@ -22,6 +22,10 @@
                       border-radius: 6px; box-sizing: border-box; margin-bottom: 14px; }
   button { width: 100%; padding: 10px 12px; font-size: 15px; background: #06408d; color: #fff;
            border: none; border-radius: 6px; cursor: pointer; }
+  .pwwrap { position: relative; }
+  .pwwrap input { padding-right: 64px; }
+  .showpw { position: absolute; right: 6px; top: 6px; width: auto; padding: 4px 10px; font-size: 13px;
+            background: #eee; color: #333; border-radius: 4px; }
   button:disabled { background: #999; cursor: not-allowed; }
   .msg { margin-top: 14px; font-size: 13px; padding: 10px; border-radius: 6px; }
   .msg.ok  { background: #e6f4e6; color: #1d6b1d; border: 1px solid #cfe6cf; }
@@ -44,7 +48,10 @@
     <label for="email-pw">Email</label>
     <input type="email" id="email-pw" required autocomplete="email" placeholder="you@gmail.com">
     <label for="pw">Password</label>
-    <input type="password" id="pw" required autocomplete="current-password">
+    <div class="pwwrap">
+      <input type="password" id="pw" required autocomplete="current-password">
+      <button type="button" class="showpw" data-for="pw">Show</button>
+    </div>
     <button id="btn-pw" type="submit">Sign in</button>
     <button type="button" id="btn-reset" class="linkbtn">Forgot password, or don't have one yet? Email me a link to set one.</button>
   </form>
@@ -60,6 +67,16 @@
   <div class="foot">Only invited emails work. Ask the account admin to add you in Supabase.</div>
 </div>
 <script>
+  // Show / hide password text
+  document.querySelectorAll('.showpw').forEach(b => {
+    b.addEventListener('click', () => {
+      const i = document.getElementById(b.dataset.for);
+      const show = i.type === 'password';
+      i.type = show ? 'text' : 'password';
+      b.textContent = show ? 'Hide' : 'Show';
+    });
+  });
+
   // If already signed in, bounce to the intended page
   (async () => {
     const s = await Auth.client.auth.getSession();
