@@ -123,7 +123,10 @@
       const next = new URLSearchParams(location.search).get('next') || 'index.html';
       location.replace(next);
     } catch (e2) {
-      err(/invalid/i.test(e2.message || '') ? 'Wrong email or password. If you have never set a password, use the link below to set one.' : e2);
+      const raw = e2.message || String(e2);
+      err(/invalid/i.test(raw)
+        ? `Wrong email or password. If you have never set a password, use the link below to set one.<br><small style="color:#999">Details: ${raw}</small>`
+        : raw);
       btnPw.disabled = false; btnPw.textContent = 'Sign in';
     }
   });
