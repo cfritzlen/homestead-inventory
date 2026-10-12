@@ -6,6 +6,7 @@
 <script src="assets/config.js"></script>
 <script src="assets/auth.js"></script>
 <script>Auth.requireAuth();</script>
+<script src="assets/kiosk.js"></script>
 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -88,6 +89,8 @@
   #header-slot a { color: var(--taupe) !important; }
   #header-slot a:hover { color: var(--cream) !important; }
   #header-slot #__auth_email { color: var(--taupe) !important; }
+  /* Kiosk mode: no links out of this page, no sign-out */
+  html.kiosk #header-slot a, html.kiosk #header-slot button { display: none !important; }
   #header-slot #__auth_signout {
     background: transparent; color: var(--taupe);
     border: 1px solid rgba(196,181,164,.3);
@@ -527,7 +530,7 @@
 
 <main>
   <div class="page-head">
-    <h1>Family Hub</h1>
+    <h1 data-kiosk-hold>Family Hub</h1>
   </div>
 
   <div class="above-fold">
